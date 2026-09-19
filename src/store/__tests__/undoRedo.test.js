@@ -226,4 +226,36 @@ describe('Undo / Redo Architecture and Execution', () => {
     expect(useRoomStore.getState().canUndo).toBe(false);
     expect(useRoomStore.getState().canRedo).toBe(false);
   });
+
+  it('reorders furniture and records undo/redo history correctly', () => {
+    // Add two items: coffee table first, then rug
+    useRoomStore.getState().addFurniture('coffee-table', 150, 150);
+    useRoomStore.getState().addFurniture('rug-living', 150, 150);
+
+    const itemsInitial = useRoomStore.getState().room.placedFurniture;
+    expect(itemsInitial.length).toBe(2);
+    const tableId = itemsInitial[0].id;
+    const rugId = itemsInitial[1].id;
+
+    // Initially table is index 0, rug is index 1 (rug covers table)
+    expect(useRoomStore.getState().room.placedFurniture[0].id).toBe(tableId);
+    expect(useRoomStore.getState().room.placedFurniture[1].id).toBe(rugId);
+
+    // Send rug backward ('down')
+    useRoomStore.getState().reorderFurniture(rugId, 'down');
+
+    // Rug is now index 0, table is index 1 (table sits on rug)
+    expect(useRoomStore.getState().room.placedFurniture[0].id).toBe(rugId);
+    expect(useRoomStore.getState().room.placedFurniture[1].id).toBe(tableId);
+
+    // Undo restores initial order
+    useRoomStore.getState().undo();
+    expect(useRoomStore.getState().room.placedFurniture[0].id).toBe(tableId);
+    expect(useRoomStore.getState().room.placedFurniture[1].id).toBe(rugId);
+
+    // Redo re-applies reorder
+    useRoomStore.getState().redo();
+    expect(useRoomStore.getState().room.placedFurniture[0].id).toBe(rugId);
+    expect(useRoomStore.getState().room.placedFurniture[1].id).toBe(tableId);
+  });
 });

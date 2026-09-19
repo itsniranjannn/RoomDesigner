@@ -391,24 +391,26 @@ export const FURNITURE_CATALOG = [
   // ==========================================
   {
     id: 'rug-living',
-    name: 'Large Area Rug',
+    name: 'Nepali Galaicha Rug',
     category: 'decor',
     widthCm: 240,
     depthCm: 300,
     heightCm: 1.5,
-    color: '#E4DDD0', // Woven Linen / Wool
-    subColor: '#C9BEAD',
+    color: '#8B1E1E', // Crimson Madder Red (नेपाली गलैँचा)
+    subColor: '#D4A359', // Mustard Gold border/mandala
+    accentColor: '#1B2A4A', // Tibetan Indigo Navy
     shapeType: 'rug',
   },
   {
     id: 'rug-runner',
-    name: 'Hallway Runner Rug',
+    name: 'Galaicha Runner Rug',
     category: 'decor',
     widthCm: 80,
     depthCm: 250,
     heightCm: 1.5,
-    color: '#DDD4C4', // Textured Berber
-    subColor: '#BDB19E',
+    color: '#1E2D42', // Deep Indigo Blue
+    subColor: '#C49746', // Warm Gold Border
+    accentColor: '#8A2020', // Ruby Crimson accents
     shapeType: 'rug-runner',
   },
   {

@@ -364,8 +364,9 @@ export function Room3DWalls({ room, isFullHeight = false }) {
             ? [op.widthM + 0.01, capHeightM, capThickM]
             : [capThickM, capHeightM, op.widthM + 0.01];
 
-          // 3D Door Leaf inward swing geometry
+          // 3D Door Leaf swing geometry (Inward vs Outward)
           // Hinge is mounted near startPt
+          const isOutward = op.swingDirection === 'outward';
           let hingeX = startPt.x;
           let hingeZ = startPt.z;
           let leafRotY = 0;
@@ -374,28 +375,56 @@ export function Room3DWalls({ room, isFullHeight = false }) {
 
           if (wallName === 'top') {
             hingeX = startPt.x + 0.02;
-            hingeZ = pt.z + wallThickM / 2;
-            leafRotY = -Math.PI / 2.8; // swings into room (+Z)
-            leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
-            handleOffset = [op.widthM * 0.85, handleH, 0.025];
+            if (isOutward) {
+              hingeZ = pt.z - wallThickM / 2;
+              leafRotY = Math.PI / 2.8; // swings outward (-Z)
+              leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
+              handleOffset = [op.widthM * 0.85, handleH, -0.025];
+            } else {
+              hingeZ = pt.z + wallThickM / 2;
+              leafRotY = -Math.PI / 2.8; // swings into room (+Z)
+              leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
+              handleOffset = [op.widthM * 0.85, handleH, 0.025];
+            }
           } else if (wallName === 'bottom') {
             hingeX = startPt.x + 0.02;
-            hingeZ = pt.z - wallThickM / 2;
-            leafRotY = Math.PI / 2.8; // swings into room (-Z)
-            leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
-            handleOffset = [op.widthM * 0.85, handleH, -0.025];
+            if (isOutward) {
+              hingeZ = pt.z + wallThickM / 2;
+              leafRotY = -Math.PI / 2.8; // swings outward (+Z)
+              leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
+              handleOffset = [op.widthM * 0.85, handleH, 0.025];
+            } else {
+              hingeZ = pt.z - wallThickM / 2;
+              leafRotY = Math.PI / 2.8; // swings into room (-Z)
+              leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
+              handleOffset = [op.widthM * 0.85, handleH, -0.025];
+            }
           } else if (wallName === 'left') {
-            hingeX = pt.x + wallThickM / 2;
             hingeZ = startPt.z + 0.02;
-            leafRotY = Math.PI / 2 + Math.PI / 2.8; // swings into room (+X)
-            leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
-            handleOffset = [op.widthM * 0.85, handleH, 0.025];
+            if (isOutward) {
+              hingeX = pt.x - wallThickM / 2;
+              leafRotY = Math.PI / 2 - Math.PI / 2.8; // swings outward (-X)
+              leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
+              handleOffset = [op.widthM * 0.85, handleH, -0.025];
+            } else {
+              hingeX = pt.x + wallThickM / 2;
+              leafRotY = Math.PI / 2 + Math.PI / 2.8; // swings into room (+X)
+              leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
+              handleOffset = [op.widthM * 0.85, handleH, 0.025];
+            }
           } else if (wallName === 'right') {
-            hingeX = pt.x - wallThickM / 2;
             hingeZ = startPt.z + 0.02;
-            leafRotY = Math.PI / 2 - Math.PI / 2.8; // swings into room (-X)
-            leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
-            handleOffset = [op.widthM * 0.85, handleH, -0.025];
+            if (isOutward) {
+              hingeX = pt.x + wallThickM / 2;
+              leafRotY = Math.PI / 2 + Math.PI / 2.8; // swings outward (+X)
+              leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
+              handleOffset = [op.widthM * 0.85, handleH, 0.025];
+            } else {
+              hingeX = pt.x - wallThickM / 2;
+              leafRotY = Math.PI / 2 - Math.PI / 2.8; // swings into room (-X)
+              leafMeshOffset = [op.widthM * 0.48, doorLeafH / 2, 0];
+              handleOffset = [op.widthM * 0.85, handleH, -0.025];
+            }
           }
 
           return (

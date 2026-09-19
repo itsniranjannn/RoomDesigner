@@ -2,7 +2,7 @@ import React, { useRef } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { getFurnitureType } from '../../data/furnitureCatalog.js';
 import { Button } from '../common/Button.jsx';
-import { Copy, Trash2, X, Compass, Layers } from 'lucide-react';
+import { Copy, Trash2, X, Compass, Layers, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import styles from './SelectedItemPanel.module.css';
 
 export function SelectedItemPanel() {
@@ -13,9 +13,13 @@ export function SelectedItemPanel() {
   const updateFurnitureRotation = useRoomStore((state) => state.updateFurnitureRotation);
   const removeFurniture = useRoomStore((state) => state.removeFurniture);
   const duplicateFurniture = useRoomStore((state) => state.duplicateFurniture);
+  const reorderFurniture = useRoomStore((state) => state.reorderFurniture);
+  const moveFurnitureToIndex = useRoomStore((state) => state.moveFurnitureToIndex);
 
   const sliderStartSnapshot = useRef(null);
   const sliderStartVal = useRef(0);
+  const dragItemIndexRef = useRef(null);
+  const [dragOverIndex, setDragOverIndex] = React.useState(null);
 
   if (!room) return null;
 
@@ -207,6 +211,33 @@ export function SelectedItemPanel() {
             • Delete or Backspace to remove
           </div>
 
+          {/* Stacking Order / Layering */}
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>Stacking Order (Layers)</span>
+            <div className={styles.actionRow}>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => reorderFurniture(selectedItem.id, 'down')}
+                disabled={placedFurniture.findIndex((item) => item.id === selectedItem.id) === 0}
+                icon={<ArrowDown size={13} />}
+                title="Send Backward (behind other pieces, e.g. put rug under table)"
+              >
+                Send Back
+              </Button>
+              <Button
+                variant="secondary"
+                size="small"
+                onClick={() => reorderFurniture(selectedItem.id, 'up')}
+                disabled={placedFurniture.findIndex((item) => item.id === selectedItem.id) === placedFurniture.length - 1}
+                icon={<ArrowUp size={13} />}
+                title="Bring Forward (above other pieces, e.g. put table over rug)"
+              >
+                Bring Front
+              </Button>
+            </div>
+          </div>
+
           {/* Actions */}
           <div className={styles.actions}>
             <div className={styles.actionRow}>
@@ -282,42 +313,91 @@ export function SelectedItemPanel() {
             </p>
           ) : (
             <div className={styles.placedList}>
-              {placedFurniture.map((item) => {
+              {placedFurniture.map((item, index) => {
                 const itemDef = getFurnitureType(item.furnitureTypeId);
                 if (!itemDef) return null;
+                const isBeingDragged = dragItemIndexRef.current === index;
+                const isTargetOver = dragOverIndex === index;
+
                 return (
                   <div
                     key={item.id}
-                    className={styles.placedItemCard}
+                    className={`${styles.placedItemCard} ${
+                      isBeingDragged ? styles.placedItemCardDragging : ''
+                    } ${isTargetOver ? styles.placedItemCardDragOver : ''}`}
                     tabIndex={0}
                     role="button"
-                    aria-label={`Select ${itemDef.name}, ${itemDef.widthCm} by ${itemDef.depthCm} centimeters`}
-                    onClick={() => selectItem(item.id)}
+                    draggable
+                    onDragStart={(e) => {
+                      dragItemIndexRef.current = index;
+                      e.dataTransfer.effectAllowed = 'move';
+                      e.dataTransfer.setData('text/plain', String(index));
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverIndex !== index) {
+                        setDragOverIndex(index);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverIndex === index) {
+                        setDragOverIndex(null);
+                      }
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const from = dragItemIndexRef.current;
+                      const to = index;
+                      dragItemIndexRef.current = null;
+                      setDragOverIndex(null);
+                      if (from !== null && from !== to) {
+                        moveFurnitureToIndex(from, to);
+                      }
+                    }}
+                    onDragEnd={() => {
+                      dragItemIndexRef.current = null;
+                      setDragOverIndex(null);
+                    }}
+                    aria-label={`Select ${itemDef.name}, ${itemDef.widthCm} by ${itemDef.depthCm} centimeters. Drag to reorder layer.`}
+                    onClick={() => {
+                      // Only select if user clicked intentionally, not finished dragging
+                      if (dragItemIndexRef.current === null) {
+                        selectItem(item.id);
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         selectItem(item.id);
                       }
                     }}
-                    title="Click or press Enter to select and adjust this piece"
+                    title="Click to inspect · Drag up/down to reorder layers (माथि/तल सार्न तान्नुहोस्)"
                   >
+                    <div
+                      className={styles.dragHandle}
+                      title="Drag to change layer order (माथि/तल सार्न तान्नुहोस्)"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <GripVertical size={14} />
+                    </div>
                     <div className={styles.placedItemInfo}>
                       <span className={styles.placedItemName}>{itemDef.name}</span>
                       <span className={styles.placedItemDims}>
                         {itemDef.widthCm} × {itemDef.depthCm} cm · {item.rotationDeg || 0}°
                       </span>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeFurniture(item.id);
-                      }}
-                      title="Remove piece"
-                    >
-                      <Trash2 size={12} />
-                    </Button>
+                    <div className={styles.placedItemControls} onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="small"
+                        onClick={() => removeFurniture(item.id)}
+                        title="Remove piece"
+                      >
+                        <Trash2 size={12} />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}
@@ -351,74 +431,84 @@ export function SelectedItemPanel() {
 
           <div className={styles.placedList}>
             {(room.windows || []).map((win) => (
-              <div key={win.id} className={styles.placedItemCard}>
-                <div className={styles.placedItemInfo}>
-                  <span className={styles.placedItemName}>Window ({win.wall || 'top'} wall)</span>
-                  <span className={styles.placedItemDims}>
-                    Width: {win.widthCm}cm · Pos: {win.offsetCm}cm
-                  </span>
-                  <span className={styles.placedItemName}>Window ({win.widthCm}cm)</span>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <select
-                      value={win.wall || 'top'}
-                      onChange={(e) => useRoomStore.getState().updateOpening('window', win.id, { wall: e.target.value }, true)}
-                      className={styles.wallSelect}
-                      title="Select wall for window"
-                    >
-                      <option value="top">North (Top)</option>
-                      <option value="bottom">South (Bottom)</option>
-                      <option value="left">West (Left)</option>
-                      <option value="right">East (Right)</option>
-                    </select>
-                    <span className={styles.placedItemDims}>Pos: {win.offsetCm}cm</span>
+              <div key={win.id} className={styles.openingCard}>
+                <div className={styles.openingHeader}>
+                  <div className={styles.openingHeaderLeft}>
+                    <span className={styles.openingTypeTitle}>Window</span>
+                    <span className={styles.openingDimsTag}>{win.widthCm} cm</span>
                   </div>
+                  {(room.windows || []).length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      onClick={() => useRoomStore.getState().removeOpening('window', win.id)}
+                      title="Remove window"
+                    >
+                      <Trash2 size={12} />
+                    </Button>
+                  )}
                 </div>
-                {(room.windows || []).length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    onClick={() => useRoomStore.getState().removeOpening('window', win.id)}
-                    title="Remove window"
+
+                <div className={styles.openingControlsSingle}>
+                  <select
+                    value={win.wall || 'top'}
+                    onChange={(e) => useRoomStore.getState().updateOpening('window', win.id, { wall: e.target.value }, true)}
+                    className={styles.wallSelect}
+                    title="Select wall for window"
                   >
-                    <Trash2 size={12} />
-                  </Button>
-                )}
+                    <option value="top">North Wall (Top)</option>
+                    <option value="bottom">South Wall (Bottom)</option>
+                    <option value="left">West Wall (Left)</option>
+                    <option value="right">East Wall (Right)</option>
+                  </select>
+                  <span className={styles.openingPosTag}>Pos: {win.offsetCm}cm</span>
+                </div>
               </div>
             ))}
 
             {(room.doors || []).map((door) => (
-              <div key={door.id} className={styles.placedItemCard}>
-                <div className={styles.placedItemInfo}>
-                  <span className={styles.placedItemName}>Door ({door.wall || 'bottom'} wall)</span>
-                  <span className={styles.placedItemDims}>
-                    Width: {door.widthCm}cm · Pos: {door.offsetCm}cm
-                  </span>
-                  <span className={styles.placedItemName}>Door ({door.widthCm}cm)</span>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                    <select
-                      value={door.wall || 'bottom'}
-                      onChange={(e) => useRoomStore.getState().updateOpening('door', door.id, { wall: e.target.value }, true)}
-                      className={styles.wallSelect}
-                      title="Select wall for door"
-                    >
-                      <option value="top">North (Top)</option>
-                      <option value="bottom">South (Bottom)</option>
-                      <option value="left">West (Left)</option>
-                      <option value="right">East (Right)</option>
-                    </select>
-                    <span className={styles.placedItemDims}>Pos: {door.offsetCm}cm</span>
+              <div key={door.id} className={styles.openingCard}>
+                <div className={styles.openingHeader}>
+                  <div className={styles.openingHeaderLeft}>
+                    <span className={styles.openingTypeTitle}>Door</span>
+                    <span className={styles.openingDimsTag}>{door.widthCm} cm</span>
+                    <span className={styles.openingPosTag}>Pos: {door.offsetCm}cm</span>
                   </div>
+                  {(room.doors || []).length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      onClick={() => useRoomStore.getState().removeOpening('door', door.id)}
+                      title="Remove door"
+                    >
+                      <Trash2 size={12} />
+                    </Button>
+                  )}
                 </div>
-                {(room.doors || []).length > 1 && (
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    onClick={() => useRoomStore.getState().removeOpening('door', door.id)}
-                    title="Remove door"
+
+                <div className={styles.openingControlsGrid}>
+                  <select
+                    value={door.wall || 'bottom'}
+                    onChange={(e) => useRoomStore.getState().updateOpening('door', door.id, { wall: e.target.value }, true)}
+                    className={styles.wallSelect}
+                    title="Select wall for door"
                   >
-                    <Trash2 size={12} />
-                  </Button>
-                )}
+                    <option value="top">North Wall (Top)</option>
+                    <option value="bottom">South Wall (Bottom)</option>
+                    <option value="left">West Wall (Left)</option>
+                    <option value="right">East Wall (Right)</option>
+                  </select>
+
+                  <select
+                    value={door.swingDirection === 'outward' ? 'outward' : 'inward'}
+                    onChange={(e) => useRoomStore.getState().updateOpening('door', door.id, { swingDirection: e.target.value }, true)}
+                    className={styles.wallSelect}
+                    title="Door swing direction"
+                  >
+                    <option value="inward">Swing: Inward (भित्र)</option>
+                    <option value="outward">Swing: Outward (बाहिर)</option>
+                  </select>
+                </div>
               </div>
             ))}
           </div>

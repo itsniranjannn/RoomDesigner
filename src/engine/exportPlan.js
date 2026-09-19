@@ -176,54 +176,120 @@ export async function exportRoomPlanAsPNG(room) {
     ctx.lineWidth = 1.2;
     ctx.setLineDash([3, 3]);
 
+    const isOutward = door.swingDirection === 'outward';
+
     if (wall === 'bottom') {
-      ctx.beginPath();
-      ctx.arc(dx, roomDepth, doorWidth, -Math.PI / 2, 0, false);
-      ctx.stroke();
+      if (isOutward) {
+        // Outward swing (+Y)
+        ctx.beginPath();
+        ctx.arc(dx, roomDepth, doorWidth, 0, Math.PI / 2, false);
+        ctx.stroke();
 
-      ctx.setLineDash([]);
-      ctx.strokeStyle = '#1C1A17';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(dx, roomDepth);
-      ctx.lineTo(dx, roomDepth - doorWidth);
-      ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#1C1A17';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(dx, roomDepth);
+        ctx.lineTo(dx, roomDepth + doorWidth);
+        ctx.stroke();
+      } else {
+        // Inward swing (-Y)
+        ctx.beginPath();
+        ctx.arc(dx, roomDepth, doorWidth, -Math.PI / 2, 0, false);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#1C1A17';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(dx, roomDepth);
+        ctx.lineTo(dx, roomDepth - doorWidth);
+        ctx.stroke();
+      }
     } else if (wall === 'top') {
-      ctx.beginPath();
-      ctx.arc(dx, 0, doorWidth, 0, Math.PI / 2, false);
-      ctx.stroke();
+      if (isOutward) {
+        // Outward swing (-Y)
+        ctx.beginPath();
+        ctx.arc(dx, 0, doorWidth, -Math.PI / 2, 0, false);
+        ctx.stroke();
 
-      ctx.setLineDash([]);
-      ctx.strokeStyle = '#1C1A17';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(dx, 0);
-      ctx.lineTo(dx, doorWidth);
-      ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#1C1A17';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(dx, 0);
+        ctx.lineTo(dx, -doorWidth);
+        ctx.stroke();
+      } else {
+        // Inward swing (+Y)
+        ctx.beginPath();
+        ctx.arc(dx, 0, doorWidth, 0, Math.PI / 2, false);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#1C1A17';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(dx, 0);
+        ctx.lineTo(dx, doorWidth);
+        ctx.stroke();
+      }
     } else if (wall === 'left') {
-      ctx.beginPath();
-      ctx.arc(0, dy, doorWidth, 0, Math.PI / 2, false);
-      ctx.stroke();
+      if (isOutward) {
+        // Outward swing (-X)
+        ctx.beginPath();
+        ctx.arc(0, dy, doorWidth, Math.PI / 2, Math.PI, false);
+        ctx.stroke();
 
-      ctx.setLineDash([]);
-      ctx.strokeStyle = '#1C1A17';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(0, dy);
-      ctx.lineTo(doorWidth, dy);
-      ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#1C1A17';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(0, dy);
+        ctx.lineTo(-doorWidth, dy);
+        ctx.stroke();
+      } else {
+        // Inward swing (+X)
+        ctx.beginPath();
+        ctx.arc(0, dy, doorWidth, 0, Math.PI / 2, false);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#1C1A17';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(0, dy);
+        ctx.lineTo(doorWidth, dy);
+        ctx.stroke();
+      }
     } else if (wall === 'right') {
-      ctx.beginPath();
-      ctx.arc(roomWidth, dy, doorWidth, Math.PI / 2, Math.PI, false);
-      ctx.stroke();
+      if (isOutward) {
+        // Outward swing (+X)
+        ctx.beginPath();
+        ctx.arc(roomWidth, dy, doorWidth, 0, Math.PI / 2, false);
+        ctx.stroke();
 
-      ctx.setLineDash([]);
-      ctx.strokeStyle = '#1C1A17';
-      ctx.lineWidth = 2.4;
-      ctx.beginPath();
-      ctx.moveTo(roomWidth, dy);
-      ctx.lineTo(roomWidth - doorWidth, dy);
-      ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#1C1A17';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(roomWidth, dy);
+        ctx.lineTo(roomWidth + doorWidth, dy);
+        ctx.stroke();
+      } else {
+        // Inward swing (-X)
+        ctx.beginPath();
+        ctx.arc(roomWidth, dy, doorWidth, Math.PI / 2, Math.PI, false);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.strokeStyle = '#1C1A17';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(roomWidth, dy);
+        ctx.lineTo(roomWidth - doorWidth, dy);
+        ctx.stroke();
+      }
     }
     ctx.restore();
   });
@@ -267,17 +333,190 @@ export async function exportRoomPlanAsPNG(room) {
     ctx.stroke();
 
     // Inner upholstery / surface detail
-    ctx.fillStyle = def.fabricColor || 'rgba(255, 255, 255, 0.45)';
-    ctx.fillRect(rx + 4, ry + 4, w - 8, d - 8);
-
-    // Name label
-    ctx.fillStyle = '#1C1A17';
-    ctx.font = '600 9px "Space Grotesk", sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(def.name, 0, 0);
+    if (def.shapeType === 'rug') {
+      const b1 = Math.min(18, w * 0.08);
+      const b2 = Math.min(28, w * 0.12);
+      const medR = Math.min(w, d) * 0.22;
+      // Traditional double border
+      ctx.fillStyle = def.accentColor || '#1B2A4A';
+      ctx.fillRect(rx + b1, ry + b1, w - b1 * 2, d - b1 * 2);
+      ctx.fillStyle = def.color || '#8B1E1E';
+      ctx.fillRect(rx + b2, ry + b2, w - b2 * 2, d - b2 * 2);
+      // Center Medallion
+      ctx.beginPath();
+      ctx.arc(0, 0, medR, 0, Math.PI * 2);
+      ctx.fillStyle = def.accentColor || '#1B2A4A';
+      ctx.fill();
+      ctx.strokeStyle = def.subColor || '#D4A359';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    } else if (def.shapeType === 'rug-runner') {
+      const b1 = Math.min(10, w * 0.12);
+      ctx.fillStyle = def.subColor || '#C49746';
+      ctx.fillRect(rx + b1, ry + b1, w - b1 * 2, d - b1 * 2);
+      ctx.fillStyle = def.color || '#1E2D42';
+      ctx.fillRect(rx + b1 + 3, ry + b1 + 3, w - (b1 + 3) * 2, d - (b1 + 3) * 2);
+    } else {
+      ctx.fillStyle = def.fabricColor || 'rgba(255, 255, 255, 0.45)';
+      ctx.fillRect(rx + 4, ry + 4, w - 8, d - 8);
+    }
 
     ctx.restore();
+  });
+
+  // 7b. Smart Architectural Label Placement (Avoids overlaps, adds leader lines for small items)
+  // Track occupied text label bounding boxes to guarantee zero text-on-text overlap
+  const placedLabelBoxes = [];
+
+  const isBoxOverlapping = (b1, b2, pad = 3) => {
+    return !(
+      b1.x + b1.w + pad < b2.x ||
+      b2.x + b2.w + pad < b1.x ||
+      b1.y + b1.h + pad < b2.y ||
+      b2.y + b2.h + pad < b1.y
+    );
+  };
+
+  ctx.font = '600 8.5px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  placed.forEach((item) => {
+    const def = getFurnitureType(item.furnitureTypeId);
+    if (!def) return;
+
+    // Skip text label on rugs to keep traditional decorative mandala / runner patterns pristine
+    if (def.shapeType === 'rug' || def.shapeType === 'rug-runner') {
+      return;
+    }
+
+    const text = def.name;
+    const textMetrics = ctx.measureText(text);
+    const textW = textMetrics.width;
+    const textH = 10;
+
+    const w = def.widthCm;
+    const d = def.depthCm;
+    const rot = ((item.rotationDeg || 0) * Math.PI) / 180;
+
+    // Check if piece is large enough to comfortably fit text inside with margin
+    const minInnerDim = Math.min(w, d);
+    const fitsInside = textW <= w - 16 && textH <= d - 12 && minInnerDim >= 55;
+
+    // Candidate 1: Inside center
+    const centerBox = {
+      x: item.x - textW / 2,
+      y: item.y - textH / 2,
+      w: textW,
+      h: textH,
+    };
+
+    let placedPos = null;
+
+    if (fitsInside) {
+      // Check if center collides with any already placed label
+      const hasConflict = placedLabelBoxes.some((box) => isBoxOverlapping(centerBox, box));
+      if (!hasConflict) {
+        placedPos = {
+          x: item.x,
+          y: item.y,
+          box: centerBox,
+          isInside: true,
+        };
+      }
+    }
+
+    // Candidate 2: Offset outside shape with a clean leader line
+    if (!placedPos) {
+      const radius = Math.max(w, d) / 2 + 14;
+      // Try 8 directional candidate offsets (Top, Bottom, Right, Left, Diagonals)
+      const candidateAngles = [
+        -Math.PI / 2, // North
+        Math.PI / 2,  // South
+        0,            // East
+        Math.PI,      // West
+        -Math.PI / 4, // North-East
+        -Math.PI * 0.75, // North-West
+        Math.PI / 4,  // South-East
+        Math.PI * 0.75, // South-West
+      ];
+
+      for (const angle of candidateAngles) {
+        const cx = item.x + Math.cos(angle) * radius;
+        const cy = item.y + Math.sin(angle) * radius;
+
+        // Ensure label stays reasonably inside or near room boundary
+        if (cx - textW / 2 < -15 || cx + textW / 2 > roomWidth + 15) continue;
+        if (cy - textH / 2 < -15 || cy + textH / 2 > roomDepth + 15) continue;
+
+        const candBox = {
+          x: cx - textW / 2,
+          y: cy - textH / 2,
+          w: textW,
+          h: textH,
+        };
+
+        const hasConflict = placedLabelBoxes.some((box) => isBoxOverlapping(candBox, box, 4));
+        if (!hasConflict) {
+          placedPos = {
+            x: cx,
+            y: cy,
+            box: candBox,
+            isInside: false,
+            anchorX: item.x,
+            anchorY: item.y,
+          };
+          break;
+        }
+      }
+    }
+
+    if (placedPos) {
+      placedLabelBoxes.push(placedPos.box);
+
+      if (!placedPos.isInside) {
+        // Draw subtle architectural leader line from item center to label pill
+        ctx.save();
+        ctx.strokeStyle = '#8C8275';
+        ctx.lineWidth = 0.8;
+        ctx.setLineDash([2, 2]);
+        ctx.beginPath();
+        ctx.moveTo(placedPos.anchorX, placedPos.anchorY);
+        ctx.lineTo(placedPos.x, placedPos.y);
+        ctx.stroke();
+
+        // Small leader line anchor dot on the item
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#8C8275';
+        ctx.beginPath();
+        ctx.arc(placedPos.anchorX, placedPos.anchorY, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Pill background behind offset label for maximum readability
+        ctx.save();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.92)';
+        ctx.strokeStyle = '#D4CEBF';
+        ctx.lineWidth = 0.75;
+        const padX = 5;
+        const padY = 2.5;
+        ctx.beginPath();
+        ctx.roundRect(
+          placedPos.box.x - padX,
+          placedPos.box.y - padY,
+          placedPos.box.w + padX * 2,
+          placedPos.box.h + padY * 2,
+          3
+        );
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Draw crisp label text
+      ctx.fillStyle = '#1C1A17';
+      ctx.fillText(text, placedPos.x, placedPos.y);
+    }
   });
 
   // 8. Architectural Dimension Strings
@@ -357,3 +596,4 @@ export async function exportRoomPlanAsPNG(room) {
     }, 'image/png');
   });
 }
+

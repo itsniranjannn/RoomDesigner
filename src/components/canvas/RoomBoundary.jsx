@@ -374,102 +374,204 @@ export function RoomBoundary({ room, svgRef }) {
               fill="var(--color-linen)"
             />
 
-            {/* 90-degree Door Swing Arc into the room */}
-            {wall === 'bottom' && (
-              <>
-                {/* Hinge at (dx, depthCm), swinging inward-left to (dx + door.widthCm, depthCm - door.widthCm) */}
-                <path
-                  d={`M ${dx} ${depthCm - door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} ${depthCm}`}
-                  fill="none"
-                  stroke="#A89F90"
-                  strokeWidth="1.2"
-                  strokeDasharray="3 3"
-                  pointerEvents="none"
-                />
-                <line
-                  x1={dx}
-                  y1={depthCm}
-                  x2={dx}
-                  y2={depthCm - door.widthCm}
-                  stroke="#1C1A17"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  pointerEvents="none"
-                />
-              </>
-            )}
+            {/* 90-degree Door Swing Arc (Inward vs Outward) */}
+            {(() => {
+              const isOutward = door.swingDirection === 'outward';
 
-            {wall === 'top' && (
-              <>
-                {/* Hinge at (dx, 0), swinging inward into room to (dx + door.widthCm, 0) */}
-                <path
-                  d={`M ${dx} ${door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} 0`}
-                  fill="none"
-                  stroke="#A89F90"
-                  strokeWidth="1.2"
-                  strokeDasharray="3 3"
-                  pointerEvents="none"
-                />
-                <line
-                  x1={dx}
-                  y1={0}
-                  x2={dx}
-                  y2={door.widthCm}
-                  stroke="#1C1A17"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  pointerEvents="none"
-                />
-              </>
-            )}
+              if (wall === 'bottom') {
+                return isOutward ? (
+                  <>
+                    {/* Outward swing: swings out below the room (towards +Y) */}
+                    <path
+                      d={`M ${dx} ${depthCm + door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} ${depthCm}`}
+                      fill="none"
+                      stroke="#A89F90"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={dx}
+                      y1={depthCm}
+                      x2={dx}
+                      y2={depthCm + door.widthCm}
+                      stroke="#1C1A17"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Inward swing: swings into the room (towards -Y) */}
+                    <path
+                      d={`M ${dx} ${depthCm - door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} ${depthCm}`}
+                      fill="none"
+                      stroke="#A89F90"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={dx}
+                      y1={depthCm}
+                      x2={dx}
+                      y2={depthCm - door.widthCm}
+                      stroke="#1C1A17"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                );
+              }
 
-            {wall === 'left' && (
-              <>
-                {/* Hinge at (0, dy), swinging inward into room from (door.widthCm, dy) to (0, dy + door.widthCm) */}
-                <path
-                  d={`M ${door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 1 0 ${dy + door.widthCm}`}
-                  fill="none"
-                  stroke="#A89F90"
-                  strokeWidth="1.2"
-                  strokeDasharray="3 3"
-                  pointerEvents="none"
-                />
-                <line
-                  x1={0}
-                  y1={dy}
-                  x2={door.widthCm}
-                  y2={dy}
-                  stroke="#1C1A17"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  pointerEvents="none"
-                />
-              </>
-            )}
+              if (wall === 'top') {
+                return isOutward ? (
+                  <>
+                    {/* Outward swing: swings out above the room (towards -Y) */}
+                    <path
+                      d={`M ${dx} ${-door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} 0`}
+                      fill="none"
+                      stroke="#A89F90"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={dx}
+                      y1={0}
+                      x2={dx}
+                      y2={-door.widthCm}
+                      stroke="#1C1A17"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Inward swing: swings into the room (towards +Y) */}
+                    <path
+                      d={`M ${dx} ${door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} 0`}
+                      fill="none"
+                      stroke="#A89F90"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={dx}
+                      y1={0}
+                      x2={dx}
+                      y2={door.widthCm}
+                      stroke="#1C1A17"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                );
+              }
 
-            {wall === 'right' && (
-              <>
-                {/* Hinge at (widthCm, dy), swinging inward into room from (widthCm - door.widthCm, dy) to (widthCm, dy + door.widthCm) */}
-                <path
-                  d={`M ${widthCm - door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 0 ${widthCm} ${dy + door.widthCm}`}
-                  fill="none"
-                  stroke="#A89F90"
-                  strokeWidth="1.2"
-                  strokeDasharray="3 3"
-                  pointerEvents="none"
-                />
-                <line
-                  x1={widthCm}
-                  y1={dy}
-                  x2={widthCm - door.widthCm}
-                  y2={dy}
-                  stroke="#1C1A17"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  pointerEvents="none"
-                />
-              </>
-            )}
+              if (wall === 'left') {
+                return isOutward ? (
+                  <>
+                    {/* Outward swing: swings out to the left of the room (towards -X) */}
+                    <path
+                      d={`M ${-door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 0 0 ${dy + door.widthCm}`}
+                      fill="none"
+                      stroke="#A89F90"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={0}
+                      y1={dy}
+                      x2={-door.widthCm}
+                      y2={dy}
+                      stroke="#1C1A17"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Inward swing: swings into the room (towards +X) */}
+                    <path
+                      d={`M ${door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 1 0 ${dy + door.widthCm}`}
+                      fill="none"
+                      stroke="#A89F90"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={0}
+                      y1={dy}
+                      x2={door.widthCm}
+                      y2={dy}
+                      stroke="#1C1A17"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                );
+              }
+
+              if (wall === 'right') {
+                return isOutward ? (
+                  <>
+                    {/* Outward swing: swings out to the right of the room (towards +X) */}
+                    <path
+                      d={`M ${widthCm + door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 1 ${widthCm} ${dy + door.widthCm}`}
+                      fill="none"
+                      stroke="#A89F90"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={widthCm}
+                      y1={dy}
+                      x2={widthCm + door.widthCm}
+                      y2={dy}
+                      stroke="#1C1A17"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Inward swing: swings into the room (towards -X) */}
+                    <path
+                      d={`M ${widthCm - door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 0 ${widthCm} ${dy + door.widthCm}`}
+                      fill="none"
+                      stroke="#A89F90"
+                      strokeWidth="1.2"
+                      strokeDasharray="3 3"
+                      pointerEvents="none"
+                    />
+                    <line
+                      x1={widthCm}
+                      y1={dy}
+                      x2={widthCm - door.widthCm}
+                      y2={dy}
+                      stroke="#1C1A17"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  </>
+                );
+              }
+
+              return null;
+            })()}
 
             {/* Draggable Door Body */}
             <g
@@ -533,18 +635,36 @@ export function RoomBoundary({ room, svgRef }) {
             )}
 
             {/* Dimension Label */}
-            <text
-              x={isHorizontal ? dx + dw / 2 : dx + dw + 14}
-              y={isHorizontal ? (wall === 'bottom' ? depthCm + wallThickness + 14 : -wallThickness - 6) : dy + dh / 2 + 3}
-              textAnchor={isHorizontal ? 'middle' : 'start'}
-              fill={isActive ? 'var(--color-clay)' : 'var(--color-ink)'}
-              fontSize="9.5"
-              fontFamily="var(--font-sans)"
-              fontWeight="600"
-              pointerEvents="none"
-            >
-              Door {door.widthCm}cm
-            </text>
+            {(() => {
+              const isOutward = door.swingDirection === 'outward';
+              let labelX = isHorizontal ? dx + dw / 2 : dx + dw + 14;
+              let labelY = dy + dh / 2 + 3;
+
+              if (wall === 'bottom') {
+                labelY = isOutward ? depthCm + door.widthCm + 16 : depthCm + wallThickness + 14;
+              } else if (wall === 'top') {
+                labelY = isOutward ? -door.widthCm - 12 : -wallThickness - 6;
+              } else if (wall === 'left') {
+                labelX = isOutward ? -door.widthCm - 10 : dx + dw + 14;
+              } else if (wall === 'right') {
+                labelX = isOutward ? widthCm + door.widthCm + 14 : dx + dw + 14;
+              }
+
+              return (
+                <text
+                  x={labelX}
+                  y={labelY}
+                  textAnchor={isHorizontal ? 'middle' : (wall === 'left' && isOutward ? 'end' : 'start')}
+                  fill={isActive ? 'var(--color-clay)' : 'var(--color-ink)'}
+                  fontSize="9.5"
+                  fontFamily="var(--font-sans)"
+                  fontWeight="600"
+                  pointerEvents="none"
+                >
+                  Door {door.widthCm}cm
+                </text>
+              );
+            })()}
           </g>
         );
       })}

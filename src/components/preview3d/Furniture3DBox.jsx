@@ -480,16 +480,46 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
       }
 
       case 'rug': {
+        const border1W = widthM * 0.86;
+        const border1D = depthM * 0.88;
+        const border2W = widthM * 0.74;
+        const border2D = depthM * 0.78;
+        const medRadius = Math.min(widthM, depthM) * 0.22;
+
         return (
-          <group position={[0, 0.004, 0]}>
+          <group position={[0, 0.003, 0]}>
+            {/* Outer Deep Crimson Wool Field */}
             <mesh receiveShadow position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[widthM, depthM]} />
-              <meshStandardMaterial color={mainColor} roughness={0.95} />
+              <meshStandardMaterial color={mainColor || '#8B1E1E'} roughness={0.96} />
             </mesh>
+            {/* Outer Navy Indigo Border Inlay */}
+            <mesh receiveShadow position={[0, 0.0005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[border1W, border1D]} />
+              <meshStandardMaterial color={def.accentColor || '#1B2A4A'} roughness={0.94} />
+            </mesh>
+            {/* Inner Crimson Center Field */}
             <mesh receiveShadow position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[Math.min(widthM, depthM) * 0.44, Math.min(widthM, depthM) * 0.46, 4]} />
-              <meshBasicMaterial color="#C9BEAD" />
+              <planeGeometry args={[border2W, border2D]} />
+              <meshStandardMaterial color={mainColor || '#8B1E1E'} roughness={0.96} />
             </mesh>
+            {/* Traditional Gold Central Mandala Ring */}
+            <mesh receiveShadow position={[0, 0.0015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[medRadius * 0.65, medRadius, 24]} />
+              <meshStandardMaterial color={def.subColor || '#D4A359'} roughness={0.8} />
+            </mesh>
+            {/* Central Diamond Lotus Motif */}
+            <mesh receiveShadow position={[0, 0.002, 0]} rotation={[-Math.PI / 2, Math.PI / 4, 0]}>
+              <planeGeometry args={[medRadius * 0.7, medRadius * 0.7]} />
+              <meshStandardMaterial color={def.subColor || '#D4A359'} roughness={0.8} />
+            </mesh>
+            {/* Fringes at North & South edges */}
+            {[-depthM / 2, depthM / 2].map((fz, idx) => (
+              <mesh key={idx} receiveShadow position={[0, 0.0005, fz]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[widthM * 0.96, 0.04]} />
+                <meshStandardMaterial color="#FAF6EE" roughness={0.95} />
+              </mesh>
+            ))}
           </group>
         );
       }
@@ -1011,12 +1041,30 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
           <group position={[0, 0.003, 0]}>
             <mesh receiveShadow position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
               <planeGeometry args={[widthM, depthM]} />
-              <meshStandardMaterial color={mainColor} roughness={0.95} />
+              <meshStandardMaterial color={mainColor || '#1E2D42'} roughness={0.96} />
+            </mesh>
+            <mesh receiveShadow position={[0, 0.0005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[widthM * 0.82, depthM * 0.94]} />
+              <meshStandardMaterial color={def.subColor || '#C49746'} roughness={0.8} />
             </mesh>
             <mesh receiveShadow position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[widthM * 0.88, depthM * 0.94]} />
-              <meshBasicMaterial color="#C8BCAB" />
+              <planeGeometry args={[widthM * 0.72, depthM * 0.92]} />
+              <meshStandardMaterial color={mainColor || '#1E2D42'} roughness={0.96} />
             </mesh>
+            {/* 3 Diamond Motifs */}
+            {[-depthM * 0.3, 0, depthM * 0.3].map((dz, idx) => (
+              <mesh key={idx} receiveShadow position={[0, 0.0015, dz]} rotation={[-Math.PI / 2, Math.PI / 4, 0]}>
+                <planeGeometry args={[widthM * 0.35, widthM * 0.35]} />
+                <meshStandardMaterial color={def.subColor || '#C49746'} roughness={0.8} />
+              </mesh>
+            ))}
+            {/* End Fringes */}
+            {[-depthM / 2, depthM / 2].map((fz, idx) => (
+              <mesh key={idx} receiveShadow position={[0, 0.0005, fz]} rotation={[-Math.PI / 2, 0, 0]}>
+                <planeGeometry args={[widthM * 0.94, 0.03]} />
+                <meshStandardMaterial color="#FAF6EE" roughness={0.95} />
+              </mesh>
+            ))}
           </group>
         );
       }

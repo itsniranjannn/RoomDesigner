@@ -130,7 +130,9 @@ export function RoomCanvas() {
 
   if (!room) return null;
 
-  const paddingCm = 40; // visual margin around room perimeter for wall thickness & door swings
+  // Check if any doors swing outward so we expand canvas padding so the arc & label don't get cut off or overlap UI
+  const hasOutwardDoors = (room.doors || []).some((d) => d.swingDirection === 'outward');
+  const paddingCm = hasOutwardDoors ? 110 : 45;
   const viewBoxMinX = -paddingCm;
   const viewBoxMinY = -paddingCm;
   const viewBoxWidth = room.widthCm + paddingCm * 2;

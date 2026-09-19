@@ -667,6 +667,51 @@ export const useRoomStore = create((set, get) => ({
     }
   },
 
+  // Move furniture up / down in visual stacking order
+  reorderFurniture: (id, direction) => {
+    const { room } = get();
+    if (!room) return;
+
+    const list = [...(room.placedFurniture || [])];
+    const index = list.findIndex((item) => item.id === id);
+    if (index === -1) return;
+
+    const newIndex = direction === 'up' ? index + 1 : index - 1;
+    if (newIndex < 0 || newIndex >= list.length) return;
+
+    // Record history snapshot before reorder
+    get()._recordHistory();
+
+    const [item] = list.splice(index, 1);
+    list.splice(newIndex, 0, item);
+
+    get()._commitFurnitureUpdate(list, id);
+  },
+
+  // Move furniture to arbitrary index (e.g. from drag & drop reorder)
+  moveFurnitureToIndex: (fromIndex, toIndex) => {
+    const { room } = get();
+    if (!room) return;
+
+    const list = [...(room.placedFurniture || [])];
+    if (
+      fromIndex < 0 ||
+      fromIndex >= list.length ||
+      toIndex < 0 ||
+      toIndex >= list.length ||
+      fromIndex === toIndex
+    ) {
+      return;
+    }
+
+    get()._recordHistory();
+
+    const [item] = list.splice(fromIndex, 1);
+    list.splice(toIndex, 0, item);
+
+    get()._commitFurnitureUpdate(list, item.id);
+  },
+
   // Internal helper to update furniture list, evaluate collisions, and queue persistence
   _commitFurnitureUpdate: (updatedFurniture, activeId = null) => {
     const { room } = get();

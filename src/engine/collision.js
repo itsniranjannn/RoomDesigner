@@ -11,6 +11,7 @@ import {
   projectPolygonOntoAxis,
   intervalsOverlap,
 } from './geometry.js';
+import { getFurnitureType } from '../data/furnitureCatalog.js';
 
 /**
  * Checks if two convex polygons collide using the Separating Axis Theorem (SAT).
@@ -57,6 +58,18 @@ export function checkPolygonCollision(cornersA, cornersB, epsilon = 0.5) {
  * Checks collision between two furniture items with arbitrary position, dimensions, and rotation.
  */
 export function checkFurnitureCollision(itemA, itemB, epsilon = 0.5) {
+  // Rugs and carpet runners do not collide with furniture (furniture sits on rugs)
+  const defA = getFurnitureType(itemA.furnitureTypeId);
+  const defB = getFurnitureType(itemB.furnitureTypeId);
+  if (
+    defA?.shapeType === 'rug' ||
+    defA?.shapeType === 'rug-runner' ||
+    defB?.shapeType === 'rug' ||
+    defB?.shapeType === 'rug-runner'
+  ) {
+    return false;
+  }
+
   const cornersA = getRotatedRectCorners(
     itemA.x,
     itemA.y,
@@ -153,13 +166,17 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
     }
   }
 
-  // Check pairwise furniture collisions
+  // Check pairwise furniture collisions (rugs and carpet runners exempt)
   for (let i = 0; i < n; i++) {
     const itemA = placedFurniture[i];
+    const defA = getFurnitureType(itemA.furnitureTypeId);
+    if (defA?.shapeType === 'rug' || defA?.shapeType === 'rug-runner') continue;
     const cornersA = cornersMap.get(itemA.id);
 
     for (let j = i + 1; j < n; j++) {
       const itemB = placedFurniture[j];
+      const defB = getFurnitureType(itemB.furnitureTypeId);
+      if (defB?.shapeType === 'rug' || defB?.shapeType === 'rug-runner') continue;
       const cornersB = cornersMap.get(itemB.id);
 
       if (checkPolygonCollision(cornersA, cornersB)) {

@@ -73,5 +73,22 @@ describe('collision.js (Separating Axis Theorem)', () => {
     expect(result.collidingIds.has('4')).toBe(true);
     expect(result.boundaryCollidingIds.has('4')).toBe(true);
   });
+
+  it('exempts rugs and carpet runners from furniture-on-furniture collisions', () => {
+    const roomW = 500;
+    const roomD = 400;
+    const items = [
+      { id: 'rug-1', furnitureTypeId: 'rug-living', x: 200, y: 200, widthCm: 240, depthCm: 300, rotationDeg: 0 },
+      { id: 'table-1', furnitureTypeId: 'coffee-table', x: 200, y: 200, widthCm: 110, depthCm: 60, rotationDeg: 0 },
+    ];
+
+    // Check direct pairwise check
+    expect(checkFurnitureCollision(items[0], items[1])).toBe(false);
+
+    // Check evaluateAllCollisions
+    const result = evaluateAllCollisions(items, roomW, roomD);
+    expect(result.collidingIds.has('rug-1')).toBe(false);
+    expect(result.collidingIds.has('table-1')).toBe(false);
+  });
 });
 
