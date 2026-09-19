@@ -1,0 +1,84 @@
+@import './tokens.css';
+@import './typography.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--color-linen);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+/* Accessible focus ring using clay accent */
+:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 2px;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* Subtle architectural custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-linen-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-taupe);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-muted);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

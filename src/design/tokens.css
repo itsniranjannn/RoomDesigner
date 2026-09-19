@@ -1,0 +1,63 @@
+:root {
+  /* Color Palette — Architectural Material Tones */
+  --color-ink: #1c1a17;
+  --color-ink-muted: #5e5a52;
+  --color-linen: #f7f3ec;
+  --color-linen-surface: #efe9df;
+  --color-linen-subtle: #e6dfd2;
+  --color-clay: #c97b4a;
+  --color-clay-hover: #b86e3f;
+  --color-clay-subtle: rgba(201, 123, 74, 0.12);
+  --color-pine: #4a5d52;
+  --color-pine-subtle: rgba(74, 93, 82, 0.12);
+  --color-taupe: #d8cfc0;
+  --color-taupe-light: #eae3d7;
+  --color-walnut: #8b6f47;
+  --color-walnut-dark: #634e32;
+  --color-warning: rgba(201, 123, 74, 0.22);
+  --color-warning-border: #c97b4a;
+
+  /* Typography Families */
+  --font-serif: 'Fraunces', Georgia, serif;
+  --font-sans: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Type Scale */
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 18px;
+  --text-xl: 24px;
+  --text-2xl: 32px;
+  --text-3xl: 44px;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Elevation & Shadows (soft ambient tactile shadows) */
+  --shadow-card: 0 1px 3px rgba(28, 26, 23, 0.04), 0 2px 8px rgba(28, 26, 23, 0.04);
+  --shadow-lift: 0 10px 28px -4px rgba(28, 26, 23, 0.12), 0 3px 8px -2px rgba(28, 26, 23, 0.06);
+  --shadow-pressed: inset 0 1px 3px rgba(28, 26, 23, 0.12);
+
+  /* Border Radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Layout Dimensions */
+  --topbar-height: 56px;
+  --catalog-width: 280px;
+  --inspector-width: 290px;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
