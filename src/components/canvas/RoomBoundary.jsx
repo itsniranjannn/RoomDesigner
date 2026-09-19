@@ -374,11 +374,12 @@ export function RoomBoundary({ room, svgRef }) {
               fill="var(--color-linen)"
             />
 
-            {/* 90-degree Door Swing Arc into the room (Bottom wall defaults to inward swing) */}
+            {/* 90-degree Door Swing Arc into the room */}
             {wall === 'bottom' && (
               <>
+                {/* Hinge at (dx, depthCm), swinging inward-left to (dx + door.widthCm, depthCm - door.widthCm) */}
                 <path
-                  d={`M ${dx} ${depthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} ${depthCm - door.widthCm}`}
+                  d={`M ${dx} ${depthCm - door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} ${depthCm}`}
                   fill="none"
                   stroke="#A89F90"
                   strokeWidth="1.2"
@@ -388,7 +389,7 @@ export function RoomBoundary({ room, svgRef }) {
                 <line
                   x1={dx}
                   y1={depthCm}
-                  x2={dx + door.widthCm}
+                  x2={dx}
                   y2={depthCm - door.widthCm}
                   stroke="#1C1A17"
                   strokeWidth="2.5"
@@ -400,8 +401,9 @@ export function RoomBoundary({ room, svgRef }) {
 
             {wall === 'top' && (
               <>
+                {/* Hinge at (dx, 0), swinging inward into room to (dx + door.widthCm, 0) */}
                 <path
-                  d={`M ${dx} 0 A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} ${door.widthCm}`}
+                  d={`M ${dx} ${door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} 0`}
                   fill="none"
                   stroke="#A89F90"
                   strokeWidth="1.2"
@@ -411,7 +413,7 @@ export function RoomBoundary({ room, svgRef }) {
                 <line
                   x1={dx}
                   y1={0}
-                  x2={dx + door.widthCm}
+                  x2={dx}
                   y2={door.widthCm}
                   stroke="#1C1A17"
                   strokeWidth="2.5"
@@ -423,8 +425,9 @@ export function RoomBoundary({ room, svgRef }) {
 
             {wall === 'left' && (
               <>
+                {/* Hinge at (0, dy), swinging inward into room from (door.widthCm, dy) to (0, dy + door.widthCm) */}
                 <path
-                  d={`M 0 ${dy + door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${door.widthCm} ${dy}`}
+                  d={`M ${door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 1 0 ${dy + door.widthCm}`}
                   fill="none"
                   stroke="#A89F90"
                   strokeWidth="1.2"
@@ -446,8 +449,9 @@ export function RoomBoundary({ room, svgRef }) {
 
             {wall === 'right' && (
               <>
+                {/* Hinge at (widthCm, dy), swinging inward into room from (widthCm - door.widthCm, dy) to (widthCm, dy + door.widthCm) */}
                 <path
-                  d={`M ${widthCm} ${dy + door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${widthCm - door.widthCm} ${dy}`}
+                  d={`M ${widthCm - door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 0 ${widthCm} ${dy + door.widthCm}`}
                   fill="none"
                   stroke="#A89F90"
                   strokeWidth="1.2"

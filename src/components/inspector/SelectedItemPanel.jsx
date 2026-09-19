@@ -289,8 +289,17 @@ export function SelectedItemPanel() {
                   <div
                     key={item.id}
                     className={styles.placedItemCard}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Select ${itemDef.name}, ${itemDef.widthCm} by ${itemDef.depthCm} centimeters`}
                     onClick={() => selectItem(item.id)}
-                    title="Click to select and adjust this piece"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        selectItem(item.id);
+                      }
+                    }}
+                    title="Click or press Enter to select and adjust this piece"
                   >
                     <div className={styles.placedItemInfo}>
                       <span className={styles.placedItemName}>{itemDef.name}</span>

@@ -159,6 +159,15 @@
   border-color: var(--color-clay);
 }
 
+.cardinalBtn:active {
+  transform: translateY(1px);
+}
+
+.cardinalBtn:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 1px;
+}
+
 .cardinalActive {
   background-color: var(--color-clay);
   color: #FFFFFF;
@@ -182,11 +191,21 @@
   text-align: center;
   color: var(--color-ink);
   transition: all var(--transition-fast);
+  cursor: pointer;
 }
 
 .stepBtn:hover {
   background-color: var(--color-linen-subtle);
   border-color: var(--color-ink-muted);
+}
+
+.stepBtn:active {
+  transform: translateY(1px);
+}
+
+.stepBtn:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 1px;
 }
 
 .actions {
@@ -239,6 +258,15 @@
 .placedItemCard:hover {
   border-color: var(--color-clay);
   background-color: var(--color-linen-subtle);
+}
+
+.placedItemCard:active {
+  transform: translateY(1px);
+}
+
+.placedItemCard:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 1px;
 }
 
 .wallSelect {

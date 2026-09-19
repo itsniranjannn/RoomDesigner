@@ -77,6 +77,9 @@ export async function saveRoomToDB(room) {
     return updatedRoom;
   } catch (error) {
     console.error('Failed to save room to IndexedDB:', error);
+    if (import.meta.env?.DEV) {
+      console.error('Failed to save room to IndexedDB:', error);
+    }
     throw error;
   }
 }
@@ -89,6 +92,9 @@ export async function loadRoomFromDB(id) {
     return room || null;
   } catch (error) {
     console.error('Failed to load room from IndexedDB:', error);
+    if (import.meta.env?.DEV) {
+      console.error('Failed to load room from IndexedDB:', error);
+    }
     return null;
   }
 }
@@ -106,6 +112,9 @@ export async function listRoomsFromDB() {
     return rooms;
   } catch (error) {
     console.error('Failed to list rooms from IndexedDB:', error);
+    if (import.meta.env?.DEV) {
+      console.error('Failed to list rooms from IndexedDB:', error);
+    }
     return [DEFAULT_ROOM];
   }
 }
@@ -121,6 +130,9 @@ export async function getInitialRoom() {
     return rooms[0] || DEFAULT_ROOM;
   } catch (err) {
     console.error('Error getting initial room:', err);
+    if (import.meta.env?.DEV) {
+      console.error('Error getting initial room:', err);
+    }
     return DEFAULT_ROOM;
   }
 }
