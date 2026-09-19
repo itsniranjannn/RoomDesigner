@@ -42,8 +42,9 @@
 
 .roomInfo {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
+  align-items: center;
+  gap: var(--space-2);
+  position: relative;
 }
 
 .roomTitle {
@@ -58,6 +59,144 @@
   display: flex;
   align-items: center;
   gap: var(--space-1);
+}
+
+.roomTitleBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: none;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.roomTitleBtn:hover {
+  background-color: var(--color-linen-surface);
+}
+
+.roomTitleBtn:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 1px;
+}
+
+.roomMenuTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.roomMenuTrigger:hover {
+  background-color: var(--color-linen-surface);
+  border-color: var(--color-taupe);
+  color: var(--color-ink);
+}
+
+.roomMenuTrigger:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 1px;
+}
+
+.roomDropdownMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  min-width: 175px;
+  background-color: var(--color-linen);
+  border: 1px solid var(--color-taupe);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lift);
+  padding: 4px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.roomMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-ink);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.roomMenuItem:hover {
+  background-color: var(--color-linen-subtle);
+}
+
+.roomMenuItem:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: -1px;
+}
+
+.roomMenuItemDanger {
+  color: #C2410C;
+}
+
+.roomMenuItemDanger:hover {
+  background-color: rgba(194, 65, 12, 0.08);
+}
+
+.renameForm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.renameInput {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-clay);
+  background-color: #FFFFFF;
+  color: var(--color-ink);
+  outline: none;
+}
+
+.renameBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-taupe);
+  background-color: var(--color-linen-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.renameBtn:hover {
+  border-color: var(--color-ink-muted);
+  background-color: var(--color-linen-subtle);
 }
 
 .roomDimensions {

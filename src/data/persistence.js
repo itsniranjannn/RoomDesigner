@@ -129,11 +129,50 @@ export async function getInitialRoom() {
     const rooms = await listRoomsFromDB();
     return rooms[0] || DEFAULT_ROOM;
   } catch (err) {
-    console.error('Error getting initial room:', err);
     if (import.meta.env?.DEV) {
       console.error('Error getting initial room:', err);
     }
     return DEFAULT_ROOM;
+  }
+}
+
+export async function deleteRoomFromDB(id) {
+  try {
+    const db = await getDB();
+    if (!db) return;
+    await db.delete(STORE_ROOMS, id);
+    if (typeof localStorage !== 'undefined') {
+      const activeId = localStorage.getItem(ACTIVE_ROOM_KEY);
+      if (activeId === id) {
+        localStorage.removeItem(ACTIVE_ROOM_KEY);
+      }
+    }
+  } catch (err) {
+    if (import.meta.env?.DEV) {
+      console.error('Failed to delete room from IndexedDB:', err);
+    }
+    throw err;
+  }
+}
+
+export async function renameRoomInDB(id, newName) {
+  try {
+    const db = await getDB();
+    if (!db) return null;
+    const room = await db.get(STORE_ROOMS, id);
+    if (!room) return null;
+    const updatedRoom = {
+      ...room,
+      name: newName,
+      updatedAt: new Date().toISOString(),
+    };
+    await db.put(STORE_ROOMS, updatedRoom);
+    return updatedRoom;
+  } catch (err) {
+    if (import.meta.env?.DEV) {
+      console.error('Failed to rename room in IndexedDB:', err);
+    }
+    throw err;
   }
 }
 

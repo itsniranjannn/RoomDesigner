@@ -5,7 +5,14 @@
  */
 
 import { create } from 'zustand';
-import { getInitialRoom, saveRoomToDB, listRoomsFromDB, loadRoomFromDB } from '../data/persistence.js';
+import {
+  getInitialRoom,
+  saveRoomToDB,
+  listRoomsFromDB,
+  loadRoomFromDB,
+  deleteRoomFromDB,
+  renameRoomInDB,
+} from '../data/persistence.js';
 import { getFurnitureType } from '../data/furnitureCatalog.js';
 import { evaluateAllCollisions } from '../engine/collision.js';
 import { normalizeAngle } from '../engine/geometry.js';
@@ -599,6 +606,65 @@ export const useRoomStore = create((set, get) => ({
       canUndo: false,
       canRedo: false,
     });
+  },
+
+  // Rename a room
+  renameRoom: async (roomId, newName) => {
+    const trimmed = (newName || '').trim();
+    if (!trimmed) return;
+
+    await renameRoomInDB(roomId, trimmed);
+    const allRooms = await listRoomsFromDB();
+    const { room } = get();
+
+    if (room && room.id === roomId) {
+      set({
+        room: { ...room, name: trimmed },
+        allRooms,
+      });
+    } else {
+      set({ allRooms });
+    }
+  },
+
+  // Delete a room with fallback logic
+  deleteRoom: async (roomId) => {
+    await deleteRoomFromDB(roomId);
+    const remainingRooms = await listRoomsFromDB();
+    const { room } = get();
+
+    // If we deleted a room that wasn't active, just refresh allRooms
+    if (room && room.id !== roomId) {
+      set({ allRooms: remainingRooms });
+      return;
+    }
+
+    // If the currently open room was deleted:
+    if (remainingRooms && remainingRooms.length > 0) {
+      // Fall back to first available room
+      const nextRoom = remainingRooms[0];
+      const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
+        nextRoom.placedFurniture || [],
+        nextRoom.widthCm,
+        nextRoom.depthCm
+      );
+
+      set({
+        room: nextRoom,
+        allRooms: remainingRooms,
+        selectedItemId: null,
+        collidingItemIds: collidingIds,
+        boundaryCollidingIds,
+        isInitialAnimationDone: false,
+        undoStack: [],
+        redoStack: [],
+        canUndo: false,
+        canRedo: false,
+      });
+    } else {
+      // All rooms were deleted — create a clean fresh room
+      await get().createRoom('My Room', 500, 400);
+    }
   },
 
   // Internal helper to update furniture list, evaluate collisions, and queue persistence
