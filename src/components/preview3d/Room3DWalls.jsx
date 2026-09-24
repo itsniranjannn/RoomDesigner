@@ -25,10 +25,10 @@ export function Room3DWalls({ room, isFullHeight = false }) {
   const capHeightM = 0.04;
   const capThickM = wallThickM + 0.03; // Overhang on coping cap
 
-  const wallColor = '#E5DFD4'; // Warm plaster tone
-  const wallCapColor = '#4A5D52'; // Sage pine architectural coping cap
-  const floorColor = '#EDE5D8'; // Warm natural oak/linen floor
-  const woodTrimColor = '#B8976C'; // Architectural timber trim
+  const wallColor = '#F2EDE4'; // Bright Himalayan clay lime plaster (distinguishable from aged timber cap)
+  const wallCapColor = '#1A1615'; // Agran / Aged Sal Wood Timber coping cap
+  const floorColor = '#E5DDCF'; // Warm aged timber / lokta tone floor
+  const woodTrimColor = '#5C3826'; // Oiled architectural Sal timber baseboard
   const baseboardH = 0.08; // 8cm interior baseboard
 
   const halfW = widthM / 2;

@@ -95,14 +95,14 @@ export function Room3DView() {
         gl={{ antialias: true }}
       >
         {/* Balanced Architectural Studio Lighting */}
-        <ambientLight intensity={0.85} color="#FAF7F0" />
-        <hemisphereLight groundColor="#DDD2C0" color="#FFFFFF" intensity={0.55} />
+        <ambientLight intensity={1.15} color="#FAF7F0" />
+        <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={0.7} />
 
         {/* Key Directional Sun Light with acne-free normalBias */}
         <directionalLight
           castShadow
           position={[maxDimM * 1.8, maxDimM * 2.8, maxDimM * 1.8]}
-          intensity={1.35}
+          intensity={1.25}
           color="#FFF8EE"
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
@@ -116,11 +116,18 @@ export function Room3DView() {
           shadow-normalBias={0.04}
         />
 
-        {/* Soft Warm Fill Light */}
+        {/* Soft Warm Fill Light 1 */}
         <directionalLight
-          position={[-maxDimM * 1.8, maxDimM * 1.8, -maxDimM * 1.8]}
-          intensity={0.5}
-          color="#E8E0D2"
+          position={[-maxDimM * 1.8, maxDimM * 2.2, -maxDimM * 1.8]}
+          intensity={0.85}
+          color="#F5EFE6"
+        />
+
+        {/* Soft Cross Fill Light 2 (Illuminates South & West wall interior faces) */}
+        <directionalLight
+          position={[maxDimM * 1.8, maxDimM * 1.5, -maxDimM * 1.8]}
+          intensity={0.65}
+          color="#FAF4EA"
         />
 
         {/* Room Floor and Architectural Walls (Cutaway or Full-Height) */}

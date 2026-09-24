@@ -280,16 +280,33 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
               <boxGeometry args={[pedestalW, deskH - topH, depthM * 0.92]} />
               <meshStandardMaterial color={mainColor} roughness={0.7} />
             </mesh>
-
-            {/* Left Steel Frame Legs */}
+            {/* Drawer Brass Handle */}
             <mesh
-              position={[-widthM / 2 + 0.06, (deskH - topH) / 2, 0]}
+              position={[widthM / 2 - pedestalW / 2 - 0.02, deskH * 0.55, depthM * 0.46 + 0.01]}
               castShadow
-              receiveShadow
             >
-              <boxGeometry args={[0.05, deskH - topH, depthM * 0.88]} />
-              <meshStandardMaterial color={legColor} roughness={0.4} />
+              <boxGeometry args={[0.1, 0.016, 0.02]} />
+              <meshStandardMaterial color="#C49746" metalness={0.8} roughness={0.25} />
             </mesh>
+
+            {/* Left Hollow Architectural Steel Sled Loop Frame (Front leg, back leg, floor runner, top rail) */}
+            <group position={[-widthM / 2 + 0.06, 0, 0]}>
+              {/* Front Leg */}
+              <mesh position={[0, (deskH - topH) / 2, depthM * 0.42]} castShadow>
+                <boxGeometry args={[0.035, deskH - topH, 0.035]} />
+                <meshStandardMaterial color={legColor} roughness={0.4} metalness={0.6} />
+              </mesh>
+              {/* Back Leg */}
+              <mesh position={[0, (deskH - topH) / 2, -depthM * 0.42]} castShadow>
+                <boxGeometry args={[0.035, deskH - topH, 0.035]} />
+                <meshStandardMaterial color={legColor} roughness={0.4} metalness={0.6} />
+              </mesh>
+              {/* Floor Runner */}
+              <mesh position={[0, 0.018, 0]} castShadow receiveShadow>
+                <boxGeometry args={[0.035, 0.035, depthM * 0.86]} />
+                <meshStandardMaterial color={legColor} roughness={0.4} metalness={0.6} />
+              </mesh>
+            </group>
           </group>
         );
       }
@@ -325,34 +342,47 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
       case 'chair': {
         const seatH = 0.45;
         const totalH = 0.82;
+        const legThick = 0.032;
 
         return (
           <group>
-            {/* Seat Cushion */}
+            {/* Cane / Leather Woven Seat Cushion */}
             <mesh position={[0, seatH, 0]} castShadow receiveShadow>
-              <boxGeometry args={[widthM, 0.05, depthM]} />
+              <boxGeometry args={[widthM, 0.045, depthM]} />
               <meshStandardMaterial color={cushionColor} roughness={0.7} />
             </mesh>
 
-            {/* Backrest */}
+            {/* Solid Timber Backrest Top Rail */}
             <mesh
-              position={[0, seatH + (totalH - seatH) / 2, -depthM / 2 + 0.02]}
+              position={[0, seatH + (totalH - seatH) * 0.75, -depthM / 2 + 0.02]}
               castShadow
               receiveShadow
             >
-              <boxGeometry args={[widthM * 0.9, totalH - seatH, 0.03]} />
-              <meshStandardMaterial color={mainColor} roughness={0.7} />
+              <boxGeometry args={[widthM * 0.92, (totalH - seatH) * 0.45, 0.025]} />
+              <meshStandardMaterial color={mainColor} roughness={0.65} />
             </mesh>
 
-            {/* 4 Chair Legs */}
+            {/* Vertical Backrest Support Spindles connecting seat to back rail */}
+            {[-widthM * 0.32, -widthM * 0.16, 0, widthM * 0.16, widthM * 0.32].map((sx, idx) => (
+              <mesh
+                key={idx}
+                position={[sx, seatH + (totalH - seatH) * 0.4, -depthM / 2 + 0.02]}
+                castShadow
+              >
+                <cylinderGeometry args={[0.008, 0.008, (totalH - seatH) * 0.75, 10]} />
+                <meshStandardMaterial color={mainColor} roughness={0.65} />
+              </mesh>
+            ))}
+
+            {/* 4 Solid Grounded Chair Legs */}
             {[
-              [-widthM / 2 + 0.04, -depthM / 2 + 0.04],
-              [widthM / 2 - 0.04, -depthM / 2 + 0.04],
-              [-widthM / 2 + 0.04, depthM / 2 - 0.04],
-              [widthM / 2 - 0.04, depthM / 2 - 0.04],
+              [-widthM / 2 + 0.045, -depthM / 2 + 0.045],
+              [widthM / 2 - 0.045, -depthM / 2 + 0.045],
+              [-widthM / 2 + 0.045, depthM / 2 - 0.045],
+              [widthM / 2 - 0.045, depthM / 2 - 0.045],
             ].map(([lx, lz], idx) => (
-              <mesh key={idx} position={[lx, seatH / 2, lz]} castShadow>
-                <boxGeometry args={[0.03, seatH, 0.03]} />
+              <mesh key={idx} position={[lx, (seatH - 0.022) / 2, lz]} castShadow>
+                <cylinderGeometry args={[legThick * 0.45, legThick * 0.55, seatH - 0.022, 12]} />
                 <meshStandardMaterial color={legColor} roughness={0.5} />
               </mesh>
             ))}
@@ -395,6 +425,8 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
 
       case 'wardrobe': {
         const plinthH = 0.08;
+        const numDoors = widthM > 1.4 ? 3 : 2;
+        const doorW = widthM / numDoors;
 
         return (
           <group>
@@ -410,30 +442,35 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
               <meshStandardMaterial color={mainColor} roughness={0.7} />
             </mesh>
 
-            {/* Vertical Door Divider Grooves & Handles */}
-            <mesh
-              position={[0, plinthH + (heightM - plinthH) / 2, depthM / 2 + 0.005]}
-              receiveShadow
-            >
-              <boxGeometry args={[0.005, heightM - plinthH, 0.005]} />
-              <meshStandardMaterial color="#222222" roughness={0.5} />
-            </mesh>
+            {/* Vertical Door Divider Grooves */}
+            {Array.from({ length: numDoors - 1 }).map((_, idx) => {
+              const gx = -widthM / 2 + (idx + 1) * doorW;
+              return (
+                <mesh
+                  key={`groove-${idx}`}
+                  position={[gx, plinthH + (heightM - plinthH) / 2, depthM / 2 + 0.005]}
+                  receiveShadow
+                >
+                  <boxGeometry args={[0.006, heightM - plinthH, 0.005]} />
+                  <meshStandardMaterial color="#1C1A17" roughness={0.5} />
+                </mesh>
+              );
+            })}
 
-            {/* Long Vertical Brass Handles */}
-            <mesh
-              position={[-0.04, heightM * 0.5, depthM / 2 + 0.02]}
-              castShadow
-            >
-              <boxGeometry args={[0.012, 0.28, 0.015]} />
-              <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.6} />
-            </mesh>
-            <mesh
-              position={[0.04, heightM * 0.5, depthM / 2 + 0.02]}
-              castShadow
-            >
-              <boxGeometry args={[0.012, 0.28, 0.015]} />
-              <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.6} />
-            </mesh>
+            {/* Vertical Architectural Brass Handles for each door panel */}
+            {Array.from({ length: numDoors }).map((_, idx) => {
+              const hx = -widthM / 2 + idx * doorW + doorW / 2;
+              return (
+                <mesh
+                  key={`handle-${idx}`}
+                  position={[hx, heightM * 0.5, depthM / 2 + 0.02]}
+                  castShadow
+                >
+                  <boxGeometry args={[0.012, 0.32, 0.018]} />
+                  <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.75} />
+                </mesh>
+              );
+            })}
           </group>
         );
       }
@@ -442,6 +479,7 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
         const frameThick = 0.03;
         const numShelves = 4;
         const shelfSpacing = (heightM - frameThick * 2) / numShelves;
+        const shelfW = widthM - frameThick * 2;
 
         return (
           <group>
@@ -471,52 +509,118 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
                 castShadow
                 receiveShadow
               >
-                <boxGeometry args={[widthM - frameThick * 2, frameThick, depthM]} />
+                <boxGeometry args={[shelfW, frameThick, depthM]} />
                 <meshStandardMaterial color={mainColor} roughness={0.7} />
               </mesh>
             ))}
+
+            {/* Shelf 1 Books: Terracotta & Olive Cloth Volumes */}
+            <mesh position={[-shelfW * 0.22, frameThick + 0.11, 0.02]} castShadow>
+              <boxGeometry args={[0.22, 0.22, depthM * 0.7]} />
+              <meshStandardMaterial color="#8B2635" roughness={0.8} />
+            </mesh>
+            <mesh position={[-shelfW * 0.05, frameThick + 0.1, 0.02]} castShadow>
+              <boxGeometry args={[0.1, 0.2, depthM * 0.68]} />
+              <meshStandardMaterial color="#22485E" roughness={0.8} />
+            </mesh>
+
+            {/* Shelf 2 Books: Brass Bookends & Warm Lokta Spines */}
+            <mesh position={[shelfW * 0.15, frameThick + shelfSpacing + 0.12, 0.02]} castShadow>
+              <boxGeometry args={[0.28, 0.24, depthM * 0.72]} />
+              <meshStandardMaterial color="#C49746" roughness={0.5} />
+            </mesh>
+            <mesh position={[shelfW * 0.32, frameThick + shelfSpacing + 0.08, 0.02]} castShadow>
+              <boxGeometry args={[0.04, 0.16, depthM * 0.6]} />
+              <meshStandardMaterial color="#1A1615" roughness={0.4} metalness={0.6} />
+            </mesh>
+
+            {/* Shelf 3: Ceramic Sculptural Vessel & Stacked Folios */}
+            <mesh position={[-shelfW * 0.25, frameThick + shelfSpacing * 2 + 0.09, 0]} castShadow>
+              <cylinderGeometry args={[0.07, 0.05, 0.18, 16]} />
+              <meshStandardMaterial color="#ECE5D8" roughness={0.6} />
+            </mesh>
+            <mesh position={[0.05, frameThick + shelfSpacing * 2 + 0.04, 0.02]} castShadow>
+              <boxGeometry args={[0.24, 0.08, depthM * 0.75]} />
+              <meshStandardMaterial color="#4A5D52" roughness={0.85} />
+            </mesh>
           </group>
         );
       }
 
       case 'rug': {
-        const border1W = widthM * 0.86;
-        const border1D = depthM * 0.88;
-        const border2W = widthM * 0.74;
-        const border2D = depthM * 0.78;
+        const rugThick = 0.012;
+        const b1W = widthM * 0.86;
+        const b1D = depthM * 0.88;
+        const b2W = widthM * 0.74;
+        const b2D = depthM * 0.78;
         const medRadius = Math.min(widthM, depthM) * 0.22;
-
+        const subCol = def.subColor || '#D4A359';
+        const accCol = def.accentColor || '#1B2A4A';
+        const mainCol = mainColor || '#8B1E1E';
         return (
-          <group position={[0, 0.003, 0]}>
-            {/* Outer Deep Crimson Wool Field */}
-            <mesh receiveShadow position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[widthM, depthM]} />
-              <meshStandardMaterial color={mainColor || '#8B1E1E'} roughness={0.96} />
+          <group position={[0, rugThick / 2, 0]}>
+            {/* Main crimson base */}
+            <mesh receiveShadow>
+              <boxGeometry args={[widthM, rugThick, depthM]} />
+              <meshStandardMaterial color={mainCol} roughness={0.96} />
             </mesh>
-            {/* Outer Navy Indigo Border Inlay */}
-            <mesh receiveShadow position={[0, 0.0005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[border1W, border1D]} />
-              <meshStandardMaterial color={def.accentColor || '#1B2A4A'} roughness={0.94} />
+            {/* Navy border band */}
+            <mesh receiveShadow position={[0, 0.0006, 0]}>
+              <boxGeometry args={[b1W, rugThick + 0.0012, b1D]} />
+              <meshStandardMaterial color={accCol} roughness={0.94} />
             </mesh>
-            {/* Inner Crimson Center Field */}
-            <mesh receiveShadow position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[border2W, border2D]} />
-              <meshStandardMaterial color={mainColor || '#8B1E1E'} roughness={0.96} />
+            {/* Inner crimson field */}
+            <mesh receiveShadow position={[0, 0.0012, 0]}>
+              <boxGeometry args={[b2W, rugThick + 0.0024, b2D]} />
+              <meshStandardMaterial color={mainCol} roughness={0.96} />
             </mesh>
-            {/* Traditional Gold Central Mandala Ring */}
-            <mesh receiveShadow position={[0, 0.0015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <ringGeometry args={[medRadius * 0.65, medRadius, 24]} />
-              <meshStandardMaterial color={def.subColor || '#D4A359'} roughness={0.8} />
+            {/* 4 corner gold diamonds - rotationOrder="ZXY" ensures plane lies completely flat on floor before 45-deg diamond spin */}
+            {[
+              [-b2W / 2 + 0.18, -b2D / 2 + 0.18],
+              [b2W / 2 - 0.18, -b2D / 2 + 0.18],
+              [-b2W / 2 + 0.18, b2D / 2 - 0.18],
+              [b2W / 2 - 0.18, b2D / 2 - 0.18],
+            ].map(([cx, cz], idx) => (
+              <mesh
+                key={`rug-cor-${idx}`}
+                receiveShadow
+                position={[cx, rugThick / 2 + 0.003, cz]}
+                rotation={[-Math.PI / 2, 0, Math.PI / 4]}
+                rotationOrder="ZXY"
+              >
+                <planeGeometry args={[0.16, 0.16]} />
+                <meshStandardMaterial color={subCol} roughness={0.8} />
+              </mesh>
+            ))}
+            {/* Central navy medallion disc */}
+            <mesh receiveShadow position={[0, rugThick / 2 + 0.0032, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[medRadius, 32]} />
+              <meshStandardMaterial color={accCol} roughness={0.92} />
             </mesh>
-            {/* Central Diamond Lotus Motif */}
-            <mesh receiveShadow position={[0, 0.002, 0]} rotation={[-Math.PI / 2, Math.PI / 4, 0]}>
-              <planeGeometry args={[medRadius * 0.7, medRadius * 0.7]} />
-              <meshStandardMaterial color={def.subColor || '#D4A359'} roughness={0.8} />
+            {/* Gold mandala ring */}
+            <mesh receiveShadow position={[0, rugThick / 2 + 0.0036, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <ringGeometry args={[medRadius * 0.72, medRadius * 0.92, 32]} />
+              <meshStandardMaterial color={subCol} roughness={0.8} />
             </mesh>
-            {/* Fringes at North & South edges */}
-            {[-depthM / 2, depthM / 2].map((fz, idx) => (
-              <mesh key={idx} receiveShadow position={[0, 0.0005, fz]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[widthM * 0.96, 0.04]} />
+            {/* Gold diamond lotus motif - rotationOrder="ZXY" keeps diamond perfectly flat on medallion */}
+            <mesh
+              receiveShadow
+              position={[0, rugThick / 2 + 0.004, 0]}
+              rotation={[-Math.PI / 2, 0, Math.PI / 4]}
+              rotationOrder="ZXY"
+            >
+              <planeGeometry args={[medRadius * 0.65, medRadius * 0.65]} />
+              <meshStandardMaterial color={subCol} roughness={0.8} />
+            </mesh>
+            {/* Center crimson core */}
+            <mesh receiveShadow position={[0, rugThick / 2 + 0.0044, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[medRadius * 0.22, 24]} />
+              <meshStandardMaterial color={mainCol} roughness={0.9} />
+            </mesh>
+            {/* Fringes north & south - nested flush within rug depth */}
+            {[-depthM / 2 + 0.015, depthM / 2 - 0.015].map((fz, idx) => (
+              <mesh key={`rug-fr-${idx}`} receiveShadow position={[0, 0.001, fz]}>
+                <boxGeometry args={[widthM * 0.96, 0.004, 0.03]} />
                 <meshStandardMaterial color="#FAF6EE" roughness={0.95} />
               </mesh>
             ))}
@@ -608,41 +712,137 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
       }
 
       case 'plant': {
-        const potRadius = Math.min(widthM, depthM) * 0.28;
-        const potH = 0.38;
+        const potRadius = Math.min(widthM, depthM) * 0.32;
+        const potH = 0.42;
+        const trunkH = heightM - potH;
+
         return (
           <group>
+            {/* Fluted Ceramic Planter Pot */}
             <mesh position={[0, potH / 2, 0]} castShadow receiveShadow>
-              <cylinderGeometry args={[potRadius, potRadius * 0.8, potH, 20]} />
-              <meshStandardMaterial color={def.subColor || '#D8CFBF'} roughness={0.7} />
+              <cylinderGeometry args={[potRadius, potRadius * 0.75, potH, 24]} />
+              <meshStandardMaterial color={def.subColor || '#DDD6C9'} roughness={0.5} />
             </mesh>
-            <mesh position={[0, potH + 0.35, 0]} castShadow>
-              <sphereGeometry args={[widthM * 0.42, 16, 16]} />
-              <meshStandardMaterial color={mainColor} roughness={0.85} />
+            {/* Brass Ring Accent around Pot Rim */}
+            <mesh position={[0, potH - 0.01, 0]} castShadow>
+              <torusGeometry args={[potRadius * 0.98, 0.012, 12, 24]} rotation={[Math.PI / 2, 0, 0]} />
+              <meshStandardMaterial color="#C49746" metalness={0.8} roughness={0.3} />
             </mesh>
-            <mesh position={[0, potH + 0.55, 0]} castShadow>
-              <sphereGeometry args={[widthM * 0.32, 14, 14]} />
-              <meshStandardMaterial color="#4A6855" roughness={0.85} />
+            {/* Rich Organic Potting Soil Bed */}
+            <mesh position={[0, potH - 0.02, 0]} receiveShadow>
+              <cylinderGeometry args={[potRadius * 0.92, potRadius * 0.92, 0.02, 20]} />
+              <meshStandardMaterial color="#2E1C12" roughness={0.95} />
             </mesh>
+
+            {/* Woody Central Trunk Stem */}
+            <mesh position={[0, potH + trunkH * 0.4, 0]} castShadow>
+              <cylinderGeometry args={[0.018, 0.025, trunkH * 0.82, 12]} />
+              <meshStandardMaterial color="#3E2C1E" roughness={0.85} />
+            </mesh>
+
+            {/* Architectural Broad Fiddle Leaves radiating at staggered heights and upward angles, strictly confined within bounding footprint */}
+            {[
+              { y: 0.12, r: 0.14, rotY: 0, tilt: 0.65, scale: 0.75 },
+              { y: 0.22, r: 0.16, rotY: Math.PI / 3, tilt: 0.70, scale: 0.8 },
+              { y: 0.32, r: 0.17, rotY: (2 * Math.PI) / 3, tilt: 0.60, scale: 0.85 },
+              { y: 0.42, r: 0.18, rotY: Math.PI, tilt: 0.68, scale: 0.9 },
+              { y: 0.52, r: 0.17, rotY: (4 * Math.PI) / 3, tilt: 0.62, scale: 0.85 },
+              { y: 0.62, r: 0.15, rotY: (5 * Math.PI) / 3, tilt: 0.65, scale: 0.8 },
+              { y: 0.72, r: 0.13, rotY: Math.PI / 4, tilt: 0.55, scale: 0.7 },
+              { y: 0.80, r: 0.11, rotY: (3 * Math.PI) / 4, tilt: 0.50, scale: 0.6 },
+            ].map((leaf, idx) => {
+              const petioleLen = leaf.r * 0.7;
+              const leafLen = 0.18 * leaf.scale;
+              const leafW = 0.13 * leaf.scale;
+              return (
+                <group key={idx} position={[0, potH + leaf.y * trunkH, 0]} rotation={[0, leaf.rotY, 0]}>
+                  {/* Leaf Petiole / Branch angled upwards */}
+                  <mesh position={[0, (petioleLen / 2) * Math.sin(leaf.tilt), (petioleLen / 2) * Math.cos(leaf.tilt)]} rotation={[leaf.tilt, 0, 0]} castShadow>
+                    <cylinderGeometry args={[0.005, 0.007, petioleLen, 8]} rotation={[Math.PI / 2, 0, 0]} />
+                    <meshStandardMaterial color="#2F4234" roughness={0.7} />
+                  </mesh>
+                  {/* Sculptural Broad Fig Leaf angled upright */}
+                  <mesh
+                    position={[0, petioleLen * Math.sin(leaf.tilt) + (leafLen * 0.45) * Math.sin(leaf.tilt + 0.15), petioleLen * Math.cos(leaf.tilt) + (leafLen * 0.45) * Math.cos(leaf.tilt + 0.15)]}
+                    rotation={[leaf.tilt + 0.2, 0, 0]}
+                    castShadow
+                  >
+                    <boxGeometry args={[leafW, 0.004, leafLen]} />
+                    <meshStandardMaterial color={idx % 2 === 0 ? mainColor : '#415D48'} roughness={0.65} />
+                  </mesh>
+                </group>
+              );
+            })}
           </group>
         );
       }
 
       case 'lamp': {
-        const baseR = Math.min(widthM, depthM) * 0.35;
+        // Architectural Cantilevered Arc Lamp (Base at rear +Z, sweeping overhead arc forward to hanging shade at -Z)
+        const baseR = Math.min(widthM, depthM) * 0.32;
+        const poleR = 0.014;
+        const shadeR = baseR * 0.95;
+
         return (
           <group>
-            <mesh position={[0, 0.02, 0]} castShadow>
-              <cylinderGeometry args={[baseR, baseR, 0.03, 24]} />
-              <meshStandardMaterial color={mainColor} roughness={0.4} metalness={0.5} />
+            {/* Weighted Circular Steel Base Disc */}
+            <mesh position={[0, 0.02, depthM * 0.28]} castShadow receiveShadow>
+              <cylinderGeometry args={[baseR, baseR, 0.04, 32]} />
+              <meshStandardMaterial color={mainColor} roughness={0.35} metalness={0.7} />
             </mesh>
-            <mesh position={[0, heightM / 2, 0]} castShadow>
-              <cylinderGeometry args={[0.015, 0.015, heightM, 12]} />
-              <meshStandardMaterial color={mainColor} roughness={0.4} metalness={0.5} />
+            {/* Polished Brass Base Ring Accent */}
+            <mesh position={[0, 0.042, depthM * 0.28]} castShadow>
+              <cylinderGeometry args={[baseR * 0.45, baseR * 0.45, 0.015, 24]} />
+              <meshStandardMaterial color="#C49746" metalness={0.85} roughness={0.25} />
             </mesh>
-            <mesh position={[0, heightM - 0.15, 0]} castShadow>
-              <cylinderGeometry args={[baseR * 0.85, baseR * 1.1, 0.3, 24]} />
-              <meshStandardMaterial color="#FAF6EE" roughness={0.9} />
+
+            {/* Segment 1: Lower Vertical Riser Pole */}
+            <mesh position={[0, heightM * 0.42, depthM * 0.28]} castShadow>
+              <cylinderGeometry args={[poleR, poleR, heightM * 0.8, 16]} />
+              <meshStandardMaterial color={mainColor} roughness={0.35} metalness={0.7} />
+            </mesh>
+
+            {/* Segment 2: Upper Angled Arc Arm reaching forward */}
+            <mesh position={[0, heightM * 0.88, depthM * 0.08]} rotation={[-0.65, 0, 0]} castShadow>
+              <cylinderGeometry args={[poleR, poleR, heightM * 0.52, 16]} />
+              <meshStandardMaterial color={mainColor} roughness={0.35} metalness={0.7} />
+            </mesh>
+
+            {/* Segment 3: Horizontal Cantilever Arm extending forward */}
+            <mesh position={[0, heightM * 1.02, -depthM * 0.12]} rotation={[-Math.PI / 2 + 0.1, 0, 0]} castShadow>
+              <cylinderGeometry args={[poleR, poleR, depthM * 0.36, 16]} />
+              <meshStandardMaterial color={mainColor} roughness={0.35} metalness={0.7} />
+            </mesh>
+
+            {/* Brass Arm Adjustment Knuckle */}
+            <mesh position={[0, heightM * 0.82, depthM * 0.28]} castShadow>
+              <sphereGeometry args={[0.026, 16, 16]} />
+              <meshStandardMaterial color="#C49746" metalness={0.88} roughness={0.2} />
+            </mesh>
+
+            {/* Hanging Cord & Brass Shade Cap */}
+            <mesh position={[0, heightM * 0.94, -depthM * 0.24]} castShadow>
+              <cylinderGeometry args={[0.005, 0.005, 0.16, 8]} />
+              <meshStandardMaterial color="#1C1A17" />
+            </mesh>
+            <mesh position={[0, heightM * 0.86, -depthM * 0.24]} castShadow>
+              <cylinderGeometry args={[0.045, 0.025, 0.035, 20]} />
+              <meshStandardMaterial color="#C49746" metalness={0.88} roughness={0.2} />
+            </mesh>
+
+            {/* Architectural Linen Dome Lamp Shade */}
+            <mesh position={[0, heightM * 0.78, -depthM * 0.24]} castShadow>
+              <sphereGeometry args={[shadeR, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
+              <meshStandardMaterial
+                color={def.subColor || '#FAF6EE'}
+                roughness={0.85}
+                side={2}
+              />
+            </mesh>
+            {/* Soft Ambient Light Glow Bulb inside Shade */}
+            <mesh position={[0, heightM * 0.76, -depthM * 0.24]}>
+              <sphereGeometry args={[0.038, 16, 16]} />
+              <meshBasicMaterial color="#FFF5DF" />
             </mesh>
           </group>
         );
@@ -791,14 +991,30 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
               <boxGeometry args={[0.1, 0.02, 0.02]} />
               <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.8} />
             </mesh>
-            {/* Mirror Frame Stems & Round Glass */}
-            <mesh position={[0, bodyH + mirrorRadius * 0.95, -depthM / 2 + 0.04]} castShadow>
-              <cylinderGeometry args={[mirrorRadius, mirrorRadius, 0.025, 32]} rotation={[Math.PI / 2, 0, 0]} />
-              <meshStandardMaterial color={handleColor} roughness={0.4} metalness={0.6} />
+            {/* Dual Brass Mirror Mounting Support Uprights from dresser top */}
+            <mesh position={[-mirrorRadius * 0.55, bodyH + mirrorRadius * 0.55, -depthM / 2 + 0.04]} castShadow>
+              <cylinderGeometry args={[0.012, 0.014, mirrorRadius * 1.1, 12]} />
+              <meshStandardMaterial color={handleColor} metalness={0.85} roughness={0.25} />
             </mesh>
-            <mesh position={[0, bodyH + mirrorRadius * 0.95, -depthM / 2 + 0.055]}>
-              <cylinderGeometry args={[mirrorRadius * 0.92, mirrorRadius * 0.92, 0.01, 32]} rotation={[Math.PI / 2, 0, 0]} />
-              <meshStandardMaterial color="#B0D3E2" roughness={0.05} metalness={0.9} />
+            <mesh position={[mirrorRadius * 0.55, bodyH + mirrorRadius * 0.55, -depthM / 2 + 0.04]} castShadow>
+              <cylinderGeometry args={[0.012, 0.014, mirrorRadius * 1.1, 12]} />
+              <meshStandardMaterial color={handleColor} metalness={0.85} roughness={0.25} />
+            </mesh>
+
+            {/* Circular Mirror Outer Brass Frame Bezel (standing upright vertically) */}
+            <mesh position={[0, bodyH + mirrorRadius * 0.95, -depthM / 2 + 0.04]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+              <cylinderGeometry args={[mirrorRadius, mirrorRadius, 0.024, 32]} />
+              <meshStandardMaterial color={handleColor} roughness={0.35} metalness={0.8} />
+            </mesh>
+            {/* Luminous Silver-Ice Mirror Glass facing +Z into room */}
+            <mesh position={[0, bodyH + mirrorRadius * 0.95, -depthM / 2 + 0.053]} rotation={[Math.PI / 2, 0, 0]}>
+              <cylinderGeometry args={[mirrorRadius * 0.93, mirrorRadius * 0.93, 0.006, 32]} />
+              <meshStandardMaterial color="#E8F4F8" roughness={0.15} metalness={0.1} />
+            </mesh>
+            {/* Mirror Specular Diagonal Reflection Strip */}
+            <mesh position={[-mirrorRadius * 0.15, bodyH + mirrorRadius * 1.05, -depthM / 2 + 0.058]} rotation={[0, 0, -0.45]}>
+              <planeGeometry args={[mirrorRadius * 0.9, 0.03]} />
+              <meshBasicMaterial color="#FFFFFF" transparent opacity={0.85} />
             </mesh>
           </group>
         );
@@ -1037,31 +1253,56 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
       }
 
       case 'rug-runner': {
+        const runnerThick = 0.012; // 1.2cm plush runner pile
+        const b1W = widthM * 0.82;
+        const b1D = depthM * 0.94;
+        const b2W = widthM * 0.72;
+        const b2D = depthM * 0.92;
+        const subCol = def.subColor || '#C49746';
+        const accCol = def.accentColor || '#8A2020';
+        const mainCol = mainColor || '#1E2D42';
+
         return (
-          <group position={[0, 0.003, 0]}>
-            <mesh receiveShadow position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[widthM, depthM]} />
-              <meshStandardMaterial color={mainColor || '#1E2D42'} roughness={0.96} />
+          <group position={[0, runnerThick / 2, 0]}>
+            {/* Main Outer Indigo Blue Wool Pile */}
+            <mesh receiveShadow position={[0, 0, 0]}>
+              <boxGeometry args={[widthM, runnerThick, depthM]} />
+              <meshStandardMaterial color={mainCol} roughness={0.96} />
             </mesh>
-            <mesh receiveShadow position={[0, 0.0005, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[widthM * 0.82, depthM * 0.94]} />
-              <meshStandardMaterial color={def.subColor || '#C49746'} roughness={0.8} />
+            {/* Outer Gold Border Ribbon */}
+            <mesh receiveShadow position={[0, 0.0004, 0]}>
+              <boxGeometry args={[b1W, runnerThick + 0.0008, b1D]} />
+              <meshStandardMaterial color={subCol} roughness={0.8} />
             </mesh>
-            <mesh receiveShadow position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[widthM * 0.72, depthM * 0.92]} />
-              <meshStandardMaterial color={mainColor || '#1E2D42'} roughness={0.96} />
+            {/* Inner Indigo Runner Field */}
+            <mesh receiveShadow position={[0, 0.0008, 0]}>
+              <boxGeometry args={[b2W, runnerThick + 0.0016, b2D]} />
+              <meshStandardMaterial color={mainCol} roughness={0.96} />
             </mesh>
-            {/* 3 Diamond Motifs */}
-            {[-depthM * 0.3, 0, depthM * 0.3].map((dz, idx) => (
-              <mesh key={idx} receiveShadow position={[0, 0.0015, dz]} rotation={[-Math.PI / 2, Math.PI / 4, 0]}>
-                <planeGeometry args={[widthM * 0.35, widthM * 0.35]} />
-                <meshStandardMaterial color={def.subColor || '#C49746'} roughness={0.8} />
-              </mesh>
+            {/* Repeating Center Diamond Medallions along runner */}
+            {[-depthM * 0.35, -depthM * 0.12, depthM * 0.12, depthM * 0.35].map((dz, idx) => (
+              <group key={`run-d-${idx}`} position={[0, runnerThick / 2 + 0.003, dz]}>
+                {/* Gold Diamond Outer - rotationOrder="ZXY" ensures plane lies completely flat on floor before 45-deg diamond spin */}
+                <mesh receiveShadow rotation={[-Math.PI / 2, 0, Math.PI / 4]} rotationOrder="ZXY">
+                  <planeGeometry args={[widthM * 0.38, widthM * 0.38]} />
+                  <meshStandardMaterial color={subCol} roughness={0.8} />
+                </mesh>
+                {/* Ruby Crimson Inner Diamond */}
+                <mesh receiveShadow position={[0, 0.0006, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} rotationOrder="ZXY">
+                  <planeGeometry args={[widthM * 0.26, widthM * 0.26]} />
+                  <meshStandardMaterial color={accCol} roughness={0.85} />
+                </mesh>
+                {/* Center Lokta White Bead */}
+                <mesh receiveShadow position={[0, 0.0012, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <cylinderGeometry args={[0.02, 0.02, 0.002, 16]} />
+                  <meshStandardMaterial color="#FAF6EE" roughness={0.9} />
+                </mesh>
+              </group>
             ))}
-            {/* End Fringes */}
-            {[-depthM / 2, depthM / 2].map((fz, idx) => (
-              <mesh key={idx} receiveShadow position={[0, 0.0005, fz]} rotation={[-Math.PI / 2, 0, 0]}>
-                <planeGeometry args={[widthM * 0.94, 0.03]} />
+            {/* End Fringes at North & South - contained within runner footprint */}
+            {[-depthM / 2 + 0.015, depthM / 2 - 0.015].map((fz, idx) => (
+              <mesh key={`run-fr-${idx}`} receiveShadow position={[0, 0.001, fz]}>
+                <boxGeometry args={[widthM * 0.94, 0.004, 0.025]} />
                 <meshStandardMaterial color="#FAF6EE" roughness={0.95} />
               </mesh>
             ))}
@@ -1070,24 +1311,84 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
       }
 
       case 'wall-mirror': {
-        const frameThick = 0.04;
+        const frameW = 0.055; // 5.5cm timber border molding
+        const frameThick = 0.04; // 4cm depth
+        const tiltAngle = 0.08; // subtle elegant ~4.5 degree lean backward
+        const glassW = widthM - frameW * 2;
+        const glassH = heightM - frameW * 2;
+        const mirrorH = heightM;
+
         return (
-          <group rotation={[0.08, 0, 0]}>
-            {/* Leaning Mirror Frame */}
-            <mesh position={[0, heightM / 2, 0]} castShadow>
-              <boxGeometry args={[widthM, heightM, frameThick]} />
-              <meshStandardMaterial color={mainColor} roughness={0.6} />
-            </mesh>
-            {/* High-Reflective Silver Mirror Glass */}
-            <mesh position={[0, heightM / 2, frameThick / 2 + 0.002]}>
-              <planeGeometry args={[widthM - 0.1, heightM - 0.12]} />
-              <meshStandardMaterial color="#B0D3E2" roughness={0.05} metalness={0.95} />
-            </mesh>
-            {/* Rear Easel Stand */}
-            <mesh position={[0, heightM * 0.45, -0.15]} rotation={[-0.22, 0, 0]}>
-              <boxGeometry args={[widthM * 0.4, heightM * 0.85, 0.02]} />
-              <meshStandardMaterial color={legColor} roughness={0.6} />
-            </mesh>
+          // Mirror frame front sits at +depthM/2 - 0.04m, so rear easel stays strictly within -depthM/2
+          <group position={[0, 0, depthM * 0.3]}>
+            {/* Leaning Mirror Main Frame & Glass Assembly */}
+            <group rotation={[-tiltAngle, 0, 0]}>
+              {/* Top Frame Rail */}
+              <mesh position={[0, mirrorH - frameW / 2, 0]} castShadow>
+                <boxGeometry args={[widthM, frameW, frameThick]} />
+                <meshStandardMaterial color={mainColor} roughness={0.55} />
+              </mesh>
+              {/* Bottom Frame Rail */}
+              <mesh position={[0, frameW / 2, 0]} castShadow receiveShadow>
+                <boxGeometry args={[widthM, frameW, frameThick]} />
+                <meshStandardMaterial color={mainColor} roughness={0.55} />
+              </mesh>
+              {/* Left Stile */}
+              <mesh position={[-widthM / 2 + frameW / 2, mirrorH / 2, 0]} castShadow>
+                <boxGeometry args={[frameW, mirrorH, frameThick]} />
+                <meshStandardMaterial color={mainColor} roughness={0.55} />
+              </mesh>
+              {/* Right Stile */}
+              <mesh position={[widthM / 2 - frameW / 2, mirrorH / 2, 0]} castShadow>
+                <boxGeometry args={[frameW, mirrorH, frameThick]} />
+                <meshStandardMaterial color={mainColor} roughness={0.55} />
+              </mesh>
+
+              {/* Back Protective Timber Panel */}
+              <mesh position={[0, mirrorH / 2, -frameThick / 2 + 0.005]}>
+                <boxGeometry args={[glassW, glassH, 0.01]} />
+                <meshStandardMaterial color="#2B1F13" roughness={0.8} />
+              </mesh>
+
+              {/* Luminous Silver-Ice Reflective Mirror Glass */}
+              <mesh position={[0, mirrorH / 2, 0.006]}>
+                <boxGeometry args={[glassW, glassH, 0.008]} />
+                <meshStandardMaterial
+                  color="#E8F4F8"
+                  roughness={0.15}
+                  metalness={0.1}
+                />
+              </mesh>
+
+              {/* Architectural Reflection Diagonal Glare Bars */}
+              <mesh position={[0, mirrorH * 0.58, 0.012]} rotation={[0, 0, -0.42]}>
+                <planeGeometry args={[widthM * 0.82, 0.045]} />
+                <meshBasicMaterial color="#FFFFFF" transparent opacity={0.85} />
+              </mesh>
+              <mesh position={[-widthM * 0.12, mirrorH * 0.42, 0.012]} rotation={[0, 0, -0.42]}>
+                <planeGeometry args={[widthM * 0.6, 0.024]} />
+                <meshBasicMaterial color="#FFFFFF" transparent opacity={0.65} />
+              </mesh>
+
+              {/* Top Brass Pivot Hinge attached to back of frame */}
+              <mesh position={[0, mirrorH * 0.82, -frameThick / 2 - 0.008]} rotation={[0, 0, Math.PI / 2]} castShadow>
+                <cylinderGeometry args={[0.012, 0.012, widthM * 0.32, 12]} />
+                <meshStandardMaterial color="#C49746" metalness={0.85} roughness={0.25} />
+              </mesh>
+
+              {/* Rear Supporting Easel Leg - angled so foot lands neatly within rear footprint */}
+              <group position={[0, mirrorH * 0.82, -frameThick / 2 - 0.008]} rotation={[0.16, 0, 0]}>
+                <mesh position={[0, -mirrorH * 0.41, 0]} castShadow>
+                  <boxGeometry args={[widthM * 0.28, mirrorH * 0.82, 0.018]} />
+                  <meshStandardMaterial color={legColor || '#2B1F13'} roughness={0.6} />
+                </mesh>
+                {/* Cross brace on easel leg */}
+                <mesh position={[0, -mirrorH * 0.58, -0.008]} castShadow>
+                  <boxGeometry args={[widthM * 0.32, 0.03, 0.016]} />
+                  <meshStandardMaterial color={legColor || '#2B1F13'} roughness={0.6} />
+                </mesh>
+              </group>
+            </group>
           </group>
         );
       }
@@ -1117,6 +1418,330 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
         );
       }
 
+      // ==========================================
+      // NEPALI HOUSEHOLD PIECES (6 items)
+      // ==========================================
+      case 'nepali-pirka': {
+        // Traditional low Sal wood stool with carved plank top & twin angled cleats
+        const plankH = 0.035;
+        const cleatH = heightM - plankH;
+        return (
+          <group>
+            {/* Top Solid Plank */}
+            <mesh position={[0, heightM - plankH / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[widthM, plankH, depthM]} />
+              <meshStandardMaterial color={mainColor} roughness={0.65} />
+            </mesh>
+            {/* Left Cleat Runner */}
+            <mesh position={[-widthM / 2 + 0.06, cleatH / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[0.04, cleatH, depthM - 0.04]} />
+              <meshStandardMaterial color="#422517" roughness={0.7} />
+            </mesh>
+            {/* Right Cleat Runner */}
+            <mesh position={[widthM / 2 - 0.06, cleatH / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[0.04, cleatH, depthM - 0.04]} />
+              <meshStandardMaterial color="#422517" roughness={0.7} />
+            </mesh>
+          </group>
+        );
+      }
+
+      case 'nepali-charpai': {
+        // Handwoven Khat / Charpai daybed with turned wooden corner posts & woven rope webbing
+        const legR = 0.04;
+        const legH = heightM;
+        const frameThick = 0.06;
+        const webH = heightM - 0.04;
+        return (
+          <group>
+            {/* 4 Turned Corner Timber Legs */}
+            {[
+              [-widthM / 2 + legR, -depthM / 2 + legR],
+              [widthM / 2 - legR, -depthM / 2 + legR],
+              [-widthM / 2 + legR, depthM / 2 - legR],
+              [widthM / 2 - legR, depthM / 2 - legR],
+            ].map(([lx, lz], idx) => (
+              <mesh key={idx} position={[lx, legH / 2, lz]} castShadow receiveShadow>
+                <cylinderGeometry args={[legR, legR * 1.1, legH, 16]} />
+                <meshStandardMaterial color={mainColor} roughness={0.75} />
+              </mesh>
+            ))}
+            {/* Mortise & Tenon Side Rails */}
+            <mesh position={[0, heightM - frameThick / 2, -depthM / 2 + 0.03]} castShadow>
+              <boxGeometry args={[widthM - 0.08, frameThick, 0.05]} />
+              <meshStandardMaterial color={mainColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[0, heightM - frameThick / 2, depthM / 2 - 0.03]} castShadow>
+              <boxGeometry args={[widthM - 0.08, frameThick, 0.05]} />
+              <meshStandardMaterial color={mainColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[-widthM / 2 + 0.03, heightM - frameThick / 2, 0]} castShadow>
+              <boxGeometry args={[0.05, frameThick, depthM - 0.08]} />
+              <meshStandardMaterial color={mainColor} roughness={0.7} />
+            </mesh>
+            <mesh position={[widthM / 2 - 0.03, heightM - frameThick / 2, 0]} castShadow>
+              <boxGeometry args={[0.05, frameThick, depthM - 0.08]} />
+              <meshStandardMaterial color={mainColor} roughness={0.7} />
+            </mesh>
+            {/* Woven Jute Rope Webbing Surface */}
+            <mesh position={[0, webH, 0]} castShadow receiveShadow>
+              <boxGeometry args={[widthM - 0.12, 0.02, depthM - 0.12]} />
+              <meshStandardMaterial color={fabricColor} roughness={0.9} />
+            </mesh>
+            {/* Cylindrical Bolster Roll at Headrest */}
+            <mesh position={[-widthM / 2 + 0.22, heightM + 0.08, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+              <cylinderGeometry args={[0.09, 0.09, depthM - 0.16, 16]} />
+              <meshStandardMaterial color={cushionColor} roughness={0.8} />
+            </mesh>
+          </group>
+        );
+      }
+
+      case 'nepali-gadda': {
+        // Floor mattress seating with fabric folds and twin cylindrical takiya bolsters
+        const matH = 0.14;
+        const bolsterR = 0.11;
+        return (
+          <group>
+            {/* Quilted Cotton Floor Mattress */}
+            <mesh position={[0, matH / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[widthM, matH, depthM]} />
+              <meshStandardMaterial color={mainColor} roughness={0.85} />
+            </mesh>
+            {/* Left Cylindrical Takiya Bolster */}
+            <mesh position={[-widthM / 2 + bolsterR + 0.04, matH + bolsterR, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+              <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.1, 16]} />
+              <meshStandardMaterial color={cushionColor} roughness={0.8} />
+            </mesh>
+            {/* Right Cylindrical Takiya Bolster */}
+            <mesh position={[widthM / 2 - bolsterR - 0.04, matH + bolsterR, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+              <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.1, 16]} />
+              <meshStandardMaterial color={cushionColor} roughness={0.8} />
+            </mesh>
+          </group>
+        );
+      }
+
+      case 'nepali-dhoka-divider': {
+        // 3-panel carved Jali screen with architectural open lattice cutouts and brass hinge knuckles
+        const panelW = widthM / 3;
+        const frameThick = 0.045;
+        const stileW = 0.04;
+        const railH = 0.06;
+        const latticeH = heightM - railH * 2;
+        const latticeW = panelW - stileW * 2;
+
+        return (
+          <group>
+            {[0, 1, 2].map((idx) => {
+              const px = -widthM / 2 + panelW / 2 + idx * panelW;
+              const angle = (idx - 1) * 0.16; // Organic zigzag folding
+              return (
+                <group key={idx} position={[px, 0, 0]} rotation={[0, angle, 0]}>
+                  {/* Left Stile */}
+                  <mesh position={[-panelW / 2 + stileW / 2, heightM / 2, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[stileW, heightM, frameThick]} />
+                    <meshStandardMaterial color={mainColor} roughness={0.7} />
+                  </mesh>
+                  {/* Right Stile */}
+                  <mesh position={[panelW / 2 - stileW / 2, heightM / 2, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[stileW, heightM, frameThick]} />
+                    <meshStandardMaterial color={mainColor} roughness={0.7} />
+                  </mesh>
+                  {/* Bottom Rail / Plinth */}
+                  <mesh position={[0, railH / 2, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[latticeW, railH, frameThick]} />
+                    <meshStandardMaterial color={mainColor} roughness={0.7} />
+                  </mesh>
+                  {/* Top Crown Rail */}
+                  <mesh position={[0, heightM - railH / 2, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[latticeW, railH, frameThick]} />
+                    <meshStandardMaterial color={mainColor} roughness={0.7} />
+                  </mesh>
+                  {/* Middle Lock Rail */}
+                  <mesh position={[0, heightM * 0.42, 0]} castShadow receiveShadow>
+                    <boxGeometry args={[latticeW, 0.04, frameThick]} />
+                    <meshStandardMaterial color={mainColor} roughness={0.7} />
+                  </mesh>
+
+                  {/* Architectural Jali Fretwork: Multiple Vertical & Diagonal Cutout Slats */}
+                  {[-latticeW * 0.3, -latticeW * 0.1, latticeW * 0.1, latticeW * 0.3].map((sx, si) => (
+                    <mesh key={`v-slat-${si}`} position={[sx, heightM / 2, 0]} castShadow>
+                      <boxGeometry args={[0.016, latticeH - 0.02, 0.02]} />
+                      <meshStandardMaterial color={def.subColor || '#5C3524'} roughness={0.65} />
+                    </mesh>
+                  ))}
+                  {/* Horizontal Cross Muntins */}
+                  {[heightM * 0.22, heightM * 0.62, heightM * 0.82].map((sy, hi) => (
+                    <mesh key={`h-slat-${hi}`} position={[0, sy, 0]} castShadow>
+                      <boxGeometry args={[latticeW - 0.01, 0.016, 0.02]} />
+                      <meshStandardMaterial color={def.subColor || '#5C3524'} roughness={0.65} />
+                    </mesh>
+                  ))}
+
+                  {/* Brass Hinges on Adjacent Edges */}
+                  {idx < 2 && [0.35, 0.85, 1.45].map((hy, hi) => (
+                    <mesh key={`hinge-${hi}`} position={[panelW / 2, hy, 0]} castShadow>
+                      <cylinderGeometry args={[0.012, 0.012, 0.04, 12]} />
+                      <meshStandardMaterial color={accentColor} metalness={0.85} roughness={0.25} />
+                    </mesh>
+                  ))}
+                </group>
+              );
+            })}
+          </group>
+        );
+      }
+
+      case 'nepali-puja-mandir': {
+        // Traditional tiered wooden shrine with authentic pagoda roofs, columns, and Kalasha/Gajur finial
+        const baseH = 0.22;
+        const columnH = 0.44;
+        const tier1H = 0.14;
+        const tier2H = 0.12;
+        return (
+          <group>
+            {/* Lower Base Cabinet Plinth */}
+            <mesh position={[0, baseH / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[widthM, baseH, depthM]} />
+              <meshStandardMaterial color={mainColor} roughness={0.7} />
+            </mesh>
+            {/* Incense Drawer Front Inset */}
+            <mesh position={[0, baseH / 2, depthM / 2 + 0.005]} castShadow>
+              <boxGeometry args={[widthM * 0.75, baseH * 0.65, 0.012]} />
+              <meshStandardMaterial color="#422213" roughness={0.6} />
+            </mesh>
+            {/* Twin Brass Drawer Knobs */}
+            <mesh position={[-widthM * 0.2, baseH / 2, depthM / 2 + 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+              <cylinderGeometry args={[0.012, 0.012, 0.018, 12]} />
+              <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+            </mesh>
+            <mesh position={[widthM * 0.2, baseH / 2, depthM / 2 + 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+              <cylinderGeometry args={[0.012, 0.012, 0.018, 12]} />
+              <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+            </mesh>
+
+            {/* Sanctum Floor with Crimson Velvet Cloth */}
+            <mesh position={[0, baseH + 0.006, 0]}>
+              <boxGeometry args={[widthM - 0.04, 0.012, depthM - 0.04]} />
+              <meshStandardMaterial color={def.subColor || '#8B2635'} roughness={0.85} />
+            </mesh>
+            {/* Deep Enclosed Back Wall */}
+            <mesh position={[0, baseH + columnH / 2, -depthM / 2 + 0.025]} castShadow>
+              <boxGeometry args={[widthM - 0.04, columnH, 0.04]} />
+              <meshStandardMaterial color="#3D1F12" roughness={0.7} />
+            </mesh>
+            {/* Left Wall Wing */}
+            <mesh position={[-widthM / 2 + 0.025, baseH + columnH / 2, 0]} castShadow>
+              <boxGeometry args={[0.04, columnH, depthM - 0.05]} />
+              <meshStandardMaterial color="#3D1F12" roughness={0.7} />
+            </mesh>
+            {/* Right Wall Wing */}
+            <mesh position={[widthM / 2 - 0.025, baseH + columnH / 2, 0]} castShadow>
+              <boxGeometry args={[0.04, columnH, depthM - 0.05]} />
+              <meshStandardMaterial color="#3D1F12" roughness={0.7} />
+            </mesh>
+
+            {/* Twin Turned Front Columns with Capital Blocks */}
+            {[-widthM / 2 + 0.07, widthM / 2 - 0.07].map((cx, ci) => (
+              <group key={`col-${ci}`} position={[cx, baseH, depthM / 2 - 0.07]}>
+                {/* Column Base */}
+                <mesh position={[0, 0.02, 0]} castShadow>
+                  <boxGeometry args={[0.06, 0.04, 0.06]} />
+                  <meshStandardMaterial color="#542E1B" roughness={0.65} />
+                </mesh>
+                {/* Turned Column Shaft */}
+                <mesh position={[0, columnH / 2, 0]} castShadow>
+                  <cylinderGeometry args={[0.022, 0.026, columnH - 0.08, 16]} />
+                  <meshStandardMaterial color="#6B3820" roughness={0.6} />
+                </mesh>
+                {/* Carved Bracket Capital */}
+                <mesh position={[0, columnH - 0.02, 0]} castShadow>
+                  <boxGeometry args={[0.07, 0.04, 0.07]} />
+                  <meshStandardMaterial color="#542E1B" roughness={0.65} />
+                </mesh>
+              </group>
+            ))}
+
+            {/* Lower Tier Pagoda Roof Eave (Flared outward) */}
+            <mesh position={[0, baseH + columnH + tier1H / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[widthM + 0.14, tier1H, depthM + 0.14]} />
+              <meshStandardMaterial color="#30180D" roughness={0.65} />
+            </mesh>
+            {/* Flared Eave Cornice Molding */}
+            <mesh position={[0, baseH + columnH + tier1H, 0]} castShadow>
+              <boxGeometry args={[widthM + 0.18, 0.025, depthM + 0.18]} />
+              <meshStandardMaterial color={accentColor} metalness={0.75} roughness={0.3} />
+            </mesh>
+
+            {/* Upper Tier Pagoda Roof (Stepped inwards with pitched slope) */}
+            <mesh position={[0, baseH + columnH + tier1H + tier2H / 2, 0]} castShadow receiveShadow>
+              <boxGeometry args={[widthM * 0.72, tier2H, depthM * 0.72]} />
+              <meshStandardMaterial color="#2B140A" roughness={0.65} />
+            </mesh>
+
+            {/* Ornate Patan Brass Gajur / Kalasha Finial Assemblage */}
+            <group position={[0, baseH + columnH + tier1H + tier2H, 0]}>
+              {/* Stepped Brass Base Plinth */}
+              <mesh position={[0, 0.015, 0]} castShadow>
+                <cylinderGeometry args={[0.065, 0.08, 0.03, 16]} />
+                <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+              </mesh>
+              {/* Sacred Kalasha Spherical Urn */}
+              <mesh position={[0, 0.055, 0]} castShadow>
+                <sphereGeometry args={[0.038, 16, 16]} />
+                <meshStandardMaterial color={accentColor} metalness={0.92} roughness={0.18} />
+              </mesh>
+              {/* Pointed Spire Cone (Gajur Tip) */}
+              <mesh position={[0, 0.12, 0]} castShadow>
+                <coneGeometry args={[0.024, 0.11, 16]} />
+                <meshStandardMaterial color={accentColor} metalness={0.94} roughness={0.15} />
+              </mesh>
+            </group>
+          </group>
+        );
+      }
+
+      case 'nepali-lota-display': {
+        // Turned wooden tripod stand with polished brass Karuwa vessel
+        const standH = heightM - 0.28;
+        return (
+          <group>
+            {/* Tripod Stand Top Disc */}
+            <mesh position={[0, standH, 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[widthM / 2, widthM / 2, 0.03, 24]} />
+              <meshStandardMaterial color={mainColor} roughness={0.7} />
+            </mesh>
+            {/* 3 Turned Legs */}
+            {[0, (2 * Math.PI) / 3, (4 * Math.PI) / 3].map((rad, idx) => {
+              const lx = (widthM / 2 - 0.05) * Math.cos(rad);
+              const lz = (widthM / 2 - 0.05) * Math.sin(rad);
+              return (
+                <mesh key={idx} position={[lx, standH / 2, lz]} rotation={[0.08 * Math.sin(rad), 0, -0.08 * Math.cos(rad)]} castShadow>
+                  <cylinderGeometry args={[0.02, 0.025, standH, 12]} />
+                  <meshStandardMaterial color={mainColor} roughness={0.7} />
+                </mesh>
+              );
+            })}
+            {/* Polished Brass Karuwa Vessel Body */}
+            <mesh position={[0, standH + 0.1, 0]} castShadow>
+              <sphereGeometry args={[0.09, 20, 20]} />
+              <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+            </mesh>
+            {/* Karuwa Neck & Fluted Rim */}
+            <mesh position={[0, standH + 0.21, 0]} castShadow>
+              <cylinderGeometry args={[0.035, 0.025, 0.08, 16]} />
+              <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+            </mesh>
+            {/* Karuwa Curved Spout */}
+            <mesh position={[0.07, standH + 0.15, 0]} rotation={[0, 0, -0.6]} castShadow>
+              <cylinderGeometry args={[0.012, 0.018, 0.12, 12]} />
+              <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+            </mesh>
+          </group>
+        );
+      }
+
       default: {
         return (
           <mesh position={[0, heightM / 2, 0]} castShadow receiveShadow>
@@ -1132,11 +1757,11 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
     <group position={[posX, 0, posZ]} rotation={[0, rotY, 0]}>
       {render3DModel()}
 
-      {/* Subtle floor-level selection halo in 3D (no wireframe box) */}
+      {/* Subtle floor-level selection halo in 3D (Himalayan Indigo) */}
       {isSelected && (
         <mesh position={[0, 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <planeGeometry args={[widthM + 0.08, depthM + 0.08]} />
-          <meshBasicMaterial color="#4A5D52" transparent opacity={0.25} />
+          <meshBasicMaterial color="#22485E" transparent opacity={0.3} />
         </mesh>
       )}
     </group>
