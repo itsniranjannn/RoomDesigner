@@ -2,6 +2,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { TopBar } from './TopBar.jsx';
 import { NewRoomModal } from './NewRoomModal.jsx';
+import { LandingPage } from './LandingPage.jsx';
 import { FurnitureCatalog } from '../catalog/FurnitureCatalog.jsx';
 import { RoomCanvas } from '../canvas/RoomCanvas.jsx';
 import { SelectedItemPanel } from '../inspector/SelectedItemPanel.jsx';
@@ -50,10 +51,13 @@ export function AppShell() {
 
   if (!room) {
     return (
-      <div className={styles.loadingScreen}>
-        <div className={styles.loadingLogo} aria-hidden="true" />
-        <span className={styles.loadingText}>Drafting workspace...</span>
-      </div>
+      <>
+        <LandingPage onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)} />
+        <NewRoomModal
+          isOpen={isNewRoomModalOpen}
+          onClose={() => setIsNewRoomModalOpen(false)}
+        />
+      </>
     );
   }
 

@@ -30,6 +30,7 @@ export function TopBar({ onOpenNewRoomModal }) {
   const redo = useRoomStore((state) => state.redo);
   const canUndo = useRoomStore((state) => state.canUndo);
   const canRedo = useRoomStore((state) => state.canRedo);
+  const closeRoom = useRoomStore((state) => state.closeRoom);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -111,9 +112,16 @@ export function TopBar({ onOpenNewRoomModal }) {
   return (
     <header className={styles.topBar}>
       <div className={styles.leftSection}>
-        <div className={styles.brand}>
+        <button
+          type="button"
+          className={styles.studioBtn}
+          onClick={() => closeRoom()}
+          title="Return to Studio Overview"
+          aria-label="Return to Studio Overview"
+        >
           <div className={styles.brandIcon} aria-hidden="true" />
-        </div>
+          <span className={styles.studioBrandText}>Studio</span>
+        </button>
 
         <div className={styles.roomInfo} ref={menuRef}>
           {isRenaming ? (
