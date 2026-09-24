@@ -186,7 +186,7 @@ export function FurniturePiece({
           <ArchitecturalSilhouette item={def} widthCm={widthCm} depthCm={depthCm} />
         </g>
 
-        {/* Crisp Selection Outline */}
+        {/* Crisp Selection Outline using Himalayan Indigo */}
         {isSelected && !isColliding && (
           <rect
             x={-hw - 2.5}
@@ -195,7 +195,7 @@ export function FurniturePiece({
             height={depthCm + 5}
             rx={5}
             fill="none"
-            stroke="var(--color-clay)"
+            stroke="var(--color-indigo)"
             strokeWidth="2"
             pointerEvents="none"
           />
@@ -215,7 +215,7 @@ export function FurniturePiece({
               y1={20}
               x2={0}
               y2={0}
-              stroke="var(--color-clay)"
+              stroke="var(--color-indigo)"
               strokeWidth="2"
             />
             {/* Invisible Large Hit Circle (36px wide hit target) */}
@@ -226,13 +226,13 @@ export function FurniturePiece({
               fill="transparent"
               pointerEvents="all"
             />
-            {/* Visible Tactile Knob */}
+            {/* Visible Tactile Knob with Brass core */}
             <circle
               cx={0}
               cy={0}
               r={7}
-              fill="var(--color-clay)"
-              stroke="#FFFFFF"
+              fill="var(--color-brass)"
+              stroke="var(--color-indigo)"
               strokeWidth="2"
             />
 

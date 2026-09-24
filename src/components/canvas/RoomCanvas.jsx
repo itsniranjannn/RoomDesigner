@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
 import { RoomBoundary } from './RoomBoundary.jsx';
 import { GridOverlay } from './GridOverlay.jsx';
@@ -174,28 +175,36 @@ export function RoomCanvas() {
           roomDepthCm={room.depthCm}
         />
 
-        {/* Walls, Doors, Windows & Stroke-draw-in */}
-        <RoomBoundary room={room} svgRef={svgRef} />
+        {/* Animated Room Group with soft cross-dissolve when switching rooms */}
+        <motion.g
+          key={room.id}
+          initial={{ opacity: 0.15 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+        >
+          {/* Walls, Doors, Windows & Stroke-draw-in */}
+          <RoomBoundary room={room} svgRef={svgRef} />
 
-        {/* Placed Furniture Items */}
-        {(room.placedFurniture || []).map((item) => (
-          <FurniturePiece
-            key={item.id}
-            item={item}
-            isSelected={selectedItemId === item.id}
-            isColliding={collidingItemIds.has(item.id)}
-            scale={scale}
-            roomWidthCm={room.widthCm}
-            roomDepthCm={room.depthCm}
-            svgRef={svgRef}
+          {/* Placed Furniture Items */}
+          {(room.placedFurniture || []).map((item) => (
+            <FurniturePiece
+              key={item.id}
+              item={item}
+              isSelected={selectedItemId === item.id}
+              isColliding={collidingItemIds.has(item.id)}
+              scale={scale}
+              roomWidthCm={room.widthCm}
+              roomDepthCm={room.depthCm}
+              svgRef={svgRef}
+            />
+          ))}
+
+          {/* Soft warning pulse on collisions */}
+          <CollisionLayer
+            placedFurniture={room.placedFurniture || []}
+            collidingItemIds={collidingItemIds}
           />
-        ))}
-
-        {/* Soft warning pulse on collisions */}
-        <CollisionLayer
-          placedFurniture={room.placedFurniture || []}
-          collidingItemIds={collidingItemIds}
-        />
+        </motion.g>
       </svg>
 
       <div className={styles.canvasEmptyHint}>

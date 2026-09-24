@@ -8,10 +8,11 @@ import styles from './FurnitureCatalog.module.css';
 export function FurnitureCatalog() {
   const addFurniture = useRoomStore((state) => state.addFurniture);
 
-  // Default: first category (Living Room) open, others expandable
+  // Default: first category (Living Room) and Nepali Household open
   const [openCategories, setOpenCategories] = useState({
     living: true,
     bedroom: false,
+    nepali: true,
     dining_office: false,
     kitchen: false,
     decor: false,
