@@ -102,37 +102,32 @@ export async function loadRoomFromDB(id) {
 export async function listRoomsFromDB() {
   try {
     const db = await getDB();
-    if (!db) return [DEFAULT_ROOM];
+    if (!db) return [];
     const rooms = await db.getAll(STORE_ROOMS);
-    if (!rooms || rooms.length === 0) {
-      // Seed with default room
-      await saveRoomToDB(DEFAULT_ROOM);
-      return [DEFAULT_ROOM];
-    }
-    return rooms;
+    return rooms || [];
   } catch (error) {
     console.error('Failed to list rooms from IndexedDB:', error);
     if (import.meta.env?.DEV) {
       console.error('Failed to list rooms from IndexedDB:', error);
     }
-    return [DEFAULT_ROOM];
+    return [];
   }
 }
 
 export async function getInitialRoom() {
   try {
-    const activeId = localStorage.getItem(ACTIVE_ROOM_KEY);
+    const activeId = typeof localStorage !== 'undefined' ? localStorage.getItem(ACTIVE_ROOM_KEY) : null;
     if (activeId) {
       const room = await loadRoomFromDB(activeId);
       if (room) return room;
     }
-    const rooms = await listRoomsFromDB();
-    return rooms[0] || DEFAULT_ROOM;
+    // If no explicit active room selected (or deleted), return null to display the landing page
+    return null;
   } catch (err) {
     if (import.meta.env?.DEV) {
       console.error('Error getting initial room:', err);
     }
-    return DEFAULT_ROOM;
+    return null;
   }
 }
 

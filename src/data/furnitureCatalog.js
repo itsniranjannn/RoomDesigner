@@ -13,6 +13,7 @@
 export const FURNITURE_CATEGORIES = [
   { id: 'living', name: 'Living Room' },
   { id: 'bedroom', name: 'Bedroom' },
+  { id: 'nepali', name: 'Nepali Household' },
   { id: 'dining_office', name: 'Dining & Office' },
   { id: 'kitchen', name: 'Kitchen' },
   { id: 'decor', name: 'Decor & Accents' },
@@ -456,6 +457,88 @@ export const FURNITURE_CATALOG = [
     color: '#94734E', // Oak Frame
     subColor: '#6B5134',
     shapeType: 'bookshelf',
+  },
+
+  // ==========================================
+  // NEPALI HOUSEHOLD (6 items)
+  // Traditional handcrafted Himalayan interior pieces
+  // ==========================================
+  {
+    id: 'nepali-pirka',
+    name: 'Pirka Low Stool',
+    nepaliName: 'पिर्का',
+    category: 'nepali',
+    widthCm: 45,
+    depthCm: 25,
+    heightCm: 16,
+    color: '#6B3E26', // Aged Sal Wood Timber
+    accentColor: '#1A1615',
+    shapeType: 'nepali-pirka',
+  },
+  {
+    id: 'nepali-charpai',
+    name: 'Charpai Daybed',
+    nepaliName: 'खाट',
+    category: 'nepali',
+    widthCm: 190,
+    depthCm: 90,
+    heightCm: 48,
+    color: '#5C3826', // Turned Timber Posts
+    fabricColor: '#D8B885', // Woven Jute Webbing
+    cushionColor: '#8B2635', // Crimson Bolster
+    shapeType: 'nepali-charpai',
+  },
+  {
+    id: 'nepali-gadda',
+    name: 'Gadda Floor Seating',
+    nepaliName: 'सुकुल/गद्दा',
+    category: 'nepali',
+    widthCm: 180,
+    depthCm: 85,
+    heightCm: 18,
+    color: '#8B2635', // Deep Maroon Cotton Mattress
+    cushionColor: '#22485E', // Indigo Cylindrical Bolsters
+    accentColor: '#C49746', // Brass/Gold Piping
+    shapeType: 'nepali-gadda',
+  },
+  {
+    id: 'nepali-dhoka-divider',
+    name: 'Carved Jali Screen',
+    nepaliName: 'काष्ठ जाली',
+    category: 'nepali',
+    widthCm: 120,
+    depthCm: 28,
+    heightCm: 175,
+    color: '#3A2016', // Dark Carved Timber Frame
+    accentColor: '#C49746', // Brass Pivot Hinges
+    subColor: '#5C3524', // Lattice Fretwork
+    shapeType: 'nepali-dhoka-divider',
+  },
+  {
+    id: 'nepali-puja-mandir',
+    name: 'Puja Shrine Shelf',
+    nepaliName: 'पूजा मन्दिर',
+    category: 'nepali',
+    widthCm: 70,
+    depthCm: 40,
+    heightCm: 95,
+    color: '#542E1B', // Rich Sal Timber Shrine
+    accentColor: '#C49746', // Brass Gajur Finial & Bells
+    subColor: '#8B2635', // Crimson Altar Cloth
+    shapeType: 'nepali-puja-mandir',
+  },
+  {
+    id: 'nepali-lota-display',
+    name: 'Karuwa & Diyo Stand',
+    nepaliName: 'करुवा स्ट्यान्ड',
+    category: 'nepali',
+    widthCm: 38,
+    depthCm: 38,
+    heightCm: 72,
+    color: '#4A2A1A', // Tripod Pedestal Stand
+    accentColor: '#C49746', // Polished Patan Brass Karuwa
+    subColor: '#D4AA55', // Oil Lamp Diyo Dish
+    shapeType: 'nepali-lota-display',
   },
 ];
 

@@ -202,29 +202,60 @@ export const useRoomStore = create((set, get) => ({
     }, 350);
   },
 
+  // Close active room and return to Studio Overview landing page
+  closeRoom: () => {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('active_room_id');
+    }
+    set({
+      room: null,
+      selectedItemId: null,
+      collidingItemIds: new Set(),
+      boundaryCollidingIds: new Set(),
+      undoStack: [],
+      redoStack: [],
+      canUndo: false,
+      canRedo: false,
+    });
+  },
+
   // Initialize store and load room from IndexedDB
   initStore: async () => {
     try {
       const initialRoom = await getInitialRoom();
       const allRooms = await listRoomsFromDB();
 
-      const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
-        initialRoom.placedFurniture || [],
-        initialRoom.widthCm,
-        initialRoom.depthCm
-      );
+      if (initialRoom) {
+        const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
+          initialRoom.placedFurniture || [],
+          initialRoom.widthCm,
+          initialRoom.depthCm
+        );
 
-      set({
-        room: initialRoom,
-        allRooms,
-        collidingItemIds: collidingIds,
-        boundaryCollidingIds,
-        saveStatus: 'saved',
-        undoStack: [],
-        redoStack: [],
-        canUndo: false,
-        canRedo: false,
-      });
+        set({
+          room: initialRoom,
+          allRooms,
+          collidingItemIds: collidingIds,
+          boundaryCollidingIds,
+          saveStatus: 'saved',
+          undoStack: [],
+          redoStack: [],
+          canUndo: false,
+          canRedo: false,
+        });
+      } else {
+        set({
+          room: null,
+          allRooms,
+          collidingItemIds: new Set(),
+          boundaryCollidingIds: new Set(),
+          saveStatus: 'saved',
+          undoStack: [],
+          redoStack: [],
+          canUndo: false,
+          canRedo: false,
+        });
+      }
     } catch (err) {
       console.error('Failed to init store:', err);
       if (import.meta.env?.DEV) {
@@ -662,8 +693,18 @@ export const useRoomStore = create((set, get) => ({
         canRedo: false,
       });
     } else {
-      // All rooms were deleted — create a clean fresh room
-      await get().createRoom('My Room', 500, 400);
+      // All rooms were deleted — transition cleanly to Studio Overview landing page
+      set({
+        room: null,
+        allRooms: [],
+        selectedItemId: null,
+        collidingItemIds: new Set(),
+        boundaryCollidingIds: new Set(),
+        undoStack: [],
+        redoStack: [],
+        canUndo: false,
+        canRedo: false,
+      });
     }
   },
 

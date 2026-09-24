@@ -112,7 +112,7 @@ describe('Room Library Management (Rename, Delete, Fallback & Switching)', () =>
     expect(state.selectedItemId).toBeNull();
   });
 
-  it('deletes the ONLY remaining room and cleanly creates a fresh seeded room without crashing or stale data', async () => {
+  it('deletes the ONLY remaining room and cleanly transitions to landing page without crashing or stale data', async () => {
     // Delete room-2 first
     delete mockDB['room-2'];
     useRoomStore.setState({ allRooms: [mockDB['room-1']] });
@@ -123,13 +123,9 @@ describe('Room Library Management (Rename, Delete, Fallback & Switching)', () =>
     const state = useRoomStore.getState();
     // Confirm stale room-1 is gone
     expect(mockDB['room-1']).toBeUndefined();
-    expect(state.room).toBeDefined();
-    expect(state.room.id).not.toBe('room-1');
-    expect(state.room.name).toBe('My Room');
-    expect(state.room.widthCm).toBe(500);
-    expect(state.room.depthCm).toBe(400);
-    expect(state.room.placedFurniture).toEqual([]);
-    expect(state.allRooms.length).toBeGreaterThanOrEqual(1);
+    // Replaces auto-seed with clean transition to landing page
+    expect(state.room).toBeNull();
+    expect(state.allRooms).toEqual([]);
     expect(state.selectedItemId).toBeNull();
     expect(state.canUndo).toBe(false);
   });

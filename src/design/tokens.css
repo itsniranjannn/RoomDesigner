@@ -1,21 +1,39 @@
 :root {
-  /* Color Palette — Architectural Material Tones */
-  --color-ink: #1c1a17;
-  --color-ink-muted: #5e5a52;
-  --color-linen: #f7f3ec;
-  --color-linen-surface: #efe9df;
-  --color-linen-subtle: #e6dfd2;
-  --color-clay: #c97b4a;
-  --color-clay-hover: #b86e3f;
-  --color-clay-subtle: rgba(201, 123, 74, 0.12);
-  --color-pine: #4a5d52;
-  --color-pine-subtle: rgba(74, 93, 82, 0.12);
-  --color-taupe: #d8cfc0;
-  --color-taupe-light: #eae3d7;
-  --color-walnut: #8b6f47;
-  --color-walnut-dark: #634e32;
-  --color-warning: rgba(201, 123, 74, 0.22);
-  --color-warning-border: #c97b4a;
+  /* Color Palette — Traditional Nepali Interior Design & Architectural Materials */
+  --color-ink: #1A1615;                 /* Agran / Aged Sal Wood Timber */
+  --color-ink-muted: #5C544E;           /* Muted Sal Timber Charcoal */
+  --color-linen: #F6F2EA;               /* Lokta Paper / Raw Muslin */
+  --color-linen-surface: #EDE6D9;       /* Layered Lokta Drafting Surface */
+  --color-linen-subtle: #E2D9C8;        /* Textured Lokta Neutral */
+
+  /* Primary Cultural Accent: Rato Simrik / Deep Maroon (Replaces clay) */
+  --color-maroon: #8B2635;
+  --color-maroon-hover: #751F2C;
+  --color-maroon-subtle: rgba(139, 38, 53, 0.12);
+  --color-clay: var(--color-maroon);
+  --color-clay-hover: var(--color-maroon-hover);
+  --color-clay-subtle: var(--color-maroon-subtle);
+
+  /* Secondary Cultural Accent: Kansa / Patan Bell Metal Brass */
+  --color-brass: #C49746;
+  --color-brass-hover: #B0853B;
+  --color-brass-subtle: rgba(196, 151, 70, 0.14);
+
+  /* Tertiary Cultural Accent: Nil / Himalayan Indigo (Active Selection) */
+  --color-indigo: #22485E;
+  --color-indigo-hover: #1A3849;
+  --color-indigo-subtle: rgba(34, 72, 94, 0.14);
+  --color-selection: var(--color-indigo);
+
+  /* Architectural Earth & Timber Materials */
+  --color-pine: #3B4B42;                /* Himalayan Pine Green */
+  --color-pine-subtle: rgba(59, 75, 66, 0.12);
+  --color-taupe: #D5C8B8;               /* Rato Mato / Earthen Mortar */
+  --color-taupe-light: #E7DFD3;         /* Sun-dried Mud Plaster */
+  --color-walnut: #7A5B37;              /* Carved Walnut Wood */
+  --color-walnut-dark: #543E24;         /* Smoked Hardwood */
+  --color-warning: rgba(139, 38, 53, 0.20);
+  --color-warning-border: #8B2635;
 
   /* Typography Families */
   --font-serif: 'Fraunces', Georgia, serif;
@@ -59,5 +77,19 @@
   --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-normal: 240ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (max-width: 1024px) {
+  :root {
+    --catalog-width: 240px;
+    --inspector-width: 250px;
+  }
+}
+
+@media (max-width: 820px) {
+  :root {
+    --catalog-width: 220px;
+    --inspector-width: 240px;
+  }
 }
 
