@@ -19,11 +19,11 @@
 .studioBtn {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-3);
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-sm);
-  padding: 4px 8px 4px 6px;
+  padding: 4px 10px 4px 6px;
   cursor: pointer;
   color: var(--color-ink);
   transition: all var(--transition-fast);
@@ -44,12 +44,45 @@
   outline-offset: 1px;
 }
 
+.brandMarkIcon {
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.studioBtn:hover .brandMarkIcon {
+  transform: rotate(45deg);
+}
+
+.mastheadLockup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
 .studioBrandText {
   font-family: var(--font-serif);
-  font-size: var(--text-base);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
   color: var(--color-ink);
+  line-height: 1.1;
+}
+
+.studioSubTag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-clay);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.verticalDivider {
+  width: 1px;
+  height: 24px;
+  background-color: var(--color-taupe);
+  opacity: 0.7;
 }
 
 .brand {

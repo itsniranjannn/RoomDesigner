@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
 import {
@@ -13,9 +13,10 @@ import {
   Check,
   X,
   Download,
-  FileJson,
 } from 'lucide-react';
 import { exportRoomPlanAsPNG } from '../../engine/exportPlan.js';
+import { BrandMark } from '../common/BrandMark.jsx';
+import { ArchitecturalSelect } from '../common/ArchitecturalSelect.jsx';
 import styles from './TopBar.module.css';
 
 export function TopBar({ onOpenNewRoomModal }) {
@@ -105,19 +106,6 @@ export function TopBar({ onOpenNewRoomModal }) {
     }
   };
 
-  const handleExportJSON = () => {
-    if (!room) return;
-    setIsMenuOpen(false);
-    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(room, null, 2));
-    const downloadAnchor = document.createElement('a');
-    const safeRoomName = (room.name || 'Room').replace(/[^a-zA-Z0-9_-]/g, '_');
-    downloadAnchor.setAttribute('href', dataStr);
-    downloadAnchor.setAttribute('download', `${safeRoomName}-backup.json`);
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
-  };
-
   if (!room) return null;
 
   const widthMeters = (room.widthCm / 100).toFixed(2);
@@ -133,8 +121,11 @@ export function TopBar({ onOpenNewRoomModal }) {
           title="Return to Studio Overview"
           aria-label="Return to Studio Overview"
         >
-          <div className={styles.brandIcon} aria-hidden="true" />
-          <span className={styles.studioBrandText}>Studio</span>
+          <BrandMark size={28} className={styles.brandMarkIcon} />
+          <div className={styles.mastheadLockup}>
+            <span className={styles.studioBrandText}>ROOM STUDIO</span>
+            <span className={styles.studioSubTag}>CAD // 3D DRAFTING</span>
+          </div>
         </button>
 
         <div className={styles.roomInfo} ref={menuRef}>
@@ -173,18 +164,13 @@ export function TopBar({ onOpenNewRoomModal }) {
           ) : (
             <>
               {allRooms.length > 1 ? (
-                <select
-                  className={styles.roomSelect}
+                <ArchitecturalSelect
                   value={room.id}
-                  onChange={(e) => switchRoom(e.target.value)}
-                  aria-label="Select room"
-                >
-                  {allRooms.map((r) => (
-                    <option key={r.id} value={r.id}>
-                      {r.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => switchRoom(val)}
+                  options={allRooms.map((r) => ({ value: r.id, label: r.name }))}
+                  ariaLabel="Select active room sheet"
+                  className={styles.roomSelectWrapper}
+                />
               ) : (
                 <span className={styles.roomTitle}>{room.name}</span>
               )}
@@ -212,16 +198,6 @@ export function TopBar({ onOpenNewRoomModal }) {
                   >
                     <Edit2 size={12} />
                     <span>Rename room</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.roomMenuItem}
-                    onClick={handleExportJSON}
-                    role="menuitem"
-                    title="Download JSON backup file to restore or preserve your design"
-                  >
-                    <FileJson size={12} />
-                    <span>Backup room (JSON)</span>
                   </button>
                   <button
                     type="button"
@@ -401,4 +377,5 @@ export function TopBar({ onOpenNewRoomModal }) {
     </header>
   );
 }
+
 

@@ -2,8 +2,21 @@ import React, { useRef } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { getFurnitureType } from '../../data/furnitureCatalog.js';
 import { Button } from '../common/Button.jsx';
+import { ArchitecturalSelect } from '../common/ArchitecturalSelect.jsx';
 import { Copy, Trash2, X, Compass, Layers, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
 import styles from './SelectedItemPanel.module.css';
+
+const WALL_OPTIONS = [
+  { value: 'top', label: 'North Wall (Top)' },
+  { value: 'bottom', label: 'South Wall (Bottom)' },
+  { value: 'left', label: 'West Wall (Left)' },
+  { value: 'right', label: 'East Wall (Right)' },
+];
+
+const SWING_OPTIONS = [
+  { value: 'inward', label: 'Swing: Inward' },
+  { value: 'outward', label: 'Swing: Outward' },
+];
 
 export function SelectedItemPanel() {
   const selectedItemId = useRoomStore((state) => state.selectedItemId);
@@ -43,8 +56,20 @@ export function SelectedItemPanel() {
       >
         <div className={styles.header}>
           <div className={styles.itemMeta}>
+            <div className={styles.specCodeTag}>
+              {def.category.toUpperCase()} // {def.id.toUpperCase()}
+            </div>
             <h3 className={styles.title}>{def.name}</h3>
-            <span className={styles.categoryTag}>{def.category}</span>
+            {def.color && (
+              <div className={styles.finishCallout}>
+                <span
+                  className={styles.finishSwatchDot}
+                  style={{ backgroundColor: def.color }}
+                  aria-hidden="true"
+                />
+                <span className={styles.finishLabel}>SPECIFIED FINISH</span>
+              </div>
+            )}
           </div>
           <Button
             variant="ghost"
@@ -373,11 +398,11 @@ export function SelectedItemPanel() {
                         selectItem(item.id);
                       }
                     }}
-                    title="Click to inspect · Drag up/down to reorder layers (माथि/तल सार्न तान्नुहोस्)"
+                    title="Click to inspect · Drag up/down to reorder layers"
                   >
                     <div
                       className={styles.dragHandle}
-                      title="Drag to change layer order (माथि/तल सार्न तान्नुहोस्)"
+                      title="Drag to change layer order"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <GripVertical size={14} />
@@ -429,7 +454,7 @@ export function SelectedItemPanel() {
             </div>
           </div>
 
-          <div className={styles.placedList}>
+          <div className={styles.openingsList}>
             {(room.windows || []).map((win) => (
               <div key={win.id} className={styles.openingCard}>
                 <div className={styles.openingHeader}>
@@ -450,17 +475,12 @@ export function SelectedItemPanel() {
                 </div>
 
                 <div className={styles.openingControlsSingle}>
-                  <select
+                  <ArchitecturalSelect
                     value={win.wall || 'top'}
-                    onChange={(e) => useRoomStore.getState().updateOpening('window', win.id, { wall: e.target.value }, true)}
-                    className={styles.wallSelect}
+                    onChange={(val) => useRoomStore.getState().updateOpening('window', win.id, { wall: val }, true)}
+                    options={WALL_OPTIONS}
                     title="Select wall for window"
-                  >
-                    <option value="top">North Wall (Top)</option>
-                    <option value="bottom">South Wall (Bottom)</option>
-                    <option value="left">West Wall (Left)</option>
-                    <option value="right">East Wall (Right)</option>
-                  </select>
+                  />
                   <span className={styles.openingPosTag}>Pos: {win.offsetCm}cm</span>
                 </div>
               </div>
@@ -486,28 +506,25 @@ export function SelectedItemPanel() {
                   )}
                 </div>
 
-                <div className={styles.openingControlsGrid}>
-                  <select
-                    value={door.wall || 'bottom'}
-                    onChange={(e) => useRoomStore.getState().updateOpening('door', door.id, { wall: e.target.value }, true)}
-                    className={styles.wallSelect}
-                    title="Select wall for door"
-                  >
-                    <option value="top">North Wall (Top)</option>
-                    <option value="bottom">South Wall (Bottom)</option>
-                    <option value="left">West Wall (Left)</option>
-                    <option value="right">East Wall (Right)</option>
-                  </select>
+                <div className={styles.openingControlsRow}>
+                  <div className={styles.selectCol}>
+                    <ArchitecturalSelect
+                      value={door.wall || 'bottom'}
+                      onChange={(val) => useRoomStore.getState().updateOpening('door', door.id, { wall: val }, true)}
+                      options={WALL_OPTIONS}
+                      title="Select wall for door"
+                    />
+                  </div>
 
-                  <select
-                    value={door.swingDirection === 'outward' ? 'outward' : 'inward'}
-                    onChange={(e) => useRoomStore.getState().updateOpening('door', door.id, { swingDirection: e.target.value }, true)}
-                    className={styles.wallSelect}
-                    title="Door swing direction"
-                  >
-                    <option value="inward">Swing: Inward (भित्र)</option>
-                    <option value="outward">Swing: Outward (बाहिर)</option>
-                  </select>
+                  <div className={styles.selectCol}>
+                    <ArchitecturalSelect
+                      value={door.swingDirection === 'outward' ? 'outward' : 'inward'}
+                      onChange={(val) => useRoomStore.getState().updateOpening('door', door.id, { swingDirection: val }, true)}
+                      options={SWING_OPTIONS}
+                      title="Door swing direction"
+                      menuAlign="right"
+                    />
+                  </div>
                 </div>
               </div>
             ))}

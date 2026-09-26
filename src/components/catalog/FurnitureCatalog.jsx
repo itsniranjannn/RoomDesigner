@@ -43,18 +43,21 @@ export function FurnitureCatalog() {
   return (
     <aside className={styles.catalogRail} aria-label="Furniture catalog">
       <div className={styles.catalogHeader}>
-        <div>
-          <h2 className={styles.title}>Catalog</h2>
-          <span className={styles.itemCount}>{FURNITURE_CATALOG.length} pieces</span>
+        <div className={styles.catalogHeaderTop}>
+          <div className={styles.catalogFolioTag}>FOLIO // SPECIMENS</div>
+          <button
+            type="button"
+            className={styles.toggleAllBtn}
+            onClick={toggleAll}
+            title={allOpen ? 'Collapse all categories' : 'Expand all categories'}
+          >
+            {allOpen ? 'Collapse all' : 'Expand all'}
+          </button>
         </div>
-        <button
-          type="button"
-          className={styles.toggleAllBtn}
-          onClick={toggleAll}
-          title={allOpen ? 'Collapse all categories' : 'Expand all categories'}
-        >
-          {allOpen ? 'Collapse all' : 'Expand all'}
-        </button>
+        <div className={styles.catalogHeaderTitleRow}>
+          <h2 className={styles.title}>Material Library</h2>
+          <span className={styles.itemCount}>{FURNITURE_CATALOG.length} SPECIFICATIONS</span>
+        </div>
       </div>
 
       <div className={styles.scrollList}>

@@ -1,0 +1,130 @@
+.selectContainer {
+  position: relative;
+  width: 100%;
+}
+
+.triggerBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background-color: #FAF7F0; /* Clean architectural bone linen */
+  border: 1px solid var(--color-taupe);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-ink);
+  cursor: pointer;
+  outline: none;
+  transition: all var(--transition-fast);
+  text-align: left;
+  box-shadow: 0 1px 2px rgba(26, 22, 21, 0.04);
+}
+
+.triggerBtn:hover {
+  background-color: #FFFFFF;
+  border-color: var(--color-clay);
+  box-shadow: 0 2px 4px rgba(139, 38, 53, 0.08);
+}
+
+.triggerBtn:focus-visible,
+.triggerActive {
+  border-color: var(--color-clay);
+  box-shadow: 0 0 0 1.5px var(--color-clay);
+  background-color: #FFFFFF;
+}
+
+.triggerLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  letter-spacing: -0.01em;
+}
+
+.chevron {
+  display: flex;
+  align-items: center;
+  color: var(--color-clay);
+  transition: transform var(--transition-fast);
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.dropdownMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 165px;
+  background-color: #FAF7F0;
+  border: 1px solid var(--color-taupe);
+  border-radius: var(--radius-sm);
+  box-shadow: 0 8px 24px rgba(26, 22, 21, 0.16), 0 2px 6px rgba(26, 22, 21, 0.08);
+  padding: 4px;
+  margin: 0;
+  list-style: none;
+  z-index: 500;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.optionItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: 6px 10px;
+  border-radius: 3px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--color-ink);
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.optionItem:hover {
+  background-color: var(--color-linen-surface);
+  color: var(--color-clay);
+}
+
+.optionSelected {
+  background-color: var(--color-maroon-subtle);
+  color: var(--color-maroon);
+  font-weight: 600;
+}
+
+.optionLabel {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.checkIcon {
+  display: flex;
+  align-items: center;
+  color: var(--color-maroon);
+  flex-shrink: 0;
+}
+
+.compact .triggerBtn {
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.menuAlignRight {
+  left: auto;
+  right: 0;
+}
+
+.triggerBtn {
+  min-width: 0;
+}
