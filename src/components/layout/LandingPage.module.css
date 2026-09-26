@@ -88,28 +88,35 @@
   outline-offset: 2px;
 }
 
+.headerMeta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.08em;
+}
+
 .headerMetaDivider {
   color: var(--color-taupe);
   font-size: 11px;
 }
 
-.sheetsTriggerBtn {
+.headerCountBtn {
   background: none;
   border: 1px solid transparent;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 3px 6px;
   border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
   display: flex;
   align-items: center;
 }
 
-.sheetsTriggerBtn:hover {
+.headerCountBtn:hover {
   background-color: var(--color-linen-surface);
   border-color: var(--color-taupe);
 }
 
-.sheetsTriggerBtn:focus-visible {
+.headerCountBtn:focus-visible {
   outline: 2px solid var(--color-clay);
   outline-offset: 1px;
 }
@@ -122,24 +129,27 @@
   letter-spacing: 0.08em;
 }
 
-/* ═══════════ CENTERED HERO SECTION ═══════════ */
+/* ═══════════ HERO SECTION (Matches Reference Image) ═══════════ */
 .heroSection {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: var(--space-10) var(--space-6) var(--space-8);
+  display: grid;
+  grid-template-columns: 44% 56%;
+  height: calc(100vh - var(--topbar-height));
+  min-height: 600px;
   width: 100%;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-taupe);
 }
 
-.heroContent {
+/* Left: Copy Column */
+.heroCopyColumn {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  max-width: 820px;
-  width: 100%;
+  justify-content: center;
+  padding: var(--space-10) var(--space-8) var(--space-10) var(--space-10);
   gap: var(--space-4);
+  border-right: 1px solid var(--color-taupe);
+  background-color: var(--color-linen);
+  height: 100%;
 }
 
 .heroClassificationTag {
@@ -148,32 +158,33 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   color: var(--color-maroon);
-  padding: 4px 12px;
+  padding: 4px 10px;
   border: 1px solid rgba(139, 38, 53, 0.35);
   background-color: rgba(139, 38, 53, 0.04);
   border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: var(--space-2);
 }
 
 .heroPrimaryTitle {
   font-family: var(--font-serif);
-  font-size: clamp(2.4rem, 4.5vw, 3.8rem);
+  font-size: clamp(2.3rem, 4vw, 3.6rem);
   font-weight: 700;
-  line-height: 1.08;
+  line-height: 1.06;
   color: var(--color-ink);
   letter-spacing: -0.02em;
   margin: 0;
-  max-width: 680px;
 }
 
 .heroSecondaryTitle {
   font-family: var(--font-serif);
-  font-size: clamp(1.1rem, 1.8vw, 1.35rem);
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
   font-weight: 400;
   font-style: italic;
   color: var(--color-ink-muted);
   line-height: 1.35;
   margin: 0;
-  max-width: 600px;
 }
 
 .heroDescription {
@@ -181,87 +192,73 @@
   font-size: var(--text-sm);
   color: var(--color-ink-muted);
   line-height: 1.6;
-  max-width: 540px;
-  margin: 0;
-}
-
-.heroActionRow {
-  display: flex;
-  justify-content: center;
-  margin-top: var(--space-2);
-  margin-bottom: var(--space-6);
+  max-width: 440px;
+  margin: var(--space-1) 0 0 0;
 }
 
 .heroCtaBtn {
-  box-shadow: 0 2px 8px rgba(139, 38, 53, 0.18);
+  align-self: flex-start;
+  margin-top: var(--space-2);
 }
 
-/* ═══════════ FRAMED ARCHITECTURAL DRAWING PLATE ═══════════ */
-.drawingPlateWrapper {
-  width: 100%;
-  max-width: 760px;
-  display: flex;
-  justify-content: center;
-}
-
-.drawingPlateFrame {
-  width: 100%;
-  background-color: #FAF7F0;
-  border: 1px solid var(--color-taupe);
-  border-radius: var(--radius-sm);
-  box-shadow: 0 4px 20px rgba(28, 26, 23, 0.08);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.plateHeader {
+/* Subtle architectural indicator */
+.scrollIndicator {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 8px 16px;
-  background-color: var(--color-linen-surface);
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-6);
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.plateClassification {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--color-clay);
+.scrollIndicator::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background-color: var(--color-taupe);
+  transition: width var(--transition-fast), background-color var(--transition-fast);
 }
 
-.plateScale {
+.scrollIndicator:hover::before {
+  width: 32px;
+  background-color: var(--color-maroon);
+}
+
+.scrollIndicatorText {
   font-family: var(--font-mono);
   font-size: 9px;
-  letter-spacing: 0.1em;
+  font-weight: 600;
+  letter-spacing: 0.14em;
   color: var(--color-ink-muted);
+  transition: color var(--transition-fast);
 }
 
-.brassRule {
-  width: 100%;
-  height: 2px;
-  background-color: var(--color-brass);
+.scrollIndicator:hover .scrollIndicatorText {
+  color: var(--color-maroon);
 }
 
-.plateCanvas {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  max-height: 480px;
+/* Right: Visual Column */
+.heroVisualColumn {
   position: relative;
-  background-color: var(--color-linen);
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  background-color: var(--color-linen);
+  height: 100%;
+  padding: 24px 28px;
 }
 
+/* DraftingBoardSurface container */
 .draftingSurface {
   width: 100%;
   height: 100%;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .svgDraftingBoard {
@@ -272,6 +269,177 @@
   display: block;
 }
 
+/* ═══════════ YOUR SPACES SECTION ═══════════ */
+.yourSpacesSection {
+  padding: var(--space-8) var(--space-10);
+  background-color: var(--color-linen);
+  min-height: 240px;
+}
+
+.spacesHeader {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  max-width: 820px;
+}
+
+.spacesHeaderTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.spacesFolioTag {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-ink);
+}
+
+.spacesCountTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--color-ink-muted);
+}
+
+/* Patan Brass Structural Rule Line */
+.brassRule {
+  width: 100%;
+  height: 2px;
+  background-color: var(--color-brass);
+  margin: 4px 0 0 0;
+}
+
+.spacesContent {
+  width: 100%;
+  max-width: 820px;
+}
+
+.spacesGrid {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Space cards */
+.spaceCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px var(--space-5);
+  border-bottom: 1px solid var(--color-taupe-light);
+  border-left: 3px solid transparent;
+  background-color: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), border-left-color var(--transition-fast);
+}
+
+.spaceCard:hover {
+  background-color: var(--color-linen-surface);
+  border-left-color: var(--color-maroon);
+}
+
+.spaceCard:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: -2px;
+}
+
+.spaceCardLeft {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sheetCodeTag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-clay);
+  text-transform: uppercase;
+}
+
+.spaceCardName {
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-ink);
+  line-height: 1.2;
+}
+
+.cadMatrixRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 1px;
+}
+
+.cadDimBadge,
+.cadAreaBadge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+}
+
+.cadDotDivider {
+  color: var(--color-taupe);
+  font-size: 9px;
+}
+
+.spaceCardRight {
+  display: flex;
+  align-items: center;
+}
+
+.itemCountBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+  background-color: var(--color-linen-surface);
+  border: 1px solid var(--color-taupe-light);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+}
+
+/* Empty State */
+.spacesEmpty {
+  padding: var(--space-8) 0;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  background-color: var(--color-linen-surface);
+  border: 1px dashed var(--color-taupe);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
+}
+
+.spacesEmptyTitle {
+  font-family: var(--font-serif);
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-ink);
+  margin: 0;
+}
+
+.spacesEmptyText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  line-height: 1.5;
+  margin: 0;
+  max-width: 320px;
+}
+
 /* ═══════════ COLOPHON ═══════════ */
 .colophon {
   flex-shrink: 0;
@@ -279,7 +447,7 @@
   flex-direction: column;
   align-items: center;
   padding: 12px 0 16px 0;
-  margin-top: var(--space-8);
+  margin-top: auto;
 }
 
 .colophonRule {
@@ -289,6 +457,7 @@
   margin-bottom: 10px;
 }
 
+/* NIRANJAN — classification mark */
 .colophonMark {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -298,12 +467,39 @@
 }
 
 /* ═══════════ RESPONSIVE ═══════════ */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   .heroSection {
-    padding: var(--space-6) var(--space-4) var(--space-6);
+    grid-template-columns: 46% 54%;
   }
 
-  .plateCanvas {
-    aspect-ratio: 4 / 3;
+  .heroCopyColumn {
+    padding: var(--space-8) var(--space-6);
+  }
+
+  .yourSpacesSection {
+    padding: var(--space-8) var(--space-6);
+  }
+}
+
+@media (max-width: 820px) {
+  .heroSection {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .heroCopyColumn {
+    padding: var(--space-8) var(--space-5);
+    border-right: none;
+    border-bottom: 1px solid var(--color-taupe);
+  }
+
+  .heroVisualColumn {
+    height: 52vh;
+    min-height: 380px;
+    padding: var(--space-4);
+  }
+
+  .yourSpacesSection {
+    padding: var(--space-6) var(--space-5);
   }
 }
