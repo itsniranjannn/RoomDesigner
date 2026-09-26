@@ -279,18 +279,15 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
             <>
               <button
                 type="button"
-                className={styles.aboutLinkBtn}
+                className={styles.headerCountBtn}
                 onClick={onNavigateAbout}
                 title="View About Room Studio"
               >
-                ABOUT
+                <span className={styles.headerCount}>ABOUT</span>
               </button>
               <span className={styles.headerMetaDivider}>|</span>
             </>
           )}
-
-          <span className={styles.headerMeta}>FOLIO ARCHIVE // EDITION 2026</span>
-          <span className={styles.headerMetaDivider}>|</span>
 
           {/* Interactive clickable sheets count button */}
           <button
@@ -311,32 +308,34 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
       <main className={styles.heroSection}>
         {/* Left: Copy Column */}
         <div className={styles.heroCopyColumn}>
-          <div className={styles.heroClassificationTag}>
-            ARCHITECTURAL FOLIO // ED. 2026
+          <div className={styles.heroCopyContent}>
+            <div className={styles.heroClassificationTag}>
+              ARCHITECTURAL FOLIO // ED. 2026
+            </div>
+
+            <h1 className={styles.heroPrimaryTitle}>
+              Draft your space<br />with precision.
+            </h1>
+
+            <p className={styles.heroSecondaryTitle}>
+              From dimensional sketch to 3D architectural form.
+            </p>
+
+            <p className={styles.heroDescription}>
+              Intuitive 2D drafting and real-time 3D spatial modeling built on authentic architectural
+              materials and Nepalese craft traditions.
+            </p>
+
+            <Button
+              variant="primary"
+              size="normal"
+              icon={<Plus size={14} />}
+              onClick={onOpenNewRoomModal}
+              className={styles.heroCtaBtn}
+            >
+              Start a new room
+            </Button>
           </div>
-
-          <h1 className={styles.heroPrimaryTitle}>
-            Draft your space<br />with precision.
-          </h1>
-
-          <p className={styles.heroSecondaryTitle}>
-            From dimensional sketch to 3D architectural form.
-          </p>
-
-          <p className={styles.heroDescription}>
-            Intuitive 2D drafting and real-time 3D spatial modeling built on authentic architectural
-            materials and Nepalese craft traditions.
-          </p>
-
-          <Button
-            variant="primary"
-            size="normal"
-            icon={<Plus size={14} />}
-            onClick={onOpenNewRoomModal}
-            className={styles.heroCtaBtn}
-          >
-            Start a new room
-          </Button>
 
           {/* Clickable trigger to open the slide-out sheets panel directly */}
           <button
@@ -356,9 +355,8 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
         </div>
       </main>
 
-      {/* Minimal Architectural Colophon */}
+      {/* Minimal Architectural Colophon shifted to bottom-right corner */}
       <footer className={styles.colophon}>
-        <div className={styles.colophonRule} />
         <span className={styles.colophonMark}>NIRANJAN</span>
       </footer>
 
