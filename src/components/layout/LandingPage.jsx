@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
-import { Plus } from 'lucide-react';
+import { Info, Layers3, Plus } from 'lucide-react';
 import { BrandMark } from '../common/BrandMark.jsx';
 import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './LandingPage.module.css';
@@ -150,11 +150,11 @@ function DraftingBoardSurface() {
         <line x1={doorX} y1={doorY} x2={doorX} y2={doorY - doorW} stroke="var(--color-ink)" strokeWidth="2" />
 
         {/* Architectural Placed Furniture Group */}
-        <g opacity="0.9">
-          {/* Queen Bed */}
+        <g opacity="0.78" className={styles.bedFurniture}>
+          {/* Queen Bed, kept close to the upper-left walls */}
           <rect
-            x={paddingX + 60}
-            y={paddingY + 60}
+            x={paddingX + 45}
+            y={paddingY + 40}
             width={160}
             height={200}
             fill="#F0EDE6"
@@ -162,14 +162,14 @@ function DraftingBoardSurface() {
             strokeWidth="1.5"
             rx="2"
           />
-          <rect x={paddingX + 70} y={paddingY + 70} width={60} height={35} fill="none" stroke="var(--color-ink-muted)" strokeWidth="1" rx="2" />
-          <rect x={paddingX + 150} y={paddingY + 70} width={60} height={35} fill="none" stroke="var(--color-ink-muted)" strokeWidth="1" rx="2" />
-          <line x1={paddingX + 60} y1={paddingY + 130} x2={paddingX + 220} y2={paddingY + 130} stroke="var(--color-ink-muted)" strokeWidth="1" strokeDasharray="3 3" />
+          <rect x={paddingX + 55} y={paddingY + 50} width={60} height={35} fill="none" stroke="var(--color-ink-muted)" strokeWidth="1" rx="2" />
+          <rect x={paddingX + 135} y={paddingY + 50} width={60} height={35} fill="none" stroke="var(--color-ink-muted)" strokeWidth="1" rx="2" />
+          <line x1={paddingX + 45} y1={paddingY + 110} x2={paddingX + 205} y2={paddingY + 110} stroke="var(--color-ink-muted)" strokeWidth="1" strokeDasharray="3 3" />
 
-          {/* Nightstand */}
+          {/* Nightstand, tucked beside the bed */}
           <rect
-            x={paddingX + 235}
-            y={paddingY + 60}
+            x={paddingX + 215}
+            y={paddingY + 40}
             width={45}
             height={45}
             fill="#F0EDE6"
@@ -177,10 +177,10 @@ function DraftingBoardSurface() {
             strokeWidth="1.5"
           />
 
-          {/* Executive Drafting Desk */}
+          {/* Executive drafting desk, pulled toward the right wall */}
           <rect
-            x={paddingX + 350}
-            y={paddingY + 180}
+            x={paddingX + 365}
+            y={paddingY + 175}
             width={140}
             height={70}
             fill="#F0EDE6"
@@ -188,14 +188,14 @@ function DraftingBoardSurface() {
             strokeWidth="1.5"
             rx="2"
           />
-          {/* Swivel Chair */}
-          <circle cx={paddingX + 420} cy={paddingY + 280} r={18} fill="none" stroke="var(--color-ink)" strokeWidth="1.5" />
+          {/* Swivel Chair, kept close to the lower-right side */}
+          <circle cx={paddingX + 442} cy={paddingY + 270} r={18} fill="none" stroke="var(--color-ink)" strokeWidth="1.5" />
 
           {/* Nepali Galaicha Rug */}
           <g>
             <rect
               x={paddingX + 220}
-              y={paddingY + 190}
+              y={paddingY + 215}
               width={135}
               height={170}
               fill="rgba(178, 93, 52, 0.05)"
@@ -269,6 +269,7 @@ function DraftingBoardSurface() {
 export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
   const allRooms = useRoomStore((state) => state.allRooms);
   const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
+  const prefersReducedMotion = useReducedMotion();
 
   return (
     <div className={styles.landingContainer}>
@@ -282,47 +283,54 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
           </div>
         </div>
 
-        <div className={styles.headerMetaBlock}>
+        <nav className={styles.headerMetaBlock} aria-label="Studio navigation">
           {onNavigateAbout && (
             <>
               <button
                 type="button"
-                className={styles.aboutLinkBtn}
+                className={styles.headerNavBtn}
                 onClick={onNavigateAbout}
                 title="View About Room Designer Studio"
               >
+                <Info size={13} strokeWidth={1.7} />
                 ABOUT
               </button>
-              <span className={styles.headerMetaDivider}>|</span>
+              <span className={styles.headerMetaDivider} aria-hidden="true" />
             </>
           )}
 
           {/* Interactive clickable sheets count button */}
           <button
             type="button"
-            className={styles.headerCountBtn}
+            className={`${styles.headerNavBtn} ${styles.headerSheetsBtn}`}
             onClick={() => setIsSheetsPanelOpen(true)}
             title="Open saved sheets panel"
             aria-label="Open saved sheets panel"
           >
-            <span className={styles.headerCount}>
-              {allRooms.length} {allRooms.length === 1 ? 'SHEET' : 'SHEETS'}
-            </span>
+            <Layers3 size={13} strokeWidth={1.7} />
+            <span className={styles.headerSheetsLabel}>SHEETS</span>
+            <span className={styles.headerSheetsCount}>{String(allRooms.length).padStart(2, '0')}</span>
           </button>
-        </div>
+        </nav>
       </header>
 
       {/* Main Single-Screen Hero Viewport — Exact layout as image */}
       <main className={styles.heroSection}>
         {/* Left: Copy Column */}
         <div className={styles.heroCopyColumn}>
+          <div className={styles.heroCopyContent}>
           <div className={styles.heroClassificationTag}>
             ARCHITECTURAL FOLIO // ED. 2026
           </div>
 
-          <h1 className={styles.heroPrimaryTitle}>
+          <motion.h1
+            className={styles.heroPrimaryTitle}
+            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.88, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.75, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+          >
             Draft your space<br />with precision.
-          </h1>
+          </motion.h1>
 
           <p className={styles.heroSecondaryTitle}>
             From dimensional sketch to 3D architectural form.
@@ -333,15 +341,22 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
             materials and Nepalese craft traditions.
           </p>
 
-          <Button
-            variant="primary"
-            size="normal"
-            icon={<Plus size={14} />}
-            onClick={onOpenNewRoomModal}
+          <motion.div
             className={styles.heroCtaBtn}
+            initial={prefersReducedMotion ? false : { opacity: 0, scale: 0.92, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.55, delay: 0.42, ease: [0.22, 1, 0.36, 1] }}
           >
-            Start a new room
-          </Button>
+            <Button
+              variant="primary"
+              size="normal"
+              icon={<Plus size={14} />}
+              onClick={onOpenNewRoomModal}
+            >
+              Start a new room
+            </Button>
+          </motion.div>
+          </div>
 
           {/* Clickable trigger to open the slide-out sheets panel directly */}
           <button

@@ -286,8 +286,20 @@ export const useRoomStore = create((set, get) => ({
     const offsetX = (count % 4) * 20 - 30;
     const offsetY = ((count * 2) % 5) * 15 - 30;
 
-    let targetX = customX !== null ? customX : Math.round(room.widthCm / 2 + offsetX);
-    let targetY = customY !== null ? customY : Math.round(room.depthCm / 2 + offsetY);
+    const stackBase = catalogDef.stackableOn
+      ?.map((baseId) => (room.placedFurniture || []).find((item) => item.furnitureTypeId === baseId))
+      .find(Boolean);
+    const stackBaseDef = stackBase ? getFurnitureType(stackBase.furnitureTypeId) : null;
+    let targetX = customX !== null
+      ? customX
+      : stackBase
+        ? stackBase.x
+        : Math.round(room.widthCm / 2 + offsetX);
+    let targetY = customY !== null
+      ? customY
+      : stackBase
+        ? stackBase.y
+        : Math.round(room.depthCm / 2 + offsetY);
 
     // Strictly clamp within room boundaries
     const clamped = clampInsideRoom(
@@ -308,9 +320,17 @@ export const useRoomStore = create((set, get) => ({
       x: clamped.x,
       y: clamped.y,
       rotationDeg: 0,
+      elevationCm: stackBaseDef ? stackBaseDef.heightCm : 0,
     };
 
-    const updatedFurniture = [...(room.placedFurniture || []), newItem];
+    let updatedFurniture = [...(room.placedFurniture || []), newItem];
+    if (catalogDef.id === 'media-console') {
+      updatedFurniture = updatedFurniture.map((item) => (
+        item.furnitureTypeId === 'tv-43'
+          ? { ...item, x: clamped.x, y: clamped.y, elevationCm: catalogDef.heightCm }
+          : item
+      ));
+    }
     get()._commitFurnitureUpdate(updatedFurniture, newItem.id);
   },
 
@@ -796,4 +816,3 @@ export const useRoomStore = create((set, get) => ({
     }, 350);
   },
 }));
-

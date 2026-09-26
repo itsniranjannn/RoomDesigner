@@ -31,6 +31,7 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
   const cushionColor = def.cushionColor || def.color;
   const legColor = def.legColor || '#242321';
   const handleColor = def.handleColor || '#C4A869';
+  const subColor = def.subColor || '#D4A359';
 
   const render3DModel = () => {
     switch (def.shapeType) {
@@ -1419,8 +1420,69 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
       }
 
       // ==========================================
-      // NEPALI HOUSEHOLD PIECES (6 items)
+      // NEPALI HOUSEHOLD PIECES
       // ==========================================
+      case 'nepali-dhaka-rug': {
+        const tile = 0.28;
+        const cols = Math.max(4, Math.floor(widthM / tile));
+        const rows = Math.max(4, Math.floor(depthM / tile));
+        return (
+          <group>
+            <mesh position={[0, heightM / 2, 0]} receiveShadow>
+              <boxGeometry args={[widthM, heightM, depthM]} />
+              <meshStandardMaterial color={mainColor} roughness={0.95} />
+            </mesh>
+            {Array.from({ length: cols * rows }).map((_, i) => (
+              <mesh key={i} position={[(i % cols + 0.5) * widthM / cols - widthM / 2, heightM + 0.002, (Math.floor(i / cols) + 0.5) * depthM / rows - depthM / 2]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+                <planeGeometry args={[0.12, 0.12]} />
+                <meshStandardMaterial color={i % 2 ? accentColor : subColor} roughness={0.9} />
+              </mesh>
+            ))}
+          </group>
+        );
+      }
+
+      case 'nepali-chowki': {
+        return (
+          <group>
+            <mesh position={[0, heightM - 0.05, 0]} castShadow receiveShadow><boxGeometry args={[widthM, 0.1, depthM]} /><meshStandardMaterial color={mainColor} roughness={0.65} /></mesh>
+            {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([x, z], i) => <mesh key={i} position={[x * (widthM / 2 - 0.07), (heightM - 0.1) / 2, z * (depthM / 2 - 0.07)]} castShadow><boxGeometry args={[0.07, heightM - 0.1, 0.07]} /><meshStandardMaterial color={mainColor} roughness={0.7} /></mesh>)}
+            <mesh position={[0, heightM + 0.003, 0]} receiveShadow><boxGeometry args={[widthM * 0.72, 0.015, depthM * 0.58]} /><meshStandardMaterial color={accentColor} roughness={0.55} /></mesh>
+          </group>
+        );
+      }
+
+      case 'nepali-patuka-chest': {
+        return (
+          <group>
+            <mesh position={[0, heightM / 2, 0]} castShadow receiveShadow><boxGeometry args={[widthM, heightM, depthM]} /><meshStandardMaterial color={mainColor} roughness={0.7} /></mesh>
+            <mesh position={[0, heightM + 0.012, 0]} castShadow><boxGeometry args={[widthM * 1.02, 0.04, depthM * 1.02]} /><meshStandardMaterial color={subColor} roughness={0.65} /></mesh>
+            <mesh position={[0, heightM * 0.55, depthM / 2 + 0.006]} castShadow><boxGeometry args={[0.025, heightM * 0.5, 0.01]} /><meshStandardMaterial color={accentColor} metalness={0.6} roughness={0.35} /></mesh>
+            <mesh position={[0, heightM * 0.53, depthM / 2 + 0.012]} castShadow><sphereGeometry args={[0.035, 12, 8]} /><meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.3} /></mesh>
+          </group>
+        );
+      }
+
+      case 'nepali-brass-diya': {
+        return (
+          <group>
+            <mesh position={[0, 0.035, 0]} castShadow><cylinderGeometry args={[widthM * 0.42, widthM * 0.5, 0.07, 24]} /><meshStandardMaterial color={mainColor} metalness={0.8} roughness={0.28} /></mesh>
+            <mesh position={[0, 0.1, 0]} castShadow><cylinderGeometry args={[widthM * 0.12, widthM * 0.18, heightM * 0.45, 16]} /><meshStandardMaterial color={mainColor} metalness={0.8} roughness={0.28} /></mesh>
+            <mesh position={[0, heightM * 0.35, 0]} castShadow><sphereGeometry args={[widthM * 0.2, 16, 8]} /><meshStandardMaterial color={mainColor} metalness={0.85} roughness={0.25} /></mesh>
+            <mesh position={[0.02, heightM * 0.62, 0]} castShadow><coneGeometry args={[0.05, 0.12, 12]} /><meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={0.4} /></mesh>
+          </group>
+        );
+      }
+
+      case 'tv': {
+        return (
+          <group>
+            <mesh position={[0, heightM * 0.41, 0]} castShadow receiveShadow><boxGeometry args={[widthM, heightM * 0.82, 0.06]} /><meshStandardMaterial color={mainColor} roughness={0.3} /></mesh>
+            <mesh position={[0, heightM * 0.41, 0.035]}><boxGeometry args={[widthM * 0.92, heightM * 0.7, 0.008]} /><meshStandardMaterial color="#243A4C" roughness={0.2} metalness={0.1} /></mesh>
+            <mesh position={[0, 0.02, 0]} castShadow><boxGeometry args={[widthM * 0.28, 0.04, 0.16]} /><meshStandardMaterial color={mainColor} roughness={0.4} /></mesh>
+          </group>
+        );
+      }
       case 'nepali-pirka': {
         // Traditional low Sal wood stool with carved plank top & twin angled cleats
         const plankH = 0.035;
@@ -1754,7 +1816,7 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isC
   };
 
   return (
-    <group position={[posX, 0, posZ]} rotation={[0, rotY, 0]}>
+    <group position={[posX, (item.elevationCm || 0) / 100, posZ]} rotation={[0, rotY, 0]}>
       {render3DModel()}
 
       {/* Subtle floor-level selection halo in 3D (Himalayan Indigo) */}

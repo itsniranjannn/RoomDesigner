@@ -1151,8 +1151,54 @@ export function ArchitecturalSilhouette({ item, widthCm, depthCm, isSwatch = fal
     }
 
     // ==========================================
-    // NEPALI HOUSEHOLD PIECES (6 items)
+    // NEPALI HOUSEHOLD PIECES
     // ==========================================
+    case 'nepali-dhaka-rug': {
+      const cols = Math.max(4, Math.floor(widthCm / 28));
+      const rows = Math.max(4, Math.floor(depthCm / 28));
+      return (
+        <g>
+          <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke={accentColor} strokeWidth="2" />
+          {Array.from({ length: cols * rows }).map((_, i) => {
+            const x = -hw + ((i % cols) + 0.5) * (widthCm / cols);
+            const y = -hd + (Math.floor(i / cols) + 0.5) * (depthCm / rows);
+            return <path key={i} d={`M ${x - 6} ${y} L ${x} ${y - 6} L ${x + 6} ${y} L ${x} ${y + 6} Z`} fill={i % 2 ? subColor : accentColor} opacity="0.9" />;
+          })}
+          <rect x={-hw + 5} y={-hd + 5} width={widthCm - 10} height={depthCm - 10} fill="none" stroke={subColor} strokeWidth="2" />
+        </g>
+      );
+    }
+
+    case 'nepali-chowki': {
+      return (
+        <g>
+          <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke="#1A1615" strokeWidth="1.5" />
+          <rect x={-hw + 5} y={-hd + 5} width={widthCm - 10} height={depthCm - 10} fill="none" stroke={accentColor} strokeWidth="1.5" />
+          <path d={`M ${-hw + 8} 0 Q 0 ${-hd + 8} ${hw - 8} 0 Q 0 ${hd - 8} ${-hw + 8} 0`} fill="none" stroke={accentColor} strokeWidth="1" />
+          {[[-hw + 7, -hd + 7], [hw - 7, -hd + 7], [-hw + 7, hd - 7], [hw - 7, hd - 7]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={3} fill={accentColor} />)}
+        </g>
+      );
+    }
+
+    case 'nepali-patuka-chest': {
+      return (
+        <g>
+          <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke="#1A1615" strokeWidth="1.5" />
+          <rect x={-hw + 5} y={-hd + 5} width={widthCm - 10} height={depthCm - 10} fill={subColor} stroke={accentColor} strokeWidth="1" />
+          <line x1={0} y1={-hd + 6} x2={0} y2={hd - 6} stroke={accentColor} strokeWidth="1.5" />
+          <circle cx={0} cy={0} r={4} fill={accentColor} />
+          <path d={`M ${-hw + 8} ${-hd + 8} H ${hw - 8} M ${-hw + 8} ${hd - 8} H ${hw - 8}`} stroke={accentColor} strokeWidth="1" />
+        </g>
+      );
+    }
+
+    case 'nepali-brass-diya': {
+      return <g><circle cx={0} cy={0} r={hw * 0.8} fill={color} stroke="#806222" strokeWidth="1.4" /><circle cx={0} cy={0} r={hw * 0.45} fill={accentColor} /><path d={`M 0 ${-hd * 0.15} Q ${hw * 0.9} ${-hd * 0.65} ${hw * 0.65} ${-hd * 0.85}`} fill="none" stroke="#806222" strokeWidth="2" /><path d={`M ${hw * 0.55} ${-hd * 0.65} q 5 -8 10 0 q -5 10 -10 0`} fill={accentColor} /></g>;
+    }
+
+    case 'tv': {
+      return <g><rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} stroke="#080909" strokeWidth="1.2" /><rect x={-hw + 5} y={-hd + 3} width={widthCm - 10} height={depthCm - 7} fill="#293B4A" stroke={subColor} strokeWidth="1" /><line x1={0} y1={hd} x2={0} y2={hd + 7} stroke="#080909" strokeWidth="2" /><line x1={-12} y1={hd + 7} x2={12} y2={hd + 7} stroke="#080909" strokeWidth="2" /></g>;
+    }
     case 'nepali-pirka': {
       // Traditional low wooden stool with finger slot and twin end cleats
       const slotW = widthCm * 0.32;
@@ -1510,4 +1556,3 @@ export function ArchitecturalSilhouette({ item, widthCm, depthCm, isSwatch = fal
     }
   }
 }
-

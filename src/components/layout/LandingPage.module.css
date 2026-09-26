@@ -62,80 +62,72 @@
 .headerMetaBlock {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
+  padding: 4px;
+  border: 1px solid var(--color-taupe);
+  border-radius: 999px;
+  background: rgba(237, 230, 217, 0.52);
 }
 
-.aboutLinkBtn {
+.headerNavBtn {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 700;
   color: var(--color-ink-muted);
-  letter-spacing: 0.08em;
-  background: none;
-  border: none;
+  letter-spacing: 0.12em;
+  background: transparent;
+  border: 1px solid transparent;
   cursor: pointer;
-  padding: 4px 6px;
-  border-radius: var(--radius-sm);
-  transition: color var(--transition-fast), background-color var(--transition-fast);
+  padding: 6px 9px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: color var(--transition-fast), background-color var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
 }
 
-.aboutLinkBtn:hover {
-  color: var(--color-ink);
-  background-color: var(--color-linen-surface);
+.headerNavBtn:hover {
+  color: var(--color-maroon);
+  background-color: var(--color-linen);
+  border-color: var(--color-taupe);
+  transform: translateY(-1px);
 }
 
-.aboutLinkBtn:focus-visible {
+.headerNavBtn:focus-visible {
   outline: 2px solid var(--color-clay);
   outline-offset: 2px;
 }
 
-.headerMeta {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-ink-muted);
-  letter-spacing: 0.08em;
+.headerSheetsBtn {
+  color: var(--color-linen);
+  background: var(--color-maroon);
+  border-color: var(--color-maroon);
+}
+
+.headerSheetsBtn:hover {
+  color: var(--color-linen);
+  background: var(--color-maroon-hover);
+  border-color: var(--color-maroon-hover);
+}
+
+.headerSheetsLabel {
+  letter-spacing: 0.14em;
+}
+
+.headerSheetsCount {
+  min-width: 20px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  color: var(--color-maroon);
+  background: var(--color-linen);
+  text-align: center;
+  letter-spacing: 0.04em;
 }
 
 .headerMetaDivider {
-  color: var(--color-taupe);
-  font-size: 11px;
-}
-
-/* Clickable sheets count button with clear hover & focus feedback */
-.headerCountBtn {
-  background: transparent;
-  border: 1px solid transparent;
-  cursor: pointer;
-  padding: 4px 8px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  transition: all var(--transition-fast);
-}
-
-.headerCountBtn:hover {
-  background-color: var(--color-linen-surface);
-  border-color: var(--color-taupe);
-}
-
-.headerCountBtn:focus-visible {
-  outline: 2px solid var(--color-clay);
-  outline-offset: 1px;
-}
-
-.headerCount {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--color-clay);
-  letter-spacing: 0.08em;
-  text-decoration: underline;
-  text-decoration-color: rgba(178, 93, 52, 0.4);
-  text-underline-offset: 3px;
-}
-
-.headerCountBtn:hover .headerCount {
-  color: var(--color-maroon);
-  text-decoration-color: var(--color-maroon);
+  width: 1px;
+  height: 18px;
+  background: var(--color-taupe);
 }
 
 /* ═══════════ HERO SECTION (Matches Reference Image) ═══════════ */
@@ -161,6 +153,14 @@
   height: 100%;
 }
 
+.heroCopyContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  margin: auto 0;
+}
+
 .heroClassificationTag {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -184,6 +184,7 @@
   color: var(--color-ink);
   letter-spacing: -0.02em;
   margin: 0;
+  transform-origin: left center;
 }
 
 .heroSecondaryTitle {
@@ -194,6 +195,8 @@
   color: var(--color-ink-muted);
   line-height: 1.35;
   margin: 0;
+  padding-left: 14px;
+  border-left: 2px solid var(--color-brass);
 }
 
 .heroDescription {
@@ -209,6 +212,7 @@
 .heroCtaBtn {
   align-self: flex-start;
   margin-top: var(--space-2);
+  transform-origin: left center;
 }
 
 /* Explore spaces button at bottom of copy column */
@@ -334,6 +338,19 @@
   transform-origin: center;
 }
 
+.bedFurniture {
+  isolation: isolate;
+}
+
+.bedFurniture rect:first-child {
+  fill: rgba(240, 237, 230, 0.58);
+}
+
+.bedFurniture rect:not(:first-child),
+.bedFurniture line {
+  opacity: 0.7;
+}
+
 /* ═══════════ COLOPHON ═══════════ */
 .colophon {
   flex-shrink: 0;
@@ -396,6 +413,10 @@
 
   .heroCopyColumn {
     padding: var(--space-8) var(--space-6);
+  }
+
+  .heroCopyContent {
+    gap: 12px;
   }
 }
 
