@@ -1,15 +1,15 @@
 .landingContainer {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
   min-height: 100dvh;
   width: 100vw;
   background-color: var(--color-linen);
   color: var(--color-ink);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-/* Minimal Architectural Header */
+/* ═══════════ HEADER ═══════════ */
 .landingHeader {
   height: var(--topbar-height);
   border-bottom: 1px solid var(--color-taupe);
@@ -20,235 +20,291 @@
   background-color: var(--color-linen);
   flex-shrink: 0;
   z-index: 10;
+  position: sticky;
+  top: 0;
 }
 
 .brandLogo {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
-.brandIcon {
-  width: 18px;
-  height: 18px;
-  border: 1.5px solid var(--color-ink);
-  border-radius: var(--radius-sm);
-  position: relative;
+.brandMarkIcon {
+  flex-shrink: 0;
 }
 
-.brandIcon::after {
-  content: '';
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 6px;
-  height: 6px;
-  background-color: var(--color-clay);
+.mastheadLockup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .brandTitle {
   font-family: var(--font-serif);
-  font-size: var(--text-base);
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: 0.1em;
   color: var(--color-ink);
+  line-height: 1.1;
+}
+
+.brandSubTitle {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  color: var(--color-clay);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.headerMetaBlock {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.aboutLinkBtn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.08em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.aboutLinkBtn:hover {
+  color: var(--color-ink);
+  background-color: var(--color-linen-surface);
+}
+
+.aboutLinkBtn:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 2px;
 }
 
 .headerMeta {
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: 11px;
   color: var(--color-ink-muted);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
 }
 
-/* Asymmetric Drafting Board + Ledger Split Layout */
-.boardLayout {
-  display: flex;
-  flex: 1;
+.headerMetaDivider {
+  color: var(--color-taupe);
+  font-size: 11px;
+}
+
+.headerCount {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-clay);
+  letter-spacing: 0.08em;
+}
+
+/* ═══════════ HERO SECTION ═══════════ */
+.heroSection {
+  display: grid;
+  grid-template-columns: 44% 56%;
   height: calc(100vh - var(--topbar-height));
-  overflow: hidden;
-  position: relative;
+  min-height: 600px;
+  width: 100%;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--color-taupe);
 }
 
-/* Left Dominant Hero: Full-Bleed Architectural Drawing Surface */
-.draftingSurface {
-  flex: 1;
-  height: 100%;
-  position: relative;
+/* Left: Copy Column */
+.heroCopyColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-10) var(--space-8) var(--space-10) var(--space-10);
+  gap: var(--space-4);
+  border-right: 1px solid var(--color-taupe);
   background-color: var(--color-linen);
-  overflow: hidden;
+  height: 100%;
+}
+
+.heroClassificationTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--color-maroon);
+  padding: 4px 10px;
+  border: 1px solid rgba(139, 38, 53, 0.35);
+  background-color: rgba(139, 38, 53, 0.04);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-self: flex-start;
+  margin-bottom: var(--space-2);
+}
+
+.heroPrimaryTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(2.3rem, 4vw, 3.6rem);
+  font-weight: 700;
+  line-height: 1.06;
+  color: var(--color-ink);
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.heroSecondaryTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-ink-muted);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.heroDescription {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+  line-height: 1.6;
+  max-width: 440px;
+  margin: var(--space-1) 0 0 0;
+}
+
+.heroCtaBtn {
+  align-self: flex-start;
+  margin-top: var(--space-2);
+}
+
+/* Subtle architectural indicator */
+.scrollIndicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: auto;
+  padding-top: var(--space-6);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.scrollIndicator::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background-color: var(--color-taupe);
+  transition: width var(--transition-fast), background-color var(--transition-fast);
+}
+
+.scrollIndicator:hover::before {
+  width: 32px;
+  background-color: var(--color-maroon);
+}
+
+.scrollIndicatorText {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--color-ink-muted);
+  transition: color var(--transition-fast);
+}
+
+.scrollIndicator:hover .scrollIndicatorText {
+  color: var(--color-maroon);
+}
+
+/* Right: Visual Column */
+.heroVisualColumn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  background-color: var(--color-linen);
+  height: 100%;
+  padding: 24px 28px;
+}
+
+/* DraftingBoardSurface container */
+.draftingSurface {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .svgDraftingBoard {
   width: 100%;
   height: 100%;
+  max-width: 100%;
+  max-height: 100%;
   display: block;
 }
 
-/* Authentic Architectural Drawing Titleblock Seal (Bottom-Left) */
-.titleblock {
-  position: absolute;
-  bottom: var(--space-5);
-  left: var(--space-5);
-  background-color: var(--color-maroon);
-  border: 1.5px solid var(--color-ink);
-  padding: 12px 16px 10px 16px;
-  width: 340px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  z-index: 5;
-  pointer-events: none;
-  box-shadow: 0 4px 14px rgba(26, 22, 21, 0.18);
-}
-
-.titleblockTopRule {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 2.5px;
-  background-color: var(--color-brass);
-}
-
-.titleblockMain {
-  font-family: var(--font-serif);
-  font-size: var(--text-base);
-  font-weight: 700;
-  color: #F6F2EA;
-  letter-spacing: 0.02em;
-}
-
-.titleblockMeta {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: #E5C378; /* High-contrast warm brass gold */
-  letter-spacing: 0.06em;
-  line-height: 1.4;
-  display: flex;
-  gap: var(--space-2);
-  align-items: center;
-  border-top: 1px solid rgba(196, 151, 70, 0.4);
-  padding-top: 6px;
-  margin-top: 2px;
-}
-
-/* Right Pinned Folio / Project Ledger Column */
-.projectLedger {
-  width: 390px;
-  height: 100%;
-  border-left: 1px solid var(--color-taupe);
+/* ═══════════ YOUR SPACES SECTION ═══════════ */
+.yourSpacesSection {
+  padding: var(--space-8) var(--space-10);
   background-color: var(--color-linen);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex-shrink: 0;
-  z-index: 5;
+  min-height: 240px;
 }
 
-.ledgerHeader {
-  padding: var(--space-6) var(--space-6) var(--space-5) var(--space-6);
-  border-bottom: 1px solid var(--color-taupe-light);
+.spacesHeader {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  flex-shrink: 0;
+  margin-bottom: var(--space-5);
+  max-width: 820px;
 }
 
-.ledgerHeaderTop {
+.spacesHeaderTop {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.ledgerFolioTag {
+.spacesFolioTag {
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-maroon);
-  letter-spacing: 0.08em;
+  font-size: 12px;
   font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-ink);
 }
 
-.ledgerArchiveTag {
+.spacesCountTag {
   font-family: var(--font-mono);
   font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   color: var(--color-ink-muted);
-  letter-spacing: 0.04em;
-}
-
-.ledgerTitle {
-  font-family: var(--font-serif);
-  font-size: clamp(1.85rem, 2.6vw, 2.35rem);
-  font-weight: 700;
-  line-height: 1.15;
-  color: var(--color-ink);
-  letter-spacing: -0.02em;
-  margin: 2px 0 0 0;
 }
 
 /* Patan Brass Structural Rule Line */
 .brassRule {
   width: 100%;
-  height: 2.5px;
+  height: 2px;
   background-color: var(--color-brass);
-  margin: 4px 0 6px 0;
+  margin: 4px 0 0 0;
 }
 
-.brassSubRule {
+.spacesContent {
   width: 100%;
-  height: 1.5px;
-  background-color: var(--color-brass);
-  opacity: 0.85;
+  max-width: 820px;
 }
 
-.ledgerSubtitle {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--color-ink-muted);
-  line-height: 1.5;
-  margin: 0;
-}
-
-.ledgerActionBlock {
-  padding: var(--space-4) var(--space-5);
-  border-bottom: 1px solid var(--color-taupe);
-  background-color: var(--color-linen-surface);
-  flex-shrink: 0;
-}
-
-.newRoomBtn {
-  width: 100%;
-}
-
-.ledgerScrollArea {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
+.spacesGrid {
   display: flex;
   flex-direction: column;
 }
 
-.ledgerSubheader {
-  padding: 10px var(--space-5) 6px var(--space-5);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-ink-muted);
-  letter-spacing: 0.04em;
-  border-bottom: 1px solid var(--color-taupe-light);
-  background-color: var(--color-linen-surface);
-}
-
-.ledgerList {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Individual Ledger Row: Plain text architect's ledger row with hairline divider */
-.ledgerRow {
+/* Space cards — hover treatment: tint + left border accent, NO arrows */
+.spaceCard {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -261,56 +317,92 @@
   transition: background-color var(--transition-fast), border-left-color var(--transition-fast);
 }
 
-.ledgerRow:hover {
-  background-color: rgba(28, 26, 23, 0.03);
-  border-left-color: var(--color-clay);
+.spaceCard:hover {
+  background-color: var(--color-linen-surface);
+  border-left-color: var(--color-maroon);
 }
 
-.ledgerRow:focus-visible {
+.spaceCard:focus-visible {
   outline: 2px solid var(--color-clay);
   outline-offset: -2px;
 }
 
-.ledgerRowLeft {
+.spaceCardLeft {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 
-.ledgerRoomName {
+.sheetCodeTag {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--color-clay);
+  text-transform: uppercase;
+}
+
+.spaceCardName {
   font-family: var(--font-serif);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 600;
   color: var(--color-ink);
+  line-height: 1.2;
 }
 
-.ledgerRoomDims {
+.cadMatrixRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 1px;
+}
+
+.cadDimBadge,
+.cadAreaBadge {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--color-ink-muted);
+  letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
 }
 
-.ledgerRowRight {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-ink-muted);
+.cadDotDivider {
+  color: var(--color-taupe);
+  font-size: 9px;
 }
 
-/* Empty State Ledger Notice */
-.ledgerEmpty {
-  padding: var(--space-8) var(--space-5);
+.spaceCardRight {
+  display: flex;
+  align-items: center;
+}
+
+.itemCountBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--color-ink-muted);
+  background-color: var(--color-linen-surface);
+  border: 1px solid var(--color-taupe-light);
+  border-radius: var(--radius-sm);
+  padding: 3px 6px;
+}
+
+/* Empty State */
+.spacesEmpty {
+  padding: var(--space-8) 0;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-3);
+  background-color: var(--color-linen-surface);
+  border: 1px dashed var(--color-taupe);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
 }
 
-.ledgerEmptyTitle {
+.spacesEmptyTitle {
   font-family: var(--font-serif);
   font-size: var(--text-base);
   font-weight: 600;
@@ -318,76 +410,75 @@
   margin: 0;
 }
 
-.ledgerEmptyText {
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
+.spacesEmptyText {
+  font-family: var(--font-mono);
+  font-size: 11px;
   color: var(--color-ink-muted);
   line-height: 1.5;
   margin: 0;
-  max-width: 260px;
+  max-width: 320px;
 }
 
-/* Responsive Breakpoints */
+/* ═══════════ COLOPHON ═══════════ */
+.colophon {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0 16px 0;
+  margin-top: auto;
+}
+
+.colophonRule {
+  width: 100%;
+  height: 1px;
+  background-color: var(--color-taupe);
+  margin-bottom: 10px;
+}
+
+/* NIRANJAN — styled as a classification tag, not a credit line */
+.colophonMark {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--color-brass);
+}
+
+/* ═══════════ RESPONSIVE ═══════════ */
 @media (max-width: 1024px) {
-  .projectLedger {
-    width: 320px;
+  .heroSection {
+    grid-template-columns: 46% 54%;
+  }
+
+  .heroCopyColumn {
+    padding: var(--space-8) var(--space-6);
+  }
+
+  .yourSpacesSection {
+    padding: var(--space-8) var(--space-6);
   }
 }
 
 @media (max-width: 820px) {
-  .landingContainer {
+  .heroSection {
+    grid-template-columns: 1fr;
     height: auto;
-    min-height: 100dvh;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
-  .landingHeader {
-    padding: 0 var(--space-4);
-  }
-
-  .headerMeta {
-    display: none;
-  }
-
-  .boardLayout {
-    flex-direction: column;
-    height: auto;
-    overflow: visible;
-  }
-
-  .draftingSurface {
-    height: 45vh;
-    min-height: 280px;
-    flex-shrink: 0;
+  .heroCopyColumn {
+    padding: var(--space-8) var(--space-5);
+    border-right: none;
     border-bottom: 1px solid var(--color-taupe);
   }
 
-  .projectLedger {
-    width: 100%;
-    height: auto;
-    border-left: none;
-    flex-shrink: 0;
-    padding-bottom: env(safe-area-inset-bottom, var(--space-6));
+  .heroVisualColumn {
+    height: 52vh;
+    min-height: 380px;
+    padding: var(--space-4);
   }
 
-  .ledgerHeader {
-    padding: var(--space-5) var(--space-4) var(--space-3);
-  }
-
-  .ledgerActionBlock {
-    padding: var(--space-3) var(--space-4);
-  }
-
-  .ledgerScrollArea {
-    overflow: visible;
-  }
-
-  .ledgerSubheader {
-    padding: var(--space-2) var(--space-4);
-  }
-
-  .ledgerRow {
-    padding: 14px var(--space-4);
+  .yourSpacesSection {
+    padding: var(--space-6) var(--space-5);
   }
 }

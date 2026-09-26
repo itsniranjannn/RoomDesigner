@@ -3,6 +3,7 @@ import { useRoomStore } from '../../store/roomStore.js';
 import { TopBar } from './TopBar.jsx';
 import { NewRoomModal } from './NewRoomModal.jsx';
 import { LandingPage } from './LandingPage.jsx';
+import { AboutPage } from './AboutPage.jsx';
 import { FurnitureCatalog } from '../catalog/FurnitureCatalog.jsx';
 import { RoomCanvas } from '../canvas/RoomCanvas.jsx';
 import { SelectedItemPanel } from '../inspector/SelectedItemPanel.jsx';
@@ -19,6 +20,7 @@ export function AppShell() {
   const selectedItemId = useRoomStore((state) => state.selectedItemId);
 
   const [isNewRoomModalOpen, setIsNewRoomModalOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState('main'); // 'main' | 'about'
 
   // Global Undo / Redo keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y, Cmd+Z, Cmd+Shift+Z)
   useEffect(() => {
@@ -49,10 +51,18 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
+  // Dedicated full-page About View
+  if (currentPage === 'about') {
+    return <AboutPage onBack={() => setCurrentPage('main')} />;
+  }
+
   if (!room) {
     return (
       <>
-        <LandingPage onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)} />
+        <LandingPage
+          onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)}
+          onNavigateAbout={() => setCurrentPage('about')}
+        />
         <NewRoomModal
           isOpen={isNewRoomModalOpen}
           onClose={() => setIsNewRoomModalOpen(false)}
