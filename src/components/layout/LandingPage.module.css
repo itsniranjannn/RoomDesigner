@@ -1,12 +1,12 @@
 .landingContainer {
   display: flex;
   flex-direction: column;
+  height: 100dvh;
   min-height: 100dvh;
   width: 100vw;
   background-color: var(--color-linen);
   color: var(--color-ink);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* ═══════════ HEADER ═══════════ */
@@ -20,8 +20,6 @@
   background-color: var(--color-linen);
   flex-shrink: 0;
   z-index: 10;
-  position: sticky;
-  top: 0;
 }
 
 .brandLogo {
@@ -100,15 +98,16 @@
   font-size: 11px;
 }
 
+/* Clickable sheets count button with clear hover & focus feedback */
 .headerCountBtn {
-  background: none;
+  background: transparent;
   border: 1px solid transparent;
   cursor: pointer;
-  padding: 3px 6px;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
-  transition: all var(--transition-fast);
   display: flex;
   align-items: center;
+  transition: all var(--transition-fast);
 }
 
 .headerCountBtn:hover {
@@ -124,20 +123,28 @@
 .headerCount {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-clay);
   letter-spacing: 0.08em;
+  text-decoration: underline;
+  text-decoration-color: rgba(178, 93, 52, 0.4);
+  text-underline-offset: 3px;
+}
+
+.headerCountBtn:hover .headerCount {
+  color: var(--color-maroon);
+  text-decoration-color: var(--color-maroon);
 }
 
 /* ═══════════ HERO SECTION (Matches Reference Image) ═══════════ */
 .heroSection {
   display: grid;
   grid-template-columns: 44% 56%;
-  height: calc(100vh - var(--topbar-height));
-  min-height: 600px;
+  flex: 1;
+  height: calc(100vh - var(--topbar-height) - 45px);
+  min-height: 0;
   width: 100%;
-  flex-shrink: 0;
-  border-bottom: 1px solid var(--color-taupe);
+  overflow: hidden;
 }
 
 /* Left: Copy Column */
@@ -145,7 +152,7 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: var(--space-10) var(--space-8) var(--space-10) var(--space-10);
+  padding: var(--space-8) var(--space-8) var(--space-8) var(--space-10);
   gap: var(--space-4);
   border-right: 1px solid var(--color-taupe);
   background-color: var(--color-linen);
@@ -201,18 +208,20 @@
   margin-top: var(--space-2);
 }
 
-/* Subtle architectural indicator */
-.scrollIndicator {
+/* Explore spaces button at bottom of copy column */
+.exploreSheetsBtn {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   margin-top: auto;
-  padding-top: var(--space-6);
-  text-decoration: none;
+  padding: var(--space-4) 0 0 0;
+  background: none;
+  border: none;
   cursor: pointer;
+  text-align: left;
 }
 
-.scrollIndicator::before {
+.exploreSheetsBtn::before {
   content: '';
   width: 24px;
   height: 1px;
@@ -220,7 +229,7 @@
   transition: width var(--transition-fast), background-color var(--transition-fast);
 }
 
-.scrollIndicator:hover::before {
+.exploreSheetsBtn:hover::before {
   width: 32px;
   background-color: var(--color-maroon);
 }
@@ -234,7 +243,7 @@
   transition: color var(--transition-fast);
 }
 
-.scrollIndicator:hover .scrollIndicatorText {
+.exploreSheetsBtn:hover .scrollIndicatorText {
   color: var(--color-maroon);
 }
 
@@ -269,192 +278,21 @@
   display: block;
 }
 
-/* ═══════════ YOUR SPACES SECTION ═══════════ */
-.yourSpacesSection {
-  padding: var(--space-8) var(--space-10);
-  background-color: var(--color-linen);
-  min-height: 240px;
-}
-
-.spacesHeader {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin-bottom: var(--space-5);
-  max-width: 820px;
-}
-
-.spacesHeaderTop {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.spacesFolioTag {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--color-ink);
-}
-
-.spacesCountTag {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: var(--color-ink-muted);
-}
-
-/* Patan Brass Structural Rule Line */
-.brassRule {
-  width: 100%;
-  height: 2px;
-  background-color: var(--color-brass);
-  margin: 4px 0 0 0;
-}
-
-.spacesContent {
-  width: 100%;
-  max-width: 820px;
-}
-
-.spacesGrid {
-  display: flex;
-  flex-direction: column;
-}
-
-/* Space cards */
-.spaceCard {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px var(--space-5);
-  border-bottom: 1px solid var(--color-taupe-light);
-  border-left: 3px solid transparent;
-  background-color: transparent;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color var(--transition-fast), border-left-color var(--transition-fast);
-}
-
-.spaceCard:hover {
-  background-color: var(--color-linen-surface);
-  border-left-color: var(--color-maroon);
-}
-
-.spaceCard:focus-visible {
-  outline: 2px solid var(--color-clay);
-  outline-offset: -2px;
-}
-
-.spaceCardLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.sheetCodeTag {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  color: var(--color-clay);
-  text-transform: uppercase;
-}
-
-.spaceCardName {
-  font-family: var(--font-serif);
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--color-ink);
-  line-height: 1.2;
-}
-
-.cadMatrixRow {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 1px;
-}
-
-.cadDimBadge,
-.cadAreaBadge {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--color-ink-muted);
-  letter-spacing: 0.04em;
-  font-variant-numeric: tabular-nums;
-}
-
-.cadDotDivider {
-  color: var(--color-taupe);
-  font-size: 9px;
-}
-
-.spaceCardRight {
-  display: flex;
-  align-items: center;
-}
-
-.itemCountBadge {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  color: var(--color-ink-muted);
-  background-color: var(--color-linen-surface);
-  border: 1px solid var(--color-taupe-light);
-  border-radius: var(--radius-sm);
-  padding: 3px 6px;
-}
-
-/* Empty State */
-.spacesEmpty {
-  padding: var(--space-8) 0;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-3);
-  background-color: var(--color-linen-surface);
-  border: 1px dashed var(--color-taupe);
-  border-radius: var(--radius-md);
-  margin-top: var(--space-4);
-}
-
-.spacesEmptyTitle {
-  font-family: var(--font-serif);
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--color-ink);
-  margin: 0;
-}
-
-.spacesEmptyText {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--color-ink-muted);
-  line-height: 1.5;
-  margin: 0;
-  max-width: 320px;
-}
-
 /* ═══════════ COLOPHON ═══════════ */
 .colophon {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 12px 0 16px 0;
-  margin-top: auto;
+  padding: 10px 0 14px 0;
+  background-color: var(--color-linen);
 }
 
 .colophonRule {
   width: 100%;
   height: 1px;
   background-color: var(--color-taupe);
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 /* NIRANJAN — classification mark */
@@ -475,13 +313,15 @@
   .heroCopyColumn {
     padding: var(--space-8) var(--space-6);
   }
-
-  .yourSpacesSection {
-    padding: var(--space-8) var(--space-6);
-  }
 }
 
 @media (max-width: 820px) {
+  .landingContainer {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
   .heroSection {
     grid-template-columns: 1fr;
     height: auto;
@@ -497,9 +337,5 @@
     height: 52vh;
     min-height: 380px;
     padding: var(--space-4);
-  }
-
-  .yourSpacesSection {
-    padding: var(--space-6) var(--space-5);
   }
 }

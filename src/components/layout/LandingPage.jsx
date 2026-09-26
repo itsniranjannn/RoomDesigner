@@ -260,10 +260,7 @@ function DraftingBoardSurface() {
 
 export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
   const allRooms = useRoomStore((state) => state.allRooms);
-  const switchRoom = useRoomStore((state) => state.switchRoom);
   const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
-
-  const hasExistingRooms = allRooms && allRooms.length > 0;
 
   return (
     <div className={styles.landingContainer}>
@@ -295,7 +292,7 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
           <span className={styles.headerMeta}>FOLIO ARCHIVE // EDITION 2026</span>
           <span className={styles.headerMetaDivider}>|</span>
 
-          {/* Clickable sheets count button that opens the slide-out SheetsPanel */}
+          {/* Interactive clickable sheets count button */}
           <button
             type="button"
             className={styles.headerCountBtn}
@@ -310,7 +307,7 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
         </div>
       </header>
 
-      {/* Main Single-Screen Hero Viewport — Exact Layout as uploaded image */}
+      {/* Main Single-Screen Hero Viewport — Exact layout as image */}
       <main className={styles.heroSection}>
         {/* Left: Copy Column */}
         <div className={styles.heroCopyColumn}>
@@ -341,9 +338,16 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
             Start a new room
           </Button>
 
-          <a href="#your-spaces" className={styles.scrollIndicator}>
-            <span className={styles.scrollIndicatorText}>EXPLORE SPACES BELOW</span>
-          </a>
+          {/* Clickable trigger to open the slide-out sheets panel directly */}
+          <button
+            type="button"
+            className={styles.exploreSheetsBtn}
+            onClick={() => setIsSheetsPanelOpen(true)}
+            title="Open saved sheets panel"
+            aria-label="Open saved sheets panel"
+          >
+            <span className={styles.scrollIndicatorText}>EXPLORE SPACES</span>
+          </button>
         </div>
 
         {/* Right: Blueprint Visual */}
@@ -352,73 +356,7 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
         </div>
       </main>
 
-      {/* ═══════════ YOUR SPACES SECTION (Below hero, scroll down) ═══════════ */}
-      <section id="your-spaces" className={styles.yourSpacesSection}>
-        <div className={styles.spacesHeader}>
-          <div className={styles.spacesHeaderTop}>
-            <span className={styles.spacesFolioTag}>YOUR SPACES</span>
-            <span className={styles.spacesCountTag}>
-              {allRooms.length} {allRooms.length === 1 ? 'SHEET' : 'SHEETS'}
-            </span>
-          </div>
-          <div className={styles.brassRule} />
-        </div>
-
-        <div className={styles.spacesContent}>
-          {hasExistingRooms ? (
-            <div className={styles.spacesGrid} role="list">
-              {allRooms.map((r, index) => {
-                const widthM = (r.widthCm / 100).toFixed(2);
-                const depthM = (r.depthCm / 100).toFixed(2);
-                const areaM2 = ((r.widthCm * r.depthCm) / 10000).toFixed(1);
-                const furnitureCount = (r.placedFurniture || []).length;
-                const sheetCode = `SHEET // #0${index + 1}`;
-
-                return (
-                  <div
-                    key={r.id}
-                    role="listitem"
-                    tabIndex={0}
-                    className={styles.spaceCard}
-                    onClick={() => switchRoom(r.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        switchRoom(r.id);
-                      }
-                    }}
-                    aria-label={`Open ${r.name}, ${widthM} by ${depthM} meters, ${furnitureCount} pieces`}
-                  >
-                    <div className={styles.spaceCardLeft}>
-                      <div className={styles.sheetCodeTag}>{sheetCode}</div>
-                      <span className={styles.spaceCardName}>{r.name}</span>
-                      <div className={styles.cadMatrixRow}>
-                        <span className={styles.cadDimBadge}>{widthM} × {depthM}m</span>
-                        <span className={styles.cadDotDivider}>•</span>
-                        <span className={styles.cadAreaBadge}>{areaM2} m²</span>
-                      </div>
-                    </div>
-                    <div className={styles.spaceCardRight}>
-                      <span className={styles.itemCountBadge}>
-                        {furnitureCount} {furnitureCount === 1 ? 'SPEC' : 'SPECS'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className={styles.spacesEmpty}>
-              <h2 className={styles.spacesEmptyTitle}>No spaces yet</h2>
-              <p className={styles.spacesEmptyText}>
-                Click "Start a new room" above to draft your first sheet.
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ═══════════ LANDING PAGE COLOPHON ═══════════ */}
+      {/* Minimal Architectural Colophon */}
       <footer className={styles.colophon}>
         <div className={styles.colophonRule} />
         <span className={styles.colophonMark}>NIRANJAN</span>
