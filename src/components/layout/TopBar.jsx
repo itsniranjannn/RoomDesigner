@@ -13,6 +13,7 @@ import {
   Check,
   X,
   Download,
+  FileJson,
 } from 'lucide-react';
 import { exportRoomPlanAsPNG } from '../../engine/exportPlan.js';
 import styles from './TopBar.module.css';
@@ -102,6 +103,19 @@ export function TopBar({ onOpenNewRoomModal }) {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const handleExportJSON = () => {
+    if (!room) return;
+    setIsMenuOpen(false);
+    const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(room, null, 2));
+    const downloadAnchor = document.createElement('a');
+    const safeRoomName = (room.name || 'Room').replace(/[^a-zA-Z0-9_-]/g, '_');
+    downloadAnchor.setAttribute('href', dataStr);
+    downloadAnchor.setAttribute('download', `${safeRoomName}-backup.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
   };
 
   if (!room) return null;
@@ -198,6 +212,16 @@ export function TopBar({ onOpenNewRoomModal }) {
                   >
                     <Edit2 size={12} />
                     <span>Rename room</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.roomMenuItem}
+                    onClick={handleExportJSON}
+                    role="menuitem"
+                    title="Download JSON backup file to restore or preserve your design"
+                  >
+                    <FileJson size={12} />
+                    <span>Backup room (JSON)</span>
                   </button>
                   <button
                     type="button"

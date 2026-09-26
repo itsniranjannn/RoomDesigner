@@ -335,14 +335,30 @@
 }
 
 @media (max-width: 820px) {
+  .landingContainer {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .landingHeader {
+    padding: 0 var(--space-4);
+  }
+
+  .headerMeta {
+    display: none;
+  }
+
   .boardLayout {
     flex-direction: column;
-    overflow-y: auto;
+    height: auto;
+    overflow: visible;
   }
 
   .draftingSurface {
-    height: 52vh;
-    min-height: 360px;
+    height: 45vh;
+    min-height: 280px;
     flex-shrink: 0;
     border-bottom: 1px solid var(--color-taupe);
   }
@@ -352,5 +368,26 @@
     height: auto;
     border-left: none;
     flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom, var(--space-6));
+  }
+
+  .ledgerHeader {
+    padding: var(--space-5) var(--space-4) var(--space-3);
+  }
+
+  .ledgerActionBlock {
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .ledgerScrollArea {
+    overflow: visible;
+  }
+
+  .ledgerSubheader {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .ledgerRow {
+    padding: 14px var(--space-4);
   }
 }

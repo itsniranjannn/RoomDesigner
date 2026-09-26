@@ -76,7 +76,6 @@ export async function saveRoomToDB(room) {
     }
     return updatedRoom;
   } catch (error) {
-    console.error('Failed to save room to IndexedDB:', error);
     if (import.meta.env?.DEV) {
       console.error('Failed to save room to IndexedDB:', error);
     }
@@ -91,7 +90,6 @@ export async function loadRoomFromDB(id) {
     const room = await db.get(STORE_ROOMS, id);
     return room || null;
   } catch (error) {
-    console.error('Failed to load room from IndexedDB:', error);
     if (import.meta.env?.DEV) {
       console.error('Failed to load room from IndexedDB:', error);
     }
@@ -106,7 +104,6 @@ export async function listRoomsFromDB() {
     const rooms = await db.getAll(STORE_ROOMS);
     return rooms || [];
   } catch (error) {
-    console.error('Failed to list rooms from IndexedDB:', error);
     if (import.meta.env?.DEV) {
       console.error('Failed to list rooms from IndexedDB:', error);
     }

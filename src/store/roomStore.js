@@ -136,7 +136,6 @@ export const useRoomStore = create((set, get) => ({
         await saveRoomToDB(updatedRoom);
         set({ saveStatus: 'saved' });
       } catch (err) {
-        console.error('Error saving undo state to IndexedDB:', err);
         if (import.meta.env?.DEV) {
           console.error('Error saving undo state to IndexedDB:', err);
         }
@@ -194,7 +193,6 @@ export const useRoomStore = create((set, get) => ({
         await saveRoomToDB(updatedRoom);
         set({ saveStatus: 'saved' });
       } catch (err) {
-        console.error('Error saving redo state to IndexedDB:', err);
         if (import.meta.env?.DEV) {
           console.error('Error saving redo state to IndexedDB:', err);
         }
@@ -257,7 +255,6 @@ export const useRoomStore = create((set, get) => ({
         });
       }
     } catch (err) {
-      console.error('Failed to init store:', err);
       if (import.meta.env?.DEV) {
         console.error('Failed to init store:', err);
       }
@@ -502,7 +499,6 @@ export const useRoomStore = create((set, get) => ({
         await saveRoomToDB(updatedRoom);
         set({ saveStatus: 'saved' });
       } catch (err) {
-        console.error('Error saving opening to IndexedDB:', err);
         if (import.meta.env?.DEV) {
           console.error('Error saving opening to IndexedDB:', err);
         }
@@ -793,7 +789,6 @@ export const useRoomStore = create((set, get) => ({
         await saveRoomToDB(updatedRoom);
         set({ saveStatus: 'saved' });
       } catch (err) {
-        console.error('Error saving to IndexedDB:', err);
         if (import.meta.env?.DEV) {
           console.error('Error saving to IndexedDB:', err);
         }
