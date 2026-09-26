@@ -63,7 +63,7 @@ function DraftingBoardSurface() {
         </defs>
 
         {/* Full-bleed drafting grid */}
-        <rect width="100%" height="100%" fill="url(#draftingGrid)" />
+        <rect width="100%" height="100%" fill="url(#draftingGrid)" className={styles.animatedDraftingGrid} />
 
         {/* Sheet Corner Framing Marks */}
         <g stroke="var(--color-ink-muted)" strokeWidth="1" opacity="0.6">
@@ -107,19 +107,27 @@ function DraftingBoardSurface() {
           animate="animate"
         />
 
-        {/* Clear Architectural Mandala / Watermark */}
-        <g opacity="0.22" transform={`translate(${paddingX + roomW / 2}, ${paddingY + roomH / 2})`} stroke="var(--color-maroon)" strokeWidth="1.4" fill="none">
-          <circle r={130} />
-          <circle r={105} strokeDasharray="4 4" stroke="var(--color-brass)" strokeWidth="1.2" />
-          <circle r={75} />
-          <circle r={45} strokeDasharray="3 3" />
-          <rect x={-70} y={-70} width={140} height={140} />
-          <rect x={-70} y={-70} width={140} height={140} transform="rotate(45)" stroke="var(--color-brass)" />
+        {/* Perpetual architectural mandala: nested rings rotate in opposite directions. */}
+        <g transform={`translate(${paddingX + roomW / 2}, ${paddingY + roomH / 2})`} className={styles.mandalaSystem}>
+          <circle r="138" className={styles.mandalaHalo} />
+          <g className={styles.mandalaSpin}>
+            <circle r={130} />
+            <circle r={105} strokeDasharray="4 4" stroke="var(--color-brass)" strokeWidth="1.2" />
+            <rect x={-70} y={-70} width={140} height={140} />
+            <rect x={-70} y={-70} width={140} height={140} transform="rotate(45)" stroke="var(--color-brass)" />
+            {[0, 45, 90, 135, 180, 225, 270, 315].map((ang) => (
+              <circle key={ang} cx={45 * Math.cos((ang * Math.PI) / 180)} cy={45 * Math.sin((ang * Math.PI) / 180)} r={6} fill="var(--color-brass)" opacity="0.55" />
+            ))}
+          </g>
+          <g className={styles.mandalaSpinReverse}>
+            <circle r={75} />
+            <circle r={45} strokeDasharray="3 3" />
+            <path d="M0 -92 C52 -74 82 -40 92 0 C82 40 52 74 0 92 C-52 74 -82 40 -92 0 C-82 -40 -52 -74 0 -92Z" stroke="var(--color-brass)" />
+          </g>
           <line x1={-160} y1={0} x2={160} y2={0} strokeDasharray="5 4" />
           <line x1={0} y1={-160} x2={0} y2={160} strokeDasharray="5 4" />
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((ang) => (
-            <circle key={ang} cx={45 * Math.cos((ang * Math.PI) / 180)} cy={45 * Math.sin((ang * Math.PI) / 180)} r={6} fill="var(--color-brass)" opacity="0.4" />
-          ))}
+          <circle r="7" fill="var(--color-maroon)" opacity="0.75" className={styles.mandalaCore} />
+          <circle r="3" fill="var(--color-linen)" />
         </g>
 
         {/* Window opening cut & sill mullions */}
@@ -186,10 +194,10 @@ function DraftingBoardSurface() {
           {/* Nepali Galaicha Rug */}
           <g>
             <rect
-              x={paddingX + 180}
-              y={paddingY + 170}
-              width={150}
-              height={200}
+              x={paddingX + 220}
+              y={paddingY + 190}
+              width={135}
+              height={170}
               fill="rgba(178, 93, 52, 0.05)"
               stroke="var(--color-clay)"
               strokeWidth="1.5"
@@ -197,14 +205,14 @@ function DraftingBoardSurface() {
               rx="2"
             />
             <rect
-              x={paddingX + 235}
-              y={paddingY + 250}
+              x={paddingX + 267}
+              y={paddingY + 255}
               width={40}
               height={40}
               fill="none"
               stroke="var(--color-clay)"
               strokeWidth="1"
-              transform={`rotate(45 ${paddingX + 255} ${paddingY + 270})`}
+              transform={`rotate(45 ${paddingX + 287} ${paddingY + 275})`}
             />
           </g>
         </g>
@@ -269,8 +277,8 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
         <div className={styles.brandLogo}>
           <BrandMark size={28} className={styles.brandMarkIcon} />
           <div className={styles.mastheadLockup}>
-            <span className={styles.brandTitle}>ROOM STUDIO</span>
-            <span className={styles.brandSubTitle}>CAD // 3D ARCHITECTURAL STUDIO</span>
+            <span className={styles.brandTitle}>ROOM DESIGNER STUDIO</span>
+            <span className={styles.brandSubTitle}>CAD // 2D // 3D SPATIAL WORKSHOP</span>
           </div>
         </div>
 
@@ -279,11 +287,11 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
             <>
               <button
                 type="button"
-                className={styles.headerCountBtn}
+                className={styles.aboutLinkBtn}
                 onClick={onNavigateAbout}
-                title="View About Room Studio"
+                title="View About Room Designer Studio"
               >
-                <span className={styles.headerCount}>ABOUT</span>
+                ABOUT
               </button>
               <span className={styles.headerMetaDivider}>|</span>
             </>
@@ -308,34 +316,32 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
       <main className={styles.heroSection}>
         {/* Left: Copy Column */}
         <div className={styles.heroCopyColumn}>
-          <div className={styles.heroCopyContent}>
-            <div className={styles.heroClassificationTag}>
-              ARCHITECTURAL FOLIO // ED. 2026
-            </div>
-
-            <h1 className={styles.heroPrimaryTitle}>
-              Draft your space<br />with precision.
-            </h1>
-
-            <p className={styles.heroSecondaryTitle}>
-              From dimensional sketch to 3D architectural form.
-            </p>
-
-            <p className={styles.heroDescription}>
-              Intuitive 2D drafting and real-time 3D spatial modeling built on authentic architectural
-              materials and Nepalese craft traditions.
-            </p>
-
-            <Button
-              variant="primary"
-              size="normal"
-              icon={<Plus size={14} />}
-              onClick={onOpenNewRoomModal}
-              className={styles.heroCtaBtn}
-            >
-              Start a new room
-            </Button>
+          <div className={styles.heroClassificationTag}>
+            ARCHITECTURAL FOLIO // ED. 2026
           </div>
+
+          <h1 className={styles.heroPrimaryTitle}>
+            Draft your space<br />with precision.
+          </h1>
+
+          <p className={styles.heroSecondaryTitle}>
+            From dimensional sketch to 3D architectural form.
+          </p>
+
+          <p className={styles.heroDescription}>
+            Intuitive 2D drafting and real-time 3D spatial modeling built on authentic architectural
+            materials and Nepalese craft traditions.
+          </p>
+
+          <Button
+            variant="primary"
+            size="normal"
+            icon={<Plus size={14} />}
+            onClick={onOpenNewRoomModal}
+            className={styles.heroCtaBtn}
+          >
+            Start a new room
+          </Button>
 
           {/* Clickable trigger to open the slide-out sheets panel directly */}
           <button
@@ -355,8 +361,9 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
         </div>
       </main>
 
-      {/* Minimal Architectural Colophon shifted to bottom-right corner */}
+      {/* Minimal Architectural Colophon */}
       <footer className={styles.colophon}>
+        <div className={styles.colophonRule} />
         <span className={styles.colophonMark}>NIRANJAN</span>
       </footer>
 
