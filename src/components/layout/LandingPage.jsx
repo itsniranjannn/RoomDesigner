@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
 import { Plus } from 'lucide-react';
 import { BrandMark } from '../common/BrandMark.jsx';
+import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './LandingPage.module.css';
 
 /**
- * Architectural Full-Bleed Drafting Board Hero
+ * Architectural Drafting Board Plate
  * Draws perimeter walls, door swings, Nepali Galaicha rug, and architectural
  * dimension notations directly onto the canvas with stroke-draw-in animation.
  */
@@ -106,7 +107,7 @@ function DraftingBoardSurface() {
           animate="animate"
         />
 
-        {/* Clear Architectural Mandala / Ashta-Mangala Watermark */}
+        {/* Clear Architectural Mandala / Watermark */}
         <g opacity="0.22" transform={`translate(${paddingX + roomW / 2}, ${paddingY + roomH / 2})`} stroke="var(--color-maroon)" strokeWidth="1.4" fill="none">
           <circle r={130} />
           <circle r={105} strokeDasharray="4 4" stroke="var(--color-brass)" strokeWidth="1.2" />
@@ -116,9 +117,8 @@ function DraftingBoardSurface() {
           <rect x={-70} y={-70} width={140} height={140} transform="rotate(45)" stroke="var(--color-brass)" />
           <line x1={-160} y1={0} x2={160} y2={0} strokeDasharray="5 4" />
           <line x1={0} y1={-160} x2={0} y2={160} strokeDasharray="5 4" />
-          {/* Central Lotus Petal accents */}
           {[0, 45, 90, 135, 180, 225, 270, 315].map((ang) => (
-            <circle key={ang} cx={45 * Math.cos(ang * Math.PI / 180)} cy={45 * Math.sin(ang * Math.PI / 180)} r={6} fill="var(--color-brass)" opacity="0.4" />
+            <circle key={ang} cx={45 * Math.cos((ang * Math.PI) / 180)} cy={45 * Math.sin((ang * Math.PI) / 180)} r={6} fill="var(--color-brass)" opacity="0.4" />
           ))}
         </g>
 
@@ -183,7 +183,7 @@ function DraftingBoardSurface() {
           {/* Swivel Chair */}
           <circle cx={paddingX + 420} cy={paddingY + 280} r={18} fill="none" stroke="var(--color-ink)" strokeWidth="1.5" />
 
-          {/* Authentic Nepali Tibetan Galaicha Rug */}
+          {/* Nepali Galaicha Rug */}
           <g>
             <rect
               x={paddingX + 180}
@@ -196,7 +196,6 @@ function DraftingBoardSurface() {
               strokeDasharray="5 3"
               rx="2"
             />
-            {/* Medallion geometric center */}
             <rect
               x={paddingX + 235}
               y={paddingY + 250}
@@ -209,6 +208,51 @@ function DraftingBoardSurface() {
             />
           </g>
         </g>
+
+        {/* Dimension Notation (Horizontal bottom) */}
+        <line
+          x1={paddingX}
+          y1={viewH - 24}
+          x2={paddingX + roomW}
+          y2={viewH - 24}
+          stroke="var(--color-ink-muted)"
+          strokeWidth="1"
+        />
+        <line x1={paddingX} y1={viewH - 28} x2={paddingX} y2={viewH - 20} stroke="var(--color-ink-muted)" strokeWidth="1" />
+        <line x1={paddingX + roomW} y1={viewH - 28} x2={paddingX + roomW} y2={viewH - 20} stroke="var(--color-ink-muted)" strokeWidth="1" />
+        <text
+          x={paddingX + roomW / 2}
+          y={viewH - 27}
+          fill="var(--color-ink-muted)"
+          fontSize="10"
+          fontFamily="var(--font-mono)"
+          textAnchor="middle"
+        >
+          5200 mm
+        </text>
+
+        {/* Dimension Notation (Vertical right) */}
+        <line
+          x1={viewW - 24}
+          y1={paddingY}
+          x2={viewW - 24}
+          y2={paddingY + roomH}
+          stroke="var(--color-ink-muted)"
+          strokeWidth="1"
+        />
+        <line x1={viewW - 28} y1={paddingY} x2={viewW - 20} y2={paddingY} stroke="var(--color-ink-muted)" strokeWidth="1" />
+        <line x1={viewW - 28} y1={paddingY + roomH} x2={viewW - 20} y2={paddingY + roomH} stroke="var(--color-ink-muted)" strokeWidth="1" />
+        <text
+          x={viewW - 27}
+          y={paddingY + roomH / 2}
+          fill="var(--color-ink-muted)"
+          fontSize="10"
+          fontFamily="var(--font-mono)"
+          textAnchor="middle"
+          transform={`rotate(90 ${viewW - 27} ${paddingY + roomH / 2})`}
+        >
+          4000 mm
+        </text>
       </svg>
     </div>
   );
@@ -216,9 +260,7 @@ function DraftingBoardSurface() {
 
 export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
   const allRooms = useRoomStore((state) => state.allRooms);
-  const switchRoom = useRoomStore((state) => state.switchRoom);
-
-  const hasExistingRooms = allRooms && allRooms.length > 0;
+  const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
 
   return (
     <div className={styles.landingContainer}>
@@ -234,36 +276,42 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
 
         <div className={styles.headerMetaBlock}>
           {onNavigateAbout && (
-            <>
-              <button
-                type="button"
-                className={styles.aboutLinkBtn}
-                onClick={onNavigateAbout}
-                title="View About Room Studio"
-              >
-                ABOUT
-              </button>
-              <span className={styles.headerMetaDivider}>|</span>
-            </>
+            <button
+              type="button"
+              className={styles.aboutLinkBtn}
+              onClick={onNavigateAbout}
+              title="View About Room Studio"
+            >
+              ABOUT
+            </button>
           )}
-          <span className={styles.headerMeta}>FOLIO ARCHIVE // EDITION 2026</span>
+
           <span className={styles.headerMetaDivider}>|</span>
-          <span className={styles.headerCount}>
-            {allRooms.length} {allRooms.length === 1 ? 'SHEET' : 'SHEETS'}
-          </span>
+
+          {/* Sheet-count trigger for the slide-out Saved Sheets panel */}
+          <button
+            type="button"
+            className={styles.sheetsTriggerBtn}
+            onClick={() => setIsSheetsPanelOpen(true)}
+            title="Open saved sheets panel"
+            aria-label="Open saved sheets panel"
+          >
+            <span className={styles.headerCount}>
+              {allRooms.length} {allRooms.length === 1 ? 'SHEET' : 'SHEETS'}
+            </span>
+          </button>
         </div>
       </header>
 
-      {/* Main Single-Screen Hero Viewport */}
+      {/* Centered Architectural Hero Viewport */}
       <main className={styles.heroSection}>
-        {/* Left: Copy Column */}
-        <div className={styles.heroCopyColumn}>
+        <div className={styles.heroContent}>
           <div className={styles.heroClassificationTag}>
             ARCHITECTURAL FOLIO // ED. 2026
           </div>
 
           <h1 className={styles.heroPrimaryTitle}>
-            Draft your space<br />with precision.
+            Draft your space with precision.
           </h1>
 
           <p className={styles.heroSecondaryTitle}>
@@ -275,98 +323,49 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
             materials and Nepalese craft traditions.
           </p>
 
-          <Button
-            variant="primary"
-            size="normal"
-            icon={<Plus size={14} />}
-            onClick={onOpenNewRoomModal}
-            className={styles.heroCtaBtn}
-          >
-            Start a new room
-          </Button>
+          <div className={styles.heroActionRow}>
+            <Button
+              variant="primary"
+              size="normal"
+              icon={<Plus size={14} />}
+              onClick={onOpenNewRoomModal}
+              className={styles.heroCtaBtn}
+            >
+              Start a new room
+            </Button>
+          </div>
 
-          <a href="#your-spaces" className={styles.scrollIndicator}>
-            <span className={styles.scrollIndicatorText}>EXPLORE SPACES BELOW</span>
-          </a>
-        </div>
+          {/* Framed Architectural Drawing Plate */}
+          <div className={styles.drawingPlateWrapper}>
+            <div className={styles.drawingPlateFrame}>
+              <div className={styles.plateHeader}>
+                <div className={styles.plateClassification}>
+                  FOLIO // 01 • PROJECTION: TOP-DOWN ORTHO
+                </div>
+                <div className={styles.plateScale}>SCALE 1:50</div>
+              </div>
+              <div className={styles.brassRule} />
 
-        {/* Right: Blueprint Visual */}
-        <div className={styles.heroVisualColumn}>
-          <DraftingBoardSurface />
+              <div className={styles.plateCanvas}>
+                <DraftingBoardSurface />
+              </div>
+            </div>
+          </div>
         </div>
       </main>
 
-      {/* ═══════════ YOUR SPACES SECTION (Below hero, scroll down) ═══════════ */}
-      <section id="your-spaces" className={styles.yourSpacesSection}>
-        <div className={styles.spacesHeader}>
-          <div className={styles.spacesHeaderTop}>
-            <span className={styles.spacesFolioTag}>YOUR SPACES</span>
-            <span className={styles.spacesCountTag}>
-              {allRooms.length} {allRooms.length === 1 ? 'SHEET' : 'SHEETS'}
-            </span>
-          </div>
-          <div className={styles.brassRule} />
-        </div>
-
-        <div className={styles.spacesContent}>
-          {hasExistingRooms ? (
-            <div className={styles.spacesGrid} role="list">
-              {allRooms.map((r, index) => {
-                const widthM = (r.widthCm / 100).toFixed(2);
-                const depthM = (r.depthCm / 100).toFixed(2);
-                const areaM2 = ((r.widthCm * r.depthCm) / 10000).toFixed(1);
-                const furnitureCount = (r.placedFurniture || []).length;
-                const sheetCode = `SHEET // #0${index + 1}`;
-
-                return (
-                  <div
-                    key={r.id}
-                    role="listitem"
-                    tabIndex={0}
-                    className={styles.spaceCard}
-                    onClick={() => switchRoom(r.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        switchRoom(r.id);
-                      }
-                    }}
-                    aria-label={`Open ${r.name}, ${widthM} by ${depthM} meters, ${furnitureCount} pieces`}
-                  >
-                    <div className={styles.spaceCardLeft}>
-                      <div className={styles.sheetCodeTag}>{sheetCode}</div>
-                      <span className={styles.spaceCardName}>{r.name}</span>
-                      <div className={styles.cadMatrixRow}>
-                        <span className={styles.cadDimBadge}>{widthM} × {depthM}m</span>
-                        <span className={styles.cadDotDivider}>•</span>
-                        <span className={styles.cadAreaBadge}>{areaM2} m²</span>
-                      </div>
-                    </div>
-                    <div className={styles.spaceCardRight}>
-                      <span className={styles.itemCountBadge}>
-                        {furnitureCount} {furnitureCount === 1 ? 'SPEC' : 'SPECS'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className={styles.spacesEmpty}>
-              <h2 className={styles.spacesEmptyTitle}>No spaces yet</h2>
-              <p className={styles.spacesEmptyText}>
-                Click "Start a new room" above to draft your first sheet.
-              </p>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* ═══════════ LANDING PAGE COLOPHON ═══════════ */}
+      {/* Minimal Architectural Colophon */}
       <footer className={styles.colophon}>
         <div className={styles.colophonRule} />
         <span className={styles.colophonMark}>NIRANJAN</span>
       </footer>
+
+      {/* Slide-out Sheets Panel for Saved Rooms */}
+      <SheetsPanel
+        isOpen={isSheetsPanelOpen}
+        onClose={() => setIsSheetsPanelOpen(false)}
+        onOpenNewRoomModal={onOpenNewRoomModal}
+      />
     </div>
   );
 }
