@@ -325,7 +325,7 @@ export function AboutPage({ onBack, onOpenSheets }) {
         <section className={styles.aboutCopyColumn}>
           <div className={styles.aboutCopyContent}>
             <div className={styles.classificationTag}>
-              STUDIO FOLIO // MONOGRAPH
+              STUDIO FOLIO // About Room Designer Studio
             </div>
 
             <motion.h1

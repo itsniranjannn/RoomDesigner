@@ -343,12 +343,12 @@
 }
 
 .bedFurniture rect:first-child {
-  fill: rgba(240, 237, 230, 0.58);
+  fill: #F0EDE6;
 }
 
 .bedFurniture rect:not(:first-child),
 .bedFurniture line {
-  opacity: 0.7;
+  opacity: 0.82;
 }
 
 /* ═══════════ COLOPHON ═══════════ */

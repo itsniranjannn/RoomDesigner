@@ -150,7 +150,7 @@ function DraftingBoardSurface() {
         <line x1={doorX} y1={doorY} x2={doorX} y2={doorY - doorW} stroke="var(--color-ink)" strokeWidth="2" />
 
         {/* Architectural Placed Furniture Group */}
-        <g opacity="0.78" className={styles.bedFurniture}>
+        <g opacity="0.9" className={styles.bedFurniture}>
           {/* Queen Bed, kept close to the upper-left walls */}
           <rect
             x={paddingX + 45}
@@ -162,8 +162,8 @@ function DraftingBoardSurface() {
             strokeWidth="1.5"
             rx="2"
           />
-          <rect x={paddingX + 55} y={paddingY + 50} width={60} height={35} fill="none" stroke="var(--color-ink-muted)" strokeWidth="1" rx="2" />
-          <rect x={paddingX + 135} y={paddingY + 50} width={60} height={35} fill="none" stroke="var(--color-ink-muted)" strokeWidth="1" rx="2" />
+          <rect x={paddingX + 55} y={paddingY + 50} width={60} height={35} fill="#F8F5EE" stroke="var(--color-ink-muted)" strokeWidth="1" rx="2" />
+          <rect x={paddingX + 135} y={paddingY + 50} width={60} height={35} fill="#F8F5EE" stroke="var(--color-ink-muted)" strokeWidth="1" rx="2" />
           <line x1={paddingX + 45} y1={paddingY + 110} x2={paddingX + 205} y2={paddingY + 110} stroke="var(--color-ink-muted)" strokeWidth="1" strokeDasharray="3 3" />
 
           {/* Nightstand, tucked beside the bed */}
@@ -172,7 +172,7 @@ function DraftingBoardSurface() {
             y={paddingY + 40}
             width={45}
             height={45}
-            fill="#F0EDE6"
+            fill="#F1EEE7"
             stroke="var(--color-ink)"
             strokeWidth="1.5"
           />
@@ -183,7 +183,7 @@ function DraftingBoardSurface() {
             y={paddingY + 175}
             width={140}
             height={70}
-            fill="#F0EDE6"
+            fill="#F1EEE7"
             stroke="var(--color-ink)"
             strokeWidth="1.5"
             rx="2"
@@ -198,7 +198,7 @@ function DraftingBoardSurface() {
               y={paddingY + 215}
               width={135}
               height={170}
-              fill="rgba(178, 93, 52, 0.05)"
+              fill="rgba(240, 237, 230, 0.62)"
               stroke="var(--color-clay)"
               strokeWidth="1.5"
               strokeDasharray="5 3"
