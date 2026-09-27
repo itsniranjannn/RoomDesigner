@@ -149,11 +149,11 @@ export function RoomBoundary({ room, svgRef }) {
         fill="var(--color-linen)"
       />
 
-      {/* Heavy Architectural Perimeter Wall */}
+      {/* Heavy Architectural Perimeter Wall (Basalt poche core) */}
       <motion.path
         d={wallPath}
         fill="none"
-        stroke="#38493F"
+        stroke="#332B25"
         strokeWidth={wallThickness}
         strokeLinejoin="miter"
         initial={!isInitialAnimationDone ? 'initial' : false}
@@ -161,14 +161,14 @@ export function RoomBoundary({ room, svgRef }) {
         variants={strokeVariants}
       />
 
-      {/* High-contrast inner wall baseline (Wall > Furniture > Grid) */}
+      {/* High-contrast inner wall baseline (Carbon Drafting Ink) */}
       <rect
         x={0}
         y={0}
         width={widthCm}
         height={depthCm}
         fill="none"
-        stroke="#1C1A17"
+        stroke="#141210"
         strokeWidth="3.2"
       />
 
@@ -224,70 +224,70 @@ export function RoomBoundary({ room, svgRef }) {
                 />
               )}
 
-              {/* Glass background fill */}
+              {/* Glass background fill (Architectural indigo steel glaze) */}
               <rect
                 x={wx}
                 y={wy}
                 width={ww}
                 height={wh}
-                fill="rgba(163, 210, 226, 0.28)"
+                fill="rgba(90, 115, 142, 0.16)"
               />
 
               {/* Architectural Window Jambs (heavy masonry endcaps) */}
               {isHorizontal ? (
                 <>
-                  <line x1={wx} y1={wy} x2={wx} y2={wy + wh} stroke="#1C1A17" strokeWidth="2.5" />
-                  <line x1={wx + ww} y1={wy} x2={wx + ww} y2={wy + wh} stroke="#1C1A17" strokeWidth="2.5" />
+                  <line x1={wx} y1={wy} x2={wx} y2={wy + wh} stroke="#141210" strokeWidth="2.5" />
+                  <line x1={wx + ww} y1={wy} x2={wx + ww} y2={wy + wh} stroke="#141210" strokeWidth="2.5" />
                 </>
               ) : (
                 <>
-                  <line x1={wx} y1={wy} x2={wx + ww} y2={wy} stroke="#1C1A17" strokeWidth="2.5" />
-                  <line x1={wx} y1={wy + wh} x2={wx + ww} y2={wy + wh} stroke="#1C1A17" strokeWidth="2.5" />
+                  <line x1={wx} y1={wy} x2={wx + ww} y2={wy} stroke="#141210" strokeWidth="2.5" />
+                  <line x1={wx} y1={wy + wh} x2={wx + ww} y2={wy + wh} stroke="#141210" strokeWidth="2.5" />
                 </>
               )}
 
-              {/* Outer Sill Line (Architectural projection) */}
+              {/* Outer Sill Line (Patan Brass architectural projection) */}
               {wall === 'top' && (
-                <line x1={wx - 4} y1={wy} x2={wx + ww + 4} y2={wy} stroke="#38493F" strokeWidth="2" />
+                <line x1={wx - 4} y1={wy} x2={wx + ww + 4} y2={wy} stroke="#A67C43" strokeWidth="2" />
               )}
               {wall === 'bottom' && (
-                <line x1={wx - 4} y1={wy + wh} x2={wx + ww + 4} y2={wy + wh} stroke="#38493F" strokeWidth="2" />
+                <line x1={wx - 4} y1={wy + wh} x2={wx + ww + 4} y2={wy + wh} stroke="#A67C43" strokeWidth="2" />
               )}
               {wall === 'left' && (
-                <line x1={wx} y1={wy - 4} x2={wx} y2={wy + wh + 4} stroke="#38493F" strokeWidth="2" />
+                <line x1={wx} y1={wy - 4} x2={wx} y2={wy + wh + 4} stroke="#A67C43" strokeWidth="2" />
               )}
               {wall === 'right' && (
-                <line x1={wx + ww} y1={wy - 4} x2={wx + ww} y2={wy + wh + 4} stroke="#38493F" strokeWidth="2" />
+                <line x1={wx + ww} y1={wy - 4} x2={wx + ww} y2={wy + wh + 4} stroke="#A67C43" strokeWidth="2" />
               )}
 
               {/* Interior Stool Line */}
               {wall === 'top' && (
-                <line x1={wx} y1={wy + wh} x2={wx + ww} y2={wy + wh} stroke="#6B7C72" strokeWidth="1.2" />
+                <line x1={wx} y1={wy + wh} x2={wx + ww} y2={wy + wh} stroke="#B0A494" strokeWidth="1.2" />
               )}
               {wall === 'bottom' && (
-                <line x1={wx} y1={wy} x2={wx + ww} y2={wy} stroke="#6B7C72" strokeWidth="1.2" />
+                <line x1={wx} y1={wy} x2={wx + ww} y2={wy} stroke="#B0A494" strokeWidth="1.2" />
               )}
               {wall === 'left' && (
-                <line x1={wx + ww} y1={wy} x2={wx + ww} y2={wy + wh} stroke="#6B7C72" strokeWidth="1.2" />
+                <line x1={wx + ww} y1={wy} x2={wx + ww} y2={wy + wh} stroke="#B0A494" strokeWidth="1.2" />
               )}
               {wall === 'right' && (
-                <line x1={wx} y1={wy} x2={wx} y2={wy + wh} stroke="#6B7C72" strokeWidth="1.2" />
+                <line x1={wx} y1={wy} x2={wx} y2={wy + wh} stroke="#B0A494" strokeWidth="1.2" />
               )}
 
               {/* Double Glass Glazing Lines */}
               {isHorizontal ? (
                 <>
-                  <line x1={wx} y1={wy + wh * 0.35} x2={wx + ww} y2={wy + wh * 0.35} stroke="#3D7B8F" strokeWidth="1.2" />
-                  <line x1={wx} y1={wy + wh * 0.65} x2={wx + ww} y2={wy + wh * 0.65} stroke="#3D7B8F" strokeWidth="1.2" />
+                  <line x1={wx} y1={wy + wh * 0.35} x2={wx + ww} y2={wy + wh * 0.35} stroke="#5A738E" strokeWidth="1.2" />
+                  <line x1={wx} y1={wy + wh * 0.65} x2={wx + ww} y2={wy + wh * 0.65} stroke="#5A738E" strokeWidth="1.2" />
                   {/* Center mullion sash */}
-                  <line x1={wx + ww / 2} y1={wy} x2={wx + ww / 2} y2={wy + wh} stroke="#2C4E58" strokeWidth="1.8" />
+                  <line x1={wx + ww / 2} y1={wy} x2={wx + ww / 2} y2={wy + wh} stroke="#3D536B" strokeWidth="1.8" />
                 </>
               ) : (
                 <>
-                  <line x1={wx + ww * 0.35} y1={wy} x2={wx + ww * 0.35} y2={wy + wh} stroke="#3D7B8F" strokeWidth="1.2" />
-                  <line x1={wx + ww * 0.65} y1={wy} x2={wx + ww * 0.65} y2={wy + wh} stroke="#3D7B8F" strokeWidth="1.2" />
+                  <line x1={wx + ww * 0.35} y1={wy} x2={wx + ww * 0.35} y2={wy + wh} stroke="#5A738E" strokeWidth="1.2" />
+                  <line x1={wx + ww * 0.65} y1={wy} x2={wx + ww * 0.65} y2={wy + wh} stroke="#5A738E" strokeWidth="1.2" />
                   {/* Center mullion sash */}
-                  <line x1={wx} y1={wy + wh / 2} x2={wx + ww} y2={wy + wh / 2} stroke="#2C4E58" strokeWidth="1.8" />
+                  <line x1={wx} y1={wy + wh / 2} x2={wx + ww} y2={wy + wh / 2} stroke="#3D536B" strokeWidth="1.8" />
                 </>
               )}
             </g>
@@ -385,7 +385,7 @@ export function RoomBoundary({ room, svgRef }) {
                     <path
                       d={`M ${dx} ${depthCm + door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} ${depthCm}`}
                       fill="none"
-                      stroke="#A89F90"
+                      stroke="#9E8870"
                       strokeWidth="1.2"
                       strokeDasharray="3 3"
                       pointerEvents="none"
@@ -395,9 +395,7 @@ export function RoomBoundary({ room, svgRef }) {
                       y1={depthCm}
                       x2={dx}
                       y2={depthCm + door.widthCm}
-                      stroke="#1C1A17"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+                      stroke="#2D231B" strokeWidth="2.8" strokeLinecap="round"
                       pointerEvents="none"
                     />
                   </>
@@ -407,7 +405,7 @@ export function RoomBoundary({ room, svgRef }) {
                     <path
                       d={`M ${dx} ${depthCm - door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} ${depthCm}`}
                       fill="none"
-                      stroke="#A89F90"
+                      stroke="#9E8870"
                       strokeWidth="1.2"
                       strokeDasharray="3 3"
                       pointerEvents="none"
@@ -417,9 +415,7 @@ export function RoomBoundary({ room, svgRef }) {
                       y1={depthCm}
                       x2={dx}
                       y2={depthCm - door.widthCm}
-                      stroke="#1C1A17"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+                      stroke="#2D231B" strokeWidth="2.8" strokeLinecap="round"
                       pointerEvents="none"
                     />
                   </>
@@ -433,7 +429,7 @@ export function RoomBoundary({ room, svgRef }) {
                     <path
                       d={`M ${dx} ${-door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} 0`}
                       fill="none"
-                      stroke="#A89F90"
+                      stroke="#9E8870"
                       strokeWidth="1.2"
                       strokeDasharray="3 3"
                       pointerEvents="none"
@@ -443,9 +439,7 @@ export function RoomBoundary({ room, svgRef }) {
                       y1={0}
                       x2={dx}
                       y2={-door.widthCm}
-                      stroke="#1C1A17"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+                      stroke="#2D231B" strokeWidth="2.8" strokeLinecap="round"
                       pointerEvents="none"
                     />
                   </>
@@ -455,7 +449,7 @@ export function RoomBoundary({ room, svgRef }) {
                     <path
                       d={`M ${dx} ${door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} 0`}
                       fill="none"
-                      stroke="#A89F90"
+                      stroke="#9E8870"
                       strokeWidth="1.2"
                       strokeDasharray="3 3"
                       pointerEvents="none"
@@ -465,9 +459,7 @@ export function RoomBoundary({ room, svgRef }) {
                       y1={0}
                       x2={dx}
                       y2={door.widthCm}
-                      stroke="#1C1A17"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+                      stroke="#2D231B" strokeWidth="2.8" strokeLinecap="round"
                       pointerEvents="none"
                     />
                   </>
@@ -481,7 +473,7 @@ export function RoomBoundary({ room, svgRef }) {
                     <path
                       d={`M ${-door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 0 0 ${dy + door.widthCm}`}
                       fill="none"
-                      stroke="#A89F90"
+                      stroke="#9E8870"
                       strokeWidth="1.2"
                       strokeDasharray="3 3"
                       pointerEvents="none"
@@ -491,9 +483,7 @@ export function RoomBoundary({ room, svgRef }) {
                       y1={dy}
                       x2={-door.widthCm}
                       y2={dy}
-                      stroke="#1C1A17"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+                      stroke="#2D231B" strokeWidth="2.8" strokeLinecap="round"
                       pointerEvents="none"
                     />
                   </>
@@ -503,7 +493,7 @@ export function RoomBoundary({ room, svgRef }) {
                     <path
                       d={`M ${door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 1 0 ${dy + door.widthCm}`}
                       fill="none"
-                      stroke="#A89F90"
+                      stroke="#9E8870"
                       strokeWidth="1.2"
                       strokeDasharray="3 3"
                       pointerEvents="none"
@@ -513,9 +503,7 @@ export function RoomBoundary({ room, svgRef }) {
                       y1={dy}
                       x2={door.widthCm}
                       y2={dy}
-                      stroke="#1C1A17"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+                      stroke="#2D231B" strokeWidth="2.8" strokeLinecap="round"
                       pointerEvents="none"
                     />
                   </>
@@ -529,7 +517,7 @@ export function RoomBoundary({ room, svgRef }) {
                     <path
                       d={`M ${widthCm + door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 1 ${widthCm} ${dy + door.widthCm}`}
                       fill="none"
-                      stroke="#A89F90"
+                      stroke="#9E8870"
                       strokeWidth="1.2"
                       strokeDasharray="3 3"
                       pointerEvents="none"
@@ -539,9 +527,7 @@ export function RoomBoundary({ room, svgRef }) {
                       y1={dy}
                       x2={widthCm + door.widthCm}
                       y2={dy}
-                      stroke="#1C1A17"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+                      stroke="#2D231B" strokeWidth="2.8" strokeLinecap="round"
                       pointerEvents="none"
                     />
                   </>
@@ -551,7 +537,7 @@ export function RoomBoundary({ room, svgRef }) {
                     <path
                       d={`M ${widthCm - door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 0 ${widthCm} ${dy + door.widthCm}`}
                       fill="none"
-                      stroke="#A89F90"
+                      stroke="#9E8870"
                       strokeWidth="1.2"
                       strokeDasharray="3 3"
                       pointerEvents="none"
@@ -561,9 +547,7 @@ export function RoomBoundary({ room, svgRef }) {
                       y1={dy}
                       x2={widthCm - door.widthCm}
                       y2={dy}
-                      stroke="#1C1A17"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
+                      stroke="#2D231B" strokeWidth="2.8" strokeLinecap="round"
                       pointerEvents="none"
                     />
                   </>
@@ -596,8 +580,8 @@ export function RoomBoundary({ room, svgRef }) {
                 y={dy}
                 width={dw}
                 height={dh}
-                fill="#E8DEC8"
-                stroke="#634E32"
+                fill="#EADCC6"
+                stroke="#784A28"
                 strokeWidth="1.2"
               />
             </g>

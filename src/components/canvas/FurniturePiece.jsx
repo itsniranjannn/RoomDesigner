@@ -186,38 +186,74 @@ export function FurniturePiece({
           <ArchitecturalSilhouette item={def} widthCm={widthCm} depthCm={depthCm} />
         </g>
 
-        {/* Crisp Selection Outline using Himalayan Indigo */}
+        {/* Dual-Layer High-Contrast Selection Outline & Precision Crop Brackets */}
         {isSelected && !isColliding && (
-          <rect
-            x={-hw - 2.5}
-            y={-hd - 2.5}
-            width={widthCm + 5}
-            height={depthCm + 5}
-            rx={5}
-            fill="none"
-            stroke="var(--color-indigo)"
-            strokeWidth="2"
-            pointerEvents="none"
-          />
+          <g className="selection-frame" pointerEvents="none">
+            {/* White Under-Stroke Barrier (Guarantees 100% contrast on any dark wall or wood) */}
+            <rect
+              x={-hw - 2.5}
+              y={-hd - 2.5}
+              width={widthCm + 5}
+              height={depthCm + 5}
+              rx={3}
+              fill="none"
+              stroke="#FFFFFF"
+              strokeWidth="4"
+            />
+            {/* Crisp Himalayan Cobalt-Indigo Drafting Border */}
+            <rect
+              x={-hw - 2.5}
+              y={-hd - 2.5}
+              width={widthCm + 5}
+              height={depthCm + 5}
+              rx={3}
+              fill="rgba(44, 78, 128, 0.04)"
+              stroke="#2C4E80"
+              strokeWidth="1.8"
+            />
+
+            {/* Precision Architectural L-Bracket Corner Crops */}
+            <g stroke="#2C4E80" strokeWidth="2.2" strokeLinecap="square">
+              {/* Top-Left Crop */}
+              <path d={`M ${-hw - 7} ${-hd - 2.5} L ${-hw - 2.5} ${-hd - 2.5} L ${-hw - 2.5} ${-hd - 7}`} fill="none" />
+              {/* Top-Right Crop */}
+              <path d={`M ${hw + 7} ${-hd - 2.5} L ${hw + 2.5} ${-hd - 2.5} L ${hw + 2.5} ${-hd - 7}`} fill="none" />
+              {/* Bottom-Left Crop */}
+              <path d={`M ${-hw - 7} ${hd + 2.5} L ${-hw - 2.5} ${hd + 2.5} L ${-hw - 2.5} ${hd + 7}`} fill="none" />
+              {/* Bottom-Right Crop */}
+              <path d={`M ${hw + 7} ${hd + 2.5} L ${hw + 2.5} ${hd + 2.5} L ${hw + 2.5} ${hd + 7}`} fill="none" />
+            </g>
+          </g>
         )}
 
-        {/* Direct Rotation Handle (visible when selected) */}
+        {/* Direct Rotation Compass Handle (visible when selected) */}
         {isSelected && (
           <g
             className="rotation-handle"
-            transform={`translate(0, ${-hd - 20})`}
+            transform={`translate(0, ${-hd - 24})`}
             onPointerDown={handleRotatePointerDown}
             style={{ cursor: 'crosshair' }}
           >
-            {/* Connecting Stem */}
+            {/* White Under-casing for stem */}
             <line
               x1={0}
-              y1={20}
+              y1={24}
               x2={0}
               y2={0}
-              stroke="var(--color-indigo)"
-              strokeWidth="2"
+              stroke="#FFFFFF"
+              strokeWidth="4"
             />
+            {/* Technical Cobalt Compass Stem */}
+            <line
+              x1={0}
+              y1={24}
+              x2={0}
+              y2={0}
+              stroke="#2C4E80"
+              strokeWidth="1.8"
+              strokeDasharray="2 2"
+            />
+
             {/* Invisible Large Hit Circle (36px wide hit target) */}
             <circle
               cx={0}
@@ -226,37 +262,55 @@ export function FurniturePiece({
               fill="transparent"
               pointerEvents="all"
             />
-            {/* Visible Tactile Knob with Brass core */}
+
+            {/* White under-casing for knob */}
             <circle
               cx={0}
               cy={0}
-              r={7}
-              fill="var(--color-brass)"
-              stroke="var(--color-indigo)"
+              r={9}
+              fill="#FFFFFF"
+            />
+
+            {/* Outer Indigo Compass Ring */}
+            <circle
+              cx={0}
+              cy={0}
+              r={8}
+              fill="#FAF6EE"
+              stroke="#2C4E80"
               strokeWidth="2"
+            />
+
+            {/* Patan Brass Precision Core */}
+            <circle
+              cx={0}
+              cy={0}
+              r={3.5}
+              fill="#C5A059"
             />
 
             {/* Live Angle Badge while rotating (counter-rotated to stay upright) */}
             {isRotating && (
               <g transform={`translate(0, -22) rotate(${-rotation})`}>
                 <rect
-                  x={-22}
+                  x={-28}
                   y={-11}
-                  width={44}
+                  width={56}
                   height={22}
-                  rx={4}
+                  rx={3}
                   fill="#1C1A17"
-                  stroke="#C97B4A"
-                  strokeWidth="1"
+                  stroke="#C5A059"
+                  strokeWidth="1.2"
                 />
                 <text
                   x={0}
                   y={4}
                   textAnchor="middle"
                   fill="#FAF6EE"
-                  fontSize="11"
-                  fontFamily="var(--font-sans)"
+                  fontSize="10"
+                  fontFamily="var(--font-mono)"
                   fontWeight="600"
+                  letterSpacing="0.04em"
                 >
                   {Math.round(rotation)}°
                 </text>

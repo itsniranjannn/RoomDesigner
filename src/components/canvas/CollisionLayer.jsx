@@ -4,31 +4,53 @@ import { getFurnitureType } from '../../data/furnitureCatalog.js';
 
 /**
  * CollisionLayer.jsx
- * Renders subtle warning halos and dashed outlines over colliding furniture items.
- * Adheres strictly to the spec: soft clay pulse at low opacity, never jarring red.
+ * Architectural spatial clash detection layer.
+ * Uses 45-degree diagonal warning cross-hatch pattern with pulsing terracotta/maroon borders.
+ * Conveys clear architectural conflict without jarring neon reds.
  */
 export function CollisionLayer({ placedFurniture, collidingItemIds }) {
   if (!collidingItemIds || collidingItemIds.size === 0) return null;
 
   return (
     <g className="collision-layer" pointerEvents="none">
+      <defs>
+        {/* Architectural 45-degree diagonal collision hatch pattern */}
+        <pattern
+          id="architecturalCollisionHatch"
+          width="10"
+          height="10"
+          patternTransform="rotate(45 0 0)"
+          patternUnits="userSpaceOnUse"
+        >
+          <line
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="10"
+            stroke="#B25D34"
+            strokeWidth="1.4"
+            opacity="0.65"
+          />
+        </pattern>
+      </defs>
+
       <style>{`
-        @keyframes softCollisionPulse {
+        @keyframes architecturalClashPulse {
           0% {
-            opacity: 0.25;
-            stroke-width: 2.5px;
+            opacity: 0.45;
+            stroke-width: 1.8px;
           }
           50% {
-            opacity: 0.65;
-            stroke-width: 4px;
+            opacity: 0.95;
+            stroke-width: 2.8px;
           }
           100% {
-            opacity: 0.25;
-            stroke-width: 2.5px;
+            opacity: 0.45;
+            stroke-width: 1.8px;
           }
         }
-        .colliding-pulse {
-          animation: softCollisionPulse 1.8s ease-in-out infinite;
+        .colliding-pulse-border {
+          animation: architecturalClashPulse 1.6s ease-in-out infinite;
         }
       `}</style>
 
@@ -51,19 +73,25 @@ export function CollisionLayer({ placedFurniture, collidingItemIds }) {
 
         return (
           <g key={`collision-${item.id}`}>
-            {/* Soft clay warning fill */}
+            {/* Base soft clay warning tint */}
             <polygon
               points={pathPoints}
-              fill="var(--color-warning)"
-              opacity="0.3"
+              fill="rgba(178, 93, 52, 0.16)"
             />
-            {/* Pulsing dashed clay outline */}
+
+            {/* Architectural diagonal cross-hatching fill */}
             <polygon
-              className="colliding-pulse"
+              points={pathPoints}
+              fill="url(#architecturalCollisionHatch)"
+            />
+
+            {/* Pulsing dashed deep-maroon warning outline */}
+            <polygon
+              className="colliding-pulse-border"
               points={pathPoints}
               fill="none"
-              stroke="var(--color-clay)"
-              strokeDasharray="4 4"
+              stroke="#8B2635"
+              strokeDasharray="5 3"
             />
           </g>
         );
@@ -71,4 +99,3 @@ export function CollisionLayer({ placedFurniture, collidingItemIds }) {
     </g>
   );
 }
-

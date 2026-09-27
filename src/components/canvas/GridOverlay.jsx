@@ -2,14 +2,18 @@ import React from 'react';
 
 /**
  * GridOverlay.jsx
- * Renders an architectural drafting measurement grid.
- * Minor lines every 10cm, major lines every 50cm, with subtle cm dimension labels.
+ * Architectural Drafting Plate & Measurement Grid.
+ * - Sheet corner framing registration marks (L-ticks)
+ * - Center-alignment plate crosshairs
+ * - 10cm minor grid (hairline) & 50cm major grid (dashed)
+ * - Monospaced architectural coordinate notations
+ * - Titleblock plate classification tag
  */
-export function GridOverlay({ roomWidthCm, roomDepthCm }) {
+export function GridOverlay({ roomWidthCm, roomDepthCm, viewBoxMinX = -45, viewBoxMinY = -45, viewBoxWidth, viewBoxHeight }) {
   const minorStep = 10;
   const majorStep = 50;
 
-  // Generate minor grid pattern
+  // Generate minor grid pattern (10cm intervals, skipping 50cm majors)
   const minorVLines = [];
   for (let x = minorStep; x < roomWidthCm; x += minorStep) {
     if (x % majorStep !== 0) {
@@ -24,7 +28,7 @@ export function GridOverlay({ roomWidthCm, roomDepthCm }) {
     }
   }
 
-  // Generate major grid lines
+  // Generate major grid lines (50cm intervals)
   const majorVLines = [];
   for (let x = majorStep; x < roomWidthCm; x += majorStep) {
     majorVLines.push(x);
@@ -35,9 +39,79 @@ export function GridOverlay({ roomWidthCm, roomDepthCm }) {
     majorHLines.push(y);
   }
 
+  // Plate framing dimensions
+  const plateX = viewBoxMinX + 10;
+  const plateY = viewBoxMinY + 10;
+  const plateW = (viewBoxWidth || (roomWidthCm + 90)) - 20;
+  const plateH = (viewBoxHeight || (roomDepthCm + 90)) - 20;
+
   return (
     <g className="grid-overlay" pointerEvents="none">
-      {/* Minor grid lines (faint taupe) */}
+      {/* Background Drawing Plate with subtle Lokta Paper fill */}
+      <rect
+        x={plateX}
+        y={plateY}
+        width={plateW}
+        height={plateH}
+        fill="#FAF8F3"
+        stroke="#E2DACD"
+        strokeWidth="1"
+        rx="2"
+      />
+
+      {/* Sheet Corner Framing Registration Marks */}
+      <g stroke="#9C8E7D" strokeWidth="1" opacity="0.65">
+        {/* Top-Left */}
+        <path d={`M ${plateX + 8} ${plateY + 22} L ${plateX + 8} ${plateY + 8} L ${plateX + 22} ${plateY + 8}`} fill="none" />
+        {/* Top-Right */}
+        <path d={`M ${plateX + plateW - 22} ${plateY + 8} L ${plateX + plateW - 8} ${plateY + 8} L ${plateX + plateW - 8} ${plateY + 22}`} fill="none" />
+        {/* Bottom-Left */}
+        <path d={`M ${plateX + 8} ${plateY + plateH - 22} L ${plateX + 8} ${plateY + plateH - 8} L ${plateX + 22} ${plateY + plateH - 8}`} fill="none" />
+        {/* Bottom-Right */}
+        <path d={`M ${plateX + plateW - 22} ${plateY + plateH - 8} L ${plateX + plateW - 8} ${plateY + plateH - 8} L ${plateX + plateW - 8} ${plateY + plateH - 22}`} fill="none" />
+      </g>
+
+      {/* Plate Alignment Crosshairs */}
+      <g stroke="#C4B9A8" strokeWidth="0.8" opacity="0.75">
+        {/* Top edge center crosshair */}
+        <line x1={roomWidthCm / 2} y1={plateY + 4} x2={roomWidthCm / 2} y2={plateY + 16} />
+        {/* Bottom edge center crosshair */}
+        <line x1={roomWidthCm / 2} y1={plateY + plateH - 16} x2={roomWidthCm / 2} y2={plateY + plateH - 4} />
+        {/* Left edge center crosshair */}
+        <line x1={plateX + 4} y1={roomDepthCm / 2} x2={plateX + 16} y2={roomDepthCm / 2} />
+        {/* Right edge center crosshair */}
+        <line x1={plateX + plateW - 16} y1={roomDepthCm / 2} x2={plateX + plateW - 4} y2={roomDepthCm / 2} />
+      </g>
+
+      {/* Plate Titleblock Classification Header (Top Right of drawing board) */}
+      <text
+        x={plateX + plateW - 14}
+        y={plateY + 18}
+        fill="#7A7062"
+        fontSize="7.5"
+        fontFamily="var(--font-mono)"
+        fontWeight="600"
+        letterSpacing="0.12em"
+        textAnchor="end"
+      >
+        FOLIO // TOP-DOWN ORTHOGRAPHIC 2D
+      </text>
+
+      {/* Plate Scale Tag (Bottom Right of drawing board) */}
+      <text
+        x={plateX + plateW - 14}
+        y={plateY + plateH - 12}
+        fill="#A67C43"
+        fontSize="7.5"
+        fontFamily="var(--font-mono)"
+        fontWeight="600"
+        letterSpacing="0.1em"
+        textAnchor="end"
+      >
+        SCALE 1:50 // CALIBRATED CM
+      </text>
+
+      {/* Minor grid lines (10cm hairline, crisp taupe-linen) */}
       {minorVLines.map((x) => (
         <line
           key={`m-v-${x}`}
@@ -45,9 +119,9 @@ export function GridOverlay({ roomWidthCm, roomDepthCm }) {
           y1={0}
           x2={x}
           y2={roomDepthCm}
-          stroke="var(--color-taupe-light)"
+          stroke="#E2DACD"
           strokeWidth="0.4"
-          opacity="0.3"
+          opacity="0.4"
         />
       ))}
 
@@ -58,13 +132,13 @@ export function GridOverlay({ roomWidthCm, roomDepthCm }) {
           y1={y}
           x2={roomWidthCm}
           y2={y}
-          stroke="var(--color-taupe-light)"
+          stroke="#E2DACD"
           strokeWidth="0.4"
-          opacity="0.3"
+          opacity="0.4"
         />
       ))}
 
-      {/* Major grid lines (subtle dashed taupe) */}
+      {/* Major grid lines (50cm architectural dashed lines) */}
       {majorVLines.map((x) => (
         <line
           key={`maj-v-${x}`}
@@ -72,10 +146,10 @@ export function GridOverlay({ roomWidthCm, roomDepthCm }) {
           y1={0}
           x2={x}
           y2={roomDepthCm}
-          stroke="var(--color-taupe)"
-          strokeWidth="0.5"
+          stroke="#C4B9A8"
+          strokeWidth="0.55"
           strokeDasharray="3 3"
-          opacity="0.5"
+          opacity="0.55"
         />
       ))}
 
@@ -86,39 +160,44 @@ export function GridOverlay({ roomWidthCm, roomDepthCm }) {
           y1={y}
           x2={roomWidthCm}
           y2={y}
-          stroke="var(--color-taupe)"
-          strokeWidth="0.5"
+          stroke="#C4B9A8"
+          strokeWidth="0.55"
           strokeDasharray="3 3"
-          opacity="0.5"
+          opacity="0.55"
         />
       ))}
 
-      {/* Subdued dimension tick labels along major intervals */}
+      {/* Monospaced Dimension Coordinates along Top Margins */}
       {majorVLines.map((x) => (
         <text
           key={`lbl-v-${x}`}
-          x={x + 2}
-          y={12}
-          fill="var(--color-ink-muted)"
+          x={x}
+          y={-10}
+          fill="#7A7062"
           fontSize="8"
-          fontFamily="var(--font-sans)"
-          opacity="0.6"
+          fontFamily="var(--font-mono)"
+          fontWeight="500"
+          textAnchor="middle"
+          opacity="0.75"
         >
-          {x / 100}m
+          {(x / 100).toFixed(1)}m
         </text>
       ))}
 
+      {/* Monospaced Dimension Coordinates along Left Margins */}
       {majorHLines.map((y) => (
         <text
           key={`lbl-h-${y}`}
-          x={4}
-          y={y - 2}
-          fill="var(--color-ink-muted)"
+          x={-10}
+          y={y + 3}
+          fill="#7A7062"
           fontSize="8"
-          fontFamily="var(--font-sans)"
-          opacity="0.6"
+          fontFamily="var(--font-mono)"
+          fontWeight="500"
+          textAnchor="end"
+          opacity="0.75"
         >
-          {y / 100}m
+          {(y / 100).toFixed(1)}m
         </text>
       ))}
     </g>

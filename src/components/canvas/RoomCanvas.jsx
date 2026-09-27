@@ -169,10 +169,14 @@ export function RoomCanvas() {
           </filter>
         </defs>
 
-        {/* Drafting Grid */}
+        {/* Drafting Plate & Measurement Grid */}
         <GridOverlay
           roomWidthCm={room.widthCm}
           roomDepthCm={room.depthCm}
+          viewBoxMinX={viewBoxMinX}
+          viewBoxMinY={viewBoxMinY}
+          viewBoxWidth={viewBoxWidth}
+          viewBoxHeight={viewBoxHeight}
         />
 
         {/* Animated Room Group with soft cross-dissolve when switching rooms */}
