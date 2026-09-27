@@ -515,19 +515,6 @@ export const FURNITURE_CATALOG = [
     shapeType: 'nepali-gadda',
   },
   {
-    id: 'nepali-dhoka-divider',
-    name: 'Carved Jali Screen',
-    nepaliName: 'काष्ठ जाली',
-    category: 'nepali',
-    widthCm: 120,
-    depthCm: 28,
-    heightCm: 175,
-    color: '#3A2016', // Dark Carved Timber Frame
-    accentColor: '#C49746', // Brass Pivot Hinges
-    subColor: '#5C3524', // Lattice Fretwork
-    shapeType: 'nepali-dhoka-divider',
-  },
-  {
     id: 'nepali-puja-mandir',
     name: 'Puja Shrine Shelf',
     nepaliName: 'पूजा मन्दिर',
@@ -590,18 +577,6 @@ export const FURNITURE_CATALOG = [
     subColor: '#3A2016',
     accentColor: '#C49746',
     shapeType: 'nepali-patuka-chest',
-  },
-  {
-    id: 'nepali-brass-diya',
-    name: 'Brass Diya Lamp',
-    nepaliName: 'पित्तलको दियो',
-    category: 'nepali',
-    widthCm: 28,
-    depthCm: 28,
-    heightCm: 22,
-    color: '#C49746',
-    accentColor: '#F3C969',
-    shapeType: 'nepali-brass-diya',
   },
 ];
 

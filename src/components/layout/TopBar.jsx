@@ -13,8 +13,6 @@ import {
   Check,
   X,
   Download,
-  Upload,
-  FileJson,
 } from 'lucide-react';
 import { exportRoomPlanAsPNG } from '../../engine/exportPlan.js';
 import { BrandMark } from '../common/BrandMark.jsx';
@@ -35,8 +33,6 @@ export function TopBar({ onOpenNewRoomModal }) {
   const canUndo = useRoomStore((state) => state.canUndo);
   const canRedo = useRoomStore((state) => state.canRedo);
   const closeRoom = useRoomStore((state) => state.closeRoom);
-  const exportActiveRoomJSON = useRoomStore((state) => state.exportActiveRoomJSON);
-  const importRoomFromJSON = useRoomStore((state) => state.importRoomFromJSON);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -46,7 +42,6 @@ export function TopBar({ onOpenNewRoomModal }) {
 
   const menuRef = useRef(null);
   const renameInputRef = useRef(null);
-  const jsonInputRef = useRef(null);
 
   useEffect(() => {
     if (room) {
@@ -206,33 +201,6 @@ export function TopBar({ onOpenNewRoomModal }) {
                   </button>
                   <button
                     type="button"
-                    className={styles.roomMenuItem}
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      exportActiveRoomJSON();
-                    }}
-                    role="menuitem"
-                  >
-                    <FileJson size={12} />
-                    <span>Export JSON</span>
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.roomMenuItem}
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      if (jsonInputRef.current) {
-                        jsonInputRef.current.value = '';
-                        jsonInputRef.current.click();
-                      }
-                    }}
-                    role="menuitem"
-                  >
-                    <Upload size={12} />
-                    <span>Import JSON</span>
-                  </button>
-                  <button
-                    type="button"
                     className={`${styles.roomMenuItem} ${styles.roomMenuItemDanger}`}
                     onClick={() => {
                       setIsMenuOpen(false);
@@ -245,23 +213,6 @@ export function TopBar({ onOpenNewRoomModal }) {
                   </button>
                 </div>
               )}
-              {/* Hidden file input for JSON sheet import */}
-              <input
-                ref={jsonInputRef}
-                type="file"
-                accept=".json,application/json"
-                style={{ display: 'none' }}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  try {
-                    const text = await file.text();
-                    await importRoomFromJSON(text);
-                  } catch (err) {
-                    alert('Invalid room JSON file format.');
-                  }
-                }}
-              />
             </>
           )}
 
