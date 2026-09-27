@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { BrandMark } from '../common/BrandMark.jsx';
 import { Info, Layers3, ArrowLeft } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
+import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './AboutPage.module.css';
 
 /**
@@ -268,9 +269,10 @@ function AboutMonographPlate() {
   );
 }
 
-export function AboutPage({ onBack, onOpenSheets }) {
+export function AboutPage({ onBack, onOpenNewRoomModal }) {
   const prefersReducedMotion = useReducedMotion();
   const allRooms = useRoomStore((state) => state.allRooms);
+  const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
 
   return (
     <div className={styles.aboutContainer}>
@@ -291,12 +293,17 @@ export function AboutPage({ onBack, onOpenSheets }) {
         </button>
 
         <nav className={styles.headerMetaBlock} aria-label="Studio navigation">
-          {/* Active About indicator that returns to overview */}
+          {/* Active About indicator (highlighted) */}
           <button
             type="button"
             className={`${styles.headerNavBtn} ${styles.headerNavBtnActive}`}
-            onClick={onBack}
-            title="Current page: About Room Designer Studio"
+            onClick={(e) => {
+              // Clicking the highlighted ABOUT button while on the About page keeps user here or closes sheets panel if open
+              e.preventDefault();
+              setIsSheetsPanelOpen(false);
+            }}
+            title="About Room Designer Studio (Current Page)"
+            aria-current="page"
           >
             <Info size={13} strokeWidth={1.7} />
             ABOUT
@@ -304,13 +311,13 @@ export function AboutPage({ onBack, onOpenSheets }) {
 
           <span className={styles.headerMetaDivider} aria-hidden="true" />
 
-          {/* Interactive Sheets trigger button */}
+          {/* Interactive Sheets trigger button - directly opens the slide-out SheetsPanel */}
           <button
             type="button"
             className={`${styles.headerNavBtn} ${styles.headerSheetsBtn}`}
-            onClick={onOpenSheets || onBack}
-            title="View saved architectural sheets"
-            aria-label="View saved architectural sheets"
+            onClick={() => setIsSheetsPanelOpen(true)}
+            title="Open saved sheets panel"
+            aria-label="Open saved sheets panel"
           >
             <Layers3 size={13} strokeWidth={1.7} />
             <span className={styles.headerSheetsLabel}>SHEETS</span>
@@ -390,6 +397,16 @@ export function AboutPage({ onBack, onOpenSheets }) {
         <div className={styles.colophonRule} />
         <span className={styles.colophonMark}>NIRANJAN</span>
       </footer>
+
+      {/* Slide-out Sheets Panel for Saved Rooms */}
+      <SheetsPanel
+        isOpen={isSheetsPanelOpen}
+        onClose={() => setIsSheetsPanelOpen(false)}
+        onOpenNewRoomModal={() => {
+          setIsSheetsPanelOpen(false);
+          if (onOpenNewRoomModal) onOpenNewRoomModal();
+        }}
+      />
     </div>
   );
 }

@@ -111,8 +111,15 @@
 
 .headerNavBtnActive {
   color: var(--color-maroon);
-  background-color: var(--color-linen);
-  border-color: rgba(139, 38, 53, 0.25);
+  background-color: rgba(139, 38, 53, 0.12);
+  border-color: rgba(139, 38, 53, 0.4);
+  box-shadow: 0 1px 4px rgba(139, 38, 53, 0.1);
+  font-weight: 800;
+}
+
+.headerNavBtnActive:hover {
+  background-color: rgba(139, 38, 53, 0.16);
+  border-color: var(--color-maroon);
 }
 
 .headerSheetsBtn {

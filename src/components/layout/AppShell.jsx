@@ -53,7 +53,18 @@ export function AppShell() {
 
   // Dedicated full-page About View
   if (currentPage === 'about') {
-    return <AboutPage onBack={() => setCurrentPage('main')} />;
+    return (
+      <>
+        <AboutPage
+          onBack={() => setCurrentPage('main')}
+          onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)}
+        />
+        <NewRoomModal
+          isOpen={isNewRoomModalOpen}
+          onClose={() => setIsNewRoomModalOpen(false)}
+        />
+      </>
+    );
   }
 
   if (!room) {
