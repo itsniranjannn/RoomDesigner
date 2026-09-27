@@ -64,8 +64,10 @@ export function checkFurnitureCollision(itemA, itemB, epsilon = 0.5) {
   if (
     defA?.shapeType === 'rug' ||
     defA?.shapeType === 'rug-runner' ||
+    defA?.shapeType === 'nepali-dhaka-rug' ||
     defB?.shapeType === 'rug' ||
-    defB?.shapeType === 'rug-runner'
+    defB?.shapeType === 'rug-runner' ||
+    defB?.shapeType === 'nepali-dhaka-rug'
   ) {
     return false;
   }
@@ -170,13 +172,13 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
   for (let i = 0; i < n; i++) {
     const itemA = placedFurniture[i];
     const defA = getFurnitureType(itemA.furnitureTypeId);
-    if (defA?.shapeType === 'rug' || defA?.shapeType === 'rug-runner') continue;
+    if (defA?.shapeType === 'rug' || defA?.shapeType === 'rug-runner' || defA?.shapeType === 'nepali-dhaka-rug') continue;
     const cornersA = cornersMap.get(itemA.id);
 
     for (let j = i + 1; j < n; j++) {
       const itemB = placedFurniture[j];
       const defB = getFurnitureType(itemB.furnitureTypeId);
-      if (defB?.shapeType === 'rug' || defB?.shapeType === 'rug-runner') continue;
+      if (defB?.shapeType === 'rug' || defB?.shapeType === 'rug-runner' || defB?.shapeType === 'nepali-dhaka-rug') continue;
       const cornersB = cornersMap.get(itemB.id);
 
       if (checkPolygonCollision(cornersA, cornersB)) {

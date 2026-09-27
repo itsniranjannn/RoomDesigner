@@ -12,6 +12,8 @@ import {
   loadRoomFromDB,
   deleteRoomFromDB,
   renameRoomInDB,
+  exportRoomToJSON,
+  validateAndParseRoomJSON,
 } from '../data/persistence.js';
 import { getFurnitureType } from '../data/furnitureCatalog.js';
 import { evaluateAllCollisions } from '../engine/collision.js';
@@ -629,6 +631,40 @@ export const useRoomStore = create((set, get) => ({
       canUndo: false,
       canRedo: false,
     });
+  },
+
+  // Export current room data to a downloadable JSON file
+  exportActiveRoomJSON: () => {
+    const { room } = get();
+    if (!room) return;
+    exportRoomToJSON(room);
+  },
+
+  // Import a room JSON file and activate it
+  importRoomFromJSON: async (jsonString) => {
+    const parsedRoom = validateAndParseRoomJSON(jsonString);
+    await saveRoomToDB(parsedRoom);
+    const allRooms = await listRoomsFromDB();
+
+    const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
+      parsedRoom.placedFurniture || [],
+      parsedRoom.widthCm,
+      parsedRoom.depthCm
+    );
+
+    set({
+      room: parsedRoom,
+      allRooms,
+      selectedItemId: null,
+      collidingItemIds: collidingIds,
+      boundaryCollidingIds,
+      isInitialAnimationDone: false,
+      undoStack: [],
+      redoStack: [],
+      canUndo: false,
+      canRedo: false,
+    });
+    return parsedRoom;
   },
 
   // Switch to another room
