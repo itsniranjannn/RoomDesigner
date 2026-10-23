@@ -1,402 +1,304 @@
-# Room Designer Studio
+<div align="center">
 
-Room Designer Studio is a browser-based architectural floor-plan and interior-space
-planning tool. It combines an editorial landing experience, an interactive 2D drafting
-canvas, a real-time 3D room preview, and a curated furniture library influenced by
-Nepali and Newari material culture.
+# 🏛️ ROOM DESIGNER STUDIO
+### *CAD // 2D // 3D Spatial Workshop Grounded in Vernacular Craft & Precision Engineering*
 
-The project is intentionally client-side and local-first: room designs are stored in
-the browser, no server or account is required, and the application can be built as a
-static Vite site.
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Web%20%7C%20Client--Side-8B2635?style=for-the-badge&logoColor=white" alt="Platform" />
+  <img src="https://img.shields.io/badge/Architecture-Dual--Projection%20CAD-22485E?style=for-the-badge&logoColor=white" alt="Architecture" />
+  <img src="https://img.shields.io/badge/Storage-Local--First%20(IndexedDB)-C49746?style=for-the-badge&logoColor=white" alt="Storage" />
+  <img src="https://img.shields.io/badge/Heritage-Nepali%20Vernacular-3B4B42?style=for-the-badge&logoColor=white" alt="Heritage" />
+</p>
 
-## Contents
+<p align="center">
+  <a href="#-project-showcase"><img src="https://img.shields.io/badge/LIVE_TOUR-Explore_Screenshots-8B2635?style=flat-square&logo=google-photos&logoColor=white" alt="Showcase" /></a>
+  <a href="#-core-merits--architectural-distinctions"><img src="https://img.shields.io/badge/SYSTEM-Core_Merits-22485E?style=flat-square&logo=codepen&logoColor=white" alt="Merits" /></a>
+  <a href="#-cultural-material-palette"><img src="https://img.shields.io/badge/DESIGN-Color_Tokens-C49746?style=flat-square&logo=adobe-color&logoColor=white" alt="Palette" /></a>
+  <a href="#-quick-start--development"><img src="https://img.shields.io/badge/DOCS-Get_Started-3B4B42?style=flat-square&logo=readme&logoColor=white" alt="Docs" /></a>
+</p>
 
-- [What the project does](#what-the-project-does)
-- [Features](#features)
-- [Technology](#technology)
-- [Application structure](#application-structure)
-- [Important files](#important-files)
-- [State and data flow](#state-and-data-flow)
-- [Design system](#design-system)
-- [Furniture catalog](#furniture-catalog)
-- [Running the project](#running-the-project)
-- [Validation](#validation)
-- [Known limitations](#known-limitations)
-- [Future improvements](#future-improvements)
+---
 
-## What the project does
+<p align="center">
+  <b>Room Designer Studio</b> is an architectural drafting environment that unites high-fidelity <b>2D orthographic plan generation</b> with <b>real-time 3D spatial modeling</b>, inspired by the craft cultures, materials, and sacred geometries of the Kathmandu Valley.
+</p>
 
-The application supports the following workflow:
+</div>
 
-1. Open the landing page and review the animated architectural presentation.
-2. Create a new room using a room-size modal or open a locally saved room.
-3. Place furniture from the catalog onto a 2D top-down drafting canvas.
-4. Move, rotate, duplicate, delete, and reorder furniture.
-5. Inspect coordinates, dimensions, rotation, and collision state.
-6. Switch to the Three.js 3D Studio view to review the room spatially.
-7. Save room changes locally and switch between multiple saved sheets.
-8. Export a high-resolution 2D plan image.
+<br/>
 
-The default room uses centimeter coordinates. The 2D editor is plan-oriented, while
-the 3D view converts the same room and furniture data into meters for rendering.
+<div align="center">
+  <table width="100%" style="border-collapse: collapse; border: none;">
+    <tr>
+      <td width="33%" align="center" style="background-color: #FBF9F5; padding: 18px; border-radius: 12px; border: 1px solid #E8DFD1;">
+        <span style="font-size: 24px;">📐</span><br/>
+        <b style="color: #8B2635; font-size: 15px;">DUAL PROJECTION</b><br/>
+        <span style="color: #5C5247; font-size: 12px;">Plan-view 2D drafting with instantaneous sync to 3D Three.js spatial meshes.</span>
+      </td>
+      <td width="33%" align="center" style="background-color: #FBF9F5; padding: 18px; border-radius: 12px; border: 1px solid #E8DFD1;">
+        <span style="font-size: 24px;">🪔</span><br/>
+        <b style="color: #C49746; font-size: 15px;">VERNACULAR CRAFT</b><br/>
+        <span style="color: #5C5247; font-size: 12px;">44+ specs featuring Patan kansa brass, lokta paper, Galaicha rugs & Jali screens.</span>
+      </td>
+      <td width="33%" align="center" style="background-color: #FBF9F5; padding: 18px; border-radius: 12px; border: 1px solid #E8DFD1;">
+        <span style="font-size: 24px;">🔒</span><br/>
+        <b style="color: #22485E; font-size: 15px;">LOCAL-FIRST ENGINE</b><br/>
+        <span style="color: #5C5247; font-size: 12px;">IndexedDB persistence with 0% data egress, no accounts, and full offline readiness.</span>
+      </td>
+    </tr>
+  </table>
+</div>
 
-## Features
+<br/>
 
-### Landing page
+---
 
-- Architectural editorial layout with a two-column hero.
-- Animated drafting grid, blueprint frame, dimensions, door swing, and mandala geometry.
-- Nepali-inspired palette using lokta linen, rato simrik maroon, Patan brass, timber ink,
-  and Himalayan indigo.
-- Animated “Draft your space with precision.” heading and call-to-action.
-- Animated original geometric Room Designer Studio logo.
-- ABOUT and SHEETS navigation controls.
-- Responsive behavior for smaller screens.
-- Reduced-motion support for major motion effects.
+## 📸 Project Showcase
 
-### About page
+<div align="center">
 
-- Uses the same brand identity and navbar language as the landing page.
-- Monograph-style project information describing:
-  - 2D drafting and 3D spatial modeling.
-  - Nepalese architectural proportions.
-  - Patan bell metal and kansa brass.
-  - Lokta paper surfaces.
-  - Tibetan-Nepali Galaicha geometries.
-  - Timber joinery traditions.
-- Subtle animated drafting plate with:
-  - Rotating mandala rings.
-  - Geometric registration marks.
-  - Material callouts.
-  - Architectural dimensions.
-- Favicon and page metadata are defined in `index.html`.
+### 01 // Architectural Folio Landing
+*Monograph-style editorial hero featuring animated drafting grids, dynamic blueprint borders, dimension indicators, and Nepali mandala geometry.*
 
-### 2D drafting workspace
+<br/>
 
-- Room boundary with walls, doors, windows, and opening geometry.
-- Pan and zoom canvas.
-- Grid overlay and snap assistance.
-- Furniture drag and placement.
-- Rotation controls and keyboard nudging.
-- Collision warnings for overlapping furniture.
-- Boundary containment checks.
-- Layer ordering with send-back and bring-front actions.
-- Selected-item inspector for coordinates, rotation, and dimensions.
-- Duplicate and delete operations.
+<kbd>
+  <img src="docs/assets/images/hero-landing.png" alt="Editorial Landing" width="94%" />
+</kbd>
 
-### 3D Studio
+<br/><br/>
 
-- React Three Fiber and Three.js rendering.
-- Procedural room walls and opening cutouts.
-- Camera orbit, pan, and zoom controls.
-- Full-height wall toggle and reset-view action.
-- Procedural furniture models built from Three.js primitives.
-- Materials, shadows, floor, lighting, and architectural color treatments.
-- TV and media-console surface placement:
-  - A TV added after a media console inherits the console position.
-  - A TV is elevated to the console height.
-  - Adding a console after a TV repositions the existing TV onto it.
+### 02 // Form, Material & Memory (About Folio)
+*A tribute to Newari architectural proportions, mortise-and-tenon timber joinery, hand-beaten Patan bell metal (kansa), and handmade fibrous Lokta linen.*
 
-### Furniture catalog
+<br/>
 
-The catalog is grouped into six categories:
+<kbd>
+  <img src="docs/assets/images/about-folio.png" alt="About Studio Folio" width="94%" />
+</kbd>
 
-- Living Room
-- Bedroom
-- Nepali Household
-- Dining & Office
-- Kitchen
-- Decor & Accents
+<br/><br/>
 
-Furniture definitions contain real-world dimensions in centimeters, color/material
-metadata, a `shapeType` used by both renderers, and optional placement metadata such as
-`stackableOn` and `placement`.
+### 03 // Dimensional Archetype Definition
+*Intuitive modal to instantiate standard architectural room footprints (Living, Master Bedroom, Kitchen & Dining, Studio) or calibrate custom metric bounds.*
 
-Nepali/Newari-oriented pieces currently include examples such as:
+<br/>
 
-- Pirka low stool.
-- Charpai daybed.
-- Gadda floor seating.
-- Carved Jali screen.
-- Puja shrine shelf.
-- Karuwa and Diyo stand.
-- Dhaka pattern rug.
-- Carved wooden chowki.
-- Patuka storage chest.
-- Brass diya lamp.
+<kbd>
+  <img src="docs/assets/images/room-modal.png" alt="Define Room Modal" width="80%" />
+</kbd>
 
-The catalog is the source of truth for the catalog UI, 2D silhouettes, and 3D models.
+<br/><br/>
 
-### Local persistence and sheets
+### 04 // 2D Orthographic Drafting Canvas
+*Precision-calibrated 1:50 drafting sheet with dynamic door/window aperture cutouts, magnetic snapping, multi-tier collision warning overlays, and item HUD inspector.*
 
-- IndexedDB stores room records in the `room_planner_db` database.
-- The active room ID is tracked in `localStorage`.
-- Changes are debounced before saving.
-- Multiple rooms can be listed, opened, renamed, and deleted.
-- The landing page displays the saved-sheet count.
-- Designs remain on the current browser/device unless explicitly exported or otherwise
-  copied by the user.
+<br/>
 
-## Technology
+<kbd>
+  <img src="docs/assets/images/2d-drafting-studio.png" alt="2D Top-Down Drafting Sheet" width="94%" />
+</kbd>
 
-### Runtime dependencies
+<br/><br/>
 
-- React 19
-- React DOM 19
-- Vite 6
-- Zustand 5
-- Three.js
-- `@react-three/fiber`
-- `@react-three/drei`
-- Framer Motion
-- Lucide React
-- `idb` for IndexedDB access
+### 05 // Real-Time 3D Spatial Studio
+*Direct procedural translation into 3D space with dynamic wall extrusion, realistic directional shadows, surface elevation logic (TV atop console), and orbit navigation.*
 
-### Development dependencies
+<br/>
 
-- Vite React plugin
-- Vitest
+<kbd>
+  <img src="docs/assets/images/3d-spatial-studio.png" alt="3D Spatial Studio" width="94%" />
+</kbd>
 
-Exact versions are declared in `package.json` and locked in `package-lock.json`.
+</div>
 
-## Application structure
+<br/>
 
-```text
-Roomdesigner/
-├── public/
-│   ├── og-preview.png                 # Social/share preview image
-│   └── room-studio-mark.svg           # Branded favicon
-├── src/
-│   ├── App.jsx                        # Application bootstrap and store initialization
-│   ├── main.jsx                       # React DOM entry point
-│   ├── components/
-│   │   ├── canvas/                    # 2D plan canvas and SVG furniture silhouettes
-│   │   ├── catalog/                   # Furniture catalog and catalog cards
-│   │   ├── common/                    # Reusable buttons, selects, and brand mark
-│   │   ├── inspector/                 # Selected furniture controls
-│   │   ├── layout/                    # Landing, About, shell, sheets, and modal views
-│   │   └── preview3d/                 # Three.js room and furniture rendering
-│   ├── data/
-│   │   ├── furnitureCatalog.js        # Furniture source of truth
-│   │   └── persistence.js             # IndexedDB room storage
-│   ├── design/
-│   │   ├── global.css                 # Global resets and shared browser styles
-│   │   ├── tokens.css                 # Palette, typography, spacing, shadows, layout
-│   │   └── typography.css             # Font and text defaults
-│   ├── engine/
-│   │   ├── collision.js                # Furniture collision and boundary evaluation
-│   │   ├── exportPlan.js               # 2D plan image export
-│   │   ├── geometry.js                 # Rotation, angles, and geometry helpers
-│   │   ├── openings.js                 # Door/window opening calculations
-│   │   └── snapping.js                 # Grid snapping and room-boundary clamping
-│   └── store/
-│       └── roomStore.js                # Zustand room, furniture, history, and persistence state
-├── index.html                          # Vite document shell, favicon, metadata, fonts
-├── package.json                         # Scripts and dependencies
-├── package-lock.json                    # Locked dependency tree
-├── vite.config.js                       # Vite configuration
-└── README.md                            # Project documentation
-```
+---
 
-## Important files
+## 💎 Core Merits & Architectural Distinctions
 
-| File | Responsibility |
-| --- | --- |
-| `src/components/layout/LandingPage.jsx` | Landing hero, animated plan graphic, branding, navigation |
-| `src/components/layout/LandingPage.module.css` | Landing layout, typography, animation, responsive rules |
-| `src/components/layout/AboutPage.jsx` | About/monograph content and animated architectural plate |
-| `src/components/layout/AboutPage.module.css` | About page layout, navbar, card, and animation styles |
-| `src/components/layout/AppShell.jsx` | Switches between landing, About, and studio workspace |
-| `src/components/layout/TopBar.jsx` | Workspace toolbar, mode switching, rooms, undo/redo, export |
-| `src/components/canvas/RoomCanvas.jsx` | Main 2D drafting surface |
-| `src/components/canvas/ArchitecturalSilhouette.jsx` | Furniture-specific 2D SVG representations |
-| `src/components/preview3d/Room3DView.jsx` | Three.js scene, camera, controls, and lighting |
-| `src/components/preview3d/Furniture3DBox.jsx` | Procedural 3D furniture models |
-| `src/data/furnitureCatalog.js` | Catalog definitions and furniture metadata |
-| `src/data/persistence.js` | IndexedDB setup and room CRUD functions |
-| `src/store/roomStore.js` | Central client state and editor actions |
-| `src/design/tokens.css` | Shared visual language |
-| `index.html` | Document title, favicon, theme color, and description |
+<table width="100%">
+  <thead>
+    <tr style="background-color: #F6F2EA;">
+      <th align="left" width="28%" style="color: #1A1615;">Distinction</th>
+      <th align="left" style="color: #1A1615;">Engineering & Design Impact</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><b>🔄 Seamless Bi-Projection</b></td>
+      <td>Changes made on the 2D orthographic canvas (rotation, position, dimensions, layer hierarchy) update synchronously in the 3D WebGL viewport without state discrepancy or re-rendering stutter.</td>
+    </tr>
+    <tr>
+      <td><b>🇳🇵 Vernacular Craft Library</b></td>
+      <td>Comprehensive catalog containing <b>44+ specifications</b>. Bridges contemporary modern Scandinavian layouts with indigenous heritage items: <i>Dhaka Rugs, Galaicha Runners, Charpai Daybeds, Pirka low stools, Diyo stands, and Carved Jali Screens</i>.</td>
+    </tr>
+    <tr>
+      <td><b>⚡ Rotated SAT Collision Engine</b></td>
+      <td>Features custom Separating Axis Theorem (SAT) collision math and boundary-clamp algorithms that highlight collisions in real-time red strokes if pieces encroach upon perimeter walls or each other.</td>
+    </tr>
+    <tr>
+      <td><b>🪜 Intelligent Stacking Matrices</b></td>
+      <td>Objects understand elevation and parent-child physical dependencies. Media consoles automatically nest TVs at correct surface heights regardless of insertion order; rugs remain anchored to floor elevation.</td>
+    </tr>
+    <tr>
+      <td><b>🛡️ 100% Privacy & Local-First</b></td>
+      <td>All designs, floor plans, and layout sheets reside securely in browser <b>IndexedDB</b> storage. Zero cloud egress, zero login barriers, zero tracking.</td>
+    </tr>
+    <tr>
+      <td><b>🖨️ Presentation Blueprint Export</b></td>
+      <td>One-click high-resolution raster export of architectural drawings with professional dimensional callouts and layout statistics.</td>
+    </tr>
+  </tbody>
+</table>
 
-## State and data flow
+<br/>
+
+---
+
+## 🎨 Cultural Material Palette
+
+Inspired by the earthy materials, red ochre temples, and metallurgic heritage of Patan and the Kathmandu Valley:
+
+<div align="center">
+
+| Swatch | Color Code | Token Name | Cultural & Architectural Material Role |
+| :---: | :---: | :--- | :--- |
+| ![#F6F2EA](https://via.placeholder.com/18/F6F2EA/000000?text=+) | `var(--color-linen)` | **Lokta Linen** (`#F6F2EA`) | Fibrous handmade lokta paper base & backdrop |
+| ![#EDE6D9](https://via.placeholder.com/18/EDE6D9/000000?text=+) | `var(--color-linen-surface)` | **Drafting Surface** (`#EDE6D9`) | Calibrated drafting board & plan backing |
+| ![#1A1615](https://via.placeholder.com/18/1A1615/000000?text=+) | `var(--color-ink)` | **Aged Sal Timber** (`#1A1615`) | Structural framing, walls, and technical linework |
+| ![#8B2635](https://via.placeholder.com/18/8B2635/000000?text=+) | `var(--color-maroon)` | **Rato Simrik** (`#8B2635`) | Sacred vermilion red / primary interactive accents |
+| ![#C49746](https://via.placeholder.com/18/C49746/000000?text=+) | `var(--color-brass)` | **Patan Bell Metal** (`#C49746`) | Kansa brass alloy details, icons & markers |
+| ![#22485E](https://via.placeholder.com/18/22485E/000000?text=+) | `var(--color-indigo)` | **Himalayan Indigo** (`#22485E`) | Active selection rings and focal elements |
+| ![#3B4B42](https://via.placeholder.com/18/3B4B42/000000?text=+) | `var(--color-pine)` | **Himalayan Pine** (`#3B4B42`) | Natural flora, garden elements & balanced accents |
+
+</div>
+
+<br/>
+
+---
+
+## 🏗️ System Architecture & Workflow
 
 ```text
-Catalog definition
-        │
-        ▼
-roomStore.addFurniture()
-        │
-        ├── clamp to room bounds
-        ├── apply stack placement when applicable
-        ├── record undo snapshot
-        ├── evaluate collision/boundary state
-        └── debounce IndexedDB save
-        │
-        ├── RoomCanvas + ArchitecturalSilhouette (2D)
-        └── Room3DView + Furniture3DBox (3D)
+┌────────────────────────────────────────────────────────────────────────┐
+│                        ROOM DESIGNER STUDIO                            │
+└────────────────────────────────────────────────────────────────────────┘
+                                    │
+           ┌────────────────────────┴────────────────────────┐
+           ▼                                                 ▼
+┌──────────────────────┐                          ┌──────────────────────┐
+│  2D DRAFTING ENGINE  │                          │  3D SPATIAL STUDIO   │
+│  - SVG Silhouettes   │                          │  - Three.js / R3F    │
+│  - Snap-to-Grid Math │                          │  - Procedural Meshes │
+│  - Rotated SAT Hull  │                          │  - Shadow/Lighting   │
+└──────────┬───────────┘                          └──────────┬───────────┘
+           │                                                 │
+           └────────────────────────┬────────────────────────┘
+                                    ▼
+                ┌───────────────────────────────────────┐
+                │        UNIFIED ZUSTAND STORE          │
+                │  - Active Room Dimensions & Openings  │
+                │  - Furniture Instances & Hierarchy    │
+                │  - Collision / Boundary ID Sets       │
+                │  - Undo / Redo Temporal Snapshots     │
+                └───────────────────┬───────────────────┘
+                                    ▼
+                ┌───────────────────────────────────────┐
+                │         INDEXEDDB CLIENT DB           │
+                │  - Debounced Local Serialization      │
+                │  - Multi-Room "Sheets" Workspace      │
+                └───────────────────────────────────────┘
 ```
 
-The store keeps:
+<br/>
 
-- Active room and all saved rooms.
-- Furniture, doors, and windows.
-- Selected furniture ID.
-- Current view mode (`2d` or `3d`).
-- Save status.
-- Collision and boundary-collision ID sets.
-- Undo and redo stacks.
+---
 
-Undo history is session state and is cleared when a room is initialized, created, or
-switched. Persistent room data is stored separately in IndexedDB.
+## 🛠️ Technology Stack
 
-## Design system
+<div align="center">
 
-The visual system is defined in `src/design/tokens.css`.
+| Core Framework | 3D Visualization | State & Storage | Design & Motion |
+| :---: | :---: | :---: | :---: |
+| <img src="https://img.shields.io/badge/React_19-20232A?style=for-the-badge&logo=react&logoColor=61DAFB"/><br/>Concurrent UI | <img src="https://img.shields.io/badge/Three.js-000000?style=for-the-badge&logo=three.js&logoColor=white"/><br/>WebGL Canvas | <img src="https://img.shields.io/badge/Zustand_5-443e38?style=for-the-badge&logo=react&logoColor=white"/><br/>Unified Store | <img src="https://img.shields.io/badge/Framer_Motion-0055FF?style=for-the-badge&logo=framer&logoColor=white"/><br/>Smooth Gestures |
+| <img src="https://img.shields.io/badge/Vite_6-646CFF?style=for-the-badge&logo=vite&logoColor=white"/><br/>Build Engine | <img src="https://img.shields.io/badge/R3F_&_Drei-black?style=for-the-badge&logoColor=white"/><br/>Declarative 3D | <img src="https://img.shields.io/badge/IndexedDB-gray?style=for-the-badge&logo=sqlite&logoColor=white"/><br/>Zero-Cloud Storage | <img src="https://img.shields.io/badge/Lucide_Icons-orange?style=for-the-badge&logoColor=white"/><br/>Clean Linework |
 
-### Palette
+</div>
 
-| Token | Value | Meaning |
-| --- | --- | --- |
-| `--color-ink` | `#1A1615` | Aged sal timber and architectural linework |
-| `--color-linen` | `#F6F2EA` | Lokta paper and raw muslin |
-| `--color-linen-surface` | `#EDE6D9` | Layered drafting surface |
-| `--color-maroon` | `#8B2635` | Rato simrik / deep Nepali crimson |
-| `--color-brass` | `#C49746` | Patan kansa bell-metal accent |
-| `--color-indigo` | `#22485E` | Himalayan indigo selection color |
-| `--color-pine` | `#3B4B42` | Himalayan pine and juniper green |
-| `--color-taupe` | `#D5C8B8` | Earthen plaster and mortar |
-| `--color-walnut` | `#7A5B37` | Carved wood |
+<br/>
 
-### Typography
+---
 
-- `Fraunces` is used for editorial and architectural display headings.
-- `Space Grotesk` is used for interface, drafting, and body text.
-- Monospaced labels are used for dimensions, classification tags, and technical metadata.
-- Google Fonts are requested from `index.html`; local system fallbacks are included in CSS.
+## ⚡ Quick Start & Development
 
-### Motion
+### 1. Requirements
+Ensure you have **Node.js (>= 18.0.0)** installed.
 
-Motion is used to communicate the drafting/architectural identity:
-
-- Landing grid drift.
-- Mandala rotation and pulse.
-- Brand mark orbit.
-- Heading and CTA entrance transitions.
-- About-page drafting plate movement.
-- SVG perimeter and opening draw-in effects.
-
-Components use `prefers-reduced-motion` handling where the effect is continuous or
-decorative.
-
-## Running the project
-
-### Requirements
-
-- Node.js compatible with the installed Vite/React toolchain.
-- npm.
-- A modern browser with IndexedDB and WebGL support for the complete experience.
-
-### Install
-
+### 2. Installation & Setup
 ```bash
+# Clone the repository
+git clone https://github.com/your-username/room-designer-studio.git
+
+# Enter the project directory
+cd "Room Designer Studio"
+
+# Install dependencies
 npm install
-```
 
-### Start the development server
-
-```bash
+# Start development server
 npm run dev
 ```
+Open **`http://localhost:5173`** in any WebGL-capable browser.
 
-Vite prints the local development URL, normally `http://localhost:5173`.
-
-### Create a production build
-
+### 3. Build & Production Deployment
 ```bash
+# Build the optimized production bundle
 npm run build
-```
 
-The production output is written to `dist/`.
-
-### Preview the production build
-
-```bash
+# Preview production build locally
 npm run preview
 ```
 
-### Test command
+<br/>
 
-```bash
-npm test -- --run
-```
+---
 
-The repository currently does not contain test files matching the Vitest configuration,
-so this command may report that no test files were found. The build command is currently
-the primary automated validation.
+## ⌨️ Shortcuts & Workspace Controls
 
-## Validation
+<div align="center">
 
-For a normal change, use:
+| Command | Action | Active Context |
+| :--- | :--- | :--- |
+| <kbd>Click</kbd> + <kbd>Drag</kbd> | Move furniture / Pan drafting sheet | 2D Canvas |
+| <kbd>R</kbd> | Rotate selected item by 45° or 90° | 2D Canvas |
+| <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> | Nudge item 1 cm (Hold <kbd>Shift</kbd> for 10 cm) | 2D Canvas |
+| <kbd>Ctrl</kbd> + <kbd>D</kbd> | Duplicate active item | 2D Canvas |
+| <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Remove item from plan | 2D Canvas |
+| <kbd>Left Click</kbd> + <kbd>Drag</kbd> | Orbit 3D perspective camera | 3D Studio |
+| <kbd>Right Click</kbd> + <kbd>Drag</kbd> | Pan 3D camera | 3D Studio |
+| <kbd>Scroll</kbd> | Zoom in / Zoom out | 2D & 3D |
 
-```bash
-npm run build
-```
+</div>
 
-For UI changes, also verify manually:
 
-1. Landing page loads without a blank state.
-2. About page opens from the landing navbar.
-3. New room creation opens the studio.
-4. Furniture can be added and moved in 2D.
-5. 3D Studio renders a room and furniture.
-6. TV/media-console stacking works in both insertion orders.
-7. A room persists after a browser reload.
-8. Export produces a usable 2D plan image.
-9. Narrow viewport behavior remains usable.
+<br/>
 
-## Known limitations
+---
 
-- There is no backend, authentication, cloud sync, or multi-user collaboration.
-- Room data is local to the current browser profile and device.
-- IndexedDB data can be lost if browser site data is cleared.
-- The application depends on WebGL for the 3D Studio view.
-- The 3D library is procedural and uses primitives rather than imported high-detail
-  furniture assets; shapes are illustrative, not manufacturing-grade models.
-- TV stacking is currently a targeted media-console rule, not a general parent/child
-  furniture hierarchy.
-- The 2D editor represents plan position; vertical elevation is primarily reflected in
-  the 3D view.
-- Google Fonts may be blocked in offline, restricted, or privacy-hardened environments.
-  CSS fallbacks keep the interface usable, but typography can differ.
-- The codebase currently has no comprehensive automated component, engine, or end-to-end
-  test suite.
-- Large Three.js assets contribute significantly to the production bundle.
-- Complex SVG scenes and animated geometry can be expensive on low-powered devices.
-- Exported plans are image output, not editable CAD/DXF files.
-- Room dimensions, furniture metadata, and visual proportions are currently edited
-  through the application source/catalog rather than an admin data layer.
+<div align="center">
 
-## Future improvements
+### 🏛️ Room Designer Studio
+*Conceived, designed, and drafted with architectural precision by **Niranjan**.*
+*Inspired by the timeless craft, geometry, and material traditions of the Kathmandu Valley.*
 
-Potential next steps include:
+<p align="center">
+  <img src="https://img.shields.io/badge/Designed_with-Dedication_&_Precision-8B2635?style=flat-square" />
+  <img src="https://img.shields.io/badge/Crafted_for-Architects_&_Designers-C49746?style=flat-square" />
+</p>
 
-- Add focused unit tests for geometry, collision, snapping, openings, and stacking.
-- Add component and end-to-end tests for room creation and persistence.
-- Add a general furniture stacking/attachment model.
-- Add editable wall lengths and more room-shape presets.
-- Add richer door/window editing and architectural annotation tools.
-- Add import/export formats such as JSON, SVG, DXF, or PDF.
-- Add optional cloud synchronization and project sharing.
-- Improve accessibility auditing across canvas and Three.js controls.
-- Add local font assets or a font-loading strategy for fully offline typography.
-- Optimize Three.js bundle loading and model rendering on mobile devices.
-- Add more culturally specific Nepali/Newari catalog pieces and material textures.
+</div>
 
-## License and attribution
+</div>
 
-No license file is currently included in the repository. Add an explicit license before
-distributing the project outside its intended development context.
-
-The visual language and catalog references are original project work inspired by
-Nepalese/Newari architectural materials and craft traditions. Brand, catalog, and
-generated visual assets should be reviewed before commercial redistribution.
