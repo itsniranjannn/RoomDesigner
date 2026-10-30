@@ -21,6 +21,20 @@ import { clampOpening } from '../engine/openings.js';
 
 let saveDebounceTimer = null;
 
+function persistDebounced(updatedRoom, set) {
+  if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+  saveDebounceTimer = setTimeout(async () => {
+    try {
+      await saveRoomToDB(updatedRoom);
+      set({ saveStatus: 'saved' });
+    } catch (err) {
+      if (import.meta.env?.DEV) {
+        console.error('Error saving to IndexedDB:', err);
+      }
+    }
+  }, 350);
+}
+
 export const useRoomStore = create((set, get) => ({
   room: null,
   allRooms: [],
@@ -574,7 +588,7 @@ export const useRoomStore = create((set, get) => ({
     };
 
     set({ room: updatedRoom, saveStatus: 'saving' });
-    saveRoomToDB(updatedRoom);
+    persistDebounced(updatedRoom, set);
   },
 
   // Remove a door or window
@@ -594,7 +608,7 @@ export const useRoomStore = create((set, get) => ({
     };
 
     set({ room: updatedRoom, saveStatus: 'saving' });
-    saveRoomToDB(updatedRoom);
+    persistDebounced(updatedRoom, set);
   },
 
   // Create a new custom room
