@@ -173,3 +173,24 @@ describe('Snapping and Boundary Clamping Engine', () => {
     expect(result.snappedToWall).toBe(true);
   });
 });
+
+describe('evaluateAllCollisions with saved items', () => {
+  it('resolves footprint from the catalog when width/depth are missing', () => {
+    const items = [
+      { id: 'a', furnitureTypeId: 'bed-queen', x: 100, y: 100, rotationDeg: 0 },
+      { id: 'b', furnitureTypeId: 'bed-queen', x: 110, y: 100, rotationDeg: 0 },
+    ];
+    const { collidingIds } = evaluateAllCollisions(items, 600, 600);
+    expect(collidingIds.has('a')).toBe(true);
+    expect(collidingIds.has('b')).toBe(true);
+  });
+
+  it('does not flag an item resting on top of another', () => {
+    const items = [
+      { id: 'console', furnitureTypeId: 'media-console', x: 200, y: 200, rotationDeg: 0 },
+      { id: 'tv', furnitureTypeId: 'tv-43', x: 200, y: 200, rotationDeg: 0, elevationCm: 50 },
+    ];
+    const { collidingIds } = evaluateAllCollisions(items, 600, 600);
+    expect(collidingIds.size).toBe(0);
+  });
+});
