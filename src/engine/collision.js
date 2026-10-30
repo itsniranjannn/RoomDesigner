@@ -134,11 +134,22 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
   const collidingIds = new Set();
   const boundaryCollidingIds = new Set();
 
-  const n = placedFurniture.length;
+  // Saved items only store type/position; resolve footprint and height from the catalog
+  const items = placedFurniture.map((item) => {
+    const def = getFurnitureType(item.furnitureTypeId);
+    return {
+      ...item,
+      widthCm: item.widthCm ?? def?.widthCm ?? 50,
+      depthCm: item.depthCm ?? def?.depthCm ?? 50,
+      heightCm: def?.heightCm ?? 100,
+      shapeType: def?.shapeType,
+    };
+  });
+  const n = items.length;
 
   // Pre-calculate corners for each item
   const cornersMap = new Map();
-  for (const item of placedFurniture) {
+  for (const item of items) {
     cornersMap.set(
       item.id,
       getRotatedRectCorners(
@@ -152,7 +163,7 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
   }
 
   // Check boundary violations
-  for (const item of placedFurniture) {
+  for (const item of items) {
     const corners = cornersMap.get(item.id);
     for (const c of corners) {
       if (
@@ -170,15 +181,15 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
 
   // Check pairwise furniture collisions (rugs and carpet runners exempt)
   for (let i = 0; i < n; i++) {
-    const itemA = placedFurniture[i];
-    const defA = getFurnitureType(itemA.furnitureTypeId);
-    if (defA?.shapeType === 'rug' || defA?.shapeType === 'rug-runner' || defA?.shapeType === 'nepali-dhaka-rug') continue;
+    const itemA = items[i];
+    if (isFlatRug(itemA.shapeType)) continue;
     const cornersA = cornersMap.get(itemA.id);
 
     for (let j = i + 1; j < n; j++) {
-      const itemB = placedFurniture[j];
-      const defB = getFurnitureType(itemB.furnitureTypeId);
-      if (defB?.shapeType === 'rug' || defB?.shapeType === 'rug-runner' || defB?.shapeType === 'nepali-dhaka-rug') continue;
+      const itemB = items[j];
+      if (isFlatRug(itemB.shapeType)) continue;
+      // Items resting on top of one another (e.g. TV on console) do not clash
+      if (!overlapsVertically(itemA, itemB)) continue;
       const cornersB = cornersMap.get(itemB.id);
 
       if (checkPolygonCollision(cornersA, cornersB)) {
@@ -194,3 +205,12 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
   };
 }
 
+function isFlatRug(shapeType) {
+  return shapeType === 'rug' || shapeType === 'rug-runner' || shapeType === 'nepali-dhaka-rug';
+}
+
+function overlapsVertically(a, b, epsilon = 0.5) {
+  const aBottom = a.elevationCm || 0;
+  const bBottom = b.elevationCm || 0;
+  return aBottom < bBottom + b.heightCm - epsilon && bBottom < aBottom + a.heightCm - epsilon;
+}

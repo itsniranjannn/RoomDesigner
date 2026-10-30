@@ -239,10 +239,10 @@ Ensure you have **Node.js (>= 18.0.0)** installed.
 ### 2. Installation & Setup
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/room-designer-studio.git
+git clone https://github.com/itsniranjannn/RoomDesigner.git
 
 # Enter the project directory
-cd "Room Designer Studio"
+cd RoomDesigner
 
 # Install dependencies
 npm install

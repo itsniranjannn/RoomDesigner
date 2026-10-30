@@ -70,7 +70,6 @@ export async function saveRoomToDB(room) {
       updatedAt: new Date().toISOString(),
     };
     await db.put(STORE_ROOMS, updatedRoom);
-    localStorage.setItem(ACTIVE_ROOM_KEY, room.id);
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem(ACTIVE_ROOM_KEY, room.id);
     }
