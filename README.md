@@ -179,6 +179,27 @@ Inspired by the earthy materials, red ochre temples, and metallurgic heritage of
 
 ---
 
+## 🆕 Studio Expansion
+
+| Feature | What it does |
+| :--- | :--- |
+| **Flat designer** | *Design a flat* on the start page: lay out living rooms, bedrooms, kitchens, bathrooms and corridors on a snapping grid, add several floors and straight / L / U staircases, then double-click any room to furnish it in the full room designer. Includes a ready-made two-bedroom template and a 3D view of the whole flat. |
+| **Furniture from photos** | *My Furniture → Create from photos*: add 2–5 photos of a piece (front, sides, back, top) on a plain background. A 3D model is carved from the silhouettes **in your browser**; photos are never uploaded. Models are blocky (planning quality) and stay on your device. |
+| **Clearance warnings** | Door-swing zones, obstructed windows and cramped walking gaps (25–60 cm) are highlighted and listed. |
+| **Multi-select** | Shift-click or box-select; drag, nudge, copy / paste, duplicate and delete as a group. |
+| **Measure & wall distances** | Press `M` to measure between any two points; the selected piece shows live distances to every wall. |
+| **Customize pieces** | Resize (0.4×–2.5× of catalog size), recolour and set a price for each placed piece. Resets to the catalog values any time. |
+| **Cost estimate** | Bill of materials in NPR (estimated from category and volume unless you set a price), exportable as CSV. |
+| **Layout suggestions** | Pick a preset (bedroom, living, dining, study, Nepali sitting room) and pieces are placed against walls, clear of doors and windows. |
+| **Export & share** | PNG, PDF and JSON export, JSON import, and share links that carry the whole design in the URL (nothing is uploaded). |
+| **Trace a floor plan** | Import a photo or scan of a plan and draw over it with adjustable opacity and scale. |
+| **3D walkthrough** | First-person walk (`W A S D`, drag to look) with day, evening and night lighting. |
+| **Offline app** | Installable PWA; works without a connection after the first visit. |
+
+<br/>
+
+---
+
 ## 🏗️ System Architecture & Workflow
 
 ```text
@@ -249,6 +270,10 @@ npm install
 
 # Start development server
 npm run dev
+
+# Quality checks
+npm run lint
+npm test
 ```
 Open **`http://localhost:5173`** in any WebGL-capable browser.
 
@@ -271,14 +296,19 @@ npm run preview
 
 | Command | Action | Active Context |
 | :--- | :--- | :--- |
-| <kbd>Click</kbd> + <kbd>Drag</kbd> | Move furniture / Pan drafting sheet | 2D Canvas |
-| <kbd>R</kbd> | Rotate selected item by 45° or 90° | 2D Canvas |
-| <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> | Nudge item 1 cm (Hold <kbd>Shift</kbd> for 10 cm) | 2D Canvas |
-| <kbd>Ctrl</kbd> + <kbd>D</kbd> | Duplicate active item | 2D Canvas |
-| <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Remove item from plan | 2D Canvas |
-| <kbd>Left Click</kbd> + <kbd>Drag</kbd> | Orbit 3D perspective camera | 3D Studio |
-| <kbd>Right Click</kbd> + <kbd>Drag</kbd> | Pan 3D camera | 3D Studio |
-| <kbd>Scroll</kbd> | Zoom in / Zoom out | 2D & 3D |
+| <kbd>Click</kbd> + <kbd>Drag</kbd> | Move furniture; drag on empty floor to box-select | 2D Canvas |
+| <kbd>Shift</kbd> + <kbd>Click</kbd> | Add / remove a piece from the selection | 2D Canvas |
+| <kbd>R</kbd> | Rotate selection by 15° (<kbd>Shift</kbd>: 45°) | 2D Canvas |
+| <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd> | Nudge 1 cm (hold <kbd>Shift</kbd> for 10 cm) | 2D Canvas |
+| <kbd>Ctrl</kbd> + <kbd>A</kbd> / <kbd>C</kbd> / <kbd>V</kbd> / <kbd>D</kbd> | Select all / copy / paste / duplicate | 2D Canvas |
+| <kbd>Delete</kbd> / <kbd>Backspace</kbd> | Remove selection | 2D Canvas |
+| <kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Y</kbd> | Undo / redo | 2D Canvas |
+| <kbd>M</kbd> | Measure tool | 2D Canvas |
+| <kbd>?</kbd> | Show all shortcuts | 2D Canvas |
+| <kbd>Left Click</kbd> + <kbd>Drag</kbd> | Orbit the 3D camera | 3D Studio |
+| <kbd>Right Click</kbd> + <kbd>Drag</kbd> | Pan the 3D camera | 3D Studio |
+| <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> / <kbd>Esc</kbd> | Walk / leave the walkthrough | 3D Walkthrough |
+| <kbd>R</kbd>, arrows, <kbd>Delete</kbd> | Rotate stair, nudge, remove selection | Flat designer |
 
 </div>
 

@@ -56,6 +56,22 @@ function cleanOverrides(raw) {
   return Object.keys(out).length ? out : undefined;
 }
 
+// Resizing stays within a believable range of the catalog size (also keeps 2D symbols well-formed)
+export const RESIZE_MIN_RATIO = 0.4;
+export const RESIZE_MAX_RATIO = 2.5;
+
+function clampToBase(overrides, base) {
+  if (!overrides || !base) return overrides;
+  const out = { ...overrides };
+  for (const key of ['widthCm', 'depthCm', 'heightCm']) {
+    if (out[key] === undefined || !Number.isFinite(base[key])) continue;
+    const min = Math.max(key === 'heightCm' ? 1 : 20, Math.ceil(base[key] * RESIZE_MIN_RATIO));
+    const max = Math.min(key === 'heightCm' ? 400 : 600, Math.floor(base[key] * RESIZE_MAX_RATIO));
+    out[key] = Math.max(min, Math.min(Math.max(min, max), out[key]));
+  }
+  return out;
+}
+
 const newItemId = () => `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
 function persistDebounced(updatedRoom, set) {
@@ -796,7 +812,7 @@ export const useRoomStore = create((set, get) => ({
       if (value === null || value === undefined || value === '') delete merged[key];
       else merged[key] = value;
     }
-    const overrides = cleanOverrides(merged);
+    const overrides = clampToBase(cleanOverrides(merged), getFurnitureType(target.furnitureTypeId));
 
     const updated = (room.placedFurniture || []).map((item) => {
       if (item.id !== id) return item;

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useFlatStore } from './flatStore.js';
-import { useRoomStore } from './roomStore.js';
 import { buildTemplateFlat, rectsOverlap } from '../engine/flat.js';
 
 const flatState = () => useFlatStore.getState();

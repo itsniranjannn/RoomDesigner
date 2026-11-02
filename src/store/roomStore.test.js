@@ -71,6 +71,17 @@ describe('roomStore', () => {
     expect(state().room.placedFurniture[0].overrides).toBeUndefined();
   });
 
+  it('caps resizing to a believable range of the catalog size', () => {
+    state().addFurniture('desk-executive', 300, 250);
+    const id = state().room.placedFurniture[0].id;
+    state().updateItemOverrides(id, { widthCm: 5, depthCm: 9999 });
+    const { widthCm: baseW, depthCm: baseD } = { widthCm: 140, depthCm: 70 };
+    const o = state().room.placedFurniture[0].overrides;
+    expect(o.widthCm).toBeGreaterThanOrEqual(20);
+    expect(o.widthCm).toBeLessThanOrEqual(Math.floor(baseW * 2.5));
+    expect(o.depthCm).toBeLessThanOrEqual(Math.floor(baseD * 2.5));
+  });
+
   it('keeps an enlarged item inside the room', () => {
     state().addFurniture('desk-executive', 590, 250);
     const id = state().room.placedFurniture[0].id;
