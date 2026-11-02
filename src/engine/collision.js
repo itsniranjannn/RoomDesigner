@@ -11,7 +11,7 @@ import {
   projectPolygonOntoAxis,
   intervalsOverlap,
 } from './geometry.js';
-import { getFurnitureType } from '../data/furnitureCatalog.js';
+import { resolveItemDef } from '../data/furnitureCatalog.js';
 
 /**
  * Checks if two convex polygons collide using the Separating Axis Theorem (SAT).
@@ -59,8 +59,8 @@ export function checkPolygonCollision(cornersA, cornersB, epsilon = 0.5) {
  */
 export function checkFurnitureCollision(itemA, itemB, epsilon = 0.5) {
   // Rugs and carpet runners do not collide with furniture (furniture sits on rugs)
-  const defA = getFurnitureType(itemA.furnitureTypeId);
-  const defB = getFurnitureType(itemB.furnitureTypeId);
+  const defA = resolveItemDef(itemA);
+  const defB = resolveItemDef(itemB);
   if (
     defA?.shapeType === 'rug' ||
     defA?.shapeType === 'rug-runner' ||
@@ -136,7 +136,7 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
 
   // Saved items only store type/position; resolve footprint and height from the catalog
   const items = placedFurniture.map((item) => {
-    const def = getFurnitureType(item.furnitureTypeId);
+    const def = resolveItemDef(item);
     return {
       ...item,
       widthCm: item.widthCm ?? def?.widthCm ?? 50,

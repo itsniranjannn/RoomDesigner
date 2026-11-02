@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { getFurnitureType } from '../../data/furnitureCatalog.js';
+import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { useRoomStore } from '../../store/roomStore.js';
 import { applySnapping } from '../../engine/snapping.js';
 import { normalizeAngle } from '../../engine/geometry.js';
@@ -19,7 +19,7 @@ export function FurniturePiece({
   const updateFurniturePosition = useRoomStore((state) => state.updateFurniturePosition);
   const updateFurnitureRotation = useRoomStore((state) => state.updateFurnitureRotation);
 
-  const def = getFurnitureType(item.furnitureTypeId);
+  const def = resolveItemDef(item);
   const widthCm = def ? def.widthCm : 50;
   const depthCm = def ? def.depthCm : 50;
 

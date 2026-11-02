@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
-import { getFurnitureType } from '../../data/furnitureCatalog.js';
+import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { Button } from '../common/Button.jsx';
 import { ArchitecturalSelect } from '../common/ArchitecturalSelect.jsx';
 import { Copy, Trash2, X, Compass, Layers, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
@@ -38,7 +38,7 @@ export function SelectedItemPanel() {
 
   const placedFurniture = room.placedFurniture || [];
   const selectedItem = placedFurniture.find((i) => i.id === selectedItemId);
-  const def = selectedItem ? getFurnitureType(selectedItem.furnitureTypeId) : null;
+  const def = selectedItem ? resolveItemDef(selectedItem) : null;
 
   const widthM = (room.widthCm / 100).toFixed(2);
   const depthM = (room.depthCm / 100).toFixed(2);
@@ -339,7 +339,7 @@ export function SelectedItemPanel() {
           ) : (
             <div className={styles.placedList}>
               {placedFurniture.map((item, index) => {
-                const itemDef = getFurnitureType(item.furnitureTypeId);
+                const itemDef = resolveItemDef(item);
                 if (!itemDef) return null;
                 const isBeingDragged = dragItemIndexRef.current === index;
                 const isTargetOver = dragOverIndex === index;

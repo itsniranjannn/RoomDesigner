@@ -1,6 +1,6 @@
 import React from 'react';
 import { getRotatedRectCorners } from '../../engine/geometry.js';
-import { getFurnitureType } from '../../data/furnitureCatalog.js';
+import { resolveItemDef } from '../../data/furnitureCatalog.js';
 
 /**
  * CollisionLayer.jsx
@@ -57,7 +57,7 @@ export function CollisionLayer({ placedFurniture, collidingItemIds }) {
       {placedFurniture.map((item) => {
         if (!collidingItemIds.has(item.id)) return null;
 
-        const def = getFurnitureType(item.furnitureTypeId);
+        const def = resolveItemDef(item);
         const width = def ? def.widthCm : 50;
         const depth = def ? def.depthCm : 50;
 

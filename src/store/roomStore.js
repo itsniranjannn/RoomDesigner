@@ -13,7 +13,7 @@ import {
   deleteRoomFromDB,
   renameRoomInDB,
 } from '../data/persistence.js';
-import { getFurnitureType } from '../data/furnitureCatalog.js';
+import { getFurnitureType, resolveItemDef } from '../data/furnitureCatalog.js';
 import { evaluateAllCollisions } from '../engine/collision.js';
 import { normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
@@ -118,7 +118,7 @@ export const useRoomStore = create((set, get) => ({
     };
 
     const enrichedItems = (updatedRoom.placedFurniture || []).map((item) => {
-      const def = getFurnitureType(item.furnitureTypeId);
+      const def = resolveItemDef(item);
       return {
         ...item,
         widthCm: def ? def.widthCm : 50,
@@ -175,7 +175,7 @@ export const useRoomStore = create((set, get) => ({
     };
 
     const enrichedItems = (updatedRoom.placedFurniture || []).map((item) => {
-      const def = getFurnitureType(item.furnitureTypeId);
+      const def = resolveItemDef(item);
       return {
         ...item,
         widthCm: def ? def.widthCm : 50,
@@ -303,7 +303,7 @@ export const useRoomStore = create((set, get) => ({
     const stackBase = catalogDef.stackableOn
       ?.map((baseId) => (room.placedFurniture || []).find((item) => item.furnitureTypeId === baseId))
       .find(Boolean);
-    const stackBaseDef = stackBase ? getFurnitureType(stackBase.furnitureTypeId) : null;
+    const stackBaseDef = stackBase ? resolveItemDef(stackBase) : null;
     let targetX = customX !== null
       ? customX
       : stackBase
@@ -360,7 +360,7 @@ export const useRoomStore = create((set, get) => ({
 
     const updatedFurniture = (room.placedFurniture || []).map((item) => {
       if (item.id === id) {
-        const def = getFurnitureType(item.furnitureTypeId);
+        const def = resolveItemDef(item);
         const clamped = clampInsideRoom(
           {
             x,
@@ -393,7 +393,7 @@ export const useRoomStore = create((set, get) => ({
     const normDeg = normalizeAngle(rotationDeg);
     const updatedFurniture = (room.placedFurniture || []).map((item) => {
       if (item.id === id) {
-        const def = getFurnitureType(item.furnitureTypeId);
+        const def = resolveItemDef(item);
         const w = def ? def.widthCm : 50;
         const d = def ? def.depthCm : 50;
         const clamped = clampInsideRoom(
@@ -426,7 +426,7 @@ export const useRoomStore = create((set, get) => ({
     // Record history snapshot for keyboard nudge
     get()._recordHistory();
 
-    const def = getFurnitureType(target.furnitureTypeId);
+    const def = resolveItemDef(target);
     const clamped = clampInsideRoom(
       {
         x: target.x + dx,
@@ -789,7 +789,7 @@ export const useRoomStore = create((set, get) => ({
     if (!room) return;
 
     const enrichedItems = updatedFurniture.map((item) => {
-      const def = getFurnitureType(item.furnitureTypeId);
+      const def = resolveItemDef(item);
       return {
         ...item,
         widthCm: def ? def.widthCm : 50,

@@ -7,8 +7,10 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'room_planner_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_ROOMS = 'rooms';
+const STORE_CUSTOM = 'customFurniture';
+const STORE_FLATS = 'flats';
 const ACTIVE_ROOM_KEY = 'active_room_id';
 
 export const DEFAULT_ROOM = {
@@ -53,9 +55,16 @@ export async function getDB() {
     return null;
   }
   return openDB(DB_NAME, DB_VERSION, {
+    // v1: rooms. v2: custom (photo-made) furniture and flat plans. Existing rooms are preserved.
     upgrade(db) {
       if (!db.objectStoreNames.contains(STORE_ROOMS)) {
         db.createObjectStore(STORE_ROOMS, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_CUSTOM)) {
+        db.createObjectStore(STORE_CUSTOM, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(STORE_FLATS)) {
+        db.createObjectStore(STORE_FLATS, { keyPath: 'id' });
       }
     },
   });
@@ -167,3 +176,66 @@ export async function renameRoomInDB(id, newName) {
   }
 }
 
+
+// ---------- Custom furniture (made from photos) ----------
+
+export async function saveCustomFurnitureToDB(def) {
+  const db = await getDB();
+  if (!db) return def;
+  await db.put(STORE_CUSTOM, def);
+  return def;
+}
+
+export async function listCustomFurnitureFromDB() {
+  try {
+    const db = await getDB();
+    if (!db) return [];
+    return (await db.getAll(STORE_CUSTOM)) || [];
+  } catch (err) {
+    if (import.meta.env?.DEV) console.error('Failed to list custom furniture:', err);
+    return [];
+  }
+}
+
+export async function deleteCustomFurnitureFromDB(id) {
+  const db = await getDB();
+  if (!db) return;
+  await db.delete(STORE_CUSTOM, id);
+}
+
+// ---------- Flat plans ----------
+
+export async function saveFlatToDB(flat) {
+  const db = await getDB();
+  if (!db) return flat;
+  const updated = { ...flat, updatedAt: new Date().toISOString() };
+  await db.put(STORE_FLATS, updated);
+  return updated;
+}
+
+export async function listFlatsFromDB() {
+  try {
+    const db = await getDB();
+    if (!db) return [];
+    return (await db.getAll(STORE_FLATS)) || [];
+  } catch (err) {
+    if (import.meta.env?.DEV) console.error('Failed to list flats:', err);
+    return [];
+  }
+}
+
+export async function loadFlatFromDB(id) {
+  try {
+    const db = await getDB();
+    if (!db) return null;
+    return (await db.get(STORE_FLATS, id)) || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function deleteFlatFromDB(id) {
+  const db = await getDB();
+  if (!db) return;
+  await db.delete(STORE_FLATS, id);
+}

@@ -5,10 +5,12 @@
  * interactive drag handles, hover halos, or selection outlines.
  */
 
-import { getFurnitureType } from '../data/furnitureCatalog.js';
+import { resolveItemDef } from '../data/furnitureCatalog.js';
+import { jpegToPdf } from './pdf.js';
+import { roomToJson } from './share.js';
 
-export async function exportRoomPlanAsPNG(room) {
-  if (!room) return;
+export function renderRoomPlanCanvas(room) {
+  if (!room) return null;
 
   const roomWidth = room.widthCm || 500;
   const roomDepth = room.depthCm || 400;
@@ -29,7 +31,7 @@ export async function exportRoomPlanAsPNG(room) {
   canvas.width = canvasWidth;
   canvas.height = canvasHeight;
   const ctx = canvas.getContext('2d');
-  if (!ctx) return;
+  if (!ctx) return null;
 
   // High-quality image rendering settings
   ctx.imageSmoothingEnabled = true;
@@ -297,7 +299,7 @@ export async function exportRoomPlanAsPNG(room) {
   // 7. Placed Furniture Pieces
   const placed = room.placedFurniture || [];
   placed.forEach((item) => {
-    const def = getFurnitureType(item.furnitureTypeId);
+    const def = resolveItemDef(item);
     if (!def) return;
 
     const w = def.widthCm;
@@ -382,7 +384,7 @@ export async function exportRoomPlanAsPNG(room) {
   ctx.textBaseline = 'middle';
 
   placed.forEach((item) => {
-    const def = getFurnitureType(item.furnitureTypeId);
+    const def = resolveItemDef(item);
     if (!def) return;
 
     // Skip text label on rugs to keep traditional decorative mandala / runner patterns pristine
@@ -574,26 +576,48 @@ export async function exportRoomPlanAsPNG(room) {
 
   ctx.restore();
 
-  // Trigger download as PNG
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      if (!blob) {
-        resolve(false);
-        return;
-      }
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      const safeRoomName = (room.name || 'Room')
-        .replace(/[^a-zA-Z0-9_-]/g, '_')
-        .replace(/_+/g, '_');
-      link.download = `${safeRoomName}-floorplan.png`;
-      link.href = url;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-      resolve(true);
-    }, 'image/png');
-  });
+  return canvas;
 }
 
+function safeName(room) {
+  return (room.name || 'Room').replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_');
+}
+
+export function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = url;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+}
+
+export async function exportRoomPlanAsPNG(room) {
+  const canvas = renderRoomPlanCanvas(room);
+  if (!canvas) return false;
+  const blob = await canvasToBlob(canvas, 'image/png');
+  if (!blob) return false;
+  downloadBlob(blob, `${safeName(room)}-floorplan.png`);
+  return true;
+}
+
+export async function exportRoomPlanAsPDF(room) {
+  const canvas = renderRoomPlanCanvas(room);
+  if (!canvas) return false;
+  const blob = await canvasToBlob(canvas, 'image/jpeg', 0.92);
+  if (!blob) return false;
+  const jpeg = new Uint8Array(await blob.arrayBuffer());
+  const pdf = jpegToPdf(jpeg, canvas.width, canvas.height);
+  downloadBlob(new Blob([pdf], { type: 'application/pdf' }), `${safeName(room)}-floorplan.pdf`);
+  return true;
+}
+
+export function exportRoomAsJSON(room) {
+  downloadBlob(new Blob([roomToJson(room)], { type: 'application/json' }), `${safeName(room)}.room.json`);
+}
