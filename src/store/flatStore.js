@@ -1,7 +1,8 @@
 /**
  * flatStore.js
- * State for the flat designer: a multi-room plan whose spaces (rooms, bathrooms,
- * corridors) are regular rooms edited in the room designer, plus staircases.
+ * State for the flat designer: walls and openings per floor, the rooms detected from
+ * them (rectangular rooms are regular room records edited in the room designer),
+ * staircases and undo / redo for every edit.
  */
 
 import { create } from 'zustand';
@@ -15,33 +16,70 @@ import {
   deleteRoomFromDB,
 } from '../data/persistence.js';
 import {
-  createFlat,
-  createSpace,
   createStair,
-  buildStarterRoom,
-  buildTemplateFlat,
-  moveDoorToWall,
-  fitRoomToSize,
-  clampSpaceSize,
-  canPlace,
-  snapRect,
-  levelObstacles,
   addLevel,
   removeLevel,
   stairFootprint,
-  SPACE_KINDS,
+  snapToGrid,
+  STAIR_LIMITS,
+  uid,
 } from '../engine/flat.js';
+import {
+  addWall,
+  eraseWallRun,
+  addOpening,
+  removeOpening,
+  updateOpening,
+  setSpaceMeta,
+  furnishSpace,
+  migrateFlat,
+  syncRoomToFlat,
+  reconcile,
+  levelEdges,
+  openingsOf,
+} from '../engine/flatPlan.js';
+import { buildPresetFlat } from '../engine/flatPresets.js';
+import { wallRunAt } from '../engine/flatWalls.js';
 import { useRoomStore } from './roomStore.js';
 
+const HISTORY_LIMIT = 80;
+
 let saveTimer = null;
+let pendingFlat = null;
+let writeQueue = Promise.resolve();
+
+const logDev = (label, err) => {
+  if (import.meta.env?.DEV) console.error(label, err);
+};
+
+function queueWrite(task) {
+  writeQueue = writeQueue.then(task).catch((err) => logDev('Flat save failed:', err));
+  return writeQueue;
+}
 
 function persistFlat(flat) {
+  pendingFlat = flat;
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    saveFlatToDB(flat).catch((err) => {
-      if (import.meta.env?.DEV) console.error('Failed to save flat:', err);
-    });
-  }, 300);
+  saveTimer = setTimeout(flushFlat, 300);
+}
+
+function flushFlat() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  const flat = pendingFlat;
+  pendingFlat = null;
+  if (flat) queueWrite(() => saveFlatToDB(flat));
+  return writeQueue;
+}
+
+/** Writes only the room records that differ between two room maps. */
+function persistRoomDiff(before, after) {
+  for (const [id, room] of Object.entries(after)) {
+    if (before[id] !== room) queueWrite(() => saveRoomToDB(room));
+  }
+  for (const id of Object.keys(before)) {
+    if (!after[id]) queueWrite(() => deleteRoomFromDB(id));
+  }
 }
 
 async function loadFlatRooms(flatId) {
@@ -51,249 +89,317 @@ async function loadFlatRooms(flatId) {
   return map;
 }
 
+const emptySession = {
+  flat: null,
+  rooms: {},
+  mode: 'none', // 'none' | 'flat' | 'room' (editing one room in the room designer)
+  levelId: null,
+  selected: null, // { type: 'space' | 'stair' | 'wall' | 'opening', id }
+  viewMode: '2d', // '2d' | '3d'
+  past: [],
+  future: [],
+  canUndo: false,
+  canRedo: false,
+};
+
 export const useFlatStore = create((set, get) => ({
   flats: [],
-  flat: null,
-  rooms: {}, // roomId -> room record for the active flat
-  mode: 'none', // 'none' | 'flat' | 'room' (editing one space in the room designer)
-  levelId: null,
-  selected: null, // { type: 'space' | 'stair', id }
-  viewMode: '2d', // '2d' | '3d'
+  ...emptySession,
 
   loadFlats: async () => {
     set({ flats: await listFlatsFromDB() });
   },
 
-  _commit: (flat, extra = {}) => {
-    set({ flat, ...extra });
-    persistFlat(flat);
+  /**
+   * Applies the result of an engine edit as one undo step.
+   * @param {{flat, rooms}} result
+   * @param {Object} extra - extra state to set alongside
+   * @param {boolean} history - false for edits that should not be undoable
+   */
+  _apply: (result, extra = {}, history = true) => {
+    const { flat, rooms, past } = get();
+    const nextPast = history ? [...past, { flat, rooms }].slice(-HISTORY_LIMIT) : past;
+    persistRoomDiff(rooms, result.rooms);
+    persistFlat(result.flat);
+    set({
+      flat: result.flat,
+      rooms: result.rooms,
+      past: nextPast,
+      future: history ? [] : get().future,
+      canUndo: nextPast.length > 0,
+      canRedo: history ? false : get().future.length > 0,
+      ...extra,
+    });
+    return true;
   },
 
-  createNewFlat: async (name, template = 'empty') => {
-    let flat;
-    let rooms = [];
-    if (template === '2bhk') {
-      ({ flat, rooms } = buildTemplateFlat(name || 'Two-bedroom flat'));
-    } else {
-      flat = createFlat(name || 'My Flat');
-    }
-    flat = { ...flat, name: name || flat.name };
-    for (const r of rooms) await saveRoomToDB(r);
-    await saveFlatToDB(flat);
-    const roomMap = Object.fromEntries(rooms.map((r) => [r.id, r]));
+  _begin: async (flat, rooms) => {
     set({
+      ...emptySession,
       flat,
-      rooms: roomMap,
+      rooms,
       mode: 'flat',
       levelId: flat.levels[0].id,
-      selected: null,
-      viewMode: '2d',
-      flats: await listFlatsFromDB(),
     });
-    return flat;
+  },
+
+  createNewFlat: async (name, preset = 'blank', options = {}) => {
+    const { flat, rooms } = buildPresetFlat(preset, { name: name || undefined, ...options });
+    const named = { ...flat, name: name || flat.name };
+    await flushFlat();
+    for (const room of Object.values(rooms)) await queueWrite(() => saveRoomToDB(room));
+    await queueWrite(() => saveFlatToDB(named));
+    await get()._begin(named, rooms);
+    set({ flats: await listFlatsFromDB() });
+    return named;
+  },
+
+  /** Fills an empty plan with a starting point (undoable). */
+  applyPreset: (preset, options = {}) => {
+    const { flat, rooms: oldRooms } = get();
+    if (!flat) return false;
+    const hasWalls = flat.levels.some((l) => (flat.walls?.[l.id] || []).length > 0);
+    if (hasWalls) return false;
+    const built = buildPresetFlat(preset, { name: flat.name, flatId: flat.id, ...options });
+    // The preset's single floor lands on the flat's first floor
+    const presetLevel = built.flat.levels[0].id;
+    const levelId = flat.levels[0].id;
+    const next = {
+      ...flat,
+      walls: { ...flat.walls, [levelId]: built.flat.walls[presetLevel] },
+      openings: { ...flat.openings, [levelId]: built.flat.openings[presetLevel] },
+      spaces: built.flat.spaces.map((s) => ({ ...s, levelId })),
+      roomCounter: built.flat.roomCounter,
+    };
+    get()._apply({ flat: next, rooms: { ...oldRooms, ...built.rooms }, removedRoomIds: [] }, { selected: null, levelId });
+    return true;
   },
 
   openFlat: async (id) => {
-    const flat = await loadFlatFromDB(id);
-    if (!flat) return;
-    set({
-      flat,
-      rooms: await loadFlatRooms(id),
-      mode: 'flat',
-      levelId: flat.levels[0].id,
-      selected: null,
-      viewMode: '2d',
-    });
+    const stored = await loadFlatFromDB(id);
+    if (!stored) return;
+    const loaded = await loadFlatRooms(id);
+    const { flat, rooms, migrated, removedRoomIds } = migrateFlat(stored, loaded);
+    if (migrated) {
+      // Old rectangle flats are upgraded once and saved in the new format
+      persistRoomDiff(loaded, rooms);
+      for (const roomId of removedRoomIds) queueWrite(() => deleteRoomFromDB(roomId));
+      persistFlat(flat);
+    }
+    await get()._begin(flat, rooms);
   },
 
   closeFlat: async () => {
-    set({ mode: 'none', flat: null, rooms: {}, selected: null });
+    await flushFlat();
+    set({ ...emptySession });
     set({ flats: await listFlatsFromDB() });
   },
 
   deleteFlat: async (id) => {
+    await flushFlat();
     const rooms = await loadFlatRooms(id);
     for (const roomId of Object.keys(rooms)) await deleteRoomFromDB(roomId);
     await deleteFlatFromDB(id);
-    if (get().flat?.id === id) set({ mode: 'none', flat: null, rooms: {}, selected: null });
+    if (get().flat?.id === id) set({ ...emptySession });
     set({ flats: await listFlatsFromDB() });
   },
 
   renameFlat: (name) => {
     const { flat } = get();
     const trimmed = (name || '').trim();
-    if (!flat || !trimmed) return;
-    get()._commit({ ...flat, name: trimmed.slice(0, 80) });
+    if (!flat || !trimmed || trimmed === flat.name) return;
+    get()._apply({ flat: { ...flat, name: trimmed.slice(0, 80) }, rooms: get().rooms }, {}, false);
   },
 
   select: (selected) => set({ selected }),
   setViewMode: (viewMode) => set({ viewMode }),
 
+  // ---------- undo / redo ----------
+  undo: () => {
+    const { past, future, flat, rooms } = get();
+    if (past.length === 0) return;
+    const prev = past[past.length - 1];
+    persistRoomDiff(rooms, prev.rooms);
+    persistFlat(prev.flat);
+    const nextFuture = [{ flat, rooms }, ...future].slice(0, HISTORY_LIMIT);
+    const levelId = prev.flat.levels.some((l) => l.id === get().levelId) ? get().levelId : prev.flat.levels[0].id;
+    set({
+      flat: prev.flat,
+      rooms: prev.rooms,
+      past: past.slice(0, -1),
+      future: nextFuture,
+      canUndo: past.length > 1,
+      canRedo: true,
+      levelId,
+      selected: null,
+    });
+  },
+
+  redo: () => {
+    const { past, future, flat, rooms } = get();
+    if (future.length === 0) return;
+    const next = future[0];
+    persistRoomDiff(rooms, next.rooms);
+    persistFlat(next.flat);
+    const nextPast = [...past, { flat, rooms }].slice(-HISTORY_LIMIT);
+    const levelId = next.flat.levels.some((l) => l.id === get().levelId) ? get().levelId : next.flat.levels[0].id;
+    set({
+      flat: next.flat,
+      rooms: next.rooms,
+      past: nextPast,
+      future: future.slice(1),
+      canUndo: true,
+      canRedo: future.length > 1,
+      levelId,
+      selected: null,
+    });
+  },
+
   // ---------- levels ----------
   setLevel: (levelId) => set({ levelId, selected: null }),
 
   addLevel: () => {
-    const { flat } = get();
+    const { flat, rooms } = get();
     if (!flat || flat.levels.length >= 6) return;
     const next = addLevel(flat);
-    get()._commit(next, { levelId: next.levels[next.levels.length - 1].id, selected: null });
+    get()._apply({ flat: next, rooms }, { levelId: next.levels[next.levels.length - 1].id, selected: null });
   },
 
   renameLevel: (levelId, name) => {
-    const { flat } = get();
+    const { flat, rooms } = get();
     const trimmed = (name || '').trim();
     if (!flat || !trimmed) return;
-    get()._commit({
-      ...flat,
-      levels: flat.levels.map((l) => (l.id === levelId ? { ...l, name: trimmed.slice(0, 40) } : l)),
-    });
+    get()._apply(
+      { flat: { ...flat, levels: flat.levels.map((l) => (l.id === levelId ? { ...l, name: trimmed.slice(0, 40) } : l)) }, rooms },
+      {}
+    );
   },
 
-  removeLevel: async (levelId) => {
+  removeLevel: (levelId) => {
     const { flat, rooms } = get();
     if (!flat || flat.levels.length <= 1) return;
-    const doomed = flat.spaces.filter((s) => s.levelId === levelId);
-    for (const s of doomed) await deleteRoomFromDB(s.roomId);
-    const next = removeLevel(flat, levelId);
-    const remaining = { ...rooms };
-    for (const s of doomed) delete remaining[s.roomId];
-    get()._commit(next, { levelId: next.levels[0].id, selected: null, rooms: remaining });
+    const result = reconcile(removeLevel(flat, levelId), rooms);
+    get()._apply(result, { levelId: result.flat.levels[0].id, selected: null });
   },
 
-  // ---------- spaces ----------
-  addSpace: async (kind) => {
-    const { flat, levelId } = get();
-    if (!flat || !levelId) return null;
-    const def = SPACE_KINDS[kind] || SPACE_KINDS.room;
-    const draft = createSpace(flat, { kind, levelId, roomId: 'pending' });
-    const room = buildStarterRoom({
-      kind: draft.kind,
-      name: draft.name,
-      widthCm: draft.widthCm,
-      depthCm: draft.depthCm,
-      flatId: flat.id,
-      spaceId: draft.id,
-    });
-    const space = { ...draft, roomId: room.id, name: def.label };
-    room.name = space.name;
-    await saveRoomToDB(room);
-    get()._commit(
-      { ...flat, spaces: [...flat.spaces, space] },
-      { rooms: { ...get().rooms, [room.id]: room }, selected: { type: 'space', id: space.id } }
-    );
-    return space;
+  // ---------- walls ----------
+  addWall: (x1, y1, x2, y2) => {
+    const { flat, rooms, levelId } = get();
+    if (!flat || !levelId) return false;
+    const result = addWall(flat, rooms, levelId, x1, y1, x2, y2);
+    if (JSON.stringify(flat.walls[levelId]) === JSON.stringify(result.flat.walls[levelId])) return false;
+    return get()._apply(result, {});
   },
 
-  moveSpace: (id, x, y) => {
-    const { flat } = get();
-    const space = flat?.spaces.find((s) => s.id === id);
-    if (!space) return false;
-    const snapped = snapRect(
-      { x, y, widthCm: space.widthCm, depthCm: space.depthCm },
-      levelObstacles(flat, space.levelId, { spaceId: id })
-    );
-    const rect = { ...snapped, widthCm: space.widthCm, depthCm: space.depthCm };
-    if (!canPlace(flat, space.levelId, rect, { spaceId: id })) return false;
-    get()._commit({ ...flat, spaces: flat.spaces.map((s) => (s.id === id ? { ...s, x: snapped.x, y: snapped.y } : s)) });
-    return true;
+  /** Removes the wall run (between junctions) that contains an edge key. */
+  eraseWall: (key) => {
+    const { flat, rooms, levelId } = get();
+    if (!flat || !levelId) return false;
+    const result = eraseWallRun(flat, rooms, levelId, key);
+    if (!result) return false;
+    return get()._apply(result, { selected: null });
   },
 
-  resizeSpace: async (id, widthCm, depthCm) => {
+  // ---------- doors and windows ----------
+  placeOpening: (op) => {
+    const { flat, rooms, levelId } = get();
+    if (!flat) return null;
+    const opening = { ...op, id: op.id && op.id !== 'ghost' ? op.id : uid(op.type === 'door' ? 'door' : 'win') };
+    const result = addOpening(flat, rooms, levelId, opening);
+    if (!result) return null;
+    get()._apply(result, { selected: { type: 'opening', id: opening.id } });
+    return opening;
+  },
+
+  removeOpening: (id) => {
+    const { flat, rooms, levelId } = get();
+    if (!flat || !openingsOf(flat, levelId).some((o) => o.id === id)) return false;
+    return get()._apply(removeOpening(flat, rooms, levelId, id), { selected: null });
+  },
+
+  updateOpening: (id, patch) => {
+    const { flat, rooms, levelId } = get();
+    if (!flat) return false;
+    const result = updateOpening(flat, rooms, levelId, id, patch);
+    if (!result) return false;
+    return get()._apply(result, {});
+  },
+
+  // ---------- rooms ----------
+  setSpaceMeta: (id, patch) => {
     const { flat, rooms } = get();
-    const space = flat?.spaces.find((s) => s.id === id);
-    if (!space) return false;
-    const w = clampSpaceSize(widthCm);
-    const d = clampSpaceSize(depthCm);
-    if (!canPlace(flat, space.levelId, { x: space.x, y: space.y, widthCm: w, depthCm: d }, { spaceId: id })) return false;
-    const room = rooms[space.roomId];
-    const nextRoom = room ? fitRoomToSize(room, w, d) : null;
-    if (nextRoom) await saveRoomToDB(nextRoom);
-    get()._commit(
-      { ...flat, spaces: flat.spaces.map((s) => (s.id === id ? { ...s, widthCm: w, depthCm: d } : s)) },
-      nextRoom ? { rooms: { ...rooms, [nextRoom.id]: nextRoom } } : {}
-    );
-    return true;
+    if (!flat) return false;
+    const result = setSpaceMeta(flat, rooms, id, patch);
+    if (!result) return false;
+    return get()._apply(result, {});
   },
 
-  renameSpace: async (id, name) => {
+  furnishSpace: (id) => {
     const { flat, rooms } = get();
-    const space = flat?.spaces.find((s) => s.id === id);
-    const trimmed = (name || '').trim().slice(0, 60);
-    if (!space || !trimmed) return;
-    const room = rooms[space.roomId];
-    let nextRooms = rooms;
-    if (room) {
-      const renamed = { ...room, name: trimmed };
-      await saveRoomToDB(renamed);
-      nextRooms = { ...rooms, [room.id]: renamed };
-    }
-    get()._commit({ ...flat, spaces: flat.spaces.map((s) => (s.id === id ? { ...s, name: trimmed } : s)) }, { rooms: nextRooms });
-  },
-
-  setSpaceDoorWall: async (id, wall) => {
-    const { flat, rooms } = get();
-    const space = flat?.spaces.find((s) => s.id === id);
-    const room = space && rooms[space.roomId];
-    if (!room || !['top', 'bottom', 'left', 'right'].includes(wall) || space.kind === 'corridor') return;
-    const moved = moveDoorToWall(room, wall);
-    await saveRoomToDB(moved);
-    set({ rooms: { ...rooms, [moved.id]: moved } });
-  },
-
-  removeSpace: async (id) => {
-    const { flat, rooms } = get();
-    const space = flat?.spaces.find((s) => s.id === id);
-    if (!space) return;
-    await deleteRoomFromDB(space.roomId);
-    const nextRooms = { ...rooms };
-    delete nextRooms[space.roomId];
-    get()._commit({ ...flat, spaces: flat.spaces.filter((s) => s.id !== id) }, { rooms: nextRooms, selected: null });
+    if (!flat) return false;
+    const result = furnishSpace(flat, rooms, id);
+    if (!result) return false;
+    return get()._apply(result, {});
   },
 
   // ---------- stairs ----------
-  addStair: (type = 'straight') => {
-    const { flat, levelId } = get();
+  addStair: (type = 'straight', x, y, rotationDeg = 0) => {
+    const { flat, rooms, levelId } = get();
     if (!flat || !levelId) return null;
-    const stair = createStair(flat, { levelId, type });
-    get()._commit({ ...flat, stairs: [...flat.stairs, stair] }, { selected: { type: 'stair', id: stair.id } });
-    return stair;
+    const draft = createStair(flat, { levelId, type, x: x ?? 100, y: y ?? 100, rotationDeg });
+    get()._apply({ flat: { ...flat, stairs: [...flat.stairs, draft] }, rooms }, { selected: { type: 'stair', id: draft.id } });
+    return draft;
   },
 
   updateStair: (id, patch) => {
-    const { flat } = get();
+    const { flat, rooms } = get();
     const stair = flat?.stairs.find((s) => s.id === id);
     if (!stair) return false;
     const next = { ...stair };
     if (patch.type) next.type = ['straight', 'L', 'U'].includes(patch.type) ? patch.type : next.type;
-    if (patch.widthCm !== undefined) next.widthCm = Math.max(70, Math.min(200, Math.round(patch.widthCm)));
-    if (patch.rotationDeg !== undefined) next.rotationDeg = ((Math.round(patch.rotationDeg / 90) * 90) % 360 + 360) % 360;
-    if (patch.riseCm !== undefined) next.riseCm = Math.max(200, Math.min(450, Math.round(patch.riseCm)));
-    if (patch.x !== undefined || patch.y !== undefined) {
-      const fp = stairFootprint(next);
-      const snapped = snapRect(
-        { x: patch.x ?? next.x, y: patch.y ?? next.y, widthCm: fp.widthCm, depthCm: fp.depthCm },
-        levelObstacles(flat, stair.levelId, { stairId: id })
-      );
-      next.x = snapped.x;
-      next.y = snapped.y;
+    if (patch.widthCm !== undefined) {
+      const [lo, hi] = STAIR_LIMITS.widthCm;
+      next.widthCm = Math.max(lo, Math.min(hi, Math.round(patch.widthCm)));
     }
-    const fp = stairFootprint(next);
-    if (!canPlace(flat, stair.levelId, { x: next.x, y: next.y, widthCm: fp.widthCm, depthCm: fp.depthCm }, { stairId: id })) return false;
-    get()._commit({ ...flat, stairs: flat.stairs.map((s) => (s.id === id ? next : s)) });
-    return true;
+    if (patch.rotationDeg !== undefined) next.rotationDeg = ((Math.round(patch.rotationDeg / 90) * 90) % 360 + 360) % 360;
+    if (patch.riseCm !== undefined) {
+      const [lo, hi] = STAIR_LIMITS.riseCm;
+      next.riseCm = Math.max(lo, Math.min(hi, Math.round(patch.riseCm)));
+    }
+    if (patch.x !== undefined) next.x = Math.max(0, snapToGrid(patch.x));
+    if (patch.y !== undefined) next.y = Math.max(0, snapToGrid(patch.y));
+    if (JSON.stringify(next) === JSON.stringify(stair)) return true;
+    // Footprint is read here so a bad value fails loudly in tests
+    stairFootprint(next);
+    return get()._apply({ flat: { ...flat, stairs: flat.stairs.map((s) => (s.id === id ? next : s)) }, rooms }, {});
   },
 
   removeStair: (id) => {
-    const { flat } = get();
+    const { flat, rooms } = get();
     if (!flat) return;
-    get()._commit({ ...flat, stairs: flat.stairs.filter((s) => s.id !== id) }, { selected: null });
+    get()._apply({ flat: { ...flat, stairs: flat.stairs.filter((s) => s.id !== id) }, rooms }, { selected: null });
   },
 
-  // ---------- jump into a space with the room designer ----------
+  /** Deletes whatever is selected (wall run, door or window, staircase). */
+  deleteSelected: () => {
+    const { selected, flat } = get();
+    if (!selected || !flat) return false;
+    if (selected.type === 'wall') return get().eraseWall(selected.id);
+    if (selected.type === 'opening') return get().removeOpening(selected.id);
+    if (selected.type === 'stair') {
+      get().removeStair(selected.id);
+      return true;
+    }
+    return false;
+  },
+
+  // ---------- jump into a room with the room designer ----------
   openSpace: async (spaceId) => {
     const { flat } = get();
     const space = flat?.spaces.find((s) => s.id === spaceId);
-    if (!space) return;
+    if (!space || !space.furnishable || !space.roomId) return;
+    await flushFlat();
+    await writeQueue;
     await useRoomStore.getState().switchRoom(space.roomId);
     if (useRoomStore.getState().room?.id !== space.roomId) return;
     useRoomStore.getState().setViewMode('2d');
@@ -301,11 +407,29 @@ export const useFlatStore = create((set, get) => ({
   },
 
   backToFlat: async () => {
-    const { flat } = get();
+    const { flat, rooms, selected } = get();
     if (!flat) return;
-    // The room designer saves with a delay; flush by waiting for it to settle
+    // The room designer saves with a delay; wait for it to settle
     await new Promise((resolve) => setTimeout(resolve, 450));
+    const spaceId = selected?.type === 'space' ? selected.id : null;
     useRoomStore.getState().closeRoom();
-    set({ rooms: await loadFlatRooms(flat.id), mode: 'flat' });
+    const loaded = await loadFlatRooms(flat.id);
+    const merged = { ...rooms };
+    for (const id of Object.keys(rooms)) if (loaded[id]) merged[id] = loaded[id];
+    const space = spaceId ? flat.spaces.find((s) => s.id === spaceId) : null;
+    const edited = space?.roomId ? merged[space.roomId] : null;
+    if (edited) {
+      const result = syncRoomToFlat(flat, merged, spaceId, edited);
+      get()._apply(result, { mode: 'flat' });
+    } else {
+      set({ rooms: merged, mode: 'flat' });
+    }
+  },
+
+  /** Finds the straight run of wall under an edge key, for the inspector. */
+  wallRunFor: (key) => {
+    const { flat, levelId } = get();
+    if (!flat) return [];
+    return wallRunAt(levelEdges(flat, levelId), key);
   },
 }));
