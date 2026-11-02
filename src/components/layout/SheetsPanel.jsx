@@ -1,11 +1,15 @@
 import React, { useEffect, useRef } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Building2 } from 'lucide-react';
+import { useFlatStore } from '../../store/flatStore.js';
 import styles from './SheetsPanel.module.css';
 
-export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal }) {
+export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlatModal }) {
   const allRooms = useRoomStore((state) => state.allRooms);
+  const flats = useFlatStore((state) => state.flats);
+  const openFlat = useFlatStore((state) => state.openFlat);
+  const deleteFlat = useFlatStore((state) => state.deleteFlat);
   const switchRoom = useRoomStore((state) => state.switchRoom);
   const panelRef = useRef(null);
 
@@ -51,6 +55,37 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal }) {
         <div className={styles.brassRule} />
 
         <div className={styles.sheetsList}>
+          {flats.map((f) => (
+            <div key={f.id} style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+              <button
+                type="button"
+                className={styles.sheetRow}
+                style={{ flex: 1 }}
+                onClick={() => {
+                  openFlat(f.id);
+                  onClose();
+                }}
+              >
+                <span className={styles.sheetCode}>FLAT // {f.levels.length} {f.levels.length === 1 ? 'FLOOR' : 'FLOORS'}</span>
+                <span className={styles.sheetName}>{f.name}</span>
+                <div className={styles.sheetMeta}>
+                  <span className={styles.sheetDims}>
+                    <Building2 size={11} style={{ verticalAlign: -1 }} /> {f.spaces.length} spaces
+                  </span>
+                  <span className={styles.sheetSpecBadge}>{f.stairs.length} STAIRS</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                className={styles.closeBtn}
+                aria-label={`Delete flat ${f.name}`}
+                title="Delete flat"
+                onClick={() => window.confirm(`Delete flat "${f.name}" and all of its rooms?`) && deleteFlat(f.id)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ))}
           {allRooms.length > 0 ? (
             allRooms.map((r, index) => {
               const widthM = (r.widthCm / 100).toFixed(2);
@@ -102,6 +137,18 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal }) {
             className={styles.newRoomBtn}
           >
             Start a new room
+          </Button>
+          <Button
+            variant="secondary"
+            size="normal"
+            icon={<Building2 size={14} />}
+            onClick={() => {
+              onOpenNewFlatModal?.();
+              onClose();
+            }}
+            className={styles.newRoomBtn}
+          >
+            Design a flat
           </Button>
         </div>
       </aside>

@@ -169,7 +169,13 @@ export function clampSpaceSize(v) {
 /**
  * Builds the starter room record for a space kind (doors, windows and fixtures).
  */
-export function buildStarterRoom({ kind, name, widthCm, depthCm, flatId, spaceId }) {
+const OPPOSITE_WALL = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
+
+function wallLength(wall, widthCm, depthCm) {
+  return wall === 'left' || wall === 'right' ? depthCm : widthCm;
+}
+
+export function buildStarterRoom({ kind, name, widthCm, depthCm, flatId, spaceId, doorWall = 'bottom' }) {
   const stamp = Date.now();
   const room = {
     id: `room-${stamp}-${Math.random().toString(36).slice(2, 6)}`,
@@ -201,10 +207,14 @@ export function buildStarterRoom({ kind, name, widthCm, depthCm, flatId, spaceId
     return room;
   }
 
-  room.doors = [{ id: `door-${stamp}`, wall: 'bottom', offsetCm: 30, widthCm: kind === 'bathroom' ? 75 : 90, swingDirection: 'inward-left' }];
-  if (kind !== 'bathroom' || widthCm >= 160) {
+  const doorW = kind === 'bathroom' ? 75 : 90;
+  room.doors = [{ id: `door-${stamp}`, wall: doorWall, offsetCm: 30, widthCm: doorW, swingDirection: 'inward-left' }];
+
+  const windowWall = OPPOSITE_WALL[doorWall] || 'top';
+  const winLen = wallLength(windowWall, widthCm, depthCm);
+  if (kind !== 'bathroom' || winLen >= 160) {
     const winW = kind === 'bathroom' ? 60 : 120;
-    room.windows = [{ id: `win-${stamp}`, wall: 'top', offsetCm: Math.round(widthCm / 2 - winW / 2), widthCm: winW }];
+    room.windows = [{ id: `win-${stamp}`, wall: windowWall, offsetCm: Math.round(winLen / 2 - winW / 2), widthCm: winW }];
   }
 
   const starter = {
@@ -217,6 +227,17 @@ export function buildStarterRoom({ kind, name, widthCm, depthCm, flatId, spaceId
     room.placedFurniture = suggestLayout(room, starter).placed;
   }
   return room;
+}
+
+/** Moves a room's first door to another wall, keeping it inside the wall's length. */
+export function moveDoorToWall(room, wall) {
+  const doors = (room.doors || []).map((door, i) => {
+    if (i !== 0) return door;
+    const len = wallLength(wall, room.widthCm, room.depthCm);
+    const offsetCm = Math.max(15, Math.min(len - door.widthCm - 15, Math.round(len / 2 - door.widthCm / 2)));
+    return { ...door, wall, offsetCm };
+  });
+  return { ...room, doors };
 }
 
 /** Resizes a space and returns the fitted room (furniture and openings kept inside). */
@@ -355,4 +376,43 @@ export function flatSummary(flat, rooms = []) {
   }
   const furnitureCount = flat.spaces.reduce((n, s) => n + (roomById.get(s.roomId)?.placedFurniture?.length || 0), 0);
   return { areaM2: areaCm2 / 10000, counts, furnitureCount, levels: flat.levels.length, stairs: flat.stairs.length };
+}
+
+/**
+ * A ready-made 2-bedroom flat: living room and kitchen on top, a hallway, then two
+ * bedrooms and a bathroom below. Returns the flat plus the room records to save.
+ */
+export function buildTemplateFlat(name = 'Two-bedroom flat') {
+  let flat = createFlat(name);
+  const rooms = [];
+  const levelId = flat.levels[0].id;
+  const plan = [
+    { kind: 'living', name: 'Living room', x: 0, y: 0, widthCm: 420, depthCm: 380, doorWall: 'bottom' },
+    { kind: 'kitchen', name: 'Kitchen', x: 420, y: 0, widthCm: 300, depthCm: 380, doorWall: 'bottom' },
+    { kind: 'corridor', name: 'Hallway', x: 0, y: 380, widthCm: 720, depthCm: 120 },
+    { kind: 'bedroom', name: 'Master bedroom', x: 0, y: 500, widthCm: 360, depthCm: 340, doorWall: 'top' },
+    { kind: 'bathroom', name: 'Bathroom', x: 360, y: 500, widthCm: 160, depthCm: 240, doorWall: 'top' },
+    { kind: 'bedroom', name: 'Second bedroom', x: 520, y: 500, widthCm: 300, depthCm: 340, doorWall: 'top' },
+  ];
+  for (const p of plan) {
+    const spaceId = uid('space');
+    const room = buildStarterRoom({
+      kind: p.kind,
+      name: p.name,
+      widthCm: p.widthCm,
+      depthCm: p.depthCm,
+      flatId: flat.id,
+      spaceId,
+      doorWall: p.doorWall,
+    });
+    rooms.push(room);
+    flat = {
+      ...flat,
+      spaces: [
+        ...flat.spaces,
+        { id: spaceId, kind: p.kind, levelId, roomId: room.id, name: p.name, x: p.x, y: p.y, widthCm: p.widthCm, depthCm: p.depthCm },
+      ],
+    };
+  }
+  return { flat, rooms };
 }
