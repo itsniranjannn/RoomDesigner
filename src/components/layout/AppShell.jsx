@@ -8,6 +8,9 @@ import { FurnitureCatalog } from '../catalog/FurnitureCatalog.jsx';
 import { RoomCanvas } from '../canvas/RoomCanvas.jsx';
 import { SelectedItemPanel } from '../inspector/SelectedItemPanel.jsx';
 import { ModalHost } from '../tools/ModalHost.jsx';
+import { useFlatStore } from '../../store/flatStore.js';
+import { FlatDesigner } from '../flat/FlatDesigner.jsx';
+import { NewFlatModal } from '../flat/NewFlatModal.jsx';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
 import { decodeRoomFromHash } from '../../engine/share.js';
@@ -24,6 +27,8 @@ export function AppShell() {
   const selectedItemId = useRoomStore((state) => state.selectedItemId);
 
   const [isNewRoomModalOpen, setIsNewRoomModalOpen] = useState(false);
+  const [isNewFlatModalOpen, setIsNewFlatModalOpen] = useState(false);
+  const flatMode = useFlatStore((state) => state.mode);
   const [currentPage, setCurrentPage] = useState('main'); // 'main' | 'about'
   const [incoming, setIncoming] = useState(null); // { room } | { error }
   const importRoomData = useRoomStore((state) => state.importRoomData);
@@ -98,6 +103,11 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
+  // Flat designer (multi-room plan)
+  if (flatMode === 'flat') {
+    return <FlatDesigner />;
+  }
+
   // Dedicated full-page About View
   if (currentPage === 'about') {
     return (
@@ -120,8 +130,10 @@ export function AppShell() {
       <>
         <LandingPage
           onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)}
+          onOpenNewFlatModal={() => setIsNewFlatModalOpen(true)}
           onNavigateAbout={() => setCurrentPage('about')}
         />
+        {isNewFlatModalOpen && <NewFlatModal onClose={() => setIsNewFlatModalOpen(false)} />}
         <NewRoomModal
           isOpen={isNewRoomModalOpen}
           onClose={() => setIsNewRoomModalOpen(false)}
