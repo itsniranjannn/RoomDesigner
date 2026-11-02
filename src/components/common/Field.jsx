@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Search, X } from 'lucide-react';
 import styles from './Field.module.css';
 
 /**
@@ -94,10 +94,61 @@ export function SelectField({ label, hint, error, options, value, onChange, clas
   );
 }
 
-/** Pick one of a few options, shown as joined buttons. */
-export function Segmented({ options, value, onChange, ariaLabel, size = 'normal' }) {
+/** Search box with a clear button. `onChange` receives the text, not the event. */
+export function SearchField({ value, onChange, placeholder = 'Search', ariaLabel, className = '' }) {
   return (
-    <div className={`${styles.segmented} ${size === 'small' ? styles.segSmall : ''}`} role="group" aria-label={ariaLabel}>
+    <span className={`${styles.searchWrap} ${className}`}>
+      <Search size={16} className={styles.searchIcon} aria-hidden="true" />
+      <input
+        type="search"
+        className={`${styles.control} ${styles.search}`}
+        value={value}
+        placeholder={placeholder}
+        aria-label={ariaLabel || placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape' && value) {
+            e.stopPropagation();
+            onChange('');
+          }
+        }}
+      />
+      {value && (
+        <button type="button" className={styles.searchClear} onClick={() => onChange('')} aria-label="Clear search">
+          <X size={14} />
+        </button>
+      )}
+    </span>
+  );
+}
+
+/** Slider with a label and a live read-out. Extra props go to the range input. */
+export function RangeField({ label, hint, value, min, max, step = 1, onChange, valueLabel, className, ...props }) {
+  const id = useId();
+  return (
+    <Field label={label} hint={hint} htmlFor={id} className={className}>
+      <span className={styles.rangeRow}>
+        <input
+          id={id}
+          type="range"
+          className={styles.range}
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          {...props}
+        />
+        <output className={styles.rangeValue} htmlFor={id}>{valueLabel ?? value}</output>
+      </span>
+    </Field>
+  );
+}
+
+/** Pick one of a few options, shown as joined buttons. */
+export function Segmented({ options, value, onChange, ariaLabel, size = 'normal', fill = false, className = '' }) {
+  return (
+    <div className={`${styles.segmented} ${size === 'small' ? styles.segSmall : ''} ${fill ? styles.segFill : ''} ${className}`} role="group" aria-label={ariaLabel}>
       {options.map((o) => (
         <button
           key={o.value}
@@ -106,6 +157,7 @@ export function Segmented({ options, value, onChange, ariaLabel, size = 'normal'
           onClick={() => onChange(o.value)}
           aria-pressed={o.value === value}
           title={o.title}
+          aria-label={o.ariaLabel}
         >
           {o.icon}
           {o.label && <span>{o.label}</span>}

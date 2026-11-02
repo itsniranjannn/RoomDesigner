@@ -102,7 +102,7 @@
 
 .segmented {
   display: inline-flex;
-  padding: 3px;
+  padding: 2px;
   gap: 2px;
   background: var(--color-linen-surface);
   border: var(--border-soft);
@@ -144,6 +144,14 @@
   color: var(--color-ink);
   font-weight: 600;
   box-shadow: var(--shadow-card);
+}
+
+.segFill {
+  display: flex;
+}
+
+.segFill .segBtn {
+  flex: 1;
 }
 
 .segSmall .segBtn {
@@ -202,5 +210,121 @@
 }
 
 .switchInput:focus-visible + .switchTrack {
+  box-shadow: var(--focus-ring);
+}
+
+.searchWrap {
+  position: relative;
+  display: block;
+  min-width: 0;
+}
+
+.search {
+  padding-left: 36px;
+  padding-right: 34px;
+}
+
+.search::-webkit-search-cancel-button {
+  display: none;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-ink-faint);
+  pointer-events: none;
+}
+
+.searchClear {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  color: var(--color-ink-muted);
+  border-radius: var(--radius-sm);
+}
+
+.searchClear:hover {
+  background: var(--color-linen-surface);
+}
+
+.searchClear:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.rangeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--control-h);
+}
+
+.rangeValue {
+  min-width: 44px;
+  text-align: right;
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-muted);
+}
+
+.range {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.range::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--color-taupe);
+  border-radius: 999px;
+}
+
+.range::-moz-range-track {
+  height: 4px;
+  background: var(--color-taupe);
+  border-radius: 999px;
+}
+
+.range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  background: var(--color-paper);
+  border: 2px solid var(--color-indigo);
+  border-radius: 50%;
+  box-shadow: var(--shadow-card);
+}
+
+.range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  background: var(--color-paper);
+  border: 2px solid var(--color-indigo);
+  border-radius: 50%;
+}
+
+.range:focus-visible {
+  outline: none;
+}
+
+.range:focus-visible::-webkit-slider-thumb {
+  box-shadow: var(--focus-ring);
+}
+
+.range:focus-visible::-moz-range-thumb {
   box-shadow: var(--focus-ring);
 }

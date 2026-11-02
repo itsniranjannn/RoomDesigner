@@ -1,0 +1,22 @@
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin: 0;
+  padding: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+  color: var(--color-ink);
+  background: var(--color-linen-surface);
+  border-radius: var(--radius-md);
+}
+
+.icon {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.ok { background: var(--color-pine-subtle); color: var(--color-pine); }
+.error { background: var(--color-maroon-subtle); color: var(--color-maroon); }
+.warn { background: var(--color-caution-bg); color: var(--color-caution); }
+.info { color: var(--color-ink-muted); }
