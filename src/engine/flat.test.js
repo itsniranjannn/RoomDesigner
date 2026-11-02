@@ -14,6 +14,8 @@ import {
   analyzeRuns,
   orthoEnd,
   edgeKey,
+  defaultSwing,
+  regionLabelPoint,
 } from './flatWalls.js';
 import {
   reconcile,
@@ -259,6 +261,26 @@ describe('editing walls', () => {
     expect(holed.some((b) => b.glass)).toBe(true);
     // nothing solid fills the door gap below the lintel
     expect(holed.some((b) => b.axis === 'h' && b.line === 0 && b.a < 150 && b.b > 120 && b.z0 === 0)).toBe(false);
+  });
+});
+
+describe('door swing and labels', () => {
+  it('swings exterior doors inward and interior doors into the smaller room', () => {
+    const edges = union(rectEdges(0, 0, 600, 400), addSegment(new Set(), 400, 0, 400, 400));
+    const a = analyzeEdges(edges);
+    expect(defaultSwing(a, door('h', 400, 100))).toBe(-1); // bottom wall of the flat: into the rooms above
+    expect(defaultSwing(a, door('h', 0, 100))).toBe(1); // top wall: into the rooms below
+    expect(defaultSwing(a, door('v', 400, 100))).toBe(1); // small room is on the right
+  });
+
+  it('puts a label inside an L-shaped room', () => {
+    let e = new Set();
+    for (const [x1, y1, x2, y2] of [[0, 0, 300, 0], [300, 0, 300, 100], [300, 100, 100, 100], [100, 100, 100, 300], [100, 300, 0, 300], [0, 300, 0, 0]]) {
+      e = union(e, addSegment(new Set(), x1, y1, x2, y2));
+    }
+    const a = analyzeEdges(e);
+    const p = regionLabelPoint(a.regions[0]);
+    expect(a.labelAt(Math.floor(p.x / 10), Math.floor(p.y / 10))).toBe(0);
   });
 });
 

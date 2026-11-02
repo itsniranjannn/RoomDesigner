@@ -21,6 +21,7 @@ import {
   clampCoord,
   runEndpoints,
   parseEdge,
+  defaultSwing,
   EXTERIOR_THICK_CM,
   INTERIOR_THICK_CM,
 } from '../../engine/flatWalls.js';
@@ -49,8 +50,8 @@ function thicknessAt(op, analysis) {
   return analysis.isExteriorEdge(key) ? EXTERIOR_THICK_CM : INTERIOR_THICK_CM;
 }
 
-function Opening({ op, thick, selected, hot, ghost, invalid }) {
-  const s = op.flip ? -1 : 1;
+function Opening({ op, thick, swing = 1, selected, hot, ghost, invalid }) {
+  const s = swing * (op.flip ? -1 : 1);
   const w = op.widthCm;
   const h = op.axis === 'h';
   const gap = { x: h ? op.start : op.line - thick / 2 - 1, y: h ? op.line - thick / 2 - 1 : op.start, width: h ? w : thick + 2, height: h ? thick + 2 : w };
@@ -147,7 +148,12 @@ export function FlatPlanCanvas() {
   const [, setDraftState] = useState(null); // re-renders when the wall being drawn changes
   const draftRef = useRef(null);
   const [hover, setHover] = useState(null);
-  const [dragStair, setDragStair] = useState(null);
+  const [dragStair, setDragStairState] = useState(null);
+  const dragStairRef = useRef(null);
+  const setDragStair = useCallback((d) => {
+    dragStairRef.current = d;
+    setDragStairState(d);
+  }, []);
   const [panning, setPanning] = useState(false);
   const [spaceDown, setSpaceDown] = useState(false);
   const gesture = useRef(null);
@@ -505,8 +511,9 @@ export function FlatPlanCanvas() {
     setPanning(false);
     if (!g) return;
     if (g.type === 'pan' && g.background && !g.moved) select(null);
-    if (g.type === 'stair' && g.moved && dragStair) {
-      useFlatStore.getState().updateStair(g.stair.id, { x: dragStair.x, y: dragStair.y });
+    const dropped = dragStairRef.current;
+    if (g.type === 'stair' && g.moved && dropped) {
+      useFlatStore.getState().updateStair(g.stair.id, { x: dropped.x, y: dropped.y });
     }
     setDragStair(null);
     if (g.type === 'wall-drag') {
@@ -580,7 +587,7 @@ export function FlatPlanCanvas() {
         </g>
         {selWall.length > 0 && <g className={styles.wallSelected} pointerEvents="none">{runRects(selWall, INTERIOR_THICK_CM + 8)}</g>}
         {openings.map((op) => (
-          <Opening key={op.id} op={op} thick={thicknessAt(op, analysis)} selected={selected?.type === 'opening' && selected.id === op.id} />
+          <Opening key={op.id} op={op} thick={thicknessAt(op, analysis)} swing={defaultSwing(analysis, op)} selected={selected?.type === 'opening' && selected.id === op.id} />
         ))}
       </>
     );
@@ -621,11 +628,11 @@ export function FlatPlanCanvas() {
     if (rs) labels.push({ key: 'erase', x: (rs.x1 + rs.x2) / 2, y: (rs.y1 + rs.y2) / 2, text: `Remove ${fmtM(Math.abs(rs.x2 - rs.x1) + Math.abs(rs.y2 - rs.y1))}`, pill: true, dy: -16 });
   }
   if (hv?.type === 'opening') {
-    overlay.push(<Opening key="ghost" op={hv.plan.op} thick={INTERIOR_THICK_CM} ghost invalid={!hv.plan.valid} />);
+    overlay.push(<Opening key="ghost" op={hv.plan.op} thick={INTERIOR_THICK_CM} swing={defaultSwing(analysis, hv.plan.op)} ghost invalid={!hv.plan.valid} />);
     labels.push({ key: 'op', x: hv.plan.op.axis === 'h' ? hv.plan.op.start + hv.plan.op.widthCm / 2 : hv.plan.op.line, y: hv.plan.op.axis === 'h' ? hv.plan.op.line : hv.plan.op.start + hv.plan.op.widthCm / 2, text: hv.plan.valid ? `${tool === 'door' ? 'Door' : 'Window'} ${hv.plan.op.widthCm} cm` : hv.plan.reason, pill: true, dy: -22 });
   }
   if (hv?.type === 'remove-opening') {
-    overlay.push(<Opening key="rm" op={hv.op} thick={INTERIOR_THICK_CM} hot />);
+    overlay.push(<Opening key="rm" op={hv.op} thick={INTERIOR_THICK_CM} swing={defaultSwing(analysis, hv.op)} hot />);
     labels.push({ key: 'rm', x: hv.op.axis === 'h' ? hv.op.start + hv.op.widthCm / 2 : hv.op.line, y: hv.op.axis === 'h' ? hv.op.line : hv.op.start + hv.op.widthCm / 2, text: `Remove this ${hv.op.type}`, pill: true, dy: -22 });
   }
   if (hv?.type === 'stair') {
