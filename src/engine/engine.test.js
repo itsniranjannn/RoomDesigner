@@ -13,8 +13,6 @@ import {
   applySnapping,
 } from './snapping.js';
 import {
-  degToRad,
-  radToDeg,
   normalizeAngle,
   rotatePoint,
   getRotatedRectCorners,

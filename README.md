@@ -38,7 +38,7 @@
       <td width="33%" align="center" style="background-color: #FBF9F5; padding: 18px; border-radius: 12px; border: 1px solid #E8DFD1;">
         <span style="font-size: 24px;">🪔</span><br/>
         <b style="color: #C49746; font-size: 15px;">VERNACULAR CRAFT</b><br/>
-        <span style="color: #5C5247; font-size: 12px;">44+ specs featuring Patan kansa brass, lokta paper, Galaicha rugs & Jali screens.</span>
+        <span style="color: #5C5247; font-size: 12px;">90+ pieces featuring Patan kansa brass, lokta paper, Galaicha rugs & Jali screens.</span>
       </td>
       <td width="33%" align="center" style="background-color: #FBF9F5; padding: 18px; border-radius: 12px; border: 1px solid #E8DFD1;">
         <span style="font-size: 24px;">🔒</span><br/>
@@ -132,7 +132,7 @@
     </tr>
     <tr>
       <td><b>🇳🇵 Vernacular Craft Library</b></td>
-      <td>Comprehensive catalog containing <b>44+ specifications</b>. Bridges contemporary modern Scandinavian layouts with indigenous heritage items: <i>Dhaka Rugs, Galaicha Runners, Charpai Daybeds, Pirka low stools, Diyo stands, and Carved Jali Screens</i>.</td>
+      <td>Comprehensive catalog containing <b>90+ pieces</b>. Bridges contemporary modern Scandinavian layouts with indigenous heritage items: <i>Dhaka Rugs, Galaicha Runners, Charpai Daybeds, Pirka low stools, Diyo stands, and Carved Jali Screens</i>.</td>
     </tr>
     <tr>
       <td><b>⚡ Rotated SAT Collision Engine</b></td>
@@ -183,7 +183,7 @@ Inspired by the earthy materials, red ochre temples, and metallurgic heritage of
 
 | Feature | What it does |
 | :--- | :--- |
-| **Flat designer** | *Design a flat* on the start page: lay out living rooms, bedrooms, kitchens, bathrooms and corridors on a snapping grid, add several floors and straight / L / U staircases, then double-click any room to furnish it in the full room designer. Includes a ready-made two-bedroom template and a 3D view of the whole flat. |
+| **Flat designer** | *Design a flat* on the start page: draw and erase walls on a grid, and enclosed areas become rooms automatically. Remove a wall to open two rooms into one, add doors and windows, and start from Studio, 1BHK, 2BHK or 3BHK layouts. Add several floors and straight, L or U staircases, name each room as a hall, bedroom, kitchen or bathroom, then double-click a room to furnish it in the full room designer. Includes undo/redo, zoom and pan, and a 3D view of the whole flat. |
 | **Furniture from photos** | *My Furniture → Create from photos*: add 2–5 photos of a piece (front, sides, back, top) on a plain background. A 3D model is carved from the silhouettes **in your browser**; photos are never uploaded. Models are blocky (planning quality) and stay on your device. |
 | **Clearance warnings** | Door-swing zones, obstructed windows and cramped walking gaps (25–60 cm) are highlighted and listed. |
 | **Multi-select** | Shift-click or box-select; drag, nudge, copy / paste, duplicate and delete as a group. |
@@ -304,10 +304,12 @@ npm run preview
 | <kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Y</kbd> | Undo / redo | 2D Canvas |
 | <kbd>M</kbd> | Measure tool | 2D Canvas |
 | <kbd>?</kbd> | Show all shortcuts | 2D Canvas |
-| <kbd>Left Click</kbd> + <kbd>Drag</kbd> | Orbit the 3D camera | 3D Studio |
-| <kbd>Right Click</kbd> + <kbd>Drag</kbd> | Pan the 3D camera | 3D Studio |
+| <kbd>Left Click</kbd> + <kbd>Drag</kbd> | Orbit the 3D camera | 3D view |
+| <kbd>Right Click</kbd> + <kbd>Drag</kbd> | Pan the 3D camera | 3D view |
 | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> / <kbd>Esc</kbd> | Walk / leave the walkthrough | 3D Walkthrough |
-| <kbd>R</kbd>, arrows, <kbd>Delete</kbd> | Rotate stair, nudge, remove selection | Flat designer |
+| <kbd>V</kbd> <kbd>W</kbd> <kbd>E</kbd> <kbd>D</kbd> <kbd>N</kbd> <kbd>S</kbd> | Select, wall, erase wall, door, window, stairs | Flat designer |
+| <kbd>Space</kbd> + <kbd>Drag</kbd>, scroll | Pan and zoom the plan | Flat designer |
+| <kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Y</kbd>, <kbd>Delete</kbd>, <kbd>Esc</kbd> | Undo / redo, remove selection, cancel | Flat designer |
 
 </div>
 
