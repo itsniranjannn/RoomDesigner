@@ -92,7 +92,7 @@ export function LampTripodModel({ def, widthM, depthM, heightM, mainColor }) {
     <group>
       {[0, 1, 2].map((i) => {
         const a = (i / 3) * Math.PI * 2 + Math.PI / 2;
-        return <Strut key={i} from={[0, apexY, 0]} to={[Math.cos(a) * footR, 0, Math.sin(a) * footR]} radius={0.018} color={mainColor} roughness={0.55} />;
+        return <Strut key={i} from={[0, apexY, 0]} to={[Math.cos(a) * footR, 0.012, Math.sin(a) * footR]} radius={0.018} color={mainColor} roughness={0.55} />;
       })}
       <Cyl position={[0, apexY + 0.03, 0]} radiusTop={0.025} height={0.07} color={BRASS} roughness={0.25} metalness={0.85} segments={14} />
       <Cyl position={[0, apexY + 0.08 + shadeH / 2, 0]} radiusTop={shadeR * 0.8} radiusBottom={shadeR} height={shadeH} color={def.subColor || '#F2E8D5'} roughness={0.85} segments={32} />

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import * as THREE from 'three';
 import { Camera, X, Sparkles, Save } from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
@@ -14,12 +13,18 @@ import {
   segmentObject,
   normalizeView,
   maskCoverage,
+  proportionWarnings,
   buildModelFromViews,
   topDownImage,
+  renderMesh,
+  footprintOutline,
+  meshAverageHex,
 } from '../../engine/hull.js';
+import { CustomMeshModel } from '../preview3d/models/customMesh.jsx';
 import local from './PhotoModelModal.module.css';
 
-const PREVIEW_MAX = 360;
+const PHOTO_MAX = 480;
+const PLAN_SIZE = 128;
 
 function rgbaToDataUrl(rgba, size) {
   const canvas = document.createElement('canvas');
@@ -57,19 +62,52 @@ function CutoutPreview({ photo, mask }) {
   return <canvas ref={ref} className={local.cutout} aria-label="Photo with background removed" />;
 }
 
-function ModelMesh({ model, widthCm, depthCm, heightCm }) {
-  const geometry = useMemo(() => {
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.BufferAttribute(model.positions, 3));
-    g.setAttribute('color', new THREE.BufferAttribute(model.colors, 3, true));
-    g.computeVertexNormals();
-    return g;
-  }, [model]);
-  useEffect(() => () => geometry.dispose(), [geometry]);
+/** Moves the camera back so the whole piece fits, whatever its real size. */
+function FitCamera({ distance, target }) {
+  const camera = useThree((state) => state.camera);
+  useEffect(() => {
+    camera.position.set(distance * 0.75, target + distance * 0.45, distance * 0.85);
+    camera.lookAt(0, target, 0);
+    camera.updateProjectionMatrix();
+  }, [camera, distance, target]);
+  return null;
+}
+
+/** The finished model at its real size, drawn with the same component the room view uses. */
+function ModelPreview({ model, dims, color }) {
+  const w = dims.widthCm / 100;
+  const d = dims.depthCm / 100;
+  const h = dims.heightCm / 100;
+  const reach = Math.max(w, d, h);
+  const def = useMemo(() => ({ mesh: model, color }), [model, color]);
   return (
-    <mesh geometry={geometry} scale={[widthCm / 100, heightCm / 100, depthCm / 100]} castShadow>
-      <meshStandardMaterial vertexColors flatShading roughness={0.8} />
-    </mesh>
+    <Canvas shadows camera={{ fov: 40 }}>
+      <FitCamera distance={reach * 2.1 + 0.4} target={h / 2} />
+      <ambientLight intensity={1.15} color="#FAF7F0" />
+      <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={0.7} />
+      <directionalLight
+        castShadow
+        position={[reach * 2, reach * 3, reach * 1.5]}
+        intensity={1.25}
+        color="#FFF8EE"
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
+        shadow-camera-left={-reach * 2}
+        shadow-camera-right={reach * 2}
+        shadow-camera-top={reach * 2}
+        shadow-camera-bottom={-reach * 2}
+        shadow-camera-far={reach * 10}
+        shadow-normalBias={0.02}
+      />
+      <directionalLight position={[-reach * 2, reach * 2, -reach * 2]} intensity={0.7} color="#F5EFE6" />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[6, 6]} />
+        <meshStandardMaterial color="#E4DACB" roughness={1} />
+      </mesh>
+      <gridHelper args={[6, 12, '#B9AE9C', '#CFC5B4']} position={[0, 0.002, 0]} />
+      <CustomMeshModel def={def} widthM={w} depthM={d} heightM={h} mainColor={color} />
+      <OrbitControls autoRotate autoRotateSpeed={2.2} enablePan={false} target={[0, h / 2, 0]} />
+    </Canvas>
   );
 }
 
@@ -102,7 +140,7 @@ export function PhotoModelModal({ onClose }) {
     if (!file) return;
     setMessage(null);
     try {
-      const img = await readImage(file, PREVIEW_MAX);
+      const img = await readImage(file, PHOTO_MAX);
       setPhotos((prev) => ({ ...prev, [slot]: img }));
     } catch (err) {
       setMessage({ kind: 'error', text: err.message });
@@ -117,6 +155,11 @@ export function PhotoModelModal({ onClose }) {
     });
 
   const photoCount = Object.keys(photos).length;
+  const modelColor = useMemo(() => (model ? meshAverageHex(model) : '#a0a0a0'), [model]);
+  const proportions = useMemo(() => proportionWarnings(
+    Object.fromEntries(Object.entries(photos).map(([slot, photo]) => [slot, { mask: segmented[slot].mask, width: photo.width, height: photo.height }])),
+    dims
+  ), [segmented, photos, dims]);
   const weakSlots = Object.entries(segmented).filter(([, s]) => s.coverage < 0.03 || s.coverage > 0.92);
 
   const handleBuild = () => {
@@ -131,7 +174,7 @@ export function PhotoModelModal({ onClose }) {
           if (!norm) throw new Error(`No object found in the ${slot.label.toLowerCase()} photo. Try a plainer background.`);
           return { slot: slot.id, angle: slot.angle, ...norm };
         });
-        setModel(buildModelFromViews(views, 40));
+        setModel(buildModelFromViews(views));
       } catch (err) {
         setModel(null);
         setMessage({ kind: 'error', text: err.message });
@@ -143,16 +186,7 @@ export function PhotoModelModal({ onClose }) {
 
   const handleSave = async () => {
     if (!model) return;
-    const topPixels = topDownImage(model.positions, model.colors, 96);
-    const average = [0, 0, 0];
-    for (let i = 0; i < model.colors.length; i += 3 * 7) {
-      average[0] += model.colors[i];
-      average[1] += model.colors[i + 1];
-      average[2] += model.colors[i + 2];
-    }
-    const n = Math.max(1, Math.floor(model.colors.length / (3 * 7)));
-    const hex = '#' + average.map((v) => Math.round(v / n).toString(16).padStart(2, '0')).join('');
-
+    const topPixels = topDownImage(model, PLAN_SIZE);
     await addCustomFurniture({
       id: `custom-${Date.now().toString(36)}`,
       name: name.trim() || 'My furniture',
@@ -161,10 +195,11 @@ export function PhotoModelModal({ onClose }) {
       widthCm: dims.widthCm,
       depthCm: dims.depthCm,
       heightCm: dims.heightCm,
-      color: hex,
-      mesh: { positions: model.positions, colors: model.colors },
-      topImage: rgbaToDataUrl(topPixels, 96),
-      thumb: (photos.front || Object.values(photos)[0])?.thumbUrl,
+      color: modelColor,
+      mesh: { positions: model.positions, colors: model.colors, indices: model.indices },
+      topImage: rgbaToDataUrl(topPixels, PLAN_SIZE),
+      topOutline: footprintOutline(topPixels, PLAN_SIZE),
+      thumb: rgbaToDataUrl(renderMesh(model, { size: PLAN_SIZE }), PLAN_SIZE),
     });
     onClose();
   };
@@ -212,6 +247,11 @@ export function PhotoModelModal({ onClose }) {
 
           <div className={local.section}>
             <h3 className={local.sectionTitle}>Photos <span className={local.sectionNote}>{photoCount} of 5, at least 2 needed</span></h3>
+            <ul className={local.tips}>
+              <li>Use a plain wall or sheet behind the piece and even light, without strong shadows.</li>
+              <li>Hold the camera level at mid-height, the same distance for every photo, with the whole piece in frame.</li>
+              <li>Turn the piece a quarter turn between photos. Front and one side are enough; more photos give a better shape.</li>
+            </ul>
             <div className={local.slots}>
               {VIEW_SLOTS.map((slot) => {
                 const photo = photos[slot.id];
@@ -263,18 +303,7 @@ export function PhotoModelModal({ onClose }) {
         <div className={local.right}>
           <div className={local.preview} aria-label="3D model preview">
             {model ? (
-              <Canvas camera={{ position: [1.4, 1.1, 1.6], fov: 40 }} shadows>
-                <ambientLight intensity={1.1} />
-                <directionalLight position={[3, 5, 2]} intensity={1.3} castShadow />
-                <group position={[0, -dims.heightCm / 200, 0]}>
-                  <ModelMesh model={model} {...dims} />
-                </group>
-                <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -dims.heightCm / 200 - 0.001, 0]} receiveShadow>
-                  <planeGeometry args={[4, 4]} />
-                  <shadowMaterial opacity={0.25} />
-                </mesh>
-                <OrbitControls autoRotate autoRotateSpeed={2.2} enablePan={false} />
-              </Canvas>
+              <ModelPreview model={model} dims={dims} color={modelColor} />
             ) : (
               <p className={local.placeholder}>
                 {photoCount < 2 ? 'Add a front and a side photo to begin.' : 'Press "Build 3D model" to preview it here.'}
@@ -283,8 +312,8 @@ export function PhotoModelModal({ onClose }) {
           </div>
           {model && (
             <p className={local.note}>
-              {model.voxelCount.toLocaleString()} blocks, {model.triangleCount.toLocaleString()} triangles. Drag to rotate.
-              Models built from silhouettes look blocky and cannot show hollow parts, so they suit planning rather than rendering.
+              Shown at its real size; each grid square is 50 cm. Drag to rotate. A model built from silhouettes fills in
+              hollow parts the photos cannot show, such as the space under a table top.
             </p>
           )}
           <p className={local.note}>
@@ -293,6 +322,9 @@ export function PhotoModelModal({ onClose }) {
         </div>
       </div>
 
+      {proportions.map((text) => (
+        <Notice key={text} kind="warn">{text} Check the size above or retake the photo straight on.</Notice>
+      ))}
       {weakSlots.length > 0 && (
         <Notice kind="warn">
           The cut-out looks unreliable for: {weakSlots.map(([slot]) => VIEW_SLOTS.find((v) => v.id === slot).label).join(', ')}.
