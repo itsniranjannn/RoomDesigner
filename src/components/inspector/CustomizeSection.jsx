@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
-import { useRoomStore } from '../../store/roomStore.js';
+import { useRoomStore, RESIZE_MIN_RATIO, RESIZE_MAX_RATIO } from '../../store/roomStore.js';
 import { getFurnitureType } from '../../data/furnitureCatalog.js';
 import { estimatePriceNpr } from '../../engine/cost.js';
 import styles from './CustomizeSection.module.css';
@@ -48,6 +48,10 @@ export function CustomizeSection({ item, def }) {
   const base = getFurnitureType(item.furnitureTypeId);
   const hasOverrides = !!item.overrides && Object.keys(item.overrides).length > 0;
   const set = (patch) => updateItemOverrides(item.id, patch, true);
+  const range = (key, floor) => ({
+    min: Math.max(floor, Math.ceil((base?.[key] ?? def[key]) * RESIZE_MIN_RATIO)),
+    max: Math.floor((base?.[key] ?? def[key]) * RESIZE_MAX_RATIO),
+  });
 
   return (
     <div className={styles.section}>
@@ -67,9 +71,9 @@ export function CustomizeSection({ item, def }) {
       </div>
 
       <div className={styles.grid3}>
-        <NumberField label="Width" value={def.widthCm} min={10} max={600} onCommit={(v) => set({ widthCm: v })} />
-        <NumberField label="Depth" value={def.depthCm} min={10} max={600} onCommit={(v) => set({ depthCm: v })} />
-        <NumberField label="Height" value={def.heightCm} min={1} max={400} onCommit={(v) => set({ heightCm: v })} />
+        <NumberField label="Width" value={def.widthCm} {...range('widthCm', 20)} onCommit={(v) => set({ widthCm: v })} />
+        <NumberField label="Depth" value={def.depthCm} {...range('depthCm', 20)} onCommit={(v) => set({ depthCm: v })} />
+        <NumberField label="Height" value={def.heightCm} {...range('heightCm', 1)} onCommit={(v) => set({ heightCm: v })} />
       </div>
 
       <div className={styles.field}>
