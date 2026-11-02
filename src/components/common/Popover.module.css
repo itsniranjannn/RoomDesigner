@@ -1,0 +1,94 @@
+.root {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: var(--z-popover);
+  min-width: 220px;
+  max-width: min(360px, calc(100vw - 24px));
+  max-height: min(420px, 70dvh);
+  overflow-y: auto;
+  padding: var(--space-2);
+  background: var(--color-paper);
+  border: var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+.end {
+  left: auto;
+  right: 0;
+}
+
+.up {
+  top: auto;
+  bottom: calc(100% + 6px);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--control-h);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
+  text-align: left;
+  color: var(--color-ink);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.item:hover {
+  background: var(--color-linen-surface);
+}
+
+.item:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.itemActive {
+  font-weight: 600;
+  background: var(--color-indigo-subtle);
+}
+
+.itemIcon {
+  display: inline-flex;
+  color: var(--color-ink-muted);
+}
+
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.danger,
+.danger .itemIcon {
+  color: var(--color-maroon);
+}
+
+.danger:hover {
+  background: var(--color-maroon-subtle);
+}
+
+.menuLabel {
+  padding: var(--space-2) var(--space-3) var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--color-ink-faint);
+}
+
+.divider {
+  height: 1px;
+  margin: var(--space-2) calc(var(--space-2) * -1);
+  background: var(--color-taupe-light);
+}
