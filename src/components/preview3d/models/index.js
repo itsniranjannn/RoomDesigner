@@ -10,6 +10,12 @@ import { NepaliChowkiModel, NepaliPatukaChestModel, NepaliBrassDiyaModel, Nepali
 import { FixtureToiletModel, FixtureBasinModel, FixtureShowerModel, FixtureBathtubModel, FixtureWasherModel } from './fixtures.jsx';
 import { CustomMeshModel } from './customMesh.jsx';
 import { FallbackBoxModel } from './fallback.jsx';
+import { SofaLModel, BeanBagModel, BenchModel } from './lounge.jsx';
+import { DressingTableModel, CribModel, TrunkModel } from './bedroom.jsx';
+import { DeskLModel, StandingDeskModel, ReceptionCounterModel } from './office.jsx';
+import { SinkUnitModel, ApplianceModel } from './kitchenUnits.jsx';
+import { VanityModel, SquatToiletModel, TankModel, BasketModel } from './bathroom.jsx';
+import { PlanterModel, RugRoundModel, ScreenModel } from './accents.jsx';
 
 export const MODELS = {
   'bed': BedModel,
@@ -60,6 +66,24 @@ export const MODELS = {
   'fixture-bathtub': FixtureBathtubModel,
   'fixture-washer': FixtureWasherModel,
   'custom-mesh': CustomMeshModel,
+  'sofa-l': SofaLModel,
+  'bean-bag': BeanBagModel,
+  'bench': BenchModel,
+  'dressing-table': DressingTableModel,
+  'crib': CribModel,
+  'trunk': TrunkModel,
+  'desk-l': DeskLModel,
+  'standing-desk': StandingDeskModel,
+  'reception-counter': ReceptionCounterModel,
+  'sink-unit': SinkUnitModel,
+  'appliance': ApplianceModel,
+  'vanity': VanityModel,
+  'squat-toilet': SquatToiletModel,
+  'tank': TankModel,
+  'basket': BasketModel,
+  'planter': PlanterModel,
+  'rug-round': RugRoundModel,
+  'screen': ScreenModel,
 };
 
 /** Unknown shape types fall back to a plain box of the catalog dimensions. */
