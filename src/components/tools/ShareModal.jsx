@@ -1,11 +1,13 @@
 import React, { useRef, useState } from 'react';
+import { Link2, FileJson, FileText, Image as ImageIcon, Upload } from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
-import { Link2, FileJson, FileText, Image as ImageIcon, Upload } from 'lucide-react';
+import { TextField } from '../common/Field.jsx';
+import { Notice } from '../common/Notice.jsx';
 import { useRoomStore } from '../../store/roomStore.js';
 import { encodeRoomToHash } from '../../engine/share.js';
 import { exportRoomPlanAsPNG, exportRoomPlanAsPDF, exportRoomAsJSON } from '../../engine/exportPlan.js';
-import styles from '../common/Modal.module.css';
+import styles from './Tools.module.css';
 
 export function ShareModal({ onClose }) {
   const room = useRoomStore((state) => state.room);
@@ -13,6 +15,7 @@ export function ShareModal({ onClose }) {
   const fileRef = useRef(null);
   const [message, setMessage] = useState(null); // { kind: 'ok' | 'error', text }
   const [busy, setBusy] = useState(false);
+  const [manualLink, setManualLink] = useState(null); // shown when the browser blocks copying
 
   const run = async (fn, okText) => {
     setBusy(true);
@@ -29,10 +32,16 @@ export function ShareModal({ onClose }) {
 
   const copyLink = () =>
     run(async () => {
+      setManualLink(null);
       const hash = await encodeRoomToHash(room);
       const url = `${window.location.origin}${window.location.pathname}#${hash}`;
-      await navigator.clipboard.writeText(url);
-    }, 'Link copied. Anyone opening it gets their own copy of this design; nothing is uploaded.');
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        setManualLink(url);
+        throw new Error('Your browser would not copy the link automatically. Copy it from the box below.');
+      }
+    }, 'Link copied. Anyone who opens it gets their own copy of this design. Nothing is uploaded.');
 
   const handleImport = (event) => {
     const file = event.target.files?.[0];
@@ -47,40 +56,45 @@ export function ShareModal({ onClose }) {
   };
 
   return (
-    <Modal title="Export & share" subtitle={room ? room.name : undefined} onClose={onClose} width={520}>
-      <div className={styles.field}>
-        <span className={styles.label}>Share</span>
-        <Button variant="secondary" icon={<Link2 size={13} />} onClick={copyLink} disabled={busy}>
-          Copy share link
-        </Button>
-        <p className={styles.note}>The design is packed into the link itself, so it stays private and works offline.</p>
-      </div>
+    <Modal title="Share & export" subtitle={room ? room.name : undefined} onClose={onClose} width={560}>
+      <ul className={styles.options}>
+        <li className={styles.option}>
+          <div className={styles.optionText}>
+            <h3 className={styles.optionTitle}>Share a link</h3>
+            <p className={styles.optionHelp}>The design is packed into the link itself, so it stays private and nothing is uploaded.</p>
+          </div>
+          <div className={styles.optionActions}>
+            <Button icon={<Link2 size={16} />} onClick={copyLink} disabled={busy}>Copy link</Button>
+          </div>
+        </li>
 
-      <div className={styles.field}>
-        <span className={styles.label}>Export</span>
-        <div className={styles.row}>
-          <Button variant="secondary" size="small" icon={<ImageIcon size={12} />} disabled={busy}
-            onClick={() => run(() => exportRoomPlanAsPNG(room), 'PNG downloaded.')}>PNG</Button>
-          <Button variant="secondary" size="small" icon={<FileText size={12} />} disabled={busy}
-            onClick={() => run(() => exportRoomPlanAsPDF(room), 'PDF downloaded.')}>PDF</Button>
-          <Button variant="secondary" size="small" icon={<FileJson size={12} />} disabled={busy}
-            onClick={() => run(async () => exportRoomAsJSON(room), 'JSON downloaded.')}>JSON</Button>
-        </div>
-      </div>
+        <li className={styles.option}>
+          <div className={styles.optionText}>
+            <h3 className={styles.optionTitle}>Download</h3>
+            <p className={styles.optionHelp}>A picture, a printable plan, or a file you can open again later.</p>
+          </div>
+          <div className={styles.optionActions}>
+            <Button icon={<ImageIcon size={16} />} disabled={busy} onClick={() => run(() => exportRoomPlanAsPNG(room), 'Picture downloaded.')}>PNG</Button>
+            <Button icon={<FileText size={16} />} disabled={busy} onClick={() => run(() => exportRoomPlanAsPDF(room), 'Plan downloaded.')}>PDF</Button>
+            <Button icon={<FileJson size={16} />} disabled={busy} onClick={() => run(async () => exportRoomAsJSON(room), 'Design file downloaded.')}>JSON</Button>
+          </div>
+        </li>
 
-      <div className={styles.field}>
-        <span className={styles.label}>Import</span>
-        <Button variant="secondary" icon={<Upload size={13} />} onClick={() => fileRef.current?.click()} disabled={busy}>
-          Import design from JSON
-        </Button>
-        <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={handleImport} aria-label="Import JSON file" />
-        <p className={styles.note}>Imports open as a new sheet. Your current room is kept.</p>
-      </div>
+        <li className={styles.option}>
+          <div className={styles.optionText}>
+            <h3 className={styles.optionTitle}>Open a design file</h3>
+            <p className={styles.optionHelp}>Opens as a new room. Your current room is kept.</p>
+          </div>
+          <div className={styles.optionActions}>
+            <Button icon={<Upload size={16} />} onClick={() => fileRef.current?.click()} disabled={busy}>Choose file</Button>
+          </div>
+          <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={handleImport} aria-label="Design file to open" />
+        </li>
+      </ul>
 
-      {message && (
-        <p className={message.kind === 'ok' ? styles.status : styles.statusError} role="status">
-          {message.text}
-        </p>
+      {message && <Notice kind={message.kind}>{message.text}</Notice>}
+      {manualLink && (
+        <TextField label="Share link" value={manualLink} readOnly onFocus={(e) => e.target.select()} />
       )}
     </Modal>
   );
