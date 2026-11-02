@@ -399,7 +399,6 @@ export function renderRoomPlanCanvas(room) {
 
     const w = def.widthCm;
     const d = def.depthCm;
-    const rot = ((item.rotationDeg || 0) * Math.PI) / 180;
 
     // Check if piece is large enough to comfortably fit text inside with margin
     const minInnerDim = Math.min(w, d);
