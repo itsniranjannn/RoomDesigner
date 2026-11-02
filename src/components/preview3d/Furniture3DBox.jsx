@@ -10,7 +10,7 @@ import { resolveModel } from './models/index.js';
  * sofas have cushions & armrests.
  * Thin dispatcher: each shapeType is built by a module under ./models.
  */
-export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isColliding }) {
+export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected }) {
   const def = resolveItemDef(item);
   if (!def) return null;
 
