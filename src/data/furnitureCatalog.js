@@ -17,6 +17,8 @@ export const FURNITURE_CATEGORIES = [
   { id: 'dining_office', name: 'Dining & Office' },
   { id: 'kitchen', name: 'Kitchen' },
   { id: 'decor', name: 'Decor & Accents' },
+  { id: 'bathroom', name: 'Bathroom & Utility' },
+  { id: 'custom', name: 'My Furniture' },
 ];
 
 export const FURNITURE_CATALOG = [
@@ -578,8 +580,123 @@ export const FURNITURE_CATALOG = [
     accentColor: '#C49746',
     shapeType: 'nepali-patuka-chest',
   },
+
+  // ==========================================
+  // BATHROOM & UTILITY
+  // ==========================================
+  {
+    id: 'toilet',
+    name: 'Toilet (WC)',
+    category: 'bathroom',
+    widthCm: 40,
+    depthCm: 70,
+    heightCm: 78,
+    color: '#F4F4F1',
+    subColor: '#D9D9D4',
+    shapeType: 'fixture-toilet',
+  },
+  {
+    id: 'wash-basin',
+    name: 'Wash Basin',
+    category: 'bathroom',
+    widthCm: 60,
+    depthCm: 45,
+    heightCm: 85,
+    color: '#F4F4F1',
+    subColor: '#C9CED1',
+    shapeType: 'fixture-basin',
+  },
+  {
+    id: 'shower-tray',
+    name: 'Shower Enclosure',
+    category: 'bathroom',
+    widthCm: 90,
+    depthCm: 90,
+    heightCm: 200,
+    color: '#DCE6EA',
+    subColor: '#9FB4BD',
+    shapeType: 'fixture-shower',
+  },
+  {
+    id: 'bathtub',
+    name: 'Bathtub',
+    category: 'bathroom',
+    widthCm: 170,
+    depthCm: 75,
+    heightCm: 55,
+    color: '#F4F4F1',
+    subColor: '#C9CED1',
+    shapeType: 'fixture-bathtub',
+  },
+  {
+    id: 'washing-machine',
+    name: 'Washing Machine',
+    category: 'bathroom',
+    widthCm: 60,
+    depthCm: 60,
+    heightCm: 85,
+    color: '#E6E8EA',
+    subColor: '#5B6670',
+    shapeType: 'fixture-washer',
+  },
+  {
+    id: 'shoe-rack',
+    name: 'Shoe Rack',
+    category: 'decor',
+    widthCm: 80,
+    depthCm: 30,
+    heightCm: 90,
+    color: '#7A5A3C',
+    shapeType: 'chest-drawers',
+  },
 ];
 
+// ==========================================
+// Runtime registry for user-created furniture (photo models)
+// ==========================================
+const customFurniture = new Map();
+
+export function registerCustomFurniture(def) {
+  if (!def || !def.id) return;
+  customFurniture.set(def.id, { category: 'custom', shapeType: 'custom-mesh', ...def });
+}
+
+export function unregisterCustomFurniture(id) {
+  customFurniture.delete(id);
+}
+
+export function listCustomFurniture() {
+  return Array.from(customFurniture.values());
+}
+
 export function getFurnitureType(id) {
-  return FURNITURE_CATALOG.find((item) => item.id === id) || null;
+  return FURNITURE_CATALOG.find((item) => item.id === id) || customFurniture.get(id) || null;
+}
+
+/** Fields a user may override per placed item (size, finish, price). */
+export const OVERRIDABLE_FIELDS = [
+  'widthCm',
+  'depthCm',
+  'heightCm',
+  'color',
+  'subColor',
+  'accentColor',
+  'priceNpr',
+];
+
+/**
+ * Resolves the effective definition of a placed item:
+ * catalog (or custom) type merged with its per-item overrides.
+ */
+export function resolveItemDef(item) {
+  if (!item) return null;
+  const base = getFurnitureType(item.furnitureTypeId);
+  if (!base) return null;
+  const o = item.overrides;
+  if (!o) return base;
+  const merged = { ...base };
+  for (const key of OVERRIDABLE_FIELDS) {
+    if (o[key] !== undefined && o[key] !== null && o[key] !== '') merged[key] = o[key];
+  }
+  return merged;
 }

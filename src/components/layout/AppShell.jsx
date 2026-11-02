@@ -7,6 +7,13 @@ import { AboutPage } from './AboutPage.jsx';
 import { FurnitureCatalog } from '../catalog/FurnitureCatalog.jsx';
 import { RoomCanvas } from '../canvas/RoomCanvas.jsx';
 import { SelectedItemPanel } from '../inspector/SelectedItemPanel.jsx';
+import { ModalHost } from '../tools/ModalHost.jsx';
+import { useFlatStore } from '../../store/flatStore.js';
+import { FlatDesigner } from '../flat/FlatDesigner.jsx';
+import { NewFlatModal } from '../flat/NewFlatModal.jsx';
+import { Modal } from '../common/Modal.jsx';
+import { Button } from '../common/Button.jsx';
+import { decodeRoomFromHash } from '../../engine/share.js';
 import styles from './AppShell.module.css';
 
 // Dynamically lazy-load 3D Studio to keep initial 2D drafting bundle ultralight
@@ -20,7 +27,52 @@ export function AppShell() {
   const selectedItemId = useRoomStore((state) => state.selectedItemId);
 
   const [isNewRoomModalOpen, setIsNewRoomModalOpen] = useState(false);
+  const [isNewFlatModalOpen, setIsNewFlatModalOpen] = useState(false);
+  const flatMode = useFlatStore((state) => state.mode);
   const [currentPage, setCurrentPage] = useState('main'); // 'main' | 'about'
+  const [incoming, setIncoming] = useState(null); // { room } | { error }
+  const importRoomData = useRoomStore((state) => state.importRoomData);
+
+  // Open designs shared as a link (#share=...) after confirmation
+  useEffect(() => {
+    if (!window.location.hash.startsWith('#share=')) return;
+    decodeRoomFromHash(window.location.hash)
+      .then((shared) => setIncoming({ room: shared }))
+      .catch(() => setIncoming({ error: 'This share link is damaged or incomplete.' }));
+  }, []);
+
+  const closeIncoming = () => {
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    setIncoming(null);
+  };
+
+  const acceptIncoming = async () => {
+    await importRoomData(incoming.room);
+    closeIncoming();
+  };
+
+  const shareDialog = incoming && (
+    <Modal
+      title={incoming.error ? 'Link could not be opened' : 'Open shared design?'}
+      subtitle={incoming.error || `"${incoming.room.name}" · ${incoming.room.placedFurniture.length} pieces`}
+      onClose={closeIncoming}
+      width={440}
+      footer={
+        incoming.error ? (
+          <Button variant="primary" size="small" onClick={closeIncoming}>Close</Button>
+        ) : (
+          <>
+            <Button variant="ghost" size="small" onClick={closeIncoming}>Not now</Button>
+            <Button variant="primary" size="small" onClick={acceptIncoming}>Open as new sheet</Button>
+          </>
+        )
+      }
+    >
+      {!incoming.error && (
+        <p style={{ margin: 0 }}>It opens as a new sheet. Your existing rooms are not changed.</p>
+      )}
+    </Modal>
+  );
 
   // Global Undo / Redo keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y, Cmd+Z, Cmd+Shift+Z)
   useEffect(() => {
@@ -51,6 +103,11 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
+  // Flat designer (multi-room plan)
+  if (flatMode === 'flat') {
+    return <FlatDesigner />;
+  }
+
   // Dedicated full-page About View
   if (currentPage === 'about') {
     return (
@@ -63,6 +120,7 @@ export function AppShell() {
           isOpen={isNewRoomModalOpen}
           onClose={() => setIsNewRoomModalOpen(false)}
         />
+        {shareDialog}
       </>
     );
   }
@@ -72,12 +130,16 @@ export function AppShell() {
       <>
         <LandingPage
           onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)}
+          onOpenNewFlatModal={() => setIsNewFlatModalOpen(true)}
           onNavigateAbout={() => setCurrentPage('about')}
         />
+        {isNewFlatModalOpen && <NewFlatModal onClose={() => setIsNewFlatModalOpen(false)} />}
         <NewRoomModal
           isOpen={isNewRoomModalOpen}
           onClose={() => setIsNewRoomModalOpen(false)}
         />
+        <ModalHost />
+        {shareDialog}
       </>
     );
   }
@@ -116,6 +178,8 @@ export function AppShell() {
         isOpen={isNewRoomModalOpen}
         onClose={() => setIsNewRoomModalOpen(false)}
       />
+      <ModalHost />
+      {shareDialog}
     </div>
   );
 }
