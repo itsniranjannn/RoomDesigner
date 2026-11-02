@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
-import { Info, Layers3, Plus } from 'lucide-react';
+import { Info, Layers3, Plus, Building2 } from 'lucide-react';
 import { BrandMark } from '../common/BrandMark.jsx';
 import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './LandingPage.module.css';
@@ -266,7 +266,7 @@ function DraftingBoardSurface() {
   );
 }
 
-export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
+export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigateAbout }) {
   const allRooms = useRoomStore((state) => state.allRooms);
   const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
@@ -355,6 +355,15 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
             >
               Start a new room
             </Button>
+            <Button
+              variant="secondary"
+              size="normal"
+              icon={<Building2 size={14} />}
+              onClick={onOpenNewFlatModal}
+              style={{ marginLeft: 10 }}
+            >
+              Design a flat
+            </Button>
           </motion.div>
           </div>
 
@@ -387,6 +396,7 @@ export function LandingPage({ onOpenNewRoomModal, onNavigateAbout }) {
         isOpen={isSheetsPanelOpen}
         onClose={() => setIsSheetsPanelOpen(false)}
         onOpenNewRoomModal={onOpenNewRoomModal}
+        onOpenNewFlatModal={onOpenNewFlatModal}
       />
     </div>
   );

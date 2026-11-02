@@ -15,6 +15,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { BrandMark } from '../common/BrandMark.jsx';
+import { useFlatStore } from '../../store/flatStore.js';
 import { ArchitecturalSelect } from '../common/ArchitecturalSelect.jsx';
 import styles from './TopBar.module.css';
 
@@ -33,6 +34,10 @@ export function TopBar({ onOpenNewRoomModal }) {
   const canRedo = useRoomStore((state) => state.canRedo);
   const closeRoom = useRoomStore((state) => state.closeRoom);
   const openModal = useRoomStore((state) => state.openModal);
+  const flatMode = useFlatStore((state) => state.mode);
+  const flatName = useFlatStore((state) => state.flat?.name);
+  const backToFlat = useFlatStore((state) => state.backToFlat);
+  const inFlat = flatMode === 'room';
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -107,9 +112,9 @@ export function TopBar({ onOpenNewRoomModal }) {
         <button
           type="button"
           className={styles.studioBtn}
-          onClick={() => closeRoom()}
-          title="Return to Studio Overview"
-          aria-label="Return to Studio Overview"
+          onClick={() => (inFlat ? backToFlat() : closeRoom())}
+          title={inFlat ? `Back to ${flatName}` : 'Return to Studio Overview'}
+          aria-label={inFlat ? `Back to flat ${flatName}` : 'Return to Studio Overview'}
         >
           <BrandMark size={28} className={styles.brandMarkIcon} />
           <div className={styles.mastheadLockup}>
@@ -153,7 +158,7 @@ export function TopBar({ onOpenNewRoomModal }) {
             </form>
           ) : (
             <>
-              {allRooms.length > 1 ? (
+              {allRooms.length > 1 && !inFlat ? (
                 <ArchitecturalSelect
                   value={room.id}
                   onChange={(val) => switchRoom(val)}
