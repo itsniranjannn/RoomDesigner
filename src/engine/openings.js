@@ -94,7 +94,7 @@ export function clampResizeEnd(type, startOffsetCm, rawTargetWidthCm, wallLength
  * Clamps resizing from the start handle (left/top).
  * Right edge remains pinned at startOffsetCm + startWidthCm.
  */
-export function clampResizeStart(type, startOffsetCm, startWidthCm, rawTargetOffsetCm, wallLengthCm) {
+export function clampResizeStart(type, startOffsetCm, startWidthCm, rawTargetOffsetCm, _wallLengthCm) {
   const limits = OPENING_LIMITS[type] || OPENING_LIMITS.window;
   const margin = OPENING_LIMITS.cornerMargin;
   const rightEdge = startOffsetCm + startWidthCm;
