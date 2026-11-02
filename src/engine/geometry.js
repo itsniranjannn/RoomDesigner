@@ -23,7 +23,7 @@ export function radToDeg(rad) {
 export function normalizeAngle(deg) {
   let a = deg % 360;
   if (a < 0) a += 360;
-  return a === -0 ? 0 : a;
+  return a === 0 ? 0 : a; // also turns -0 into 0
 }
 
 /**

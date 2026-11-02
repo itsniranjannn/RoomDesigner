@@ -1,0 +1,19 @@
+{
+  "name": "Room Designer Studio",
+  "short_name": "Room Studio",
+  "description": "2D drafting and 3D planning for rooms and flats. Works offline; designs stay on your device.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f2ea",
+  "theme_color": "#f6f2ea",
+  "icons": [
+    {
+      "src": "room-studio-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
