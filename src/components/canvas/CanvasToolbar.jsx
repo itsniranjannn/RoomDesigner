@@ -5,7 +5,6 @@ import {
   MoveHorizontal,
   ImagePlus,
   Wand2,
-  Receipt,
   Keyboard,
   AlertTriangle,
   X,
@@ -73,7 +72,6 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
         <span className={styles.divider} />
         <Tool onClick={() => fileRef.current?.click()} label="Trace a floor-plan image"><ImagePlus size={15} /></Tool>
         <Tool onClick={() => openModal('layout')} label="Suggest a layout"><Wand2 size={15} /></Tool>
-        <Tool onClick={() => openModal('cost')} label="Bill of materials"><Receipt size={15} /></Tool>
         <Tool onClick={() => openModal('shortcuts')} label="Keyboard shortcuts (?)"><Keyboard size={15} /></Tool>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleTraceFile} aria-label="Trace image file" />
       </div>

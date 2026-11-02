@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { evaluateClearance, getClearanceZones } from './clearance.js';
 import { suggestLayout } from './layout.js';
 import { evaluateAllCollisions } from './collision.js';
-import { buildBillOfMaterials, estimatePriceNpr, billToCsv } from './cost.js';
 import { encodeRoomToHash, decodeRoomFromHash, sanitizeImportedRoom } from './share.js';
 import { getWallDistances, formatCm } from './measure.js';
 import { jpegToPdf } from './pdf.js';
@@ -60,25 +59,6 @@ describe('layout suggestion', () => {
     expect(collidingIds.size).toBe(0);
     const issues = evaluateClearance({ ...room, placedFurniture: placed });
     expect(issues.filter((i) => i.kind === 'door-swing')).toHaveLength(0);
-  });
-});
-
-describe('cost', () => {
-  it('totals the bill and exports CSV', () => {
-    const r = {
-      ...room,
-      placedFurniture: [
-        { id: '1', furnitureTypeId: 'nightstand' },
-        { id: '2', furnitureTypeId: 'nightstand' },
-        { id: '3', furnitureTypeId: 'bed-queen', overrides: { priceNpr: 50000 } },
-      ],
-    };
-    const bill = buildBillOfMaterials(r);
-    expect(bill.rows).toHaveLength(2);
-    expect(bill.rows.find((x) => x.name.toLowerCase().includes('night')).qty).toBe(2);
-    expect(bill.total).toBe(bill.rows.reduce((s, x) => s + x.subtotal, 0));
-    expect(billToCsv(bill)).toContain('Total');
-    expect(estimatePriceNpr({ category: 'living', widthCm: 100, depthCm: 100, heightCm: 100 })).toBeGreaterThan(0);
   });
 });
 
