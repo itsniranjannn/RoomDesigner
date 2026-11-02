@@ -4,7 +4,7 @@
  * while respecting boundaries, collisions and door/window clearance zones.
  */
 
-import { getFurnitureType } from '../data/furnitureCatalog.js';
+import { getFurnitureType, resolveItemDef } from '../data/furnitureCatalog.js';
 import { getRotatedRectCorners, getAABB } from './geometry.js';
 import { checkPolygonCollision } from './collision.js';
 import { getClearanceZones } from './clearance.js';
@@ -108,7 +108,19 @@ export function suggestLayout(room, typeIds) {
   };
   defs.sort((a, b) => rank(a) - rank(b) || b.def.widthCm * b.def.depthCm - a.def.widthCm * a.def.depthCm);
 
-  const placed = [];
+  // Pieces already in the room act as obstacles; only new pieces are returned
+  const placed = (room.placedFurniture || [])
+    .map((item) => {
+      const def = resolveItemDef(item);
+      if (!def) return null;
+      return {
+        item,
+        def,
+        corners: getRotatedRectCorners(item.x, item.y, def.widthCm, def.depthCm, item.rotationDeg || 0),
+      };
+    })
+    .filter(Boolean);
+  const existingCount = placed.length;
   const unplaced = [];
   let counter = 0;
   const nextId = () => `item-auto-${Date.now()}-${counter++}`;
@@ -154,5 +166,5 @@ export function suggestLayout(room, typeIds) {
     else unplaced.push(id);
   }
 
-  return { placed: placed.map((p) => p.item), unplaced };
+  return { placed: placed.slice(existingCount).map((p) => p.item), unplaced };
 }

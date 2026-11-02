@@ -308,3 +308,46 @@ export function buildModelFromViews(views, resolution = 40) {
   }
   return mesh;
 }
+
+/**
+ * Rasterizes the model from above (for the 2D plan symbol).
+ * @returns {Uint8ClampedArray} RGBA pixels, size x size, transparent where empty
+ */
+export function topDownImage(positions, colors, size = 96) {
+  const out = new Uint8ClampedArray(size * size * 4);
+  const height = new Float32Array(size * size).fill(-1);
+  // Each quad is 6 vertices (18 floats); a flat quad's highest instance per pixel is a top face
+  for (let q = 0; q + 18 <= positions.length; q += 18) {
+    const y = positions[q + 1];
+    let flat = true;
+    for (let v = 1; v < 6; v++) if (positions[q + v * 3 + 1] !== y) { flat = false; break; }
+    if (!flat) continue;
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    for (let v = 0; v < 6; v++) {
+      const x = positions[q + v * 3];
+      const z = positions[q + v * 3 + 2];
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (z < minZ) minZ = z;
+      if (z > maxZ) maxZ = z;
+    }
+    const px0 = Math.floor((minX + 0.5) * size);
+    const px1 = Math.max(px0 + 1, Math.ceil((maxX + 0.5) * size));
+    const pz0 = Math.floor((minZ + 0.5) * size);
+    const pz1 = Math.max(pz0 + 1, Math.ceil((maxZ + 0.5) * size));
+    for (let pz = pz0; pz < pz1; pz++) {
+      for (let px = px0; px < px1; px++) {
+        if (px < 0 || pz < 0 || px >= size || pz >= size) continue;
+        const idx = pz * size + px;
+        if (y > height[idx]) {
+          height[idx] = y;
+          out[idx * 4] = colors[q];
+          out[idx * 4 + 1] = colors[q + 1];
+          out[idx * 4 + 2] = colors[q + 2];
+          out[idx * 4 + 3] = 255;
+        }
+      }
+    }
+  }
+  return out;
+}

@@ -4,6 +4,8 @@ import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { Button } from '../common/Button.jsx';
 import { ArchitecturalSelect } from '../common/ArchitecturalSelect.jsx';
 import { Copy, Trash2, X, Compass, Layers, ArrowUp, ArrowDown, GripVertical } from 'lucide-react';
+import { CustomizeSection } from './CustomizeSection.jsx';
+import customStyles from './CustomizeSection.module.css';
 import styles from './SelectedItemPanel.module.css';
 
 const WALL_OPTIONS = [
@@ -29,6 +31,11 @@ export function SelectedItemPanel() {
   const reorderFurniture = useRoomStore((state) => state.reorderFurniture);
   const moveFurnitureToIndex = useRoomStore((state) => state.moveFurnitureToIndex);
 
+  const selectedItemIds = useRoomStore((state) => state.selectedItemIds);
+  const copySelection = useRoomStore((state) => state.copySelection);
+  const duplicateSelection = useRoomStore((state) => state.duplicateSelection);
+  const removeSelection = useRoomStore((state) => state.removeSelection);
+
   const sliderStartSnapshot = useRef(null);
   const sliderStartVal = useRef(0);
   const dragItemIndexRef = useRef(null);
@@ -43,6 +50,35 @@ export function SelectedItemPanel() {
   const widthM = (room.widthCm / 100).toFixed(2);
   const depthM = (room.depthCm / 100).toFixed(2);
   const areaM2 = ((room.widthCm * room.depthCm) / 10000).toFixed(1);
+
+  // Several pieces selected: show group actions instead of a single-piece inspector
+  if (selectedItemIds.length > 1) {
+    return (
+      <aside
+        className={styles.inspectorPanel}
+        aria-label="Group selection inspector"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={styles.header}>
+          <div className={styles.itemMeta}>
+            <div className={styles.specCodeTag}>SELECTION</div>
+            <h3 className={styles.title}>{selectedItemIds.length} pieces</h3>
+          </div>
+          <Button variant="ghost" size="small" onClick={deselectItem} aria-label="Clear selection">
+            <X size={14} />
+          </Button>
+        </div>
+        <div className={customStyles.groupBody}>
+          <p style={{ margin: 0 }}>Drag any selected piece to move the group. Arrow keys nudge all of them.</p>
+          <div className={customStyles.groupActions}>
+            <Button variant="secondary" size="small" onClick={copySelection}>Copy</Button>
+            <Button variant="secondary" size="small" onClick={duplicateSelection}>Duplicate</Button>
+            <Button variant="danger" size="small" onClick={removeSelection}>Delete</Button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   // If a piece is selected, render item properties inspector
   if (selectedItem && def) {
@@ -100,6 +136,8 @@ export function SelectedItemPanel() {
               </div>
             </div>
           </div>
+
+          <CustomizeSection item={selectedItem} def={def} />
 
           {/* Position Coordinates */}
           <div className={styles.section}>
