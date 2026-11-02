@@ -125,23 +125,35 @@ export function BookshelfModel({ widthM, depthM, heightM, mainColor }) {
 }
 
 export function ChestDrawersModel({ widthM, depthM, heightM, mainColor, legColor, handleColor }) {
-  const bodyH = heightM - 0.08;
+  const plinthH = 0.07;
+  const bodyH = heightM - plinthH;
+  const drawers = heightM > 0.9 ? 4 : 3;
+  const frontH = (bodyH - 0.04) / drawers;
   return (
     <group>
-      <mesh position={[0, 0.04, 0]} castShadow receiveShadow>
-        <boxGeometry args={[widthM * 0.96, 0.08, depthM * 0.96]} />
+      <mesh position={[0, plinthH / 2, -0.01]} castShadow receiveShadow>
+        <boxGeometry args={[widthM * 0.96, plinthH, depthM * 0.94]} />
         <meshStandardMaterial color={legColor} roughness={0.8} />
       </mesh>
-      <mesh position={[0, 0.08 + bodyH / 2, 0]} castShadow receiveShadow>
+      <mesh position={[0, plinthH + bodyH / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[widthM, bodyH, depthM]} />
         <meshStandardMaterial color={mainColor} roughness={0.7} />
       </mesh>
-      {[0.28, 0.56, 0.82].map((tierY, idx) => (
-        <mesh key={idx} position={[0, tierY, depthM / 2 + 0.015]} castShadow>
-          <boxGeometry args={[widthM * 0.35, 0.02, 0.02]} />
-          <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.6} />
-        </mesh>
-      ))}
+      {Array.from({ length: drawers }).map((_, idx) => {
+        const y = plinthH + 0.02 + frontH * (idx + 0.5);
+        return (
+          <group key={idx}>
+            <mesh position={[0, y, depthM / 2 + 0.004]} receiveShadow>
+              <boxGeometry args={[widthM - 0.04, frontH - 0.012, 0.008]} />
+              <meshStandardMaterial color={mainColor} roughness={0.55} />
+            </mesh>
+            <mesh position={[0, y, depthM / 2 + 0.018]} castShadow>
+              <boxGeometry args={[widthM * 0.3, 0.016, 0.02]} />
+              <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.7} />
+            </mesh>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -178,61 +190,50 @@ export function SideboardModel({ widthM, depthM, heightM, mainColor, legColor, h
   );
 }
 
-export function VanityDresserModel({ widthM, depthM, mainColor, legColor, handleColor }) {
-  const mirrorRadius = widthM * 0.32;
-  const bodyH = 0.75;
+export function VanityDresserModel({ widthM, depthM, heightM, mainColor, legColor, handleColor }) {
+  const legH = 0.14;
+  const bodyH = heightM * 0.55;
+  const mirrorR = Math.min(widthM * 0.33, (heightM - bodyH - 0.04) / 2);
+  const mirrorY = bodyH + 0.03 + mirrorR;
+  const mirrorZ = -depthM / 2 + 0.05;
+  const rowH = (bodyH - legH - 0.04) / 2;
   return (
     <group>
-      {/* Vanity Cabinet Body */}
-      <mesh position={[0, 0.15 + (bodyH - 0.15) / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[widthM, bodyH - 0.15, depthM]} />
+      <mesh position={[0, legH + (bodyH - legH) / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[widthM, bodyH - legH, depthM]} />
         <meshStandardMaterial color={mainColor} roughness={0.7} />
       </mesh>
-      {/* 4 Tapered Legs */}
-      {[
-        [-widthM / 2 + 0.08, -depthM / 2 + 0.08],
-        [widthM / 2 - 0.08, -depthM / 2 + 0.08],
-        [-widthM / 2 + 0.08, depthM / 2 - 0.08],
-        [widthM / 2 - 0.08, depthM / 2 - 0.08],
-      ].map(([lx, lz], idx) => (
-        <mesh key={idx} position={[lx, 0.075, lz]} castShadow>
-          <boxGeometry args={[0.035, 0.15, 0.035]} />
+      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz], i) => (
+        <mesh key={i} position={[sx * (widthM / 2 - 0.06), legH / 2, sz * (depthM / 2 - 0.06)]} castShadow>
+          <boxGeometry args={[0.04, legH, 0.04]} />
           <meshStandardMaterial color={legColor} roughness={0.5} />
         </mesh>
       ))}
-      {/* Drawer Handles */}
-      <mesh position={[-widthM * 0.22, bodyH - 0.12, depthM / 2 + 0.015]} castShadow>
-        <boxGeometry args={[0.1, 0.02, 0.02]} />
-        <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.8} />
-      </mesh>
-      <mesh position={[widthM * 0.22, bodyH - 0.12, depthM / 2 + 0.015]} castShadow>
-        <boxGeometry args={[0.1, 0.02, 0.02]} />
-        <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.8} />
-      </mesh>
-      {/* Dual Brass Mirror Mounting Support Uprights from dresser top */}
-      <mesh position={[-mirrorRadius * 0.55, bodyH + mirrorRadius * 0.55, -depthM / 2 + 0.04]} castShadow>
-        <cylinderGeometry args={[0.012, 0.014, mirrorRadius * 1.1, 12]} />
-        <meshStandardMaterial color={handleColor} metalness={0.85} roughness={0.25} />
-      </mesh>
-      <mesh position={[mirrorRadius * 0.55, bodyH + mirrorRadius * 0.55, -depthM / 2 + 0.04]} castShadow>
-        <cylinderGeometry args={[0.012, 0.014, mirrorRadius * 1.1, 12]} />
-        <meshStandardMaterial color={handleColor} metalness={0.85} roughness={0.25} />
-      </mesh>
-
-      {/* Circular Mirror Outer Brass Frame Bezel (standing upright vertically) */}
-      <mesh position={[0, bodyH + mirrorRadius * 0.95, -depthM / 2 + 0.04]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[mirrorRadius, mirrorRadius, 0.024, 32]} />
+      {/* Two rows of drawers: a pair on top, one wide below */}
+      {[0, 1].map((row) => {
+        const y = legH + 0.03 + rowH * (row + 0.5);
+        const fronts = row === 1 ? [0] : [-0.25, 0.25];
+        return fronts.map((fx) => (
+          <group key={`${row}${fx}`}>
+            <mesh position={[widthM * fx, y, depthM / 2 + 0.002]}><boxGeometry args={[row === 1 ? widthM - 0.05 : widthM * 0.47, rowH - 0.012, 0.006]} /><meshStandardMaterial color={mainColor} roughness={0.55} /></mesh>
+            <mesh position={[widthM * fx, y, depthM / 2 + 0.014]} castShadow><boxGeometry args={[0.1, 0.016, 0.018]} /><meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.8} /></mesh>
+          </group>
+        ));
+      })}
+      {/* Round mirror in a brass bezel, held by two uprights */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * mirrorR * 0.5, bodyH + (mirrorY - bodyH) / 2, mirrorZ]} castShadow>
+          <cylinderGeometry args={[0.012, 0.012, mirrorY - bodyH, 10]} />
+          <meshStandardMaterial color={handleColor} metalness={0.85} roughness={0.25} />
+        </mesh>
+      ))}
+      <mesh position={[0, mirrorY, mirrorZ]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[mirrorR, mirrorR, 0.024, 36]} />
         <meshStandardMaterial color={handleColor} roughness={0.35} metalness={0.8} />
       </mesh>
-      {/* Luminous Silver-Ice Mirror Glass facing +Z into room */}
-      <mesh position={[0, bodyH + mirrorRadius * 0.95, -depthM / 2 + 0.053]} rotation={[Math.PI / 2, 0, 0]}>
-        <cylinderGeometry args={[mirrorRadius * 0.93, mirrorRadius * 0.93, 0.006, 32]} />
-        <meshStandardMaterial color="#E8F4F8" roughness={0.15} metalness={0.1} />
-      </mesh>
-      {/* Mirror Specular Diagonal Reflection Strip */}
-      <mesh position={[-mirrorRadius * 0.15, bodyH + mirrorRadius * 1.05, -depthM / 2 + 0.058]} rotation={[0, 0, -0.45]}>
-        <planeGeometry args={[mirrorRadius * 0.9, 0.03]} />
-        <meshBasicMaterial color="#FFFFFF" transparent opacity={0.85} />
+      <mesh position={[0, mirrorY, mirrorZ + 0.013]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[mirrorR * 0.92, mirrorR * 0.92, 0.004, 36]} />
+        <meshStandardMaterial color="#DCEBF0" roughness={0.1} metalness={0.35} />
       </mesh>
     </group>
   );
@@ -289,12 +290,21 @@ export function PantryCabinetModel({ widthM, depthM, heightM, mainColor, handleC
   );
 }
 
-export function TvModel({ widthM, heightM, mainColor }) {
+export function TvModel({ widthM, depthM, heightM, mainColor }) {
+  const footH = 0.025;
+  const panelT = Math.min(0.035, depthM * 0.6);
+  const panelY = 0.075;
+  const panelH = heightM - panelY;
+  const panelZ = -depthM / 2 + panelT / 2 + 0.01;
   return (
     <group>
-      <mesh position={[0, heightM * 0.41, 0]} castShadow receiveShadow><boxGeometry args={[widthM, heightM * 0.82, 0.06]} /><meshStandardMaterial color={mainColor} roughness={0.3} /></mesh>
-      <mesh position={[0, heightM * 0.41, 0.035]}><boxGeometry args={[widthM * 0.92, heightM * 0.7, 0.008]} /><meshStandardMaterial color="#243A4C" roughness={0.2} metalness={0.1} /></mesh>
-      <mesh position={[0, 0.02, 0]} castShadow><boxGeometry args={[widthM * 0.28, 0.04, 0.16]} /><meshStandardMaterial color={mainColor} roughness={0.4} /></mesh>
+      {/* Slim bezel panel with the screen set into its front face */}
+      <mesh position={[0, panelY + panelH / 2, panelZ]} castShadow receiveShadow><boxGeometry args={[widthM, panelH, panelT]} /><meshStandardMaterial color={mainColor} roughness={0.3} /></mesh>
+      <mesh position={[0, panelY + panelH / 2, panelZ + panelT / 2 + 0.001]}><boxGeometry args={[widthM * 0.95, panelH * 0.92, 0.002]} /><meshStandardMaterial color="#1B2D3C" roughness={0.12} metalness={0.2} /></mesh>
+      <mesh position={[-widthM * 0.14, panelY + panelH * 0.58, panelZ + panelT / 2 + 0.003]} rotation={[0, 0, -0.5]}><planeGeometry args={[widthM * 0.5, 0.03]} /><meshBasicMaterial color="#FFFFFF" transparent opacity={0.1} /></mesh>
+      {/* Neck and table-top foot */}
+      <mesh position={[0, panelY / 2 + 0.01, panelZ]} castShadow><boxGeometry args={[widthM * 0.05, panelY, 0.03]} /><meshStandardMaterial color={mainColor} roughness={0.4} /></mesh>
+      <mesh position={[0, footH / 2, 0]} castShadow receiveShadow><boxGeometry args={[widthM * 0.3, footH, depthM]} /><meshStandardMaterial color={mainColor} roughness={0.4} /></mesh>
     </group>
   );
 }

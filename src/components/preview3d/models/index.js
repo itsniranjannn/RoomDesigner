@@ -5,7 +5,7 @@ import { TableModel, TableRoundModel, CoffeeTableModel, SideTableModel, DeskMode
 import { WardrobeModel, BookshelfModel, ChestDrawersModel, SideboardModel, VanityDresserModel, CredenzaModel, PantryCabinetModel, TvModel } from './storage.jsx';
 import { RugModel, RugRunnerModel, NepaliDhakaRugModel } from './rugs.jsx';
 import { KitchenIslandModel, KitchenCounterModel, KitchenStoveModel, KitchenFridgeModel, DiningNookModel } from './kitchen.jsx';
-import { PlantModel, LampModel, WallMirrorModel } from './decor.jsx';
+import { PlantModel, LampModel, LampTripodModel, LampTorchiereModel, WallMirrorModel } from './decor.jsx';
 import { NepaliChowkiModel, NepaliPatukaChestModel, NepaliBrassDiyaModel, NepaliPirkaModel, NepaliCharpaiModel, NepaliGaddaModel, NepaliDhokaDividerModel, NepaliPujaMandirModel, NepaliLotaDisplayModel } from './nepali.jsx';
 import { FixtureToiletModel, FixtureBasinModel, FixtureShowerModel, FixtureBathtubModel, FixtureWasherModel } from './fixtures.jsx';
 import { CustomMeshModel } from './customMesh.jsx';
@@ -50,6 +50,8 @@ export const MODELS = {
   'dining-nook': DiningNookModel,
   'plant': PlantModel,
   'lamp': LampModel,
+  'lamp-tripod': LampTripodModel,
+  'lamp-torchiere': LampTorchiereModel,
   'wall-mirror': WallMirrorModel,
   'nepali-chowki': NepaliChowkiModel,
   'nepali-patuka-chest': NepaliPatukaChestModel,

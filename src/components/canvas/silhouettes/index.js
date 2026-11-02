@@ -5,7 +5,7 @@ import { TableSilhouette, TableRoundSilhouette, CoffeeTableSilhouette, SideTable
 import { WardrobeSilhouette, BookshelfSilhouette, ChestDrawersSilhouette, SideboardSilhouette, VanityDresserSilhouette, CredenzaSilhouette, PantryCabinetSilhouette, TvSilhouette } from './storage.jsx';
 import { RugSilhouette, RugRunnerSilhouette, NepaliDhakaRugSilhouette } from './rugs.jsx';
 import { KitchenIslandSilhouette, KitchenCounterSilhouette, KitchenStoveSilhouette, KitchenFridgeSilhouette, DiningNookSilhouette } from './kitchen.jsx';
-import { PlantSilhouette, LampSilhouette, WallMirrorSilhouette } from './decor.jsx';
+import { PlantSilhouette, LampSilhouette, LampTripodSilhouette, LampTorchiereSilhouette, WallMirrorSilhouette } from './decor.jsx';
 import { NepaliChowkiSilhouette, NepaliPatukaChestSilhouette, NepaliBrassDiyaSilhouette, NepaliPirkaSilhouette, NepaliCharpaiSilhouette, NepaliGaddaSilhouette, NepaliDhokaDividerSilhouette, NepaliPujaMandirSilhouette, NepaliLotaDisplaySilhouette } from './nepali.jsx';
 import { FixtureToiletSilhouette, FixtureBasinSilhouette, FixtureShowerSilhouette, FixtureBathtubSilhouette, FixtureWasherSilhouette } from './fixtures.jsx';
 import { CustomMeshSilhouette } from './customMesh.jsx';
@@ -49,6 +49,8 @@ export const SILHOUETTES = {
   'dining-nook': DiningNookSilhouette,
   'plant': PlantSilhouette,
   'lamp': LampSilhouette,
+  'lamp-tripod': LampTripodSilhouette,
+  'lamp-torchiere': LampTorchiereSilhouette,
   'wall-mirror': WallMirrorSilhouette,
   'nepali-chowki': NepaliChowkiSilhouette,
   'nepali-patuka-chest': NepaliPatukaChestSilhouette,
