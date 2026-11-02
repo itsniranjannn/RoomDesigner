@@ -673,7 +673,7 @@ export function getFurnitureType(id) {
   return FURNITURE_CATALOG.find((item) => item.id === id) || customFurniture.get(id) || null;
 }
 
-/** Fields a user may override per placed item (size, finish, price). */
+/** Fields a user may override per placed item (size and finish). */
 export const OVERRIDABLE_FIELDS = [
   'widthCm',
   'depthCm',
@@ -681,7 +681,6 @@ export const OVERRIDABLE_FIELDS = [
   'color',
   'subColor',
   'accentColor',
-  'priceNpr',
 ];
 
 /**

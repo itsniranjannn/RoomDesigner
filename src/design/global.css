@@ -28,9 +28,9 @@ body {
   user-select: none;
 }
 
-/* Accessible focus ring using clay accent */
+/* Accessible focus ring (indigo) */
 :focus-visible {
-  outline: 2px solid var(--color-clay);
+  outline: 2px solid var(--color-indigo);
   outline-offset: 2px;
 }
 
@@ -53,8 +53,8 @@ textarea {
 
 /* Subtle architectural custom scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {

@@ -38,7 +38,6 @@ const SIZE_LIMITS = {
   widthCm: [10, 600],
   depthCm: [10, 600],
   heightCm: [1, 400],
-  priceNpr: [0, 100000000],
 };
 
 function cleanOverrides(raw) {
@@ -99,7 +98,7 @@ export const useRoomStore = create((set, get) => ({
   showClearance: true,
   showDimensions: true,
   customVersion: 0,
-  activeModal: null, // 'shortcuts' | 'cost' | 'layout' | 'share' | 'photo' | null
+  activeModal: null, // 'shortcuts' | 'layout' | 'share' | 'photo' | null
   viewMode: '2d', // '2d' | '3d'
   saveStatus: 'saved', // 'saved' | 'saving'
   collidingItemIds: new Set(),
