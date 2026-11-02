@@ -1,5 +1,5 @@
 import React from 'react';
-import { getFurnitureType } from '../../data/furnitureCatalog.js';
+import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { degToRad } from '../../engine/geometry.js';
 
 /**
@@ -10,7 +10,7 @@ import { degToRad } from '../../engine/geometry.js';
  * sofas have cushions & armrests.
  */
 export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected, isColliding }) {
-  const def = getFurnitureType(item.furnitureTypeId);
+  const def = resolveItemDef(item);
   if (!def) return null;
 
   const widthM = def.widthCm / 100;
