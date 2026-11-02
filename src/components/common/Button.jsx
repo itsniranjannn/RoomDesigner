@@ -3,7 +3,7 @@ import styles from './Button.module.css';
 
 export function Button({
   children,
-  variant = 'secondary', // 'primary' | 'secondary' | 'ghost' | 'danger'
+  variant = 'secondary', // 'primary' | 'secondary' | 'ghost' | 'danger' | 'dangerSolid'
   size = 'normal', // 'normal' | 'small'
   className = '',
   icon,

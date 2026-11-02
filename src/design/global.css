@@ -1,5 +1,4 @@
 @import './tokens.css';
-@import './typography.css';
 
 *,
 *::before,
@@ -21,7 +20,7 @@ body {
   background-color: var(--color-linen);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: var(--text-base);
+  font-size: var(--text-sm);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -51,19 +50,21 @@ textarea {
   color: inherit;
 }
 
-/* Subtle architectural custom scrollbar */
+/* Quiet scrollbars */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-linen-surface);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-taupe);
-  border-radius: var(--radius-sm);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
