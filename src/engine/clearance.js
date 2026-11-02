@@ -9,6 +9,8 @@ import { getRotatedRectCorners, getAABB } from './geometry.js';
 import { checkPolygonCollision } from './collision.js';
 
 export const MIN_PASSAGE_CM = 60;
+// Gaps narrower than this are not mistaken for a passage (pieces simply sit side by side)
+export const MIN_WALKABLE_GAP_CM = 25;
 const WINDOW_DEPTH_CM = 30;
 const WINDOW_BLOCK_HEIGHT_CM = 100;
 
@@ -57,6 +59,22 @@ export function getClearanceZones(room) {
     });
   }
   return zones;
+}
+
+/**
+ * Distance between two boxes that face each other across a gap, or null when they
+ * do not overlap along either axis by at least 40 cm.
+ */
+export function facingGap(aabbA, aabbB) {
+  const overlapX = Math.min(aabbA.maxX, aabbB.maxX) - Math.max(aabbA.minX, aabbB.minX);
+  const overlapY = Math.min(aabbA.maxY, aabbB.maxY) - Math.max(aabbA.minY, aabbB.minY);
+  if (overlapX >= 40) return -overlapY;
+  if (overlapY >= 40) return -overlapX;
+  return null;
+}
+
+export function isTightPassage(gap) {
+  return gap !== null && gap >= MIN_WALKABLE_GAP_CM && gap < MIN_PASSAGE_CM;
 }
 
 function isFlat(def) {
@@ -109,12 +127,8 @@ export function evaluateClearance(room) {
       if (a.def.widthCm * a.def.depthCm < 2500 && b.def.widthCm * b.def.depthCm < 2500) continue;
       if (a.bottom !== b.bottom) continue;
 
-      const overlapX = Math.min(a.aabb.maxX, b.aabb.maxX) - Math.max(a.aabb.minX, b.aabb.minX);
-      const overlapY = Math.min(a.aabb.maxY, b.aabb.maxY) - Math.max(a.aabb.minY, b.aabb.minY);
-      let gap = null;
-      if (overlapX >= 40) gap = -overlapY;
-      else if (overlapY >= 40) gap = -overlapX;
-      if (gap !== null && gap > 5 && gap < MIN_PASSAGE_CM) {
+      const gap = facingGap(a.aabb, b.aabb);
+      if (isTightPassage(gap)) {
         issues.push({ itemId: a.item.id, otherId: b.item.id, kind: 'tight-passage', gapCm: Math.round(gap) });
         issues.push({ itemId: b.item.id, otherId: a.item.id, kind: 'tight-passage', gapCm: Math.round(gap) });
       }

@@ -7,7 +7,7 @@
 import { getFurnitureType, resolveItemDef } from '../data/furnitureCatalog.js';
 import { getRotatedRectCorners, getAABB } from './geometry.js';
 import { checkPolygonCollision } from './collision.js';
-import { getClearanceZones } from './clearance.js';
+import { getClearanceZones, facingGap, isTightPassage } from './clearance.js';
 
 const WALL_GAP = 2;
 const STEP = 20;
@@ -30,7 +30,18 @@ function makeEntry(typeId, def, x, y, rotationDeg, id) {
   };
 }
 
-function fits(entry, placed, zones, room) {
+function tightWithAny(entry, placed) {
+  if (entry.def.heightCm < 40) return false;
+  const box = getAABB(entry.corners);
+  return placed.some(
+    (other) =>
+      !isRug(other.def) &&
+      other.def.heightCm >= 40 &&
+      isTightPassage(facingGap(box, getAABB(other.corners)))
+  );
+}
+
+function fits(entry, placed, zones, room, strict = false) {
   for (const c of entry.corners) {
     if (c.x < 0 || c.x > room.widthCm || c.y < 0 || c.y > room.depthCm) return false;
   }
@@ -42,6 +53,7 @@ function fits(entry, placed, zones, room) {
     if (zone.kind === 'window' && entry.def.heightCm <= 100) continue;
     if (checkPolygonCollision(entry.corners, zone.corners)) return false;
   }
+  if (strict && tightWithAny(entry, placed)) return false;
   return true;
 }
 
@@ -146,12 +158,16 @@ export function suggestLayout(room, typeIds) {
     } else candidates = wallCandidates(def, room);
 
     let chosen = null;
-    for (const c of candidates) {
-      const entry = makeEntry(id, def, c.x, c.y, c.rot, nextId());
-      if (isRug(def) || fits(entry, placed, zones, room)) {
-        chosen = entry;
-        break;
+    // First pass avoids cramped passages; second pass accepts any legal spot
+    for (const strict of [true, false]) {
+      for (const c of candidates) {
+        const entry = makeEntry(id, def, c.x, c.y, c.rot, nextId());
+        if (isRug(def) || fits(entry, placed, zones, room, strict)) {
+          chosen = entry;
+          break;
+        }
       }
+      if (chosen) break;
     }
     if (!chosen) {
       // Last resort: scan the floor for any free spot

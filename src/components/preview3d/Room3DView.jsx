@@ -6,15 +6,46 @@ import { useRoomStore } from '../../store/roomStore.js';
 import { Room3DWalls } from './Room3DWalls.jsx';
 import { Furniture3DBox } from './Furniture3DBox.jsx';
 import { Button } from '../common/Button.jsx';
-import { Eye, RotateCcw } from 'lucide-react';
+import { Eye, RotateCcw, Footprints, Sun, Sunset, Moon } from 'lucide-react';
+import { WalkControls } from './WalkControls.jsx';
 import styles from './Room3DView.module.css';
+
+const LIGHTING = {
+  day: {
+    label: 'Day',
+    background: null,
+    ambient: [1.15, '#FAF7F0'],
+    hemi: 0.7,
+    sun: [1.25, '#FFF8EE'],
+    fill: [0.85, 0.65],
+    lamp: 0,
+  },
+  evening: {
+    label: 'Evening',
+    background: '#E7D2BE',
+    ambient: [0.55, '#F2D2B0'],
+    hemi: 0.35,
+    sun: [0.8, '#FFB070'],
+    fill: [0.3, 0.2],
+    lamp: 1.1,
+  },
+  night: {
+    label: 'Night',
+    background: '#1B2233',
+    ambient: [0.16, '#8CA0C8'],
+    hemi: 0.1,
+    sun: [0.3, '#9DB4E0'],
+    fill: [0.08, 0.06],
+    lamp: 2.2,
+  },
+};
 
 /**
  * CameraRig handles smooth camera animation from top-down drafting plane
  * into the 3D angled perspective view, with automatic elevation adjustment
  * between Cutaway (maquette) and Full-Height (architectural perspective) modes.
  */
-function CameraRig({ maxDimM, resetTrigger, isFullHeight }) {
+function CameraRig({ maxDimM, resetTrigger, isFullHeight, enabled = true }) {
   const { camera } = useThree();
   const controlsRef = useRef(null);
   const isTransitioning = useRef(true);
@@ -38,6 +69,7 @@ function CameraRig({ maxDimM, resetTrigger, isFullHeight }) {
   }, [resetTrigger, isFullHeight]);
 
   useFrame((_, delta) => {
+    if (!enabled) return;
     if (isTransitioning.current) {
       transitionTime.current += delta;
       const duration = 0.85;
@@ -64,6 +96,7 @@ function CameraRig({ maxDimM, resetTrigger, isFullHeight }) {
   return (
     <OrbitControls
       ref={controlsRef}
+      enabled={enabled}
       maxPolarAngle={Math.PI / 2 - 0.04}
       minDistance={2}
       maxDistance={40}
@@ -80,6 +113,14 @@ export function Room3DView() {
 
   const [isFullHeight, setIsFullHeight] = useState(false);
   const [resetCounter, setResetCounter] = useState(0);
+  const [lighting, setLighting] = useState('day');
+  const [walking, setWalking] = useState(false);
+  const preset = LIGHTING[lighting];
+
+  const exitWalk = React.useCallback(() => {
+    setWalking(false);
+    setResetCounter((c) => c + 1);
+  }, []);
 
   if (!room) return null;
 
@@ -94,16 +135,28 @@ export function Room3DView() {
         camera={{ position: [0.01, initialCamY, 0.01], fov: 45 }}
         gl={{ antialias: true }}
       >
+        {preset.background && <color attach="background" args={[preset.background]} />}
+
         {/* Balanced Architectural Studio Lighting */}
-        <ambientLight intensity={1.15} color="#FAF7F0" />
-        <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={0.7} />
+        <ambientLight intensity={preset.ambient[0]} color={preset.ambient[1]} />
+        <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={preset.hemi} />
+        {preset.lamp > 0 && (
+          <pointLight
+            position={[0, 2.3, 0]}
+            intensity={preset.lamp}
+            distance={maxDimM * 2.2}
+            decay={1.4}
+            color="#FFD9A0"
+            castShadow
+          />
+        )}
 
         {/* Key Directional Sun Light with acne-free normalBias */}
         <directionalLight
           castShadow
           position={[maxDimM * 1.8, maxDimM * 2.8, maxDimM * 1.8]}
-          intensity={1.25}
-          color="#FFF8EE"
+          intensity={preset.sun[0]}
+          color={preset.sun[1]}
           shadow-mapSize-width={2048}
           shadow-mapSize-height={2048}
           shadow-camera-near={0.5}
@@ -119,19 +172,19 @@ export function Room3DView() {
         {/* Soft Warm Fill Light 1 */}
         <directionalLight
           position={[-maxDimM * 1.8, maxDimM * 2.2, -maxDimM * 1.8]}
-          intensity={0.85}
+          intensity={preset.fill[0]}
           color="#F5EFE6"
         />
 
         {/* Soft Cross Fill Light 2 (Illuminates South & West wall interior faces) */}
         <directionalLight
           position={[maxDimM * 1.8, maxDimM * 1.5, -maxDimM * 1.8]}
-          intensity={0.65}
+          intensity={preset.fill[1]}
           color="#FAF4EA"
         />
 
         {/* Room Floor and Architectural Walls (Cutaway or Full-Height) */}
-        <Room3DWalls room={room} isFullHeight={isFullHeight} />
+        <Room3DWalls room={room} isFullHeight={isFullHeight || walking} />
 
         {/* Detailed Architectural 3D Furniture */}
         {(room.placedFurniture || []).map((item) => (
@@ -159,19 +212,47 @@ export function Room3DView() {
           maxDimM={maxDimM}
           resetTrigger={resetCounter}
           isFullHeight={isFullHeight}
+          enabled={!walking}
         />
+        {walking && <WalkControls room={room} onExit={exitWalk} />}
       </Canvas>
 
-      <div className={styles.hintBadge}>
-        Left-click to orbit · Right-click to pan · Scroll to zoom
+      <div className={styles.hintBadge} aria-live="polite">
+        {walking
+          ? 'Drag to look · W A S D or arrow keys to walk · Esc to leave'
+          : 'Left-click to orbit · Right-click to pan · Scroll to zoom'}
       </div>
 
       <div className={styles.controlsOverlay}>
+        <div className={styles.lightingGroup} role="group" aria-label="Lighting">
+          {[['day', Sun], ['evening', Sunset], ['night', Moon]].map(([key, Icon]) => (
+            <button
+              key={key}
+              type="button"
+              className={`${styles.lightingBtn} ${lighting === key ? styles.lightingActive : ''}`}
+              onClick={() => setLighting(key)}
+              aria-pressed={lighting === key}
+              aria-label={`${LIGHTING[key].label} lighting`}
+              title={`${LIGHTING[key].label} lighting`}
+            >
+              <Icon size={14} />
+            </button>
+          ))}
+        </div>
+        <Button
+          variant={walking ? 'primary' : 'secondary'}
+          size="small"
+          onClick={() => (walking ? exitWalk() : setWalking(true))}
+          icon={<Footprints size={12} />}
+        >
+          {walking ? 'Leave walkthrough' : 'Walk through'}
+        </Button>
         <Button
           variant="secondary"
           size="small"
           onClick={() => setIsFullHeight(!isFullHeight)}
           icon={<Eye size={12} />}
+          disabled={walking}
         >
           {isFullHeight ? 'Cutaway walls' : 'Full-height walls'}
         </Button>
@@ -180,6 +261,7 @@ export function Room3DView() {
           size="small"
           onClick={() => setResetCounter((c) => c + 1)}
           icon={<RotateCcw size={12} />}
+          disabled={walking}
         >
           Reset view
         </Button>

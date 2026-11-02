@@ -39,3 +39,41 @@
   box-shadow: var(--shadow-card);
 }
 
+
+.lightingGroup {
+  display: flex;
+  border: 1px solid var(--color-taupe);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--color-linen);
+}
+
+.lightingBtn {
+  width: 32px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.lightingBtn:hover {
+  background: var(--color-linen-surface);
+}
+
+.lightingBtn:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: -2px;
+}
+
+.lightingActive {
+  background: var(--color-indigo);
+  color: #fff;
+}
+
+.lightingActive:hover {
+  background: var(--color-indigo-hover);
+}
