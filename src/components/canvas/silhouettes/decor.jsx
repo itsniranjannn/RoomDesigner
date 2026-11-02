@@ -45,6 +45,32 @@ export function LampSilhouette({ hw, hd, subColor }) {
   );
 }
 
+export function LampTripodSilhouette({ hw, hd, color, subColor }) {
+  const radius = Math.min(hw, hd);
+  return (
+    <g>
+      {[90, 210, 330].map((angle) => {
+        const rad = (angle * Math.PI) / 180;
+        return <line key={angle} x1={0} y1={0} x2={Math.cos(rad) * radius * 0.92} y2={Math.sin(rad) * radius * 0.92} stroke={color} strokeWidth="3" strokeLinecap="round" />;
+      })}
+      <circle cx={0} cy={0} r={radius * 0.6} fill={subColor} stroke="#B3A898" strokeWidth="1" />
+      <circle cx={0} cy={0} r={radius * 0.46} fill="none" stroke="#B3A898" strokeWidth="0.6" />
+      <circle cx={0} cy={0} r={Math.max(2, radius * 0.08)} fill="#C97B4A" />
+    </g>
+  );
+}
+
+export function LampTorchiereSilhouette({ hw, hd, color, subColor }) {
+  const radius = Math.min(hw, hd);
+  return (
+    <g>
+      <circle cx={0} cy={0} r={radius * 0.96} fill={color} stroke="#111111" strokeWidth="1" />
+      <circle cx={0} cy={0} r={radius * 0.72} fill={subColor} stroke="#B3A898" strokeWidth="1" />
+      <circle cx={0} cy={0} r={radius * 0.22} fill="#F0DDB4" stroke="#B3A898" strokeWidth="0.8" />
+    </g>
+  );
+}
+
 export function WallMirrorSilhouette({ widthCm, depthCm, hw, hd, color }) {
   return (
     <g>

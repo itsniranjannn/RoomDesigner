@@ -1,4 +1,5 @@
-import { resolveItemDef } from '../../data/furnitureCatalog.js';
+import * as THREE from 'three';
+import { getFurnitureType, resolveItemDef } from '../../data/furnitureCatalog.js';
 import { degToRad } from '../../engine/geometry.js';
 import { resolveModel } from './models/index.js';
 
@@ -10,12 +11,20 @@ import { resolveModel } from './models/index.js';
  * sofas have cushions & armrests.
  * Thin dispatcher: each shapeType is built by a module under ./models.
  */
+/** Slightly lighter shade of a colour, so cushions follow a recoloured body without matching it exactly. */
+export function lighten(color, amount = 0.05) {
+  return new THREE.Color(color).offsetHSL(0, 0, amount).getStyle();
+}
+
 export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected }) {
   const def = resolveItemDef(item);
   if (!def) return null;
 
   const widthM = def.widthCm / 100;
   const depthM = def.depthCm / 100;
+  // Models are drawn at the catalog height and stretched when the piece is resized,
+  // so every model follows heightCm without handling it separately.
+  const baseHeightM = (getFurnitureType(item.furnitureTypeId)?.heightCm || def.heightCm) / 100;
   const heightM = def.heightCm / 100;
 
   // Convert room cm coordinates (origin at top-left) to Three.js meters (origin centered on floor)
@@ -29,20 +38,22 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected }) {
 
   return (
     <group position={[posX, (item.elevationCm || 0) / 100, posZ]} rotation={[0, rotY, 0]}>
-      <Model
-        def={def}
-        widthM={widthM}
-        depthM={depthM}
-        heightM={heightM}
-        mainColor={def.color}
-        fabricColor={def.fabricColor || '#FAF6EE'}
-        headboardColor={def.headboardColor || '#5A554E'}
-        accentColor={def.accentColor || '#C4B8A5'}
-        cushionColor={def.cushionColor || def.color}
-        legColor={def.legColor || '#242321'}
-        handleColor={def.handleColor || '#C4A869'}
-        subColor={def.subColor || '#D4A359'}
-      />
+      <group scale={[1, heightM / baseHeightM, 1]}>
+        <Model
+          def={def}
+          widthM={widthM}
+          depthM={depthM}
+          heightM={baseHeightM}
+          mainColor={def.color}
+          fabricColor={def.fabricColor || '#FAF6EE'}
+          headboardColor={def.headboardColor || '#5A554E'}
+          accentColor={def.accentColor || '#C4B8A5'}
+          cushionColor={item.overrides?.color ? lighten(def.color) : def.cushionColor || def.color}
+          legColor={def.legColor || '#242321'}
+          handleColor={def.handleColor || '#C4A869'}
+          subColor={def.subColor || '#D4A359'}
+        />
+      </group>
 
       {/* Subtle floor-level selection halo in 3D (Himalayan Indigo) */}
       {isSelected && (

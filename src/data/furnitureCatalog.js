@@ -510,7 +510,7 @@ export const FURNITURE_CATALOG = [
     category: 'nepali',
     widthCm: 180,
     depthCm: 85,
-    heightCm: 18,
+    heightCm: 36,
     color: '#8B2635', // Deep Maroon Cotton Mattress
     cushionColor: '#22485E', // Indigo Cylindrical Bolsters
     accentColor: '#C49746', // Brass/Gold Piping
@@ -1096,7 +1096,7 @@ export const FURNITURE_CATALOG = [
     heightCm: 150,
     color: '#3A2A1C',
     subColor: '#F2E8D5',
-    shapeType: 'lamp',
+    shapeType: 'lamp-tripod',
   },
   {
     id: 'floor-lamp-torchiere',
@@ -1107,7 +1107,7 @@ export const FURNITURE_CATALOG = [
     heightCm: 175,
     color: '#1C1A17',
     subColor: '#FAF6EE',
-    shapeType: 'lamp',
+    shapeType: 'lamp-torchiere',
   },
   {
     id: 'planter-small',

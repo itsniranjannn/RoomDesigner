@@ -1,63 +1,40 @@
 /** 3D models: decor. Built from Three.js primitives; origin on the floor, centered on the footprint. */
+import { Box, Cyl, Strut } from './shared.jsx';
+
+const BRASS = '#C49746';
 
 export function PlantModel({ def, widthM, depthM, heightM, mainColor }) {
-  const potRadius = Math.min(widthM, depthM) * 0.32;
-  const potH = 0.42;
+  const span = Math.min(widthM, depthM);
+  const potRadius = span * 0.27;
+  const potH = Math.min(0.42, heightM * 0.3);
   const trunkH = heightM - potH;
-
+  const leafL = 0.1 + heightM * 0.05;
+  const leafW = leafL * 0.62;
+  const spread = span / 2 - leafL * 0.8;
+  const leafCount = 11;
   return (
     <group>
-      {/* Fluted Ceramic Planter Pot */}
-      <mesh position={[0, potH / 2, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[potRadius, potRadius * 0.75, potH, 24]} />
-        <meshStandardMaterial color={def.subColor || '#DDD6C9'} roughness={0.5} />
+      {/* Glazed planter with a brass rim and soil */}
+      <Cyl position={[0, potH / 2, 0]} radiusTop={potRadius} radiusBottom={potRadius * 0.72} height={potH} color={def.subColor || '#DDD6C9'} roughness={0.45} segments={28} />
+      <mesh position={[0, potH - 0.008, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <torusGeometry args={[potRadius * 0.99, 0.01, 8, 32]} />
+        <meshStandardMaterial color={BRASS} metalness={0.8} roughness={0.3} />
       </mesh>
-      {/* Brass Ring Accent around Pot Rim */}
-      <mesh position={[0, potH - 0.01, 0]} castShadow>
-        <torusGeometry args={[potRadius * 0.98, 0.012, 12, 24]} rotation={[Math.PI / 2, 0, 0]} />
-        <meshStandardMaterial color="#C49746" metalness={0.8} roughness={0.3} />
-      </mesh>
-      {/* Rich Organic Potting Soil Bed */}
-      <mesh position={[0, potH - 0.02, 0]} receiveShadow>
-        <cylinderGeometry args={[potRadius * 0.92, potRadius * 0.92, 0.02, 20]} />
-        <meshStandardMaterial color="#2E1C12" roughness={0.95} />
-      </mesh>
+      <Cyl position={[0, potH - 0.025, 0]} radiusTop={potRadius * 0.93} height={0.02} color="#2E1C12" roughness={0.95} segments={24} />
 
-      {/* Woody Central Trunk Stem */}
-      <mesh position={[0, potH + trunkH * 0.4, 0]} castShadow>
-        <cylinderGeometry args={[0.018, 0.025, trunkH * 0.82, 12]} />
-        <meshStandardMaterial color="#3E2C1E" roughness={0.85} />
-      </mesh>
+      {/* Woody stem */}
+      <Cyl position={[0, potH + trunkH * 0.42, 0]} radiusTop={0.014} radiusBottom={0.022} height={trunkH * 0.84} color="#3E2C1E" roughness={0.85} segments={10} />
 
-      {/* Architectural Broad Fiddle Leaves radiating at staggered heights and upward angles, strictly confined within bounding footprint */}
-      {[
-        { y: 0.12, r: 0.14, rotY: 0, tilt: 0.65, scale: 0.75 },
-        { y: 0.22, r: 0.16, rotY: Math.PI / 3, tilt: 0.70, scale: 0.8 },
-        { y: 0.32, r: 0.17, rotY: (2 * Math.PI) / 3, tilt: 0.60, scale: 0.85 },
-        { y: 0.42, r: 0.18, rotY: Math.PI, tilt: 0.68, scale: 0.9 },
-        { y: 0.52, r: 0.17, rotY: (4 * Math.PI) / 3, tilt: 0.62, scale: 0.85 },
-        { y: 0.62, r: 0.15, rotY: (5 * Math.PI) / 3, tilt: 0.65, scale: 0.8 },
-        { y: 0.72, r: 0.13, rotY: Math.PI / 4, tilt: 0.55, scale: 0.7 },
-        { y: 0.80, r: 0.11, rotY: (3 * Math.PI) / 4, tilt: 0.50, scale: 0.6 },
-      ].map((leaf, idx) => {
-        const petioleLen = leaf.r * 0.7;
-        const leafLen = 0.18 * leaf.scale;
-        const leafW = 0.13 * leaf.scale;
+      {/* Broad fig leaves spiralling up the stem, shorter towards the top */}
+      {Array.from({ length: leafCount }).map((_, i) => {
+        const t = i / (leafCount - 1);
+        const y = potH + 0.12 + (trunkH - 0.12 - leafL * 0.55) * (0.2 + 0.8 * t);
+        const reach = spread * (1 - 0.6 * t) * (0.75 + 0.25 * ((i % 3) / 2));
         return (
-          <group key={idx} position={[0, potH + leaf.y * trunkH, 0]} rotation={[0, leaf.rotY, 0]}>
-            {/* Leaf Petiole / Branch angled upwards */}
-            <mesh position={[0, (petioleLen / 2) * Math.sin(leaf.tilt), (petioleLen / 2) * Math.cos(leaf.tilt)]} rotation={[leaf.tilt, 0, 0]} castShadow>
-              <cylinderGeometry args={[0.005, 0.007, petioleLen, 8]} rotation={[Math.PI / 2, 0, 0]} />
-              <meshStandardMaterial color="#2F4234" roughness={0.7} />
-            </mesh>
-            {/* Sculptural Broad Fig Leaf angled upright */}
-            <mesh
-              position={[0, petioleLen * Math.sin(leaf.tilt) + (leafLen * 0.45) * Math.sin(leaf.tilt + 0.15), petioleLen * Math.cos(leaf.tilt) + (leafLen * 0.45) * Math.cos(leaf.tilt + 0.15)]}
-              rotation={[leaf.tilt + 0.2, 0, 0]}
-              castShadow
-            >
-              <boxGeometry args={[leafW, 0.004, leafLen]} />
-              <meshStandardMaterial color={idx % 2 === 0 ? mainColor : '#415D48'} roughness={0.65} />
+          <group key={i} position={[0, y, 0]} rotation={[0, i * 2.4, 0]}>
+            <mesh position={[0, 0, reach]} rotation={[-0.55, 0, 0]} scale={[leafW, 0.006, leafL * (1 - 0.25 * t)]} castShadow receiveShadow>
+              <sphereGeometry args={[1, 14, 8]} />
+              <meshStandardMaterial color={i % 2 === 0 ? mainColor : '#4B6B52'} roughness={0.6} />
             </mesh>
           </group>
         );
@@ -66,156 +43,124 @@ export function PlantModel({ def, widthM, depthM, heightM, mainColor }) {
   );
 }
 
+/** Arc floor lamp: weighted base at the back, pole rising and arcing forward over a hanging dome shade. */
 export function LampModel({ def, widthM, depthM, heightM, mainColor }) {
-  // Architectural Cantilevered Arc Lamp (Base at rear +Z, sweeping overhead arc forward to hanging shade at -Z)
-  const baseR = Math.min(widthM, depthM) * 0.32;
-  const poleR = 0.014;
-  const shadeR = baseR * 0.95;
-
+  const span = Math.min(widthM, depthM);
+  const baseR = span * 0.38;
+  const shadeR = span * 0.24;
+  const z0 = depthM / 2 - baseR;
+  const shadeZ = -depthM / 2 + shadeR + 0.02;
+  const points = [
+    [0, 0.04, z0],
+    [0, heightM * 0.8, z0],
+    [0, heightM * 0.95, z0 - (z0 - shadeZ) * 0.3],
+    [0, heightM * 0.96, z0 - (z0 - shadeZ) * 0.7],
+    [0, heightM * 0.9, shadeZ],
+  ];
+  const shadeY = heightM * 0.9 - 0.05;
   return (
     <group>
-      {/* Weighted Circular Steel Base Disc */}
-      <mesh position={[0, 0.02, depthM * 0.28]} castShadow receiveShadow>
-        <cylinderGeometry args={[baseR, baseR, 0.04, 32]} />
-        <meshStandardMaterial color={mainColor} roughness={0.35} metalness={0.7} />
+      <Cyl position={[0, 0.02, z0]} radiusTop={baseR} radiusBottom={baseR * 1.04} height={0.04} color={mainColor} roughness={0.35} metalness={0.7} segments={36} />
+      <Cyl position={[0, 0.045, z0]} radiusTop={baseR * 0.4} height={0.012} color={BRASS} roughness={0.25} metalness={0.85} segments={24} />
+      {points.slice(0, -1).map((p, i) => (
+        <Strut key={i} from={p} to={points[i + 1]} radius={0.013} color={mainColor} roughness={0.35} metalness={0.7} />
+      ))}
+      <mesh position={[0, heightM * 0.8, z0]} castShadow>
+        <sphereGeometry args={[0.024, 14, 12]} />
+        <meshStandardMaterial color={BRASS} metalness={0.88} roughness={0.2} />
       </mesh>
-      {/* Polished Brass Base Ring Accent */}
-      <mesh position={[0, 0.042, depthM * 0.28]} castShadow>
-        <cylinderGeometry args={[baseR * 0.45, baseR * 0.45, 0.015, 24]} />
-        <meshStandardMaterial color="#C49746" metalness={0.85} roughness={0.25} />
+      <mesh position={[0, shadeY + 0.01, shadeZ]} castShadow>
+        <sphereGeometry args={[shadeR, 28, 16, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
+        <meshStandardMaterial color={def.subColor || '#FAF6EE'} roughness={0.85} side={2} />
       </mesh>
-
-      {/* Segment 1: Lower Vertical Riser Pole */}
-      <mesh position={[0, heightM * 0.42, depthM * 0.28]} castShadow>
-        <cylinderGeometry args={[poleR, poleR, heightM * 0.8, 16]} />
-        <meshStandardMaterial color={mainColor} roughness={0.35} metalness={0.7} />
-      </mesh>
-
-      {/* Segment 2: Upper Angled Arc Arm reaching forward */}
-      <mesh position={[0, heightM * 0.88, depthM * 0.08]} rotation={[-0.65, 0, 0]} castShadow>
-        <cylinderGeometry args={[poleR, poleR, heightM * 0.52, 16]} />
-        <meshStandardMaterial color={mainColor} roughness={0.35} metalness={0.7} />
-      </mesh>
-
-      {/* Segment 3: Horizontal Cantilever Arm extending forward */}
-      <mesh position={[0, heightM * 1.02, -depthM * 0.12]} rotation={[-Math.PI / 2 + 0.1, 0, 0]} castShadow>
-        <cylinderGeometry args={[poleR, poleR, depthM * 0.36, 16]} />
-        <meshStandardMaterial color={mainColor} roughness={0.35} metalness={0.7} />
-      </mesh>
-
-      {/* Brass Arm Adjustment Knuckle */}
-      <mesh position={[0, heightM * 0.82, depthM * 0.28]} castShadow>
-        <sphereGeometry args={[0.026, 16, 16]} />
-        <meshStandardMaterial color="#C49746" metalness={0.88} roughness={0.2} />
-      </mesh>
-
-      {/* Hanging Cord & Brass Shade Cap */}
-      <mesh position={[0, heightM * 0.94, -depthM * 0.24]} castShadow>
-        <cylinderGeometry args={[0.005, 0.005, 0.16, 8]} />
-        <meshStandardMaterial color="#1C1A17" />
-      </mesh>
-      <mesh position={[0, heightM * 0.86, -depthM * 0.24]} castShadow>
-        <cylinderGeometry args={[0.045, 0.025, 0.035, 20]} />
-        <meshStandardMaterial color="#C49746" metalness={0.88} roughness={0.2} />
-      </mesh>
-
-      {/* Architectural Linen Dome Lamp Shade */}
-      <mesh position={[0, heightM * 0.78, -depthM * 0.24]} castShadow>
-        <sphereGeometry args={[shadeR, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.55]} />
-        <meshStandardMaterial
-          color={def.subColor || '#FAF6EE'}
-          roughness={0.85}
-          side={2}
-        />
-      </mesh>
-      {/* Soft Ambient Light Glow Bulb inside Shade */}
-      <mesh position={[0, heightM * 0.76, -depthM * 0.24]}>
-        <sphereGeometry args={[0.038, 16, 16]} />
+      <mesh position={[0, shadeY - 0.01, shadeZ]}>
+        <sphereGeometry args={[0.03, 12, 12]} />
         <meshBasicMaterial color="#FFF5DF" />
       </mesh>
     </group>
   );
 }
 
+/** Tripod floor lamp: three splayed timber legs carrying a drum shade. */
+export function LampTripodModel({ def, widthM, depthM, heightM, mainColor }) {
+  const span = Math.min(widthM, depthM);
+  const footR = span * 0.55;
+  const apexY = heightM * 0.68;
+  const shadeH = heightM * 0.26;
+  const shadeR = span * 0.4;
+  return (
+    <group>
+      {[0, 1, 2].map((i) => {
+        const a = (i / 3) * Math.PI * 2 + Math.PI / 2;
+        return <Strut key={i} from={[0, apexY, 0]} to={[Math.cos(a) * footR, 0, Math.sin(a) * footR]} radius={0.018} color={mainColor} roughness={0.55} />;
+      })}
+      <Cyl position={[0, apexY + 0.03, 0]} radiusTop={0.025} height={0.07} color={BRASS} roughness={0.25} metalness={0.85} segments={14} />
+      <Cyl position={[0, apexY + 0.08 + shadeH / 2, 0]} radiusTop={shadeR * 0.8} radiusBottom={shadeR} height={shadeH} color={def.subColor || '#F2E8D5'} roughness={0.85} segments={32} />
+      <mesh position={[0, apexY + 0.12, 0]}>
+        <sphereGeometry args={[0.035, 12, 12]} />
+        <meshBasicMaterial color="#FFF5DF" />
+      </mesh>
+    </group>
+  );
+}
+
+/** Torchiere floor lamp: weighted disc base, slim stem and an upward-facing bowl shade. */
+export function LampTorchiereModel({ def, widthM, depthM, heightM, mainColor }) {
+  const span = Math.min(widthM, depthM);
+  const bowlH = heightM * 0.14;
+  return (
+    <group>
+      <Cyl position={[0, 0.015, 0]} radiusTop={span * 0.45} radiusBottom={span * 0.5} height={0.03} color={mainColor} roughness={0.35} metalness={0.7} segments={32} />
+      <Cyl position={[0, (heightM - bowlH) / 2, 0]} radiusTop={0.013} height={heightM - bowlH} color={mainColor} roughness={0.35} metalness={0.7} segments={12} />
+      <Cyl position={[0, heightM * 0.5, 0]} radiusTop={0.022} height={0.04} color={BRASS} roughness={0.25} metalness={0.85} segments={12} />
+      <Cyl position={[0, heightM - bowlH / 2, 0]} radiusTop={span * 0.5} radiusBottom={span * 0.14} height={bowlH} color={def.subColor || '#FAF6EE'} roughness={0.8} segments={32} />
+      <mesh position={[0, heightM - bowlH * 0.6, 0]}>
+        <sphereGeometry args={[0.04, 12, 12]} />
+        <meshBasicMaterial color="#FFF5DF" />
+      </mesh>
+    </group>
+  );
+}
+
+/** Leaning mirror in a timber frame, propped by a rear easel; the lean is limited so it stays inside the footprint. */
 export function WallMirrorModel({ widthM, depthM, heightM, mainColor, legColor }) {
-  const frameW = 0.055; // 5.5cm timber border molding
-  const frameThick = 0.04; // 4cm depth
-  const tiltAngle = 0.08; // subtle elegant ~4.5 degree lean backward
+  const frameW = Math.min(0.055, widthM * 0.12);
+  const frameT = Math.min(0.04, depthM * 0.5);
+  const tilt = Math.asin(Math.min(0.14, (depthM * 0.35) / heightM));
+  const baseZ = depthM / 2 - frameT / 2;
   const glassW = widthM - frameW * 2;
   const glassH = heightM - frameW * 2;
-  const mirrorH = heightM;
-
+  const hingeY = heightM * 0.8;
+  const hinge = [0, hingeY * Math.cos(tilt), baseZ - hingeY * Math.sin(tilt) - frameT / 2];
+  const foot = [0, 0, -depthM / 2 + 0.012];
   return (
-    // Mirror frame front sits at +depthM/2 - 0.04m, so rear easel stays strictly within -depthM/2
-    <group position={[0, 0, depthM * 0.3]}>
-      {/* Leaning Mirror Main Frame & Glass Assembly */}
-      <group rotation={[-tiltAngle, 0, 0]}>
-        {/* Top Frame Rail */}
-        <mesh position={[0, mirrorH - frameW / 2, 0]} castShadow>
-          <boxGeometry args={[widthM, frameW, frameThick]} />
-          <meshStandardMaterial color={mainColor} roughness={0.55} />
-        </mesh>
-        {/* Bottom Frame Rail */}
-        <mesh position={[0, frameW / 2, 0]} castShadow receiveShadow>
-          <boxGeometry args={[widthM, frameW, frameThick]} />
-          <meshStandardMaterial color={mainColor} roughness={0.55} />
-        </mesh>
-        {/* Left Stile */}
-        <mesh position={[-widthM / 2 + frameW / 2, mirrorH / 2, 0]} castShadow>
-          <boxGeometry args={[frameW, mirrorH, frameThick]} />
-          <meshStandardMaterial color={mainColor} roughness={0.55} />
-        </mesh>
-        {/* Right Stile */}
-        <mesh position={[widthM / 2 - frameW / 2, mirrorH / 2, 0]} castShadow>
-          <boxGeometry args={[frameW, mirrorH, frameThick]} />
-          <meshStandardMaterial color={mainColor} roughness={0.55} />
-        </mesh>
-
-        {/* Back Protective Timber Panel */}
-        <mesh position={[0, mirrorH / 2, -frameThick / 2 + 0.005]}>
-          <boxGeometry args={[glassW, glassH, 0.01]} />
-          <meshStandardMaterial color="#2B1F13" roughness={0.8} />
-        </mesh>
-
-        {/* Luminous Silver-Ice Reflective Mirror Glass */}
-        <mesh position={[0, mirrorH / 2, 0.006]}>
+    <group>
+      <group position={[0, 0, baseZ]} rotation={[-tilt, 0, 0]}>
+        <Box position={[0, heightM - frameW / 2, 0]} size={[widthM, frameW, frameT]} color={mainColor} roughness={0.55} />
+        <Box position={[0, frameW / 2, 0]} size={[widthM, frameW, frameT]} color={mainColor} roughness={0.55} />
+        {[-1, 1].map((s) => (
+          <Box key={s} position={[s * (widthM / 2 - frameW / 2), heightM / 2, 0]} size={[frameW, heightM, frameT]} color={mainColor} roughness={0.55} />
+        ))}
+        <Box position={[0, heightM / 2, -frameT / 2 + 0.005]} size={[glassW, glassH, 0.01]} color="#2B1F13" roughness={0.8} castShadow={false} />
+        <mesh position={[0, heightM / 2, frameT / 2 - 0.012]}>
           <boxGeometry args={[glassW, glassH, 0.008]} />
-          <meshStandardMaterial
-            color="#E8F4F8"
-            roughness={0.15}
-            metalness={0.1}
-          />
+          <meshStandardMaterial color="#DCEBF0" roughness={0.1} metalness={0.35} />
         </mesh>
-
-        {/* Architectural Reflection Diagonal Glare Bars */}
-        <mesh position={[0, mirrorH * 0.58, 0.012]} rotation={[0, 0, -0.42]}>
-          <planeGeometry args={[widthM * 0.82, 0.045]} />
-          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.85} />
+        {/* Soft diagonal reflections */}
+        <mesh position={[0, heightM * 0.58, frameT / 2 - 0.007]} rotation={[0, 0, -0.42]}>
+          <planeGeometry args={[glassW * 0.8, 0.04]} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.55} />
         </mesh>
-        <mesh position={[-widthM * 0.12, mirrorH * 0.42, 0.012]} rotation={[0, 0, -0.42]}>
-          <planeGeometry args={[widthM * 0.6, 0.024]} />
-          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.65} />
+        <mesh position={[-glassW * 0.12, heightM * 0.42, frameT / 2 - 0.007]} rotation={[0, 0, -0.42]}>
+          <planeGeometry args={[glassW * 0.55, 0.022]} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.4} />
         </mesh>
-
-        {/* Top Brass Pivot Hinge attached to back of frame */}
-        <mesh position={[0, mirrorH * 0.82, -frameThick / 2 - 0.008]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.012, 0.012, widthM * 0.32, 12]} />
-          <meshStandardMaterial color="#C49746" metalness={0.85} roughness={0.25} />
-        </mesh>
-
-        {/* Rear Supporting Easel Leg - angled so foot lands neatly within rear footprint */}
-        <group position={[0, mirrorH * 0.82, -frameThick / 2 - 0.008]} rotation={[0.16, 0, 0]}>
-          <mesh position={[0, -mirrorH * 0.41, 0]} castShadow>
-            <boxGeometry args={[widthM * 0.28, mirrorH * 0.82, 0.018]} />
-            <meshStandardMaterial color={legColor || '#2B1F13'} roughness={0.6} />
-          </mesh>
-          {/* Cross brace on easel leg */}
-          <mesh position={[0, -mirrorH * 0.58, -0.008]} castShadow>
-            <boxGeometry args={[widthM * 0.32, 0.03, 0.016]} />
-            <meshStandardMaterial color={legColor || '#2B1F13'} roughness={0.6} />
-          </mesh>
-        </group>
       </group>
+      {/* Rear easel leg */}
+      {[-1, 1].map((s) => (
+        <Strut key={s} from={[s * widthM * 0.12, hinge[1], hinge[2]]} to={[s * widthM * 0.12, foot[1], foot[2]]} radius={0.01} color={legColor || '#2B1F13'} roughness={0.6} />
+      ))}
+      <Strut from={[-widthM * 0.12, hinge[1], hinge[2]]} to={[widthM * 0.12, hinge[1], hinge[2]]} radius={0.01} color={legColor || '#2B1F13'} roughness={0.6} />
     </group>
   );
 }

@@ -11,12 +11,14 @@ export function NepaliChowkiModel({ widthM, depthM, heightM, mainColor, accentCo
 }
 
 export function NepaliPatukaChestModel({ widthM, depthM, heightM, mainColor, accentColor, subColor }) {
+  const lidH = 0.04;
+  const bodyH = heightM - lidH;
   return (
     <group>
-      <mesh position={[0, heightM / 2, 0]} castShadow receiveShadow><boxGeometry args={[widthM, heightM, depthM]} /><meshStandardMaterial color={mainColor} roughness={0.7} /></mesh>
-      <mesh position={[0, heightM + 0.012, 0]} castShadow><boxGeometry args={[widthM * 1.02, 0.04, depthM * 1.02]} /><meshStandardMaterial color={subColor} roughness={0.65} /></mesh>
-      <mesh position={[0, heightM * 0.55, depthM / 2 + 0.006]} castShadow><boxGeometry args={[0.025, heightM * 0.5, 0.01]} /><meshStandardMaterial color={accentColor} metalness={0.6} roughness={0.35} /></mesh>
-      <mesh position={[0, heightM * 0.53, depthM / 2 + 0.012]} castShadow><sphereGeometry args={[0.035, 12, 8]} /><meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.3} /></mesh>
+      <mesh position={[0, bodyH / 2, 0]} castShadow receiveShadow><boxGeometry args={[widthM, bodyH, depthM]} /><meshStandardMaterial color={mainColor} roughness={0.7} /></mesh>
+      <mesh position={[0, bodyH + lidH / 2, 0]} castShadow><boxGeometry args={[widthM, lidH, depthM]} /><meshStandardMaterial color={subColor} roughness={0.65} /></mesh>
+      <mesh position={[0, bodyH * 0.55, depthM / 2 + 0.003]} castShadow><boxGeometry args={[0.025, bodyH * 0.5, 0.008]} /><meshStandardMaterial color={accentColor} metalness={0.6} roughness={0.35} /></mesh>
+      <mesh position={[0, bodyH * 0.53, depthM / 2 + 0.008]} castShadow><sphereGeometry args={[0.03, 12, 8]} /><meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.3} /></mesh>
     </group>
   );
 }
@@ -60,75 +62,66 @@ export function NepaliPirkaModel({ widthM, depthM, heightM, mainColor }) {
 export function NepaliCharpaiModel({ widthM, depthM, heightM, mainColor, fabricColor, cushionColor }) {
   // Handwoven Khat / Charpai daybed with turned wooden corner posts & woven rope webbing
   const legR = 0.04;
-  const legH = heightM;
+  const frameTop = heightM - 0.04;
   const frameThick = 0.06;
-  const webH = heightM - 0.04;
+  const bolsterR = 0.06;
+  const rails = [
+    [0, -depthM / 2 + 0.03, widthM - 0.08, 0.05],
+    [0, depthM / 2 - 0.03, widthM - 0.08, 0.05],
+    [-widthM / 2 + 0.03, 0, 0.05, depthM - 0.08],
+    [widthM / 2 - 0.03, 0, 0.05, depthM - 0.08],
+  ];
   return (
     <group>
-      {/* 4 Turned Corner Timber Legs */}
+      {/* 4 turned corner timber legs */}
       {[
         [-widthM / 2 + legR, -depthM / 2 + legR],
         [widthM / 2 - legR, -depthM / 2 + legR],
         [-widthM / 2 + legR, depthM / 2 - legR],
         [widthM / 2 - legR, depthM / 2 - legR],
       ].map(([lx, lz], idx) => (
-        <mesh key={idx} position={[lx, legH / 2, lz]} castShadow receiveShadow>
-          <cylinderGeometry args={[legR, legR * 1.1, legH, 16]} />
+        <mesh key={idx} position={[lx, frameTop / 2, lz]} castShadow receiveShadow>
+          <cylinderGeometry args={[legR, legR * 1.1, frameTop, 16]} />
           <meshStandardMaterial color={mainColor} roughness={0.75} />
         </mesh>
       ))}
-      {/* Mortise & Tenon Side Rails */}
-      <mesh position={[0, heightM - frameThick / 2, -depthM / 2 + 0.03]} castShadow>
-        <boxGeometry args={[widthM - 0.08, frameThick, 0.05]} />
-        <meshStandardMaterial color={mainColor} roughness={0.7} />
-      </mesh>
-      <mesh position={[0, heightM - frameThick / 2, depthM / 2 - 0.03]} castShadow>
-        <boxGeometry args={[widthM - 0.08, frameThick, 0.05]} />
-        <meshStandardMaterial color={mainColor} roughness={0.7} />
-      </mesh>
-      <mesh position={[-widthM / 2 + 0.03, heightM - frameThick / 2, 0]} castShadow>
-        <boxGeometry args={[0.05, frameThick, depthM - 0.08]} />
-        <meshStandardMaterial color={mainColor} roughness={0.7} />
-      </mesh>
-      <mesh position={[widthM / 2 - 0.03, heightM - frameThick / 2, 0]} castShadow>
-        <boxGeometry args={[0.05, frameThick, depthM - 0.08]} />
-        <meshStandardMaterial color={mainColor} roughness={0.7} />
-      </mesh>
-      {/* Woven Jute Rope Webbing Surface */}
-      <mesh position={[0, webH, 0]} castShadow receiveShadow>
+      {/* Side rails */}
+      {rails.map(([rx, rz, rw, rd], idx) => (
+        <mesh key={idx} position={[rx, frameTop - frameThick / 2, rz]} castShadow>
+          <boxGeometry args={[rw, frameThick, rd]} />
+          <meshStandardMaterial color={mainColor} roughness={0.7} />
+        </mesh>
+      ))}
+      {/* Woven jute rope webbing */}
+      <mesh position={[0, frameTop - 0.02, 0]} castShadow receiveShadow>
         <boxGeometry args={[widthM - 0.12, 0.02, depthM - 0.12]} />
         <meshStandardMaterial color={fabricColor} roughness={0.9} />
       </mesh>
-      {/* Cylindrical Bolster Roll at Headrest */}
-      <mesh position={[-widthM / 2 + 0.22, heightM + 0.08, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.09, 0.09, depthM - 0.16, 16]} />
+      {/* Cylindrical bolster at the headrest */}
+      <mesh position={[-widthM / 2 + 0.2, frameTop - 0.01 + bolsterR, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.16, 16]} />
         <meshStandardMaterial color={cushionColor} roughness={0.8} />
       </mesh>
     </group>
   );
 }
 
-export function NepaliGaddaModel({ widthM, depthM, mainColor, cushionColor }) {
-  // Floor mattress seating with fabric folds and twin cylindrical takiya bolsters
-  const matH = 0.14;
-  const bolsterR = 0.11;
+export function NepaliGaddaModel({ widthM, depthM, heightM, mainColor, cushionColor }) {
+  // Floor mattress seating with twin cylindrical takiya bolsters
+  const matH = heightM * 0.38;
+  const bolsterR = (heightM - matH) / 2;
   return (
     <group>
-      {/* Quilted Cotton Floor Mattress */}
       <mesh position={[0, matH / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[widthM, matH, depthM]} />
         <meshStandardMaterial color={mainColor} roughness={0.85} />
       </mesh>
-      {/* Left Cylindrical Takiya Bolster */}
-      <mesh position={[-widthM / 2 + bolsterR + 0.04, matH + bolsterR, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.1, 16]} />
-        <meshStandardMaterial color={cushionColor} roughness={0.8} />
-      </mesh>
-      {/* Right Cylindrical Takiya Bolster */}
-      <mesh position={[widthM / 2 - bolsterR - 0.04, matH + bolsterR, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.1, 16]} />
-        <meshStandardMaterial color={cushionColor} roughness={0.8} />
-      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * (widthM / 2 - bolsterR - 0.04), matH + bolsterR, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.1, 16]} />
+          <meshStandardMaterial color={cushionColor} roughness={0.8} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -204,12 +197,12 @@ export function NepaliDhokaDividerModel({ def, widthM, heightM, mainColor, accen
   );
 }
 
-export function NepaliPujaMandirModel({ def, widthM, depthM, mainColor, accentColor }) {
-  // Traditional tiered wooden shrine with authentic pagoda roofs, columns, and Kalasha/Gajur finial
-  const baseH = 0.22;
-  const columnH = 0.44;
-  const tier1H = 0.14;
-  const tier2H = 0.12;
+export function NepaliPujaMandirModel({ def, widthM, depthM, heightM, mainColor, accentColor }) {
+  // Traditional tiered wooden shrine with pagoda roofs, columns, and Kalasha/Gajur finial
+  const baseH = heightM * 0.2;
+  const columnH = heightM * 0.4;
+  const tier1H = heightM * 0.12;
+  const tier2H = heightM * 0.1;
   return (
     <group>
       {/* Lower Base Cabinet Plinth */}
@@ -276,12 +269,12 @@ export function NepaliPujaMandirModel({ def, widthM, depthM, mainColor, accentCo
 
       {/* Lower Tier Pagoda Roof Eave (Flared outward) */}
       <mesh position={[0, baseH + columnH + tier1H / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[widthM + 0.14, tier1H, depthM + 0.14]} />
+        <boxGeometry args={[widthM, tier1H, depthM]} />
         <meshStandardMaterial color="#30180D" roughness={0.65} />
       </mesh>
       {/* Flared Eave Cornice Molding */}
       <mesh position={[0, baseH + columnH + tier1H, 0]} castShadow>
-        <boxGeometry args={[widthM + 0.18, 0.025, depthM + 0.18]} />
+        <boxGeometry args={[widthM, 0.02, depthM]} />
         <meshStandardMaterial color={accentColor} metalness={0.75} roughness={0.3} />
       </mesh>
 
@@ -292,7 +285,7 @@ export function NepaliPujaMandirModel({ def, widthM, depthM, mainColor, accentCo
       </mesh>
 
       {/* Ornate Patan Brass Gajur / Kalasha Finial Assemblage */}
-      <group position={[0, baseH + columnH + tier1H + tier2H, 0]}>
+      <group position={[0, baseH + columnH + tier1H + tier2H, 0]} scale={heightM * 1.2}>
         {/* Stepped Brass Base Plinth */}
         <mesh position={[0, 0.015, 0]} castShadow>
           <cylinderGeometry args={[0.065, 0.08, 0.03, 16]} />

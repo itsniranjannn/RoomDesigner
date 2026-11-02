@@ -44,7 +44,7 @@ export function BeanBagModel({ widthM, depthM, heightM, mainColor, cushionColor 
   return (
     <group>
       {/* Squashed, slumped body */}
-      <mesh position={[0, heightM * 0.42, 0]} scale={[widthM / 2, heightM * 0.45, depthM / 2]} castShadow receiveShadow>
+      <mesh position={[0, heightM * 0.46, 0]} scale={[widthM / 2, heightM * 0.46, depthM / 2]} castShadow receiveShadow>
         <sphereGeometry args={[1, 28, 20]} />
         <meshStandardMaterial color={mainColor} roughness={0.9} />
       </mesh>
