@@ -12,9 +12,8 @@ import {
   Trash2,
   Check,
   X,
-  Download,
+  Share2,
 } from 'lucide-react';
-import { exportRoomPlanAsPNG } from '../../engine/exportPlan.js';
 import { BrandMark } from '../common/BrandMark.jsx';
 import { ArchitecturalSelect } from '../common/ArchitecturalSelect.jsx';
 import styles from './TopBar.module.css';
@@ -33,12 +32,12 @@ export function TopBar({ onOpenNewRoomModal }) {
   const canUndo = useRoomStore((state) => state.canUndo);
   const canRedo = useRoomStore((state) => state.canRedo);
   const closeRoom = useRoomStore((state) => state.closeRoom);
+  const openModal = useRoomStore((state) => state.openModal);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
 
   const menuRef = useRef(null);
   const renameInputRef = useRef(null);
@@ -96,15 +95,6 @@ export function TopBar({ onOpenNewRoomModal }) {
     await deleteRoom(room.id);
   };
 
-  const handleExportPlan = async () => {
-    if (!room || isExporting) return;
-    setIsExporting(true);
-    try {
-      await exportRoomPlanAsPNG(room);
-    } finally {
-      setIsExporting(false);
-    }
-  };
 
   if (!room) return null;
 
@@ -283,12 +273,11 @@ export function TopBar({ onOpenNewRoomModal }) {
         <Button
           variant="secondary"
           size="small"
-          onClick={handleExportPlan}
-          icon={<Download size={13} />}
-          disabled={isExporting}
-          title="Export architectural 2D floor plan as high-resolution PNG"
+          onClick={() => openModal('share')}
+          icon={<Share2 size={13} />}
+          title="Export as PNG, PDF or JSON, share a link, or import a design"
         >
-          {isExporting ? 'Exporting...' : 'Export plan'}
+          Export &amp; share
         </Button>
 
         <Button

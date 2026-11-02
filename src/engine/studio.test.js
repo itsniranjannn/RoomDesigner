@@ -120,3 +120,14 @@ describe('measure and pdf', () => {
     expect(text).toContain('/DCTDecode');
   });
 });
+
+describe('layout suggestion with existing furniture', () => {
+  it('avoids pieces already in the room and returns only new ones', () => {
+    const existing = [{ id: 'e1', furnitureTypeId: 'bed-queen', x: 400, y: 120, rotationDeg: 0 }];
+    const r = { ...room, placedFurniture: existing };
+    const { placed } = suggestLayout(r, ['wardrobe-2door', 'sofa-3seat']);
+    expect(placed).toHaveLength(2);
+    const all = [...existing, ...placed];
+    expect(evaluateAllCollisions(all, room.widthCm, room.depthCm).collidingIds.size).toBe(0);
+  });
+});

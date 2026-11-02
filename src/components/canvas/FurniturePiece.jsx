@@ -10,6 +10,7 @@ export function FurniturePiece({
   item,
   isSelected,
   isColliding,
+  isPrimary = true,
   scale, // px per cm
   roomWidthCm,
   roomDepthCm,
@@ -31,10 +32,16 @@ export function FurniturePiece({
   const preRotateSnapshot = useRef(null);
   const rotateStartDeg = useRef(item.rotationDeg || 0);
 
-  // Handle pointer drag with real-time snapping & boundary clamping
+  // Handle pointer drag with real-time snapping & boundary clamping.
+  // Shift/Ctrl-click toggles multi-selection; dragging a selected piece moves the whole group.
   const handlePointerDown = (e) => {
     e.stopPropagation();
-    selectItem(item.id);
+    if (e.shiftKey || e.ctrlKey || e.metaKey) {
+      selectItem(item.id, true);
+      return;
+    }
+    const { selectedItemIds } = useRoomStore.getState();
+    if (!selectedItemIds.includes(item.id)) selectItem(item.id);
 
     if (!svgRef?.current) return;
     const svg = svgRef.current;
@@ -49,6 +56,15 @@ export function FurniturePiece({
     dragStartPos.current = { x: item.x, y: item.y };
     dragPointerStart.current = { x: p.x, y: p.y };
     preDragSnapshot.current = useRoomStore.getState().getCurrentSnapshot();
+
+    const groupIds = useRoomStore.getState().selectedItemIds;
+    const isGroup = groupIds.length > 1 && groupIds.includes(item.id);
+    const startPositions = {};
+    if (isGroup) {
+      for (const other of useRoomStore.getState().room?.placedFurniture || []) {
+        if (groupIds.includes(other.id)) startPositions[other.id] = { x: other.x, y: other.y };
+      }
+    }
     setIsDragging(true);
 
     const onPointerMove = (moveEvent) => {
@@ -76,8 +92,13 @@ export function FurniturePiece({
         roomDepthCm
       );
 
-      updateFurniturePosition(item.id, snapped.x, snapped.y);
-      updateFurniturePosition(item.id, snapped.x, snapped.y, false);
+      if (isGroup) {
+        useRoomStore
+          .getState()
+          .moveSelectionFrom(startPositions, snapped.x - dragStartPos.current.x, snapped.y - dragStartPos.current.y);
+      } else {
+        updateFurniturePosition(item.id, snapped.x, snapped.y, false);
+      }
     };
 
     const onPointerUp = () => {
@@ -85,7 +106,7 @@ export function FurniturePiece({
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
 
-      // Check if position actually changed from dragStartPos
+      // Only record an undo step if the piece actually moved
       const currentPiece = (useRoomStore.getState().room?.placedFurniture || []).find((i) => i.id === item.id);
       if (currentPiece && preDragSnapshot.current) {
         const dx = currentPiece.x - dragStartPos.current.x;
@@ -137,7 +158,6 @@ export function FurniturePiece({
         }
       }
 
-      updateFurnitureRotation(item.id, Math.round(angleDeg));
       updateFurnitureRotation(item.id, Math.round(angleDeg), false);
     };
 
@@ -172,7 +192,6 @@ export function FurniturePiece({
       onPointerDown={handlePointerDown}
       onClick={(e) => {
         e.stopPropagation();
-        selectItem(item.id);
       }}
     >
       <motion.g
@@ -227,7 +246,7 @@ export function FurniturePiece({
         )}
 
         {/* Direct Rotation Compass Handle (visible when selected) */}
-        {isSelected && (
+        {isSelected && isPrimary && (
           <g
             className="rotation-handle"
             transform={`translate(0, ${-hd - 24})`}
