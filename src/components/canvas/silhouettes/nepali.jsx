@@ -47,8 +47,8 @@ export function NepaliPirkaSilhouette({ widthCm, depthCm, hw, hd, color }) {
       <rect
         x={-hw + 2}
         y={-hd + 2}
-        width={widthCm - 4}
-        height={depthCm - 4}
+        width={Math.max(0, widthCm - 4)}
+        height={Math.max(0, depthCm - 4)}
         rx={2}
         fill="none"
         stroke="rgba(0, 0, 0, 0.25)"
@@ -74,7 +74,7 @@ export function NepaliPirkaSilhouette({ widthCm, depthCm, hw, hd, color }) {
 
 export function NepaliCharpaiSilhouette({ widthCm, depthCm, hw, hd, color, fabricColor, cushionColor }) {
   // Handwoven daybed with turned corner timber posts and woven cord webbing
-  const postSize = 10;
+  const postSize = Math.min(10, widthCm / 4, depthCm / 4); // stays positive on tiny catalog previews
   return (
     <g>
       {/* Outer Timber Frame */}

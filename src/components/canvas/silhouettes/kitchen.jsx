@@ -41,12 +41,12 @@ export function KitchenCounterSilhouette({ widthCm, depthCm, hw, hd, color }) {
   return (
     <g>
       <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} stroke="#4A453C" strokeWidth="1.2" />
-      <rect x={-hw * 0.7} y={-hd + 8} width={widthCm * 0.45} height={depthCm - 16} rx={3} fill="#C6CCD2" stroke="#8E98A0" strokeWidth="1" />
-      <rect x={-hw * 0.7 + 3} y={-hd + 11} width={widthCm * 0.2} height={depthCm - 22} rx={2} fill="#E2E6EA" stroke="#AAB3BA" strokeWidth="0.8" />
-      <rect x={-hw * 0.7 + widthCm * 0.22 + 3} y={-hd + 11} width={widthCm * 0.2} height={depthCm - 22} rx={2} fill="#E2E6EA" stroke="#AAB3BA" strokeWidth="0.8" />
+      <rect x={-hw * 0.7} y={-hd + 8} width={widthCm * 0.45} height={Math.max(0, depthCm - 16)} rx={3} fill="#C6CCD2" stroke="#8E98A0" strokeWidth="1" />
+      <rect x={-hw * 0.7 + 3} y={-hd + 11} width={widthCm * 0.2} height={Math.max(0, depthCm - 22)} rx={2} fill="#E2E6EA" stroke="#AAB3BA" strokeWidth="0.8" />
+      <rect x={-hw * 0.7 + widthCm * 0.22 + 3} y={-hd + 11} width={widthCm * 0.2} height={Math.max(0, depthCm - 22)} rx={2} fill="#E2E6EA" stroke="#AAB3BA" strokeWidth="0.8" />
       <circle cx={-hw * 0.7 + widthCm * 0.225} cy={-hd + 8} r={3} fill="#5A646E" />
       <path d={`M ${-hw * 0.7 + widthCm * 0.225} ${-hd + 8} Q ${-hw * 0.7 + widthCm * 0.225} ${-hd + 18} ${-hw * 0.7 + widthCm * 0.225} ${-hd + 20}`} fill="none" stroke="#5A646E" strokeWidth="2" strokeLinecap="round" />
-      <rect x={hw * 0.1} y={-hd + 12} width={widthCm * 0.35} height={depthCm - 24} rx={2} fill="#C4A882" stroke="#9E805B" strokeWidth="0.8" />
+      <rect x={hw * 0.1} y={-hd + 12} width={widthCm * 0.35} height={Math.max(0, depthCm - 24)} rx={2} fill="#C4A882" stroke="#9E805B" strokeWidth="0.8" />
     </g>
   );
 }
