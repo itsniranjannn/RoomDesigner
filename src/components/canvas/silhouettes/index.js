@@ -9,6 +9,12 @@ import { PlantSilhouette, LampSilhouette, WallMirrorSilhouette } from './decor.j
 import { NepaliChowkiSilhouette, NepaliPatukaChestSilhouette, NepaliBrassDiyaSilhouette, NepaliPirkaSilhouette, NepaliCharpaiSilhouette, NepaliGaddaSilhouette, NepaliDhokaDividerSilhouette, NepaliPujaMandirSilhouette, NepaliLotaDisplaySilhouette } from './nepali.jsx';
 import { FixtureToiletSilhouette, FixtureBasinSilhouette, FixtureShowerSilhouette, FixtureBathtubSilhouette, FixtureWasherSilhouette } from './fixtures.jsx';
 import { CustomMeshSilhouette } from './customMesh.jsx';
+import { SofaLSilhouette, BeanBagSilhouette, BenchSilhouette } from './lounge.jsx';
+import { DressingTableSilhouette, CribSilhouette, TrunkSilhouette } from './bedroom.jsx';
+import { DeskLSilhouette, StandingDeskSilhouette, ReceptionCounterSilhouette } from './office.jsx';
+import { SinkUnitSilhouette, ApplianceSilhouette } from './kitchenUnits.jsx';
+import { VanitySilhouette, SquatToiletSilhouette, TankSilhouette, BasketSilhouette } from './bathroom.jsx';
+import { PlanterSilhouette, RugRoundSilhouette, ScreenSilhouette } from './accents.jsx';
 
 export const SILHOUETTES = {
   'bed': BedSilhouette,
@@ -59,6 +65,24 @@ export const SILHOUETTES = {
   'fixture-bathtub': FixtureBathtubSilhouette,
   'fixture-washer': FixtureWasherSilhouette,
   'custom-mesh': CustomMeshSilhouette,
+  'sofa-l': SofaLSilhouette,
+  'bean-bag': BeanBagSilhouette,
+  'bench': BenchSilhouette,
+  'dressing-table': DressingTableSilhouette,
+  'crib': CribSilhouette,
+  'trunk': TrunkSilhouette,
+  'desk-l': DeskLSilhouette,
+  'standing-desk': StandingDeskSilhouette,
+  'reception-counter': ReceptionCounterSilhouette,
+  'sink-unit': SinkUnitSilhouette,
+  'appliance': ApplianceSilhouette,
+  'vanity': VanitySilhouette,
+  'squat-toilet': SquatToiletSilhouette,
+  'tank': TankSilhouette,
+  'basket': BasketSilhouette,
+  'planter': PlanterSilhouette,
+  'rug-round': RugRoundSilhouette,
+  'screen': ScreenSilhouette,
 };
 
 /** Unknown shape types fall back to the credenza-style rectangle. */
