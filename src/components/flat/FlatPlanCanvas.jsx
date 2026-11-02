@@ -1,53 +1,90 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFlatStore } from '../../store/flatStore.js';
+import { useFlatUi } from '../../store/flatUiStore.js';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
+import { SPACE_KINDS, stairFootprint, stairRect, levelIndex, snapToGrid, createStair } from '../../engine/flat.js';
+import { wallsOf, openingsOf, stairWarnings } from '../../engine/flatPlan.js';
 import {
-  SPACE_KINDS,
-  stairFootprint,
-  snapRect,
-  canPlace,
-  levelObstacles,
-  levelIndex,
-  clampSpaceSize,
-  snapToGrid,
-} from '../../engine/flat.js';
+  CELL,
+  edgesOf,
+  analyzeRuns,
+  hitTestEdge,
+  wallRunAt,
+  edgesToRuns,
+  planOpening,
+  openingAtPoint,
+  wallStretches,
+  regionRects,
+  regionLabelPoint,
+  regionAtPoint,
+  orthoEnd,
+  clampCoord,
+  runEndpoints,
+  parseEdge,
+  EXTERIOR_THICK_CM,
+  INTERIOR_THICK_CM,
+} from '../../engine/flatWalls.js';
 import { StairGlyph, StairDefs } from './StairGlyph.jsx';
 import styles from './FlatDesigner.module.css';
 
-/** Local frame of a wall: u runs along the wall, v points into the room. */
-function wallTransform(wall, space) {
-  const { x, y, widthCm: W, depthCm: D } = space;
-  switch (wall) {
-    case 'top': return (off) => `translate(${x + off} ${y})`;
-    case 'left': return (off) => `matrix(0 1 1 0 ${x} ${y + off})`;
-    case 'right': return (off) => `matrix(0 1 -1 0 ${x + W} ${y + off})`;
-    default: return (off) => `matrix(1 0 0 -1 ${x + off} ${y + D})`;
-  }
+const EMPTY = [];
+const MIN_K = 0.05;
+const MAX_K = 3;
+const DOOR_W = 90;
+const WINDOW_W = 120;
+
+const clampK = (k) => Math.max(MIN_K, Math.min(MAX_K, k));
+/** Shortens text so it fits a width in px at roughly charPx per character. */
+const fitText = (text, widthPx, charPx) => {
+  const max = Math.max(3, Math.floor(widthPx / charPx));
+  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+};
+const fmtM = (cm) => `${(cm / 100).toFixed(2)} m`;
+
+/** Where an opening's gap is drawn: wall thickness at its first edge. */
+function thicknessAt(op, analysis) {
+  const i = Math.floor(op.start / CELL);
+  const line = Math.round(op.line / CELL);
+  const key = op.axis === 'h' ? `h${i},${line}` : `v${line},${i}`;
+  return analysis.isExteriorEdge(key) ? EXTERIOR_THICK_CM : INTERIOR_THICK_CM;
 }
 
-function Openings({ space, room }) {
-  if (!room) return null;
+function Opening({ op, thick, selected, hot, ghost, invalid }) {
+  const s = op.flip ? -1 : 1;
+  const w = op.widthCm;
+  const h = op.axis === 'h';
+  const gap = { x: h ? op.start : op.line - thick / 2 - 1, y: h ? op.line - thick / 2 - 1 : op.start, width: h ? w : thick + 2, height: h ? thick + 2 : w };
+  const cls = [styles.gap, invalid ? styles.gapInvalid : '', hot ? styles.gapHot : ''].filter(Boolean).join(' ');
   return (
-    <g pointerEvents="none">
-      {(room.windows || []).map((w) => (
-        <g key={w.id} transform={wallTransform(w.wall || 'top', space)(w.offsetCm)}>
-          <rect x="0" y="-5" width={w.widthCm} height="10" fill="#DCE9F0" stroke="#22485E" strokeWidth="1.5" />
-          <line x1="0" y1="0" x2={w.widthCm} y2="0" stroke="#22485E" strokeWidth="1" />
+    <g pointerEvents="none" opacity={ghost ? 0.85 : 1}>
+      <rect {...gap} className={cls} />
+      {op.type === 'window' ? (
+        <g className={styles.windowGlyph}>
+          <rect x={h ? op.start : op.line - 3} y={h ? op.line - 3 : op.start} width={h ? w : 6} height={h ? 6 : w} />
+          <line x1={h ? op.start : op.line} y1={h ? op.line : op.start} x2={h ? op.start + w : op.line} y2={h ? op.line : op.start + w} />
         </g>
-      ))}
-      {(room.doors || []).map((d) => (
-        <g key={d.id} transform={wallTransform(d.wall || 'bottom', space)(d.offsetCm)}>
-          <rect x="0" y="-5" width={d.widthCm} height="10" fill="#F6F2EA" />
-          <line x1="0" y1="0" x2="0" y2={d.widthCm} stroke="#7A5B37" strokeWidth="3" />
-          <path d={`M ${d.widthCm} 0 A ${d.widthCm} ${d.widthCm} 0 0 1 0 ${d.widthCm}`} fill="none" stroke="#7A5B37" strokeWidth="1.2" strokeDasharray="5 4" />
+      ) : (
+        <g className={styles.doorGlyph}>
+          {h ? (
+            <>
+              <line x1={op.start} y1={op.line} x2={op.start} y2={op.line + s * w} />
+              <path d={`M ${op.start + w} ${op.line} A ${w} ${w} 0 0 ${s > 0 ? 1 : 0} ${op.start} ${op.line + s * w}`} />
+            </>
+          ) : (
+            <>
+              <line x1={op.line} y1={op.start} x2={op.line + s * w} y2={op.start} />
+              <path d={`M ${op.line} ${op.start + w} A ${w} ${w} 0 0 ${s > 0 ? 0 : 1} ${op.line + s * w} ${op.start}`} />
+            </>
+          )}
         </g>
-      ))}
+      )}
+      {selected && <rect {...gap} className={styles.selectBox} />}
     </g>
   );
 }
 
 function FurnitureGlyphs({ space, room }) {
-  if (!room) return null;
+  if (!room || !space.furnishable) return null;
   return (
     <g transform={`translate(${space.x} ${space.y})`} pointerEvents="none">
       {(room.placedFurniture || []).map((item) => {
@@ -63,9 +100,7 @@ function FurnitureGlyphs({ space, room }) {
             rx="3"
             transform={`rotate(${item.rotationDeg || 0} ${item.x} ${item.y})`}
             fill={def.color || '#8B6F47'}
-            fillOpacity="0.85"
-            stroke="rgba(26,22,21,0.45)"
-            strokeWidth="1"
+            className={styles.furniture}
           />
         );
       })}
@@ -73,255 +108,613 @@ function FurnitureGlyphs({ space, room }) {
   );
 }
 
+function runRects(keys, thick) {
+  return edgesToRuns(new Set(keys)).map((r, i) => {
+    const h = r.y1 === r.y2;
+    return (
+      <rect
+        key={i}
+        x={h ? r.x1 - thick / 2 : r.x1 - thick / 2}
+        y={h ? r.y1 - thick / 2 : r.y1 - thick / 2}
+        width={h ? r.x2 - r.x1 + thick : thick}
+        height={h ? thick : r.y2 - r.y1 + thick}
+      />
+    );
+  });
+}
+
 export function FlatPlanCanvas() {
   const flat = useFlatStore((s) => s.flat);
+  const flatId = flat?.id;
   const rooms = useFlatStore((s) => s.rooms);
   const levelId = useFlatStore((s) => s.levelId);
   const selected = useFlatStore((s) => s.selected);
   const select = useFlatStore((s) => s.select);
-  const moveSpace = useFlatStore((s) => s.moveSpace);
-  const resizeSpace = useFlatStore((s) => s.resizeSpace);
-  const updateStair = useFlatStore((s) => s.updateStair);
   const openSpace = useFlatStore((s) => s.openSpace);
+  const tool = useFlatUi((s) => s.tool);
+  const stairType = useFlatUi((s) => s.stairType);
+  const stairRotation = useFlatUi((s) => s.stairRotation);
+  const fitNonce = useFlatUi((s) => s.fitNonce);
+  const zoomRequest = useFlatUi((s) => s.zoomRequest);
+  const notice = useFlatUi((s) => s.notice);
 
+  const wrapRef = useRef(null);
   const svgRef = useRef(null);
-  const [drag, setDrag] = useState(null); // { kind, id, rect, valid }
-  const [notice, setNotice] = useState(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
+  const [view, setView] = useState({ tx: 0, ty: 0, k: 0.5 });
+  const viewRef = useRef(view);
+  const sizeRef = useRef(size);
+  const [, setDraftState] = useState(null); // re-renders when the wall being drawn changes
+  const draftRef = useRef(null);
+  const [hover, setHover] = useState(null);
+  const [dragStair, setDragStair] = useState(null);
+  const [panning, setPanning] = useState(false);
+  const [spaceDown, setSpaceDown] = useState(false);
+  const gesture = useRef(null);
+  const autoFit = useRef(true);
+  const [fitted, setFitted] = useState(false);
 
+  const setDraft = useCallback((d) => {
+    draftRef.current = d;
+    setDraftState(d);
+  }, []);
+
+  useEffect(() => {
+    viewRef.current = view;
+    useFlatUi.getState().setZoomPercent(Math.round(view.k * 100));
+  }, [view]);
+  useEffect(() => {
+    sizeRef.current = size;
+  }, [size]);
+
+  // ---------- derived level data ----------
   const idx = flat ? levelIndex(flat, levelId) : 0;
+  const runs = useMemo(() => (flat ? wallsOf(flat, levelId) : EMPTY), [flat, levelId]);
+  const edges = useMemo(() => edgesOf(runs), [runs]);
+  const analysis = useMemo(() => analyzeRuns(runs), [runs]);
+  const openings = useMemo(() => (flat ? openingsOf(flat, levelId) : EMPTY), [flat, levelId]);
+  const stretches = useMemo(() => wallStretches(edges, analysis.isExteriorEdge), [edges, analysis]);
   const spaces = useMemo(() => (flat ? flat.spaces.filter((s) => s.levelId === levelId) : []), [flat, levelId]);
   const stairs = useMemo(() => (flat ? flat.stairs.filter((s) => s.levelId === levelId) : []), [flat, levelId]);
-  const below = flat && idx > 0 ? flat.levels[idx - 1].id : null;
-  const ghostSpaces = useMemo(() => (flat && below ? flat.spaces.filter((s) => s.levelId === below) : []), [flat, below]);
-  const openings = useMemo(() => (flat && below ? flat.stairs.filter((s) => s.levelId === below) : []), [flat, below]);
+  const belowId = flat && idx > 0 ? flat.levels[idx - 1].id : null;
+  const belowRuns = useMemo(() => (flat && belowId ? wallsOf(flat, belowId) : EMPTY), [flat, belowId]);
+  const openingStairs = useMemo(() => (flat && belowId ? flat.stairs.filter((s) => s.levelId === belowId) : []), [flat, belowId]);
+  const endpoints = useMemo(() => runEndpoints(runs), [runs]);
 
-  const bounds = useMemo(() => {
-    let maxX = 600;
-    let maxY = 450;
-    const all = [
-      ...spaces, ...ghostSpaces,
-      ...[...stairs, ...openings].map((s) => ({ x: s.x, y: s.y, ...{ widthCm: stairFootprint(s).widthCm, depthCm: stairFootprint(s).depthCm } })),
-    ];
-    for (const r of all) {
-      maxX = Math.max(maxX, r.x + r.widthCm);
-      maxY = Math.max(maxY, r.y + r.depthCm);
-    }
-    return { x: -100, y: -100, width: maxX + 250, height: maxY + 220 };
-  }, [spaces, ghostSpaces, stairs, openings]);
+  // ---------- view helpers ----------
+  const fit = useCallback(() => {
+    const { w, h } = sizeRef.current;
+    if (!w || !h) return;
+    const st = useFlatStore.getState();
+    const fl = st.flat;
+    if (!fl) return;
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    const take = (x, y) => {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    };
+    for (const lvl of fl.levels) for (const r of wallsOf(fl, lvl.id)) { take(r.x1, r.y1); take(r.x2, r.y2); }
+    for (const sx of fl.stairs) { const r = stairRect(sx); take(r.x, r.y); take(r.x + r.widthCm, r.y + r.depthCm); }
+    if (!Number.isFinite(minX)) { minX = 0; minY = 0; maxX = 900; maxY = 650; }
+    const pad = 72;
+    const bw = Math.max(200, maxX - minX);
+    const bh = Math.max(200, maxY - minY);
+    const k = clampK(Math.min((w - pad * 2) / bw, (h - pad * 2) / bh, 1.2));
+    setView({ k, tx: w / 2 - ((minX + maxX) / 2) * k, ty: h / 2 - ((minY + maxY) / 2) * k });
+    setFitted(true);
+  }, []);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return undefined;
+    const ro = new ResizeObserver(([entry]) => {
+      const { width, height } = entry.contentRect;
+      setSize({ w: Math.round(width), h: Math.round(height) });
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Keep the plan fitted while the stage settles; a manual zoom or pan switches this off
+  useEffect(() => {
+    autoFit.current = true;
+  }, [flatId, fitNonce]);
+  useEffect(() => {
+    if (flatId && size.w && autoFit.current) fit();
+  }, [flatId, size.w, size.h, fitNonce, fit]);
+
+  const zoomAt = useCallback((mx, my, factor) => {
+    autoFit.current = false;
+    setView((v) => {
+      const k = clampK(v.k * factor);
+      return { k, tx: mx - ((mx - v.tx) * k) / v.k, ty: my - ((my - v.ty) * k) / v.k };
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!zoomRequest) return;
+    const { w, h } = sizeRef.current;
+    zoomAt(w / 2, h / 2, zoomRequest.factor);
+  }, [zoomRequest, zoomAt]);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return undefined;
+    const onWheel = (e) => {
+      e.preventDefault();
+      const rect = svg.getBoundingClientRect();
+      zoomAt(e.clientX - rect.left, e.clientY - rect.top, Math.exp(-e.deltaY * 0.0016));
+    };
+    svg.addEventListener('wheel', onWheel, { passive: false });
+    return () => svg.removeEventListener('wheel', onWheel);
+  }, [zoomAt, flat?.id]);
+
+  const toWorld = useCallback((e) => {
+    const rect = svgRef.current.getBoundingClientRect();
+    const v = viewRef.current;
+    return { x: (e.clientX - rect.left - v.tx) / v.k, y: (e.clientY - rect.top - v.ty) / v.k, sx: e.clientX - rect.left, sy: e.clientY - rect.top };
+  }, []);
+
+  // ---------- keyboard: space to pan, Escape to back out ----------
+  useEffect(() => {
+    const editing = () => ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+    const down = (e) => {
+      if (editing()) return;
+      if (e.code === 'Space' && document.activeElement?.tagName !== 'BUTTON') {
+        e.preventDefault();
+        setSpaceDown(true);
+      }
+      if (e.key === 'Escape') {
+        if (draftRef.current) {
+          setDraft(null);
+          setHover(null);
+        } else if (useFlatStore.getState().selected) {
+          useFlatStore.getState().select(null);
+        } else if (useFlatUi.getState().tool !== 'select') {
+          useFlatUi.getState().setTool('select');
+        }
+      }
+      if (e.key === 'Enter' && draftRef.current) setDraft(null);
+    };
+    const up = (e) => {
+      if (e.code === 'Space') setSpaceDown(false);
+    };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => {
+      window.removeEventListener('keydown', down);
+      window.removeEventListener('keyup', up);
+    };
+  }, [setDraft]);
+
+  // Leaving the wall tool abandons a half-drawn wall
+  useEffect(() => {
+    if (tool !== 'wall') setDraft(null);
+    setHover(null);
+  }, [tool, levelId, setDraft]);
 
   useEffect(() => {
     if (!notice) return undefined;
-    const t = setTimeout(() => setNotice(null), 2600);
+    const t = setTimeout(() => useFlatUi.getState().setNotice(null), 2800);
     return () => clearTimeout(t);
   }, [notice]);
 
-  // Keyboard: nudge, rotate stairs, escape
-  useEffect(() => {
-    const onKey = (e) => {
-      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
-      const st = useFlatStore.getState();
-      if (!st.selected) return;
-      const step = e.shiftKey ? 50 : 10;
-      const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
-      if (e.key === 'Escape') { st.select(null); return; }
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        e.preventDefault();
-        if (st.selected.type === 'stair') st.removeStair(st.selected.id);
-        else if (window.confirm('Delete this space and everything in it?')) st.removeSpace(st.selected.id);
-        return;
-      }
-      if ((e.key === 'r' || e.key === 'R') && st.selected.type === 'stair') {
-        const stair = st.flat.stairs.find((s) => s.id === st.selected.id);
-        if (stair) st.updateStair(stair.id, { rotationDeg: (stair.rotationDeg || 0) + 90 });
-        return;
-      }
-      if (!d) return;
-      e.preventDefault();
-      if (st.selected.type === 'space') {
-        const s = st.flat.spaces.find((x) => x.id === st.selected.id);
-        if (s) st.moveSpace(s.id, s.x + d[0], s.y + d[1]);
+  // ---------- snapping ----------
+  const snapPoint = (p) => ({ x: clampCoord(p.x), y: clampCoord(p.y) });
+
+  /** Nearest vertex that shares an x or y with a point, for alignment guides. */
+  const guidesFor = (pt) => {
+    let gx = null;
+    let gy = null;
+    for (const v of endpoints) {
+      if (v.x === pt.x && v.y !== pt.y && (!gx || Math.abs(v.y - pt.y) < Math.abs(gx.y - pt.y))) gx = v;
+      if (v.y === pt.y && v.x !== pt.x && (!gy || Math.abs(v.x - pt.x) < Math.abs(gy.x - pt.x))) gy = v;
+    }
+    return { gx, gy, onVertex: endpoints.some((v) => v.x === pt.x && v.y === pt.y) };
+  };
+
+  const snapStair = (x, y, fp) => {
+    const T = 14;
+    let nx = snapToGrid(x);
+    let ny = snapToGrid(y);
+    const guides = [];
+    for (const r of runs) {
+      if (r.y1 === r.y2) {
+        for (const c of [r.y1, r.y1 - fp.depthCm]) if (Math.abs(c - y) <= T) { ny = c; guides.push({ axis: 'h', at: r.y1 }); }
       } else {
-        const s = st.flat.stairs.find((x) => x.id === st.selected.id);
-        if (s) st.updateStair(s.id, { x: s.x + d[0], y: s.y + d[1] });
+        for (const c of [r.x1, r.x1 - fp.widthCm]) if (Math.abs(c - x) <= T) { nx = c; guides.push({ axis: 'v', at: r.x1 }); }
       }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+    }
+    return { x: Math.max(0, nx), y: Math.max(0, ny), guides };
+  };
+
+  const hitTol = Math.max(6, Math.min(26, 10 / view.k));
+
+  const stairDraft = useMemo(() => {
+    if (!flat) return null;
+    return createStair(flat, { levelId, type: stairType, rotationDeg: stairRotation, x: 0, y: 0 });
+  }, [flat, levelId, stairType, stairRotation]);
+
+  // ---------- pointer handling ----------
+  const computeHover = (p) => {
+    const sp = snapPoint(p);
+    if (tool === 'wall') {
+      const d = draftRef.current;
+      if (d) {
+        const end = orthoEnd(d.sx, d.sy, p.x, p.y);
+        return { type: 'wall', ...d, ex: end.x, ey: end.y, guides: guidesFor(end) };
+      }
+      return { type: 'point', x: sp.x, y: sp.y, guides: guidesFor(sp) };
+    }
+    if (tool === 'eraser') {
+      const key = hitTestEdge(edges, p.x, p.y, hitTol);
+      return key ? { type: 'erase', key, keys: wallRunAt(edges, key) } : null;
+    }
+    if (tool === 'door' || tool === 'window') {
+      const existing = openingAtPoint(openings, p.x, p.y, hitTol + 4);
+      if (existing && existing.type === tool) return { type: 'remove-opening', op: existing };
+      const plan = planOpening(edges, openings, { type: tool, x: p.x, y: p.y, widthCm: tool === 'door' ? DOOR_W : WINDOW_W, tolCm: hitTol });
+      return plan ? { type: 'opening', plan } : null;
+    }
+    if (tool === 'stairs' && stairDraft) {
+      const fp = stairFootprint(stairDraft);
+      const snapped = snapStair(p.x - fp.widthCm / 2, p.y - fp.depthCm / 2, fp);
+      const stair = { ...stairDraft, x: snapped.x, y: snapped.y };
+      return { type: 'stair', stair, guides: snapped.guides, warnings: stairWarnings(flat, stair) };
+    }
+    return null;
+  };
+
+  const onPointerMove = (e) => {
+    if (!flat) return;
+    const p = toWorld(e);
+    useFlatUi.getState().setCursor({ x: p.x, y: p.y });
+    const g = gesture.current;
+    if (g?.type === 'pan') {
+      setView({ ...g.view, tx: g.view.tx + (p.sx - g.sx), ty: g.view.ty + (p.sy - g.sy) });
+      g.moved = true;
+      if (Math.hypot(p.sx - g.sx, p.sy - g.sy) > 3) autoFit.current = false;
+      return;
+    }
+    if (g?.type === 'stair') {
+      const dx = p.x - g.x;
+      const dy = p.y - g.y;
+      if (!g.moved && Math.hypot(dx, dy) * viewRef.current.k < 4) return;
+      g.moved = true;
+      const fp = stairFootprint(g.stair);
+      const snapped = snapStair(g.stair.x + dx, g.stair.y + dy, fp);
+      setDragStair({ id: g.stair.id, x: snapped.x, y: snapped.y, guides: snapped.guides });
+      return;
+    }
+    if (g?.type === 'wall-drag') {
+      const d = draftRef.current;
+      if (d) setDraft({ ...d, ex: orthoEnd(d.sx, d.sy, p.x, p.y).x, ey: orthoEnd(d.sx, d.sy, p.x, p.y).y });
+    }
+    setHover(computeHover(p));
+  };
+
+  const finishWall = (d) => {
+    if (d && (d.ex !== d.sx || d.ey !== d.sy)) useFlatStore.getState().addWall(d.sx, d.sy, d.ex, d.ey);
+    setHover(null);
+  };
+
+  const onPointerDown = (e) => {
+    if (!flat) return;
+    svgRef.current.focus({ preventScroll: true });
+    const p = toWorld(e);
+    if (e.button === 1 || (e.button === 0 && spaceDown)) {
+      e.preventDefault();
+      svgRef.current.setPointerCapture(e.pointerId);
+      gesture.current = { type: 'pan', sx: p.sx, sy: p.sy, view: viewRef.current, moved: false };
+      autoFit.current = false;
+      setPanning(true);
+      return;
+    }
+    if (e.button === 2) {
+      setDraft(null);
+      return;
+    }
+    if (e.button !== 0) return;
+    svgRef.current.setPointerCapture(e.pointerId);
+
+    if (tool === 'wall') {
+      const sp = snapPoint(p);
+      const d = draftRef.current;
+      if (d && d.mode === 'click') {
+        const end = orthoEnd(d.sx, d.sy, p.x, p.y);
+        if (end.x === d.sx && end.y === d.sy) {
+          setDraft(null);
+        } else {
+          finishWall({ ...d, ex: end.x, ey: end.y });
+          setDraft({ sx: end.x, sy: end.y, ex: end.x, ey: end.y, mode: 'click' });
+        }
+        return;
+      }
+      setDraft({ sx: sp.x, sy: sp.y, ex: sp.x, ey: sp.y, mode: 'drag' });
+      gesture.current = { type: 'wall-drag' };
+      return;
+    }
+
+    if (tool === 'eraser') {
+      const key = hitTestEdge(edges, p.x, p.y, hitTol);
+      if (key) useFlatStore.getState().eraseWall(key);
+      setHover(null);
+      return;
+    }
+
+    if (tool === 'door' || tool === 'window') {
+      const h = computeHover(p);
+      if (h?.type === 'remove-opening') {
+        useFlatStore.getState().removeOpening(h.op.id);
+      } else if (h?.type === 'opening') {
+        if (h.plan.valid) useFlatStore.getState().placeOpening(h.plan.op);
+        else useFlatUi.getState().setNotice(h.plan.reason);
+      } else {
+        useFlatUi.getState().setNotice('Click on a wall to place a ' + tool + '.');
+      }
+      setHover(null);
+      return;
+    }
+
+    if (tool === 'stairs') {
+      const h = computeHover(p);
+      if (h?.type === 'stair') {
+        useFlatStore.getState().addStair(h.stair.type, h.stair.x, h.stair.y, h.stair.rotationDeg);
+        useFlatUi.getState().setTool('select');
+      }
+      return;
+    }
+
+    // Select tool: openings, then stairs, then walls, then rooms
+    const op = openingAtPoint(openings, p.x, p.y, hitTol + 4);
+    if (op) {
+      select({ type: 'opening', id: op.id });
+      return;
+    }
+    const stair = [...stairs].reverse().find((st) => {
+      const r = stairRect(st);
+      return p.x >= r.x && p.x <= r.x + r.widthCm && p.y >= r.y && p.y <= r.y + r.depthCm;
+    });
+    if (stair) {
+      select({ type: 'stair', id: stair.id });
+      gesture.current = { type: 'stair', stair, x: p.x, y: p.y, moved: false };
+      return;
+    }
+    const key = hitTestEdge(edges, p.x, p.y, hitTol);
+    if (key) {
+      select({ type: 'wall', id: key });
+      return;
+    }
+    const region = regionAtPoint(analysis, p.x, p.y);
+    if (region && spaces[region.index]) {
+      select({ type: 'space', id: spaces[region.index].id });
+      return;
+    }
+    gesture.current = { type: 'pan', sx: p.sx, sy: p.sy, view: viewRef.current, moved: false, background: true };
+  };
+
+  const onPointerUp = (e) => {
+    const g = gesture.current;
+    gesture.current = null;
+    if (svgRef.current?.hasPointerCapture?.(e.pointerId)) svgRef.current.releasePointerCapture(e.pointerId);
+    setPanning(false);
+    if (!g) return;
+    if (g.type === 'pan' && g.background && !g.moved) select(null);
+    if (g.type === 'stair' && g.moved && dragStair) {
+      useFlatStore.getState().updateStair(g.stair.id, { x: dragStair.x, y: dragStair.y });
+    }
+    setDragStair(null);
+    if (g.type === 'wall-drag') {
+      const d = draftRef.current;
+      if (d && (d.ex !== d.sx || d.ey !== d.sy)) {
+        finishWall(d);
+        setDraft(null);
+      } else if (d) {
+        setDraft({ ...d, mode: 'click' });
+      }
+    }
+  };
+
+  const onDoubleClick = (e) => {
+    if (tool !== 'select') return;
+    const p = toWorld(e);
+    const region = regionAtPoint(analysis, p.x, p.y);
+    const space = region && spaces[region.index];
+    if (space?.furnishable) openSpace(space.id);
+  };
+
+  const onPointerLeave = () => {
+    useFlatUi.getState().setCursor(null);
+    if (!gesture.current) setHover(null);
+  };
+
+  const k = view.k;
+  const px = 1 / k;
+  const toScreen = (x, y) => [x * k + view.tx, y * k + view.ty];
+
+  // ---------- layers ----------
+  const planLayer = useMemo(() => {
+    if (!flat) return null;
+    const selWall = selected?.type === 'wall' ? wallRunAt(edges, selected.id) : [];
+    const selSpaceId = selected?.type === 'space' ? selected.id : null;
+    return (
+      <>
+        {belowRuns.length > 0 && (
+          <g className={styles.belowWalls} pointerEvents="none">
+            {edgesToRuns(edgesOf(belowRuns)).map((r, i) => <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} />)}
+          </g>
+        )}
+        {openingStairs.map((s) => <StairGlyph key={`o-${s.id}`} stair={s} ghost />)}
+        {spaces.map((space) => (
+          <g key={space.id}>
+            {regionRects(space).map((r, i) => (
+              <rect
+                key={i}
+                x={r.x}
+                y={r.y}
+                width={r.widthCm}
+                height={r.depthCm}
+                fill={(SPACE_KINDS[space.kind] || SPACE_KINDS.room).color}
+                className={space.id === selSpaceId ? styles.roomSelected : styles.room}
+              />
+            ))}
+            {space.id === selSpaceId && regionRects(space).map((r, i) => (
+              <rect key={`t${i}`} x={r.x} y={r.y} width={r.widthCm} height={r.depthCm} className={styles.roomTint} pointerEvents="none" />
+            ))}
+            <FurnitureGlyphs space={space} room={rooms[space.roomId]} />
+          </g>
+        ))}
+        <g className={styles.wall}>
+          {stretches.map((s, i) =>
+            s.axis === 'h' ? (
+              <rect key={i} x={s.from - s.thick / 2} y={s.line - s.thick / 2} width={s.to - s.from + s.thick} height={s.thick} />
+            ) : (
+              <rect key={i} x={s.line - s.thick / 2} y={s.from - s.thick / 2} width={s.thick} height={s.to - s.from + s.thick} />
+            )
+          )}
+        </g>
+        {selWall.length > 0 && <g className={styles.wallSelected} pointerEvents="none">{runRects(selWall, INTERIOR_THICK_CM + 8)}</g>}
+        {openings.map((op) => (
+          <Opening key={op.id} op={op} thick={thicknessAt(op, analysis)} selected={selected?.type === 'opening' && selected.id === op.id} />
+        ))}
+      </>
+    );
+  }, [flat, selected, edges, analysis, belowRuns, openingStairs, spaces, rooms, stretches, openings]);
 
   if (!flat) return null;
 
-  const toPoint = (e) => {
-    const svg = svgRef.current;
-    const ctm = svg?.getScreenCTM();
-    if (!svg || !ctm) return null;
-    const pt = svg.createSVGPoint();
-    pt.x = e.clientX;
-    pt.y = e.clientY;
-    return pt.matrixTransform(ctm.inverse());
-  };
+  // Overlay content in world units
+  const overlay = [];
+  const labels = [];
+  const hv = hover;
+  if (hv?.type === 'wall') {
+    const thick = INTERIOR_THICK_CM;
+    const horizontal = hv.sy === hv.ey;
+    overlay.push(
+      <rect
+        key="draft"
+        className={styles.draftWall}
+        x={Math.min(hv.sx, hv.ex) - thick / 2}
+        y={Math.min(hv.sy, hv.ey) - thick / 2}
+        width={horizontal ? Math.abs(hv.ex - hv.sx) + thick : thick}
+        height={horizontal ? thick : Math.abs(hv.ey - hv.sy) + thick}
+      />
+    );
+    const len = Math.abs(hv.ex - hv.sx) + Math.abs(hv.ey - hv.sy);
+    if (len > 0) labels.push({ key: 'len', x: (hv.sx + hv.ex) / 2, y: (hv.sy + hv.ey) / 2, text: fmtM(len), pill: true, dy: -14 });
+  }
+  const guides = hv?.type === 'wall' || hv?.type === 'point' ? hv.guides : null;
+  if (guides) {
+    const end = hv.type === 'wall' ? { x: hv.ex, y: hv.ey } : { x: hv.x, y: hv.y };
+    overlay.push(<circle key="snap" cx={end.x} cy={end.y} r={(guides?.onVertex ? 7 : 4.5) * px} className={guides?.onVertex ? styles.snapVertex : styles.snapDot} />);
+    if (guides?.gx) overlay.push(<line key="gx" x1={guides.gx.x} y1={guides.gx.y} x2={end.x} y2={end.y} className={styles.guide} />);
+    if (guides?.gy) overlay.push(<line key="gy" x1={guides.gy.x} y1={guides.gy.y} x2={end.x} y2={end.y} className={styles.guide} />);
+  }
+  if (hv?.type === 'erase') {
+    overlay.push(<g key="erase" className={styles.eraseHint} pointerEvents="none">{runRects(hv.keys, INTERIOR_THICK_CM + 6)}</g>);
+    const rs = edgesToRuns(new Set(hv.keys))[0];
+    if (rs) labels.push({ key: 'erase', x: (rs.x1 + rs.x2) / 2, y: (rs.y1 + rs.y2) / 2, text: `Remove ${fmtM(Math.abs(rs.x2 - rs.x1) + Math.abs(rs.y2 - rs.y1))}`, pill: true, dy: -16 });
+  }
+  if (hv?.type === 'opening') {
+    overlay.push(<Opening key="ghost" op={hv.plan.op} thick={INTERIOR_THICK_CM} ghost invalid={!hv.plan.valid} />);
+    labels.push({ key: 'op', x: hv.plan.op.axis === 'h' ? hv.plan.op.start + hv.plan.op.widthCm / 2 : hv.plan.op.line, y: hv.plan.op.axis === 'h' ? hv.plan.op.line : hv.plan.op.start + hv.plan.op.widthCm / 2, text: hv.plan.valid ? `${tool === 'door' ? 'Door' : 'Window'} ${hv.plan.op.widthCm} cm` : hv.plan.reason, pill: true, dy: -22 });
+  }
+  if (hv?.type === 'remove-opening') {
+    overlay.push(<Opening key="rm" op={hv.op} thick={INTERIOR_THICK_CM} hot />);
+    labels.push({ key: 'rm', x: hv.op.axis === 'h' ? hv.op.start + hv.op.widthCm / 2 : hv.op.line, y: hv.op.axis === 'h' ? hv.op.line : hv.op.start + hv.op.widthCm / 2, text: `Remove this ${hv.op.type}`, pill: true, dy: -22 });
+  }
+  if (hv?.type === 'stair') {
+    overlay.push(<StairGlyph key="sg" stair={hv.stair} preview invalid={hv.warnings.length > 0} />);
+    for (const gd of hv.guides || []) {
+      overlay.push(gd.axis === 'h'
+        ? <line key={`g${gd.axis}${gd.at}`} x1={hv.stair.x - 80} x2={hv.stair.x + 400} y1={gd.at} y2={gd.at} className={styles.guide} />
+        : <line key={`g${gd.axis}${gd.at}`} y1={hv.stair.y - 80} y2={hv.stair.y + 400} x1={gd.at} x2={gd.at} className={styles.guide} />);
+    }
+    if (hv.warnings.length) labels.push({ key: 'sw', x: hv.stair.x + 20, y: hv.stair.y, text: hv.warnings[0], pill: true, dy: -14, warn: true });
+  }
 
-  // Generic drag: move a space/stair, or resize a space by its corner handle
-  const beginDrag = (e, kind, item) => {
-    e.stopPropagation();
-    if (e.button !== 0) return;
-    const start = toPoint(e);
-    if (!start) return;
-    select({ type: kind === 'stair' ? 'stair' : 'space', id: item.id });
-    const fp = kind === 'stair' ? stairFootprint(item) : { widthCm: item.widthCm, depthCm: item.depthCm };
-    let latest = null;
-    let moved = false;
+  const wallSel = selected?.type === 'wall' ? wallRunAt(edges, selected.id) : [];
+  if (wallSel.length > 0 && tool === 'select') {
+    const rs = edgesToRuns(new Set(wallSel))[0];
+    const { axis } = parseEdge(selected.id);
+    labels.push({ key: 'wsel', x: (rs.x1 + rs.x2) / 2, y: (rs.y1 + rs.y2) / 2, text: fmtM(Math.abs(rs.x2 - rs.x1) + Math.abs(rs.y2 - rs.y1)), pill: true, dy: axis === 'h' ? -18 : 0, dx: axis === 'v' ? 24 : 0 });
+  }
 
-    const onMove = (ev) => {
-      const p = toPoint(ev);
-      if (!p) return;
-      const dx = p.x - start.x;
-      const dy = p.y - start.y;
-      if (!moved && Math.hypot(dx, dy) < 4) return;
-      moved = true;
-      let rect;
-      if (kind === 'resize') {
-        rect = {
-          x: item.x,
-          y: item.y,
-          widthCm: clampSpaceSize(snapToGrid(item.widthCm + dx)),
-          depthCm: clampSpaceSize(snapToGrid(item.depthCm + dy)),
-        };
-      } else {
-        const neighbours = levelObstacles(flat, item.levelId, kind === 'stair' ? { stairId: item.id } : { spaceId: item.id });
-        const snapped = snapRect({ x: item.x + dx, y: item.y + dy, widthCm: fp.widthCm, depthCm: fp.depthCm }, neighbours);
-        rect = { ...snapped, widthCm: fp.widthCm, depthCm: fp.depthCm };
-      }
-      const ignore = kind === 'stair' ? { stairId: item.id } : { spaceId: item.id };
-      latest = { kind, id: item.id, rect, valid: canPlace(flat, item.levelId, rect, ignore) };
-      setDrag(latest);
-    };
+  const visibleStairs = stairs.map((st) => (dragStair && dragStair.id === st.id ? { ...st, x: dragStair.x, y: dragStair.y } : st));
+  const gridStep = k < 0.18 ? 500 : k < 0.45 ? 100 : 50;
+  const wx0 = -view.tx / k;
+  const wy0 = -view.ty / k;
+  const wx1 = (size.w - view.tx) / k;
+  const wy1 = (size.h - view.ty) / k;
+  const gridLines = [];
+  for (let x = Math.floor(wx0 / gridStep) * gridStep; x <= wx1; x += gridStep) gridLines.push(<line key={`x${x}`} x1={x} y1={wy0} x2={x} y2={wy1} className={x % 100 === 0 ? styles.gridMajor : styles.gridMinor} />);
+  for (let y = Math.floor(wy0 / gridStep) * gridStep; y <= wy1; y += gridStep) gridLines.push(<line key={`y${y}`} x1={wx0} y1={y} x2={wx1} y2={y} className={y % 100 === 0 ? styles.gridMajor : styles.gridMinor} />);
 
-    const onUp = async () => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      setDrag(null);
-      if (!moved || !latest) return;
-      if (!latest.valid) {
-        setNotice('That would overlap another room or staircase.');
-        return;
-      }
-      if (kind === 'resize') await resizeSpace(item.id, latest.rect.widthCm, latest.rect.depthCm);
-      else if (kind === 'stair') updateStair(item.id, { x: latest.rect.x, y: latest.rect.y });
-      else moveSpace(item.id, latest.rect.x, latest.rect.y);
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-  };
-
-  const rectFor = (space) => {
-    if (drag && drag.id === space.id && drag.kind !== 'stair') return { ...space, ...drag.rect };
-    return space;
-  };
-
-  const fontBase = Math.max(15, bounds.width / 62);
-  const handleR = Math.max(9, bounds.width / 100);
+  const cursorClass = panning || spaceDown ? styles.cursorGrab : { wall: styles.cursorCross, eraser: styles.cursorEraser, door: styles.cursorCross, window: styles.cursorCross, stairs: styles.cursorCross }[tool] || '';
 
   return (
-    <div className={styles.canvasWrap}>
+    <div ref={wrapRef} className={`${styles.canvasWrap} ${cursorClass}`}>
       <svg
         ref={svgRef}
         className={styles.svg}
-        viewBox={`${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}`}
-        preserveAspectRatio="xMidYMid meet"
-        onPointerDown={() => select(null)}
-        role="img"
-        aria-label={`Floor plan of ${flat.name}, ${flat.levels[idx]?.name}`}
+        tabIndex={0}
+        style={{ visibility: fitted ? 'visible' : 'hidden' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        onPointerLeave={onPointerLeave}
+        onDoubleClick={onDoubleClick}
+        onContextMenu={(e) => e.preventDefault()}
+        role="application"
+        aria-label={`Floor plan of ${flat.name}, ${flat.levels[idx]?.name}. Choose a tool on the left, then click the plan. Delete removes the selection.`}
       >
         <StairDefs />
-        <defs>
-          <pattern id="flat-grid" width="50" height="50" patternUnits="userSpaceOnUse">
-            <path d="M 50 0 L 0 0 0 50" fill="none" stroke="#D5C8B8" strokeWidth="0.6" />
-          </pattern>
-        </defs>
-        <rect x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height} fill="#F6F2EA" />
-        <rect x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height} fill="url(#flat-grid)" />
-
-        {/* Floor below, for alignment */}
-        {ghostSpaces.map((s) => (
-          <rect key={`g-${s.id}`} x={s.x} y={s.y} width={s.widthCm} height={s.depthCm} fill="none" stroke="#B8AE9E" strokeDasharray="10 8" strokeWidth="2" pointerEvents="none" />
-        ))}
-        {openings.map((s) => <StairGlyph key={`o-${s.id}`} stair={s} ghost />)}
-
-        {spaces.map((space) => {
-          const r = rectFor(space);
-          const room = rooms[space.roomId];
-          const isSel = selected?.type === 'space' && selected.id === space.id;
-          const bad = drag && drag.id === space.id && !drag.valid;
-          const kind = SPACE_KINDS[space.kind] || SPACE_KINDS.room;
-          return (
-            <g key={space.id}>
-              <g
-                onPointerDown={(e) => beginDrag(e, 'space', space)}
-                onDoubleClick={(e) => { e.stopPropagation(); openSpace(space.id); }}
-                style={{ cursor: 'grab' }}
-                role="button"
-                aria-label={`${space.name}, ${(r.widthCm / 100).toFixed(1)} by ${(r.depthCm / 100).toFixed(1)} metres. Double-click to open in the room designer.`}
-              >
-                <rect
-                  x={r.x}
-                  y={r.y}
-                  width={r.widthCm}
-                  height={r.depthCm}
-                  fill={bad ? '#F0CFCF' : kind.color}
-                  stroke={isSel ? '#22485E' : '#1A1615'}
-                  strokeWidth={isSel ? 7 : 5}
-                />
-                <FurnitureGlyphs space={r} room={room} />
-                <Openings space={r} room={room} />
-                <text x={r.x + r.widthCm / 2} y={r.y + r.depthCm / 2 - fontBase * 0.2} textAnchor="middle" fontSize={fontBase} fontWeight="600" fill="#1A1615" fontFamily="var(--font-serif, serif)" pointerEvents="none" stroke="#F6F2EA" strokeWidth={fontBase * 0.25} paintOrder="stroke">
-                  {space.name}
-                </text>
-                <text x={r.x + r.widthCm / 2} y={r.y + r.depthCm / 2 + fontBase * 0.9} textAnchor="middle" fontSize={fontBase * 0.72} fill="#5C544E" fontFamily="var(--font-mono, monospace)" pointerEvents="none" stroke="#F6F2EA" strokeWidth={fontBase * 0.2} paintOrder="stroke">
-                  {(r.widthCm / 100).toFixed(2)} × {(r.depthCm / 100).toFixed(2)} m
-                </text>
+        <g>{gridLines.length < 400 ? gridLines : null}</g>
+        <g transform={`translate(${view.tx} ${view.ty}) scale(${k})`}>
+          {planLayer}
+          {visibleStairs.map((stair) => (
+            <g key={stair.id} opacity={dragStair?.id === stair.id ? 0.8 : 1}>
+              <StairGlyph stair={stair} selected={selected?.type === 'stair' && selected.id === stair.id} />
+            </g>
+          ))}
+          {overlay}
+        </g>
+        <g pointerEvents="none">
+          {spaces.map((space) => {
+            const pt = regionLabelPoint(space);
+            const [sx, sy] = toScreen(pt.x, pt.y);
+            const wide = space.widthCm * k;
+            const small = wide < 70 || space.depthCm * k < 50;
+            if (wide < 36) return null;
+            return (
+              <g key={space.id} transform={`translate(${sx} ${sy})`}>
+                <text className={styles.roomName} textAnchor="middle" y={small ? 4 : -4}>{fitText(space.name, wide - 10, 7.6)}</text>
+                {!small && <text className={styles.roomMeta} textAnchor="middle" y={14}>{(space.areaCm2 / 10000).toFixed(1)} m²{space.furnishable ? '' : ' · not a rectangle'}</text>}
               </g>
-              {isSel && (
-                <circle
-                  cx={r.x + r.widthCm}
-                  cy={r.y + r.depthCm}
-                  r={handleR}
-                  fill="#22485E"
-                  stroke="#fff"
-                  strokeWidth="2"
-                  style={{ cursor: 'nwse-resize' }}
-                  onPointerDown={(e) => beginDrag(e, 'resize', space)}
-                  role="button"
-                  aria-label="Resize room"
-                />
-              )}
-            </g>
-          );
-        })}
-
-        {stairs.map((stair) => {
-          const isSel = selected?.type === 'stair' && selected.id === stair.id;
-          const shown = drag && drag.id === stair.id && drag.kind === 'stair' ? { ...stair, x: drag.rect.x, y: drag.rect.y } : stair;
-          return (
-            <g
-              key={stair.id}
-              onPointerDown={(e) => beginDrag(e, 'stair', stair)}
-              style={{ cursor: 'grab' }}
-              opacity={drag && drag.id === stair.id && !drag.valid ? 0.5 : 1}
-              role="button"
-              aria-label={`Staircase, ${stair.type}`}
-            >
-              <StairGlyph stair={shown} selected={isSel} />
-            </g>
-          );
-        })}
-
-        {flat.spaces.length === 0 && flat.stairs.length === 0 && (
-          <text x={bounds.width / 2 - 120} y={bounds.height / 2 - 120} textAnchor="middle" fontSize={fontBase * 1.2} fill="#5C544E" fontFamily="var(--font-serif, serif)">
-            Add rooms from the left to start your flat
-          </text>
-        )}
+            );
+          })}
+          {stairs.map((st) => {
+            const r = stairRect(st);
+            const [sx, sy] = toScreen(r.x + r.widthCm / 2, r.y);
+            return <text key={st.id} x={sx} y={sy - 8} textAnchor="middle" className={styles.roomMeta}>Up to {flat.levels[idx + 1]?.name || 'next floor'}</text>;
+          })}
+          {labels.map((l) => {
+            const [sx, sy] = toScreen(l.x, l.y);
+            const w = l.text.length * 7 + 16;
+            return (
+              <g key={l.key} transform={`translate(${sx + (l.dx || 0)} ${sy + (l.dy || 0)})`}>
+                <rect x={-w / 2} y={-12} width={w} height={22} rx="6" className={l.warn ? styles.pillWarn : styles.pill} />
+                <text textAnchor="middle" y={3} className={l.warn ? styles.pillTextWarn : styles.pillText}>{l.text}</text>
+              </g>
+            );
+          })}
+        </g>
       </svg>
       {notice && <div className={styles.notice} role="alert">{notice}</div>}
     </div>

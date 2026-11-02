@@ -181,6 +181,17 @@ describe('editing walls', () => {
     expect(addOpening(flat, rooms, levelId, door('v', 300, 380))).toBeNull(); // runs off the wall
   });
 
+  it('drops a door when a new wall is drawn through it', () => {
+    const { flat, rooms, levelId } = withWalls(rectEdges(0, 0, 600, 400));
+    const a = addOpening(flat, rooms, levelId, door('h', 400, 250));
+    expect(openingsOf(a.flat, levelId)).toHaveLength(1);
+    const through = addWall(a.flat, a.rooms, levelId, 300, 0, 300, 400);
+    expect(openingsOf(through.flat, levelId)).toHaveLength(0);
+    // a wall that only touches the end of the door leaves it alone
+    const b = addOpening(flat, rooms, levelId, door('h', 400, 310));
+    expect(openingsOf(addWall(b.flat, b.rooms, levelId, 300, 0, 300, 400).flat, levelId)).toHaveLength(1);
+  });
+
   it('carries identity across a wall that moves a little', () => {
     const { flat, rooms, levelId } = withWalls(rectEdges(0, 0, 400, 400));
     const named = setSpaceMeta(flat, rooms, flat.spaces[0].id, { name: 'Study', kind: 'bedroom' });

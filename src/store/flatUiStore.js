@@ -15,6 +15,7 @@ export const useFlatUi = create((set) => ({
   stairRotation: 0,
   fitNonce: 0, // bump to ask the plan to fit itself to the screen
   zoomPercent: 100,
+  zoomRequest: null, // { factor, n }: toolbar buttons ask the plan to zoom about its centre
   notice: null,
 
   setTool: (tool) => set({ tool: TOOLS.includes(tool) ? tool : 'select', notice: null }),
@@ -22,6 +23,7 @@ export const useFlatUi = create((set) => ({
   setStairType: (stairType) => set({ stairType }),
   rotateStair: () => set((s) => ({ stairRotation: (s.stairRotation + 90) % 360 })),
   requestFit: () => set((s) => ({ fitNonce: s.fitNonce + 1 })),
+  requestZoom: (factor) => set((s) => ({ zoomRequest: { factor, n: (s.zoomRequest?.n || 0) + 1 } })),
   setZoomPercent: (zoomPercent) => set({ zoomPercent }),
   setNotice: (notice) => set({ notice }),
 }));

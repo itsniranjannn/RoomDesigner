@@ -1,51 +1,54 @@
 import React, { useState } from 'react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
+import { TextField, SelectField, NumberField } from '../common/Field.jsx';
+import { PRESETS } from '../../engine/flatPresets.js';
 import { useFlatStore } from '../../store/flatStore.js';
-import styles from '../common/Modal.module.css';
+import { useFlatUi } from '../../store/flatUiStore.js';
+
+const OPTIONS = PRESETS.map((p) => ({ value: p.value, label: p.label }));
 
 export function NewFlatModal({ onClose }) {
   const createNewFlat = useFlatStore((s) => s.createNewFlat);
   const [name, setName] = useState('My Flat');
-  const [template, setTemplate] = useState('2bhk');
+  const [preset, setPreset] = useState('2bhk');
+  const [widthM, setWidthM] = useState(8);
+  const [depthM, setDepthM] = useState(6);
   const [busy, setBusy] = useState(false);
+  const note = PRESETS.find((p) => p.value === preset)?.note;
 
   const submit = async (e) => {
     e?.preventDefault();
+    if (busy) return;
     setBusy(true);
-    await createNewFlat(name.trim() || 'My Flat', template);
+    await createNewFlat(name.trim() || 'My Flat', preset, { widthCm: widthM * 100, depthCm: depthM * 100 });
+    useFlatUi.getState().setTool(preset === 'blank' ? 'wall' : 'select');
+    useFlatUi.getState().requestFit();
     onClose();
   };
 
   return (
     <Modal
       title="Design a flat"
-      subtitle="Lay out rooms, bathrooms, corridors and stairs, then furnish each one."
+      subtitle="Draw walls to make rooms, then add doors, windows and stairs."
       onClose={onClose}
       width={460}
       footer={
         <>
-          <Button variant="ghost" size="small" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" size="small" onClick={submit} disabled={busy}>Create flat</Button>
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="primary" onClick={submit} disabled={busy}>Create flat</Button>
         </>
       }
     >
-      <form onSubmit={submit} className={styles.field} style={{ gap: 14 }}>
-        <label className={styles.field}>
-          <span className={styles.label}>Name</span>
-          <input className={styles.input} value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
-        </label>
-        <fieldset style={{ border: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <legend className={styles.label} style={{ marginBottom: 6 }}>Start from</legend>
-          <label>
-            <input type="radio" name="flat-template" checked={template === '2bhk'} onChange={() => setTemplate('2bhk')} />{' '}
-            Two-bedroom flat <span className={styles.note}>(living, kitchen, hallway, 2 bedrooms, bathroom: all furnished)</span>
-          </label>
-          <label>
-            <input type="radio" name="flat-template" checked={template === 'empty'} onChange={() => setTemplate('empty')} />{' '}
-            Empty plan <span className={styles.note}>(add every room yourself)</span>
-          </label>
-        </fieldset>
+      <form onSubmit={submit} onKeyDown={(e) => e.key === 'Enter' && e.target.tagName === 'INPUT' && submit(e)} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <TextField label="Name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
+        <SelectField label="Start from" options={OPTIONS} value={preset} onChange={setPreset} hint={note} />
+        {preset === 'shell' && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <NumberField label="Width" suffix="m" value={widthM} min={2} max={24} step={0.5} onCommit={setWidthM} />
+            <NumberField label="Depth" suffix="m" value={depthM} min={2} max={24} step={0.5} onCommit={setDepthM} />
+          </div>
+        )}
       </form>
     </Modal>
   );

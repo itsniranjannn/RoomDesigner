@@ -3,10 +3,11 @@ import { Canvas } from '@react-three/fiber';
 import { OrbitControls, ContactShadows } from '@react-three/drei';
 import { Eye } from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
-import { Room3DWalls } from '../preview3d/Room3DWalls.jsx';
 import { Furniture3DBox } from '../preview3d/Furniture3DBox.jsx';
 import { Button } from '../common/Button.jsx';
-import { stairGeometry, stairFootprint, levelIndex } from '../../engine/flat.js';
+import { stairGeometry, stairFootprint, levelIndex, SPACE_KINDS } from '../../engine/flat.js';
+import { wallsOf, openingsOf, analyzeLevel } from '../../engine/flatPlan.js';
+import { edgesOf, wallBoxes, regionRects } from '../../engine/flatWalls.js';
 import styles from './FlatDesigner.module.css';
 
 /** Steps of one staircase as boxes, positioned in the flat's metre space. */
@@ -66,6 +67,63 @@ function Stairs3D({ stair, baseY }) {
   );
 }
 
+const WALL_COLOR = '#F2EDE4';
+
+/** Floors, walls (with door and window gaps) and furniture of one floor. */
+function LevelShell({ flat, level, rooms, baseY, fullHeight }) {
+  const runs = wallsOf(flat, level.id);
+  const openings = openingsOf(flat, level.id);
+  const boxes = useMemo(() => {
+    const analysis = analyzeLevel(flat, level.id);
+    return wallBoxes(edgesOf(runs), analysis.isExteriorEdge, openings, { fullHeight });
+  }, [flat, level.id, runs, openings, fullHeight]);
+  const spaces = flat.spaces.filter((s) => s.levelId === level.id);
+  return (
+    <group position={[0, baseY, 0]}>
+      {spaces.map((space) => {
+        const room = rooms[space.roomId];
+        const color = (SPACE_KINDS[space.kind] || SPACE_KINDS.room).color;
+        return (
+          <group key={space.id}>
+            {regionRects(space).map((r, i) => (
+              <mesh key={i} position={[(r.x + r.widthCm / 2) / 100, -0.03, (r.y + r.depthCm / 2) / 100]} receiveShadow>
+                <boxGeometry args={[r.widthCm / 100, 0.06, r.depthCm / 100]} />
+                <meshStandardMaterial color={color} roughness={0.9} />
+              </mesh>
+            ))}
+            {room && space.furnishable && (
+              <group position={[(space.x + space.widthCm / 2) / 100, 0, (space.y + space.depthCm / 2) / 100]}>
+                {(room.placedFurniture || []).map((item) => (
+                  <Furniture3DBox key={item.id} item={item} roomWidthCm={room.widthCm} roomDepthCm={room.depthCm} isSelected={false} isColliding={false} />
+                ))}
+              </group>
+            )}
+          </group>
+        );
+      })}
+      {boxes.map((b, i) => {
+        const len = (b.b - b.a) / 100;
+        const h = (b.z1 - b.z0) / 100;
+        const mid = (b.a + b.b) / 200;
+        const line = b.line / 100;
+        const y = (b.z0 + b.z1) / 200;
+        const pos = b.axis === 'h' ? [mid, y, line] : [line, y, mid];
+        const dims = b.axis === 'h' ? [len, h, b.thick / 100] : [b.thick / 100, h, len];
+        return (
+          <mesh key={i} position={pos} castShadow={!b.glass} receiveShadow>
+            <boxGeometry args={dims} />
+            {b.glass ? (
+              <meshStandardMaterial color="#BFD7E3" transparent opacity={0.35} roughness={0.1} />
+            ) : (
+              <meshStandardMaterial color={WALL_COLOR} roughness={0.85} />
+            )}
+          </mesh>
+        );
+      })}
+    </group>
+  );
+}
+
 export function Flat3DView() {
   const flat = useFlatStore((s) => s.flat);
   const rooms = useFlatStore((s) => s.rooms);
@@ -76,9 +134,11 @@ export function Flat3DView() {
     if (!flat) return null;
     let maxX = 600;
     let maxY = 600;
-    for (const s of flat.spaces) {
-      maxX = Math.max(maxX, s.x + s.widthCm);
-      maxY = Math.max(maxY, s.y + s.depthCm);
+    for (const lvl of flat.levels) {
+      for (const r of wallsOf(flat, lvl.id)) {
+        maxX = Math.max(maxX, r.x2);
+        maxY = Math.max(maxY, r.y2);
+      }
     }
     return { cx: maxX / 200, cz: maxY / 200, span: Math.max(maxX, maxY) / 100 };
   }, [flat]);
@@ -92,7 +152,7 @@ export function Flat3DView() {
       <Canvas
         key={levelId}
         shadows
-        camera={{ position: [layout.cx + layout.span * 1.1, layout.span * 2 + 4 + activeIdx * floorH, layout.cz + layout.span * 1.4], fov: 45 }}
+        camera={{ position: [layout.cx + layout.span * 0.7, layout.span * 0.95 + 3 + activeIdx * floorH, layout.cz + layout.span * 1.25], fov: 45 }}
       >
         <ambientLight intensity={1.1} color="#FAF7F0" />
         <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={0.7} />
@@ -116,27 +176,7 @@ export function Flat3DView() {
           const baseY = li * floorH;
           return (
             <group key={level.id}>
-              {flat.spaces.filter((s) => s.levelId === level.id).map((space) => {
-                const room = rooms[space.roomId];
-                if (!room) return null;
-                const px = (space.x + space.widthCm / 2) / 100;
-                const pz = (space.y + space.depthCm / 2) / 100;
-                return (
-                  <group key={space.id} position={[px, baseY, pz]}>
-                    <Room3DWalls room={room} isFullHeight={fullHeight || li < activeIdx} />
-                    {(room.placedFurniture || []).map((item) => (
-                      <Furniture3DBox
-                        key={item.id}
-                        item={item}
-                        roomWidthCm={room.widthCm}
-                        roomDepthCm={room.depthCm}
-                        isSelected={false}
-                        isColliding={false}
-                      />
-                    ))}
-                  </group>
-                );
-              })}
+              <LevelShell flat={flat} level={level} rooms={rooms} baseY={baseY} fullHeight={fullHeight || li < activeIdx} />
               {flat.stairs.filter((s) => s.levelId === level.id).map((stair) => (
                 <Stairs3D key={stair.id} stair={stair} baseY={baseY} />
               ))}
@@ -154,11 +194,11 @@ export function Flat3DView() {
         />
       </Canvas>
       <div className={styles.view3dControls}>
-        <Button variant="secondary" size="small" icon={<Eye size={12} />} onClick={() => setFullHeight((v) => !v)}>
-          {fullHeight ? 'Cutaway walls' : 'Full-height walls'}
+        <Button variant="secondary" icon={<Eye size={16} aria-hidden="true" />} onClick={() => setFullHeight((v) => !v)}>
+          {fullHeight ? 'Low walls' : 'Full-height walls'}
         </Button>
       </div>
-      <div className={styles.view3dHint}>Left-drag to orbit · right-drag to pan · scroll to zoom · floors above the selected one are hidden</div>
+      <div className={styles.view3dHint}>Drag to orbit, right-drag to pan, scroll to zoom. Floors above the one you are editing are hidden.</div>
     </div>
   );
 }

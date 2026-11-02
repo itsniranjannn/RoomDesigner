@@ -432,8 +432,20 @@ export function openingEdgeKeys(op) {
   return keys;
 }
 
+/** True when the opening sits fully on one wall piece (no gap, no wall joining it from the side). */
 export function openingFitsWalls(edges, op) {
-  return openingEdgeKeys(op).every((k) => edges.has(k));
+  if (!openingEdgeKeys(op).every((k) => edges.has(k))) return false;
+  const line = Math.round(op.line / CELL);
+  const first = Math.floor(op.start / CELL) + 1;
+  const last = Math.ceil((op.start + op.widthCm) / CELL) - 1;
+  for (let n = first; n <= last; n++) {
+    if (n * CELL <= op.start || n * CELL >= op.start + op.widthCm) continue;
+    const side = op.axis === 'h'
+      ? edges.has(edgeKey('v', n, line)) || edges.has(edgeKey('v', n, line - 1))
+      : edges.has(edgeKey('h', line, n)) || edges.has(edgeKey('h', line - 1, n));
+    if (side) return false;
+  }
+  return true;
 }
 
 /** Drops openings that no longer sit fully on a wall. */
@@ -576,4 +588,33 @@ export function wallVertices(edges) {
     ys.add(e.y2);
   }
   return { xs: [...xs], ys: [...ys] };
+}
+
+/** All run end points (grid vertices that start or end a straight wall), in cm. */
+export function runEndpoints(runs = []) {
+  const pts = [];
+  for (const r of runs) {
+    pts.push({ x: r.x1, y: r.y1 }, { x: r.x2, y: r.y2 });
+  }
+  return pts;
+}
+
+/** A point inside a region that suits its label, in cm (middle of its widest middle row). */
+export function regionLabelPoint(region) {
+  const rows = new Map();
+  for (const [j, i0, i1] of region.runs) {
+    if (!rows.has(j)) rows.set(j, []);
+    rows.get(j).push([i0, i1]);
+  }
+  const js = [...rows.keys()].sort((a, b) => a - b);
+  let seen = 0;
+  const half = region.cells / 2;
+  let midJ = js[0];
+  for (const j of js) {
+    seen += rows.get(j).reduce((n, [a, b]) => n + (b - a), 0);
+    midJ = j;
+    if (seen >= half) break;
+  }
+  const [i0, i1] = rows.get(midJ).sort((a, b) => b[1] - b[0] - (a[1] - a[0]))[0];
+  return { x: ((i0 + i1) / 2) * CELL, y: (midJ + 0.5) * CELL };
 }

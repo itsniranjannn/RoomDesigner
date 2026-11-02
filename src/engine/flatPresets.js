@@ -237,5 +237,6 @@ export function buildPresetFlat(preset = 'blank', { name, widthCm = 800, depthCm
     const only = state.flat.spaces[0];
     if (only) state = { ...state, ...setSpaceMeta(state.flat, state.rooms, only.id, { name: 'Open room', kind: 'room' }) };
   }
-  return { flat: state.flat, rooms: state.rooms };
+  // Preset rooms are all named, so the next drawn room starts at "Room 1"
+  return { flat: { ...state.flat, roomCounter: 0 }, rooms: state.rooms };
 }
