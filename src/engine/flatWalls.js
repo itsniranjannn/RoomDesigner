@@ -608,7 +608,8 @@ export function regionLabelPoint(region) {
   }
   const js = [...rows.keys()].sort((a, b) => a - b);
   let seen = 0;
-  const half = region.cells / 2;
+  const total = region.runs.reduce((n, [, a, b]) => n + (b - a), 0);
+  const half = total / 2;
   let midJ = js[0];
   for (const j of js) {
     seen += rows.get(j).reduce((n, [a, b]) => n + (b - a), 0);
@@ -617,4 +618,22 @@ export function regionLabelPoint(region) {
   }
   const [i0, i1] = rows.get(midJ).sort((a, b) => b[1] - b[0] - (a[1] - a[0]))[0];
   return { x: ((i0 + i1) / 2) * CELL, y: (midJ + 0.5) * CELL };
+}
+
+/**
+ * Which way a door leaf swings by default: +1 towards the right or lower side of the wall,
+ * -1 towards the left or upper side. Doors open into the smaller room, or into the flat from outside.
+ */
+export function defaultSwing(analysis, op) {
+  const mid = Math.floor((op.start + op.widthCm / 2) / CELL);
+  const line = Math.round(op.line / CELL);
+  const [a, b] = op.axis === 'h' ? [[mid, line - 1], [mid, line]] : [[line - 1, mid], [line, mid]];
+  const outA = analysis.isOutsideCell ? analysis.isOutsideCell(a[0], a[1]) : true;
+  const outB = analysis.isOutsideCell ? analysis.isOutsideCell(b[0], b[1]) : true;
+  if (outA !== outB) return outA ? 1 : -1;
+  const ia = analysis.labelAt(a[0], a[1]);
+  const ib = analysis.labelAt(b[0], b[1]);
+  const areaA = ia >= 0 ? analysis.regions[ia].areaCm2 : Infinity;
+  const areaB = ib >= 0 ? analysis.regions[ib].areaCm2 : Infinity;
+  return areaA < areaB ? -1 : 1;
 }

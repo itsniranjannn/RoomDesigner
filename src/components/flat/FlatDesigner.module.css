@@ -344,9 +344,7 @@
 }
 
 .roomSelected {
-  stroke: var(--color-indigo);
-  stroke-width: 3px;
-  vector-effect: non-scaling-stroke;
+  stroke: none;
 }
 
 .roomTint {
