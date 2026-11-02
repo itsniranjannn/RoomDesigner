@@ -3,13 +3,16 @@
  * Builds a coloured 3D model from a few photos of an object, entirely in the browser:
  *   1. segment the object from the (plain) background of each photo,
  *   2. carve a voxel grid with the silhouettes (visual hull, orthographic views),
- *   3. emit the exposed voxel faces, coloured from the photo that sees them best.
+ *   3. smooth the carved volume and extract a clean indexed surface (surface nets),
+ *      colouring every vertex from the photos that see it best.
  *
  * Views sit at fixed angles around the object: front (0), right (90), back (180),
  * left (270) and top. Each silhouette is cropped and stretched to the object's
  * bounding box, so real proportions come from the width/depth/height the user enters.
  *
- * Model space: x = width (centred), y = height (0 = floor), z = depth (centred), all in [-0.5, 1].
+ * Mesh space: x = width and z = depth (centred, [-0.5, 0.5]), y = height ([0, 1], 0 = floor).
+ * Meshes are `{ positions: Float32Array, colors: Uint8Array, indices?: Uint16Array | Uint32Array }`.
+ * Meshes without `indices` are the older block-based triangle soup and are upgraded on load.
  */
 
 export const VIEW_SLOTS = [
@@ -20,35 +23,135 @@ export const VIEW_SLOTS = [
   { id: 'top', label: 'Top', angle: null },
 ];
 
+export const MESH_RESOLUTION = 64;
 const NORMAL_SIZE = 128;
+const LEGACY_RESOLUTION = 40;
 
 // ---------- segmentation ----------
 
-function colorDistance(r1, g1, b1, r2, g2, b2) {
-  return Math.hypot(r1 - r2, g1 - g2, b1 - b2);
+function solve3(m, b) {
+  // Gauss-Jordan on a 3x3 system; returns null when singular
+  const a = m.map((row, i) => [...row, b[i]]);
+  for (let c = 0; c < 3; c++) {
+    let p = c;
+    for (let r = c + 1; r < 3; r++) if (Math.abs(a[r][c]) > Math.abs(a[p][c])) p = r;
+    if (Math.abs(a[p][c]) < 1e-9) return null;
+    [a[c], a[p]] = [a[p], a[c]];
+    for (let r = 0; r < 3; r++) {
+      if (r === c) continue;
+      const f = a[r][c] / a[c][c];
+      for (let k = c; k < 4; k++) a[r][k] -= f * a[c][k];
+    }
+  }
+  return [a[0][3] / a[0][0], a[1][3] / a[1][1], a[2][3] / a[2][2]];
 }
 
-function estimateBackground(rgba, width, height) {
-  const samples = [];
+/**
+ * Models the background as a plane (per colour channel) fitted to a band of pixels along the photo border,
+ * so soft vignettes and gentle gradients do not leak into the object. Samples that disagree (an object
+ * touching the border) are dropped and the plane refitted.
+ * @returns {{ at: (x: number, y: number) => number[], noise: number }}
+ */
+export function fitBackground(rgba, width, height) {
+  const band = Math.max(1, Math.round(Math.min(width, height) * 0.03));
+  const stepX = Math.max(1, Math.floor(width / 40));
+  const stepY = Math.max(1, Math.floor(height / 40));
+  let samples = [];
   const take = (x, y) => {
     const i = (y * width + x) * 4;
-    samples.push([rgba[i], rgba[i + 1], rgba[i + 2]]);
+    samples.push({ x: x / width, y: y / height, c: [rgba[i], rgba[i + 1], rgba[i + 2]] });
   };
-  const stepX = Math.max(1, Math.floor(width / 24));
-  const stepY = Math.max(1, Math.floor(height / 24));
   for (let x = 0; x < width; x += stepX) {
-    take(x, 0);
-    take(x, height - 1);
+    for (let d = 0; d < band; d++) { take(x, d); take(x, height - 1 - d); }
   }
   for (let y = 0; y < height; y += stepY) {
-    take(0, y);
-    take(width - 1, y);
+    for (let d = 0; d < band; d++) { take(d, y); take(width - 1 - d, y); }
   }
-  const median = (k) => {
-    const sorted = samples.map((s) => s[k]).sort((a, b) => a - b);
-    return sorted[Math.floor(sorted.length / 2)];
+
+  const fit = (list) => {
+    const m = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    const rhs = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    for (const s of list) {
+      const row = [1, s.x, s.y];
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) m[i][j] += row[i] * row[j];
+        for (let ch = 0; ch < 3; ch++) rhs[ch][i] += row[i] * s.c[ch];
+      }
+    }
+    const coef = rhs.map((r) => solve3(m, r));
+    return coef.some((c) => !c) ? null : coef;
   };
-  return [median(0), median(1), median(2)];
+  const predict = (coef, x, y) => coef.map((c) => c[0] + c[1] * x + c[2] * y);
+  const residual = (coef, s) => {
+    const p = predict(coef, s.x, s.y);
+    return Math.hypot(s.c[0] - p[0], s.c[1] - p[1], s.c[2] - p[2]);
+  };
+
+  // Start from the median border colour so an object touching the border cannot drag the fit away
+  const median = (ch) => samples.map((s) => s.c[ch]).sort((a, b) => a - b)[Math.floor(samples.length / 2)];
+  const base = [median(0), median(1), median(2)];
+  let kept = samples.filter((s) => Math.hypot(s.c[0] - base[0], s.c[1] - base[1], s.c[2] - base[2]) <= 45);
+  if (kept.length < 12) kept = samples;
+  let coef = fit(kept);
+  for (let pass = 0; pass < 2 && coef; pass++) {
+    const res = kept.map((s) => residual(coef, s)).sort((a, b) => a - b);
+    const cut = Math.max(18, 2.5 * res[Math.floor(res.length / 2)]);
+    const next = samples.filter((s) => residual(coef, s) <= cut);
+    if (next.length < 12) break;
+    kept = next;
+    coef = fit(kept) || coef;
+  }
+  samples = kept;
+  if (!coef) {
+    const mean = [0, 0, 0];
+    for (const s of samples) for (let ch = 0; ch < 3; ch++) mean[ch] += s.c[ch] / samples.length;
+    coef = mean.map((v) => [v, 0, 0]);
+  }
+  let sq = 0;
+  for (const s of samples) sq += residual(coef, s) ** 2;
+  const noise = Math.sqrt(sq / Math.max(1, samples.length));
+  return { at: (x, y) => predict(coef, x, y), noise };
+}
+
+function boxFilter(mask, width, height, radius, mode) {
+  // mode 'min' erodes, 'max' dilates (square window, separable)
+  const pass = (src, horizontal) => {
+    const out = new Uint8Array(src.length);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        let v = mode === 'min' ? 1 : 0;
+        for (let d = -radius; d <= radius && (mode === 'min' ? v === 1 : v === 0); d++) {
+          const sx = horizontal ? x + d : x;
+          const sy = horizontal ? y : y + d;
+          const inside = sx >= 0 && sy >= 0 && sx < width && sy < height;
+          const s = inside ? src[sy * width + sx] : mode === 'min' ? 1 : 0;
+          if (mode === 'min' && !s) v = 0;
+          if (mode === 'max' && s) v = 1;
+        }
+        out[y * width + x] = v;
+      }
+    }
+    return out;
+  };
+  return pass(pass(mask, true), false);
+}
+
+function majority(mask, width, height) {
+  const out = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      let n = 0;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const sx = Math.min(width - 1, Math.max(0, x + dx));
+          const sy = Math.min(height - 1, Math.max(0, y + dy));
+          n += mask[sy * width + sx];
+        }
+      }
+      out[y * width + x] = n >= 5 ? 1 : 0;
+    }
+  }
+  return out;
 }
 
 function keepLargestComponent(mask, width, height) {
@@ -83,8 +186,12 @@ function keepLargestComponent(mask, width, height) {
   return out;
 }
 
+/**
+ * Fills small holes inside the object (highlights, patterns close to the backdrop colour) but keeps large
+ * openings, such as the gap between a chair's legs or a window in a frame, so they stay open in 3D.
+ */
 function fillHoles(mask, width, height) {
-  // Flood the background from the border; anything not reached is inside the object
+  // Flood the background from the border; anything not reached is a hole inside the object
   const outside = new Uint8Array(mask.length);
   const stack = [];
   const push = (p) => {
@@ -104,26 +211,71 @@ function fillHoles(mask, width, height) {
     if (y > 0) push(p - width);
     if (y < height - 1) push(p + width);
   }
-  const out = new Uint8Array(mask.length);
-  for (let i = 0; i < mask.length; i++) out[i] = outside[i] ? 0 : 1;
+  let objectArea = 0;
+  for (let i = 0; i < mask.length; i++) objectArea += mask[i];
+  const limit = Math.max(24, Math.min(objectArea * 0.02, width * height * 0.01));
+
+  const out = Uint8Array.from(mask);
+  const visited = new Uint8Array(mask.length);
+  for (let start = 0; start < mask.length; start++) {
+    if (mask[start] || outside[start] || visited[start]) continue;
+    const cells = [start];
+    visited[start] = 1;
+    for (let k = 0; k < cells.length; k++) {
+      const p = cells[k];
+      const x = p % width;
+      const y = (p - x) / width;
+      const visit = (q) => {
+        if (!mask[q] && !outside[q] && !visited[q]) { visited[q] = 1; cells.push(q); }
+      };
+      if (x > 0) visit(p - 1);
+      if (x < width - 1) visit(p + 1);
+      if (y > 0) visit(p - width);
+      if (y < height - 1) visit(p + width);
+    }
+    if (cells.length <= limit) for (const p of cells) out[p] = 1;
+  }
   return out;
 }
 
 /**
- * Separates the object from a plain background.
+ * Separates the object from a plain (possibly unevenly lit) background.
+ * A pixel is object when it differs from the locally fitted background by more than the tolerance
+ * and is not just a soft, same-coloured shadow of it. The raw cut is then cleaned up: thin fringes
+ * and specks are opened away, the largest blob is kept, holes are filled and edges smoothed.
  * @param {Uint8ClampedArray|Uint8Array} rgba
  * @param {number} tolerance - colour distance (0-441) treated as background, default 60
  * @returns {Uint8Array} mask (1 = object)
  */
 export function segmentObject(rgba, width, height, tolerance = 60) {
-  const [br, bg, bb] = estimateBackground(rgba, width, height);
+  const bg = fitBackground(rgba, width, height);
+  const threshold = Math.max(tolerance, bg.noise * 3.2);
   const raw = new Uint8Array(width * height);
-  for (let p = 0; p < raw.length; p++) {
-    const i = p * 4;
-    const transparent = rgba[i + 3] < 40;
-    raw[p] = !transparent && colorDistance(rgba[i], rgba[i + 1], rgba[i + 2], br, bg, bb) > tolerance ? 1 : 0;
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const p = y * width + x;
+      const i = p * 4;
+      if (rgba[i + 3] < 40) continue;
+      const [br, bgc, bb] = bg.at(x / width, y / height);
+      const r = rgba[i];
+      const g = rgba[i + 1];
+      const b = rgba[i + 2];
+      const dist = Math.hypot(r - br, g - bgc, b - bb);
+      if (dist <= threshold) continue;
+      // Soft shadows keep the background's colour and only darken it a little
+      const bb2 = br * br + bgc * bgc + bb * bb;
+      if (bb2 > 1) {
+        const k = (r * br + g * bgc + b * bb) / bb2;
+        const off = Math.hypot(r - k * br, g - k * bgc, b - k * bb);
+        if (k >= 0.72 && k <= 1.08 && off < threshold * 0.45 && dist < threshold * 1.8) continue;
+      }
+      raw[p] = 1;
+    }
   }
-  return fillHoles(keepLargestComponent(raw, width, height), width, height);
+  const radius = Math.max(1, Math.round(Math.min(width, height) / 400));
+  const opened = boxFilter(boxFilter(raw, width, height, radius, 'min'), width, height, radius, 'max');
+  const mask = fillHoles(keepLargestComponent(opened, width, height), width, height);
+  return majority(mask, width, height);
 }
 
 export function maskCoverage(mask) {
@@ -132,11 +284,8 @@ export function maskCoverage(mask) {
   return n / mask.length;
 }
 
-/**
- * Crops a view to the object's bounding box and resamples it to a square grid.
- * @returns {{ mask: Uint8Array, rgb: Uint8Array, size: number } | null}
- */
-export function normalizeView(rgba, mask, width, height, size = NORMAL_SIZE) {
+/** Bounding box of the object in a mask, or null when it is empty. */
+export function maskBounds(mask, width, height) {
   let minX = width, minY = height, maxX = -1, maxY = -1;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -148,9 +297,133 @@ export function normalizeView(rgba, mask, width, height, size = NORMAL_SIZE) {
       }
     }
   }
-  if (maxX < 0) return null;
-  const bw = maxX - minX + 1;
-  const bh = maxY - minY + 1;
+  return maxX < 0 ? null : { minX, minY, maxX, maxY, width: maxX - minX + 1, height: maxY - minY + 1 };
+}
+
+const PROPORTION_LIMIT = 1.45;
+
+const SLOT_PROPORTION = {
+  front: { across: 'widthCm', up: 'heightCm', wide: 'wide', tall: 'tall' },
+  back: { across: 'widthCm', up: 'heightCm', wide: 'wide', tall: 'tall' },
+  right: { across: 'depthCm', up: 'heightCm', wide: 'deep', tall: 'tall' },
+  left: { across: 'depthCm', up: 'heightCm', wide: 'deep', tall: 'tall' },
+  top: { across: 'widthCm', up: 'depthCm', wide: 'wide', tall: 'deep' },
+};
+
+/**
+ * Warns when a cut-out is much wider or taller than the entered size allows, which usually means a
+ * wrong size, a tilted camera or a photo cropped too tightly.
+ * @param {Record<string, {mask: Uint8Array, width: number, height: number}>} cutouts by slot id
+ * @param {{widthCm: number, depthCm: number, heightCm: number}} dims
+ * @returns {string[]}
+ */
+export function proportionWarnings(cutouts, dims) {
+  const out = [];
+  for (const slot of VIEW_SLOTS) {
+    const cut = cutouts[slot.id];
+    if (!cut) continue;
+    const box = maskBounds(cut.mask, cut.width, cut.height);
+    if (!box) continue;
+    const rule = SLOT_PROPORTION[slot.id];
+    const ratio = box.width / box.height / (dims[rule.across] / dims[rule.up]);
+    if (ratio > PROPORTION_LIMIT || ratio < 1 / PROPORTION_LIMIT) {
+      const times = (ratio > 1 ? ratio : 1 / ratio).toFixed(1);
+      const [more, less] = ratio > 1 ? [rule.wide, rule.tall] : [rule.tall, rule.wide];
+      out.push(`The ${slot.label.toLowerCase()} photo shows the piece ${times} times more ${more} than ${less} compared with the size you entered.`);
+    }
+  }
+  return out;
+}
+
+/**
+ * Colours of pixels on the cut-out edge blend with the background; replace them with the average of
+ * nearby interior pixels so the model does not pick up a pale or dark rim.
+ */
+function bleedEdgeColors(mask, rgb, size) {
+  const interior = new Uint8Array(mask.length);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const p = y * size + x;
+      if (!mask[p]) continue;
+      let edge = false;
+      for (let dy = -2; dy <= 2 && !edge; dy++) {
+        for (let dx = -2; dx <= 2; dx++) {
+          const sx = x + dx;
+          const sy = y + dy;
+          if (sx < 0 || sy < 0 || sx >= size || sy >= size || !mask[sy * size + sx]) { edge = true; break; }
+        }
+      }
+      interior[p] = edge ? 0 : 1;
+    }
+  }
+  const out = Uint8Array.from(rgb);
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const p = y * size + x;
+      if (!mask[p] || interior[p]) continue;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let dy = -4; dy <= 4; dy++) {
+        for (let dx = -4; dx <= 4; dx++) {
+          const sx = x + dx;
+          const sy = y + dy;
+          if (sx < 0 || sy < 0 || sx >= size || sy >= size) continue;
+          const q = sy * size + sx;
+          if (!interior[q]) continue;
+          r += rgb[q * 3]; g += rgb[q * 3 + 1]; b += rgb[q * 3 + 2]; n++;
+        }
+      }
+      if (n) {
+        out[p * 3] = r / n;
+        out[p * 3 + 1] = g / n;
+        out[p * 3 + 2] = b / n;
+      }
+    }
+  }
+  return out;
+}
+
+/**
+ * Fills pixels outside the cut-out with the colour of the nearest object pixel, so colour lookups that land
+ * slightly off the silhouette (thin legs, rims) still return the piece's colour instead of the backdrop.
+ */
+function extendColors(mask, rgb, size) {
+  const out = Uint8Array.from(rgb);
+  const seen = Uint8Array.from(mask);
+  let frontier = [];
+  for (let p = 0; p < mask.length; p++) if (mask[p]) frontier.push(p);
+  while (frontier.length) {
+    const next = [];
+    for (const p of frontier) {
+      const x = p % size;
+      const y = (p - x) / size;
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const sx = x + dx;
+        const sy = y + dy;
+        if (sx < 0 || sy < 0 || sx >= size || sy >= size) continue;
+        const q = sy * size + sx;
+        if (seen[q]) continue;
+        seen[q] = 1;
+        out[q * 3] = out[p * 3];
+        out[q * 3 + 1] = out[p * 3 + 1];
+        out[q * 3 + 2] = out[p * 3 + 2];
+        next.push(q);
+      }
+    }
+    frontier = next;
+  }
+  return out;
+}
+
+/**
+ * Crops a view to the object's bounding box and resamples it to a square grid.
+ * @returns {{ mask: Uint8Array, rgb: Uint8Array, size: number } | null}
+ */
+export function normalizeView(rgba, mask, width, height, size = NORMAL_SIZE) {
+  const box = maskBounds(mask, width, height);
+  if (!box) return null;
+  const { minX, minY, maxX, maxY } = box;
+  const bw = box.width;
+  const bh = box.height;
   const outMask = new Uint8Array(size * size);
   const outRgb = new Uint8Array(size * size * 3);
   for (let v = 0; v < size; v++) {
@@ -165,7 +438,7 @@ export function normalizeView(rgba, mask, width, height, size = NORMAL_SIZE) {
       outRgb[op * 3 + 2] = rgba[sp * 4 + 2];
     }
   }
-  return { mask: outMask, rgb: outRgb, size };
+  return { mask: outMask, rgb: extendColors(outMask, bleedEdgeColors(outMask, outRgb, size), size), size };
 }
 
 // ---------- carving ----------
@@ -184,12 +457,31 @@ function sample(view, u, v) {
   return py * s + px;
 }
 
+function sampleRgb(view, u, v) {
+  const s = view.size;
+  const fx = Math.min(s - 1, Math.max(0, u * s - 0.5));
+  const fy = Math.min(s - 1, Math.max(0, v * s - 0.5));
+  const x0 = Math.floor(fx);
+  const y0 = Math.floor(fy);
+  const x1 = Math.min(s - 1, x0 + 1);
+  const y1 = Math.min(s - 1, y0 + 1);
+  const tx = fx - x0;
+  const ty = fy - y0;
+  const out = [0, 0, 0];
+  for (let ch = 0; ch < 3; ch++) {
+    const a = view.rgb[(y0 * s + x0) * 3 + ch] * (1 - tx) + view.rgb[(y0 * s + x1) * 3 + ch] * tx;
+    const b = view.rgb[(y1 * s + x0) * 3 + ch] * (1 - tx) + view.rgb[(y1 * s + x1) * 3 + ch] * tx;
+    out[ch] = a * (1 - ty) + b * ty;
+  }
+  return out;
+}
+
 /**
  * @param {Array<{slot: string, angle: number|null, mask: Uint8Array, rgb: Uint8Array, size: number}>} views
  * @param {number} resolution voxels per axis
  * @returns {{ occupancy: Uint8Array, resolution: number }}
  */
-export function carveVoxels(views, resolution = 40) {
+export function carveVoxels(views, resolution = MESH_RESOLUTION) {
   const R = resolution;
   const occupancy = new Uint8Array(R * R * R).fill(1);
   for (let k = 0; k < R; k++) {
@@ -212,34 +504,152 @@ export function carveVoxels(views, resolution = 40) {
   return { occupancy, resolution: R };
 }
 
-const FACES = [
-  { n: [1, 0, 0], corners: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] },
-  { n: [-1, 0, 0], corners: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] },
-  { n: [0, 1, 0], corners: [[0, 1, 0], [0, 1, 1], [1, 1, 1], [1, 1, 0]] },
-  { n: [0, -1, 0], corners: [[0, 0, 1], [0, 0, 0], [1, 0, 0], [1, 0, 1]] },
-  { n: [0, 0, 1], corners: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]] },
-  { n: [0, 0, -1], corners: [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0]] },
-];
+// ---------- surface extraction ----------
 
-function faceColor(views, n, x, y, z, fallback) {
-  let best = null;
-  let bestScore = 0.2;
-  for (const view of views) {
-    let score;
-    if (view.slot === 'top') score = n[1];
-    else {
-      const rad = (view.angle * Math.PI) / 180;
-      score = n[0] * Math.sin(rad) + n[2] * Math.cos(rad);
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      best = view;
+const CUBE_EDGES = (() => {
+  const edges = [];
+  for (let i = 0; i < 8; i++) {
+    for (let j = 1; j <= 4; j <<= 1) {
+      const p = i ^ j;
+      if (i <= p) edges.push(i, p);
     }
   }
+  return edges;
+})();
+
+const EDGE_TABLE = (() => {
+  const table = new Int32Array(256);
+  for (let mask = 0; mask < 256; mask++) {
+    let bits = 0;
+    for (let e = 0; e < 12; e++) {
+      const a = Boolean(mask & (1 << CUBE_EDGES[2 * e]));
+      const b = Boolean(mask & (1 << CUBE_EDGES[2 * e + 1]));
+      if (a !== b) bits |= 1 << e;
+    }
+    table[mask] = bits;
+  }
+  return table;
+})();
+
+/** Occupancy as a smooth 0-1 density on a grid padded by one empty voxel on every side. */
+function blurredDensity(occupancy, R) {
+  const N = R + 2;
+  let a = new Float32Array(N * N * N);
+  for (let k = 0; k < R; k++) {
+    for (let j = 0; j < R; j++) {
+      for (let i = 0; i < R; i++) a[((k + 1) * N + (j + 1)) * N + (i + 1)] = occupancy[(k * R + j) * R + i];
+    }
+  }
+  const strides = [1, N, N * N];
+  for (let pass = 0; pass < 2; pass++) {
+    for (const stride of strides) {
+      const b = new Float32Array(a.length);
+      for (let p = 0; p < a.length; p++) {
+        const lo = a[p - stride] ?? 0;
+        const hi = a[p + stride] ?? 0;
+        // Out-of-row neighbours wrap onto other rows; the empty padding ring makes that harmless
+        b[p] = 0.25 * lo + 0.5 * a[p] + 0.25 * hi;
+      }
+      a = b;
+    }
+  }
+  return { density: a, N };
+}
+
+/**
+ * Surface nets on a density grid (inside > 0.5). Returns vertices in grid units and triangle indices
+ * with counter-clockwise winding seen from outside.
+ */
+function surfaceNets(density, N) {
+  const cells = N - 1;
+  const cellStride = [1, cells, cells * cells];
+  const cellVertex = new Int32Array(cells * cells * cells).fill(-1);
+  const verts = [];
+  const tris = [];
+  const corner = new Float32Array(8);
+  const xyz = [0, 0, 0];
+  const acc = [0, 0, 0];
+  for (let z = 0; z < cells; z++) {
+    for (let y = 0; y < cells; y++) {
+      for (let x = 0; x < cells; x++) {
+        const base = x + y * N + z * N * N;
+        let mask = 0;
+        for (let g = 0; g < 8; g++) {
+          const v = 0.5 - density[base + (g & 1 ? 1 : 0) + (g & 2 ? N : 0) + (g & 4 ? N * N : 0)];
+          corner[g] = v;
+          if (v < 0) mask |= 1 << g;
+        }
+        if (mask === 0 || mask === 255) continue;
+        const edgeMask = EDGE_TABLE[mask];
+        let count = 0;
+        acc[0] = acc[1] = acc[2] = 0;
+        for (let e = 0; e < 12; e++) {
+          if (!(edgeMask & (1 << e))) continue;
+          count++;
+          const e0 = CUBE_EDGES[2 * e];
+          const e1 = CUBE_EDGES[2 * e + 1];
+          const g0 = corner[e0];
+          const g1 = corner[e1];
+          const diff = g0 - g1;
+          const t = Math.abs(diff) > 1e-6 ? g0 / diff : 0.5;
+          for (let j = 0; j < 3; j++) {
+            const a = e0 & (1 << j);
+            const b = e1 & (1 << j);
+            if (a !== b) acc[j] += a ? 1 - t : t;
+            else acc[j] += a ? 1 : 0;
+          }
+        }
+        xyz[0] = x; xyz[1] = y; xyz[2] = z;
+        const s = 1 / count;
+        const cellIndex = x + y * cells + z * cells * cells;
+        cellVertex[cellIndex] = verts.length / 3;
+        verts.push(x + s * acc[0], y + s * acc[1], z + s * acc[2]);
+
+        for (let i = 0; i < 3; i++) {
+          if (!(edgeMask & (1 << i))) continue;
+          const iu = (i + 1) % 3;
+          const iv = (i + 2) % 3;
+          if (xyz[iu] === 0 || xyz[iv] === 0) continue;
+          const du = cellStride[iu];
+          const dv = cellStride[iv];
+          const a = cellVertex[cellIndex];
+          const b = cellVertex[cellIndex - du];
+          const c = cellVertex[cellIndex - du - dv];
+          const d = cellVertex[cellIndex - dv];
+          if (mask & 1) tris.push(a, b, c, a, c, d);
+          else tris.push(a, d, c, a, c, b);
+        }
+      }
+    }
+  }
+  return { verts, tris };
+}
+
+function viewDirection(view) {
+  if (view.slot === 'top') return [0, 1, 0];
+  const rad = (view.angle * Math.PI) / 180;
+  return [Math.sin(rad), 0, Math.cos(rad)];
+}
+
+/** Colour for a surface point, blended from the photos that face it (mirroring the best one if none does). */
+function blendViewColor(views, n, x, y, z, fallback) {
+  let r = 0, g = 0, b = 0, total = 0;
+  let best = null;
+  let bestScore = -Infinity;
+  for (const view of views) {
+    const d = viewDirection(view);
+    const score = n[0] * d[0] + n[1] * d[1] + n[2] * d[2];
+    if (score > bestScore) { bestScore = score; best = view; }
+    if (score <= 0.05) continue;
+    const { u, v } = projectToView(view, x, y, z);
+    const c = sampleRgb(view, u, v);
+    const w = score ** 3;
+    r += c[0] * w; g += c[1] * w; b += c[2] * w; total += w;
+  }
+  if (total > 0) return [r / total, g / total, b / total];
   if (!best) return fallback;
   const { u, v } = projectToView(best, x, y, z);
-  const p = sample(best, u, v) * 3;
-  return [best.rgb[p], best.rgb[p + 1], best.rgb[p + 2]];
+  return sampleRgb(best, u, v);
 }
 
 function averageColor(views) {
@@ -255,99 +665,390 @@ function averageColor(views) {
 }
 
 /**
- * Converts occupied voxels to a triangle soup with per-vertex colours.
- * @returns {{ positions: Float32Array, colors: Uint8Array, voxelCount: number, triangleCount: number }}
+ * Smooths a voxel volume and extracts an indexed triangle mesh from it.
+ * @param {Uint8Array} occupancy R*R*R, 1 = solid
+ * @param {(x: number, y: number, z: number, n: number[]) => number[]} colorAt colour for a point in unit space with its outward normal
  */
-export function buildMesh(occupancy, resolution, views) {
-  const R = resolution;
-  const filled = (i, j, k) => i >= 0 && j >= 0 && k >= 0 && i < R && j < R && k < R && occupancy[(k * R + j) * R + i] === 1;
-  const fallback = averageColor(views);
-  const positions = [];
-  const colors = [];
-  let voxelCount = 0;
+export function buildSmoothMesh(occupancy, R, colorAt) {
+  const { density, N } = blurredDensity(occupancy, R);
+  const { verts, tris } = surfaceNets(density, N);
+  const vertexCount = verts.length / 3;
+  if (vertexCount === 0) return null;
 
-  for (let k = 0; k < R; k++) {
-    for (let j = 0; j < R; j++) {
-      for (let i = 0; i < R; i++) {
-        if (!filled(i, j, k)) continue;
-        voxelCount++;
-        for (const face of FACES) {
-          if (filled(i + face.n[0], j + face.n[1], k + face.n[2])) continue;
-          const cx = (i + 0.5 + face.n[0] * 0.5) / R;
-          const cy = (j + 0.5 + face.n[1] * 0.5) / R;
-          const cz = (k + 0.5 + face.n[2] * 0.5) / R;
-          // Sample just inside the voxel so the sample point stays within the silhouette
-          const col = faceColor(views, face.n, cx - face.n[0] * 0.5 / R, cy - face.n[1] * 0.5 / R, cz - face.n[2] * 0.5 / R, fallback);
-          const quad = face.corners.map((c) => [(i + c[0]) / R - 0.5, (j + c[1]) / R, (k + c[2]) / R - 0.5]);
-          for (const t of [0, 1, 2, 0, 2, 3]) {
-            positions.push(quad[t][0], quad[t][1], quad[t][2]);
-            colors.push(col[0], col[1], col[2]);
-          }
-        }
-      }
+  // Grid units -> unit cube, where voxel i is centred at (i + 0.5) / R
+  const unit = new Float32Array(verts.length);
+  for (let i = 0; i < verts.length; i++) unit[i] = (verts[i] - 0.5) / R;
+
+  // Outward vertex normals from the (area-weighted) triangle normals
+  const normals = new Float32Array(unit.length);
+  for (let t = 0; t < tris.length; t += 3) {
+    const ia = tris[t] * 3, ib = tris[t + 1] * 3, ic = tris[t + 2] * 3;
+    const ux = unit[ib] - unit[ia], uy = unit[ib + 1] - unit[ia + 1], uz = unit[ib + 2] - unit[ia + 2];
+    const vx = unit[ic] - unit[ia], vy = unit[ic + 1] - unit[ia + 1], vz = unit[ic + 2] - unit[ia + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    for (const i of [ia, ib, ic]) { normals[i] += nx; normals[i + 1] += ny; normals[i + 2] += nz; }
+  }
+
+  const colors = new Uint8Array(unit.length);
+  const inset = 0.8 / R;
+  for (let v = 0; v < vertexCount; v++) {
+    const i = v * 3;
+    const len = Math.hypot(normals[i], normals[i + 1], normals[i + 2]) || 1;
+    const n = [normals[i] / len, normals[i + 1] / len, normals[i + 2] / len];
+    // Look just inside the surface so the sample point stays within each silhouette
+    const c = colorAt(unit[i] - n[0] * inset, unit[i + 1] - n[1] * inset, unit[i + 2] - n[2] * inset, n);
+    colors[i] = Math.round(Math.min(255, Math.max(0, c[0])));
+    colors[i + 1] = Math.round(Math.min(255, Math.max(0, c[1])));
+    colors[i + 2] = Math.round(Math.min(255, Math.max(0, c[2])));
+  }
+
+  // Stretch to the exact model bounds: x, z in [-0.5, 0.5] and y in [0, 1] with the base on the floor
+  const min = [Infinity, Infinity, Infinity];
+  const max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < unit.length; i += 3) {
+    for (let a = 0; a < 3; a++) {
+      if (unit[i + a] < min[a]) min[a] = unit[i + a];
+      if (unit[i + a] > max[a]) max[a] = unit[i + a];
     }
   }
-  return {
-    positions: new Float32Array(positions),
-    colors: new Uint8Array(colors),
-    voxelCount,
-    triangleCount: positions.length / 9,
-  };
+  const positions = new Float32Array(unit.length);
+  for (let i = 0; i < unit.length; i += 3) {
+    for (let a = 0; a < 3; a++) {
+      const span = max[a] - min[a] || 1;
+      const t = (unit[i + a] - min[a]) / span;
+      positions[i + a] = a === 1 ? t : t - 0.5;
+    }
+  }
+
+  const indices = vertexCount > 65535 ? Uint32Array.from(tris) : Uint16Array.from(tris);
+  let voxelCount = 0;
+  for (let i = 0; i < occupancy.length; i++) voxelCount += occupancy[i];
+  return { positions, colors, indices, voxelCount, vertexCount, triangleCount: tris.length / 3 };
 }
 
 /**
  * Full pipeline from prepared views.
  * @param {Array} views - normalized views tagged with slot + angle
  */
-export function buildModelFromViews(views, resolution = 40) {
+export function buildModelFromViews(views, resolution = MESH_RESOLUTION) {
   if (views.length < 2) throw new Error('Add at least two photos (for example front and side).');
   const { occupancy, resolution: R } = carveVoxels(views, resolution);
-  const mesh = buildMesh(occupancy, R, views);
-  if (mesh.voxelCount < 20) {
+  let solid = 0;
+  for (let i = 0; i < occupancy.length; i++) solid += occupancy[i];
+  if (solid < 20) {
     throw new Error('The photos do not agree on a shape. Use a plain background and the same object in every photo.');
   }
+  const fallback = averageColor(views);
+  const mesh = buildSmoothMesh(occupancy, R, (x, y, z, n) => blendViewColor(views, n, x, y, z, fallback));
+  if (!mesh) throw new Error('The photos do not agree on a shape. Use a plain background and the same object in every photo.');
   return mesh;
 }
 
+// ---------- older block-based meshes ----------
+
+const upgraded = new WeakMap();
+
 /**
- * Rasterizes the model from above (for the 2D plan symbol).
+ * Meshes saved by earlier versions are a soup of cube faces (no indices). Rebuilds the volume from the
+ * faces and returns a smooth indexed mesh; returns the mesh itself when it is already indexed, or null
+ * when the soup is not a 40-voxel block mesh (the caller then draws it as stored).
+ */
+export function upgradeLegacyMesh(mesh) {
+  if (!mesh || mesh.indices) return mesh || null;
+  if (upgraded.has(mesh)) return upgraded.get(mesh);
+  const result = rebuildFromBlocks(mesh);
+  upgraded.set(mesh, result);
+  return result;
+}
+
+function rebuildFromBlocks(mesh) {
+  const R = LEGACY_RESOLUTION;
+  const { positions, colors } = mesh;
+  if (!positions || positions.length === 0 || positions.length % 18 !== 0) return null;
+  const surface = new Uint8Array(R * R * R);
+  const faceColor = new Uint8Array(R * R * R * 3);
+  for (let q = 0; q < positions.length; q += 18) {
+    let cx = 0, cy = 0, cz = 0;
+    for (let v = 0; v < 6; v++) { cx += positions[q + v * 3]; cy += positions[q + v * 3 + 1]; cz += positions[q + v * 3 + 2]; }
+    cx /= 6; cy /= 6; cz /= 6;
+    const ux = positions[q + 3] - positions[q], uy = positions[q + 4] - positions[q + 1], uz = positions[q + 5] - positions[q + 2];
+    const vx = positions[q + 6] - positions[q], vy = positions[q + 7] - positions[q + 1], vz = positions[q + 8] - positions[q + 2];
+    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const len = Math.hypot(nx, ny, nz);
+    if (len < 1e-9) return null;
+    nx /= len; ny /= len; nz /= len;
+    // The solid voxel lies behind the face
+    const px = cx - nx * 0.5 / R, py = cy - ny * 0.5 / R, pz = cz - nz * 0.5 / R;
+    const i = Math.floor((px + 0.5) * R);
+    const j = Math.floor(py * R);
+    const k = Math.floor(pz * R + 0.5 * R);
+    if (i < 0 || j < 0 || k < 0 || i >= R || j >= R || k >= R) return null;
+    const idx = (k * R + j) * R + i;
+    surface[idx] = 1;
+    faceColor[idx * 3] = colors[q];
+    faceColor[idx * 3 + 1] = colors[q + 1];
+    faceColor[idx * 3 + 2] = colors[q + 2];
+  }
+  // Fill the interior: everything the outside cannot reach is solid
+  const outside = new Uint8Array(R * R * R);
+  const stack = [];
+  const push = (i, j, k) => {
+    if (i < 0 || j < 0 || k < 0 || i >= R || j >= R || k >= R) return;
+    const idx = (k * R + j) * R + i;
+    if (surface[idx] || outside[idx]) return;
+    outside[idx] = 1;
+    stack.push(i, j, k);
+  };
+  for (let a = 0; a < R; a++) for (let b = 0; b < R; b++) {
+    push(a, b, 0); push(a, b, R - 1); push(a, 0, b); push(a, R - 1, b); push(0, a, b); push(R - 1, a, b);
+  }
+  while (stack.length) {
+    const k = stack.pop(), j = stack.pop(), i = stack.pop();
+    push(i + 1, j, k); push(i - 1, j, k); push(i, j + 1, k); push(i, j - 1, k); push(i, j, k + 1); push(i, j, k - 1);
+  }
+  const occupancy = new Uint8Array(R * R * R);
+  for (let p = 0; p < occupancy.length; p++) occupancy[p] = outside[p] ? 0 : 1;
+
+  const colorAt = (x, y, z) => {
+    const ci = Math.min(R - 1, Math.max(0, Math.floor(x * R)));
+    const cj = Math.min(R - 1, Math.max(0, Math.floor(y * R)));
+    const ck = Math.min(R - 1, Math.max(0, Math.floor(z * R)));
+    for (let radius = 0; radius <= 3; radius++) {
+      for (let dk = -radius; dk <= radius; dk++) for (let dj = -radius; dj <= radius; dj++) for (let di = -radius; di <= radius; di++) {
+        const i = ci + di, j = cj + dj, k = ck + dk;
+        if (i < 0 || j < 0 || k < 0 || i >= R || j >= R || k >= R) continue;
+        const idx = (k * R + j) * R + i;
+        if (surface[idx]) return [faceColor[idx * 3], faceColor[idx * 3 + 1], faceColor[idx * 3 + 2]];
+      }
+    }
+    return [160, 160, 160];
+  };
+  return buildSmoothMesh(occupancy, R, colorAt);
+}
+
+// ---------- software rendering (plan symbol and thumbnail) ----------
+
+function meshTriangles(mesh) {
+  const { positions, indices } = mesh;
+  if (indices) return indices;
+  const seq = new Uint32Array(positions.length / 3);
+  for (let i = 0; i < seq.length; i++) seq[i] = i;
+  return seq;
+}
+
+/**
+ * Orthographic software render of a mesh with a z-buffer, Gouraud colours and a soft light.
+ * `top` looks straight down (x to the right, z down, so the front edge is at the bottom);
+ * otherwise the camera orbits by yaw/pitch (degrees) and the model is fitted into the image.
  * @returns {Uint8ClampedArray} RGBA pixels, size x size, transparent where empty
  */
-export function topDownImage(positions, colors, size = 96) {
-  const out = new Uint8ClampedArray(size * size * 4);
-  const height = new Float32Array(size * size).fill(-1);
-  // Each quad is 6 vertices (18 floats); a flat quad's highest instance per pixel is a top face
-  for (let q = 0; q + 18 <= positions.length; q += 18) {
-    const y = positions[q + 1];
-    let flat = true;
-    for (let v = 1; v < 6; v++) if (positions[q + v * 3 + 1] !== y) { flat = false; break; }
-    if (!flat) continue;
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    for (let v = 0; v < 6; v++) {
-      const x = positions[q + v * 3];
-      const z = positions[q + v * 3 + 2];
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (z < minZ) minZ = z;
-      if (z > maxZ) maxZ = z;
-    }
-    const px0 = Math.floor((minX + 0.5) * size);
-    const px1 = Math.max(px0 + 1, Math.ceil((maxX + 0.5) * size));
-    const pz0 = Math.floor((minZ + 0.5) * size);
-    const pz1 = Math.max(pz0 + 1, Math.ceil((maxZ + 0.5) * size));
-    for (let pz = pz0; pz < pz1; pz++) {
-      for (let px = px0; px < px1; px++) {
-        if (px < 0 || pz < 0 || px >= size || pz >= size) continue;
-        const idx = pz * size + px;
-        if (y > height[idx]) {
-          height[idx] = y;
-          out[idx * 4] = colors[q];
-          out[idx * 4 + 1] = colors[q + 1];
-          out[idx * 4 + 2] = colors[q + 2];
-          out[idx * 4 + 3] = 255;
+export function renderMesh(mesh, { size = 96, top = false, yaw = 35, pitch = 28, padding = 0.06, supersample = 2 } = {}) {
+  const S = size * supersample;
+  const { positions, colors } = mesh;
+  const tri = meshTriangles(mesh);
+  const yawR = (yaw * Math.PI) / 180;
+  const pitchR = ((top ? 90 : pitch) * Math.PI) / 180;
+  const cosY = Math.cos(top ? 0 : yawR), sinY = Math.sin(top ? 0 : yawR);
+  const cosP = Math.cos(pitchR), sinP = Math.sin(pitchR);
+  const count = positions.length / 3;
+  const sx = new Float32Array(count), sy = new Float32Array(count), depth = new Float32Array(count);
+  let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+  for (let i = 0; i < count; i++) {
+    const x = positions[i * 3], y = positions[i * 3 + 1] - 0.5, z = positions[i * 3 + 2];
+    const x1 = x * cosY + z * sinY;
+    const z1 = -x * sinY + z * cosY;
+    const y2 = y * cosP - z1 * sinP;
+    const z2 = y * sinP + z1 * cosP;
+    sx[i] = x1; sy[i] = -y2; depth[i] = z2;
+    if (x1 < minU) minU = x1;
+    if (x1 > maxU) maxU = x1;
+    if (-y2 < minV) minV = -y2;
+    if (-y2 > maxV) maxV = -y2;
+  }
+  let scale, offU, offV;
+  if (top) {
+    scale = S; offU = 0.5 * S; offV = 0.5 * S;
+  } else {
+    scale = (S * (1 - padding * 2)) / Math.max(maxU - minU, maxV - minV, 1e-6);
+    offU = S / 2 - ((minU + maxU) / 2) * scale;
+    offV = S / 2 - ((minV + maxV) / 2) * scale;
+  }
+  for (let i = 0; i < count; i++) { sx[i] = sx[i] * scale + offU; sy[i] = sy[i] * scale + offV; }
+
+  const light = [-0.35, 0.85, 0.4];
+  const lightLen = Math.hypot(...light);
+  const z = new Float32Array(S * S).fill(-Infinity);
+  const buf = new Float32Array(S * S * 3);
+  const filled = new Uint8Array(S * S);
+  for (let t = 0; t + 2 < tri.length; t += 3) {
+    const a = tri[t], b = tri[t + 1], c = tri[t + 2];
+    const ax = positions[a * 3], ay = positions[a * 3 + 1], az = positions[a * 3 + 2];
+    const e1x = positions[b * 3] - ax, e1y = positions[b * 3 + 1] - ay, e1z = positions[b * 3 + 2] - az;
+    const e2x = positions[c * 3] - ax, e2y = positions[c * 3 + 1] - ay, e2z = positions[c * 3 + 2] - az;
+    let nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    const nl = Math.hypot(nx, ny, nz);
+    if (nl < 1e-12) continue;
+    nx /= nl; ny /= nl; nz /= nl;
+    const shade = 0.58 + 0.42 * Math.max(0, (nx * light[0] + ny * light[1] + nz * light[2]) / lightLen);
+    const x0 = sx[a], y0 = sy[a], x1 = sx[b], y1 = sy[b], x2 = sx[c], y2 = sy[c];
+    const area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
+    if (Math.abs(area) < 1e-9) continue;
+    const minX = Math.max(0, Math.floor(Math.min(x0, x1, x2) - 0.5));
+    const maxX = Math.min(S - 1, Math.ceil(Math.max(x0, x1, x2) + 0.5));
+    const minY = Math.max(0, Math.floor(Math.min(y0, y1, y2) - 0.5));
+    const maxY = Math.min(S - 1, Math.ceil(Math.max(y0, y1, y2) + 0.5));
+    for (let py = minY; py <= maxY; py++) {
+      for (let px = minX; px <= maxX; px++) {
+        const qx = px + 0.5, qy = py + 0.5;
+        const w0 = ((x1 - qx) * (y2 - qy) - (x2 - qx) * (y1 - qy)) / area;
+        const w1 = ((x2 - qx) * (y0 - qy) - (x0 - qx) * (y2 - qy)) / area;
+        const w2 = 1 - w0 - w1;
+        if (w0 < -1e-6 || w1 < -1e-6 || w2 < -1e-6) continue;
+        const d = w0 * depth[a] + w1 * depth[b] + w2 * depth[c];
+        const p = py * S + px;
+        if (d <= z[p]) continue;
+        z[p] = d;
+        filled[p] = 1;
+        for (let ch = 0; ch < 3; ch++) {
+          buf[p * 3 + ch] = (w0 * colors[a * 3 + ch] + w1 * colors[b * 3 + ch] + w2 * colors[c * 3 + ch]) * shade;
         }
       }
     }
   }
+
+  const out = new Uint8ClampedArray(size * size * 4);
+  const n2 = supersample * supersample;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      let r = 0, g = 0, b = 0, hits = 0;
+      for (let dy = 0; dy < supersample; dy++) {
+        for (let dx = 0; dx < supersample; dx++) {
+          const p = (y * supersample + dy) * S + x * supersample + dx;
+          if (!filled[p]) continue;
+          r += buf[p * 3]; g += buf[p * 3 + 1]; b += buf[p * 3 + 2]; hits++;
+        }
+      }
+      if (!hits) continue;
+      const o = (y * size + x) * 4;
+      out[o] = r / hits;
+      out[o + 1] = g / hits;
+      out[o + 2] = b / hits;
+      out[o + 3] = (hits / n2) * 255;
+    }
+  }
   return out;
+}
+
+/** Plan-view render of the mesh (2D symbol). */
+export function topDownImage(mesh, size = 96) {
+  return renderMesh(mesh, { size, top: true });
+}
+
+// ---------- footprint outline ----------
+
+function simplifyLoop(points, epsilon) {
+  // Douglas-Peucker on a closed loop, split at the two points that are furthest apart
+  if (points.length < 8) return points;
+  let far = 0;
+  let farDist = -1;
+  for (let i = 1; i < points.length; i++) {
+    const d = Math.hypot(points[i][0] - points[0][0], points[i][1] - points[0][1]);
+    if (d > farDist) { farDist = d; far = i; }
+  }
+  const dp = (pts) => {
+    if (pts.length < 3) return pts;
+    const [ax, ay] = pts[0];
+    const [bx, by] = pts[pts.length - 1];
+    const len = Math.hypot(bx - ax, by - ay) || 1e-9;
+    let maxD = 0;
+    let idx = 0;
+    for (let i = 1; i < pts.length - 1; i++) {
+      const d = Math.abs((bx - ax) * (ay - pts[i][1]) - (ax - pts[i][0]) * (by - ay)) / len;
+      if (d > maxD) { maxD = d; idx = i; }
+    }
+    if (maxD <= epsilon) return [pts[0], pts[pts.length - 1]];
+    const left = dp(pts.slice(0, idx + 1));
+    return left.slice(0, -1).concat(dp(pts.slice(idx)));
+  };
+  const first = dp(points.slice(0, far + 1));
+  const second = dp(points.slice(far).concat([points[0]]));
+  return first.slice(0, -1).concat(second.slice(0, -1));
+}
+
+/**
+ * Traces the outline of the filled pixels of an alpha image as closed polygons.
+ * @param {Uint8ClampedArray} rgba size x size RGBA pixels (alpha > 127 counts as filled)
+ * @returns {number[][]} loops of flat [x, z, x, z, ...] in plan coordinates, x and z in [-0.5, 0.5]
+ */
+export function footprintOutline(rgba, size) {
+  const filled = (x, y) => x >= 0 && y >= 0 && x < size && y < size && rgba[(y * size + x) * 4 + 3] > 127;
+  // Directed edges with the filled side on the right, keyed by start corner
+  const edges = new Map();
+  const add = (x0, y0, x1, y1) => {
+    const key = y0 * (size + 1) + x0;
+    if (!edges.has(key)) edges.set(key, []);
+    edges.get(key).push([x1, y1]);
+  };
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      if (!filled(x, y)) continue;
+      if (!filled(x, y - 1)) add(x, y, x + 1, y);
+      if (!filled(x + 1, y)) add(x + 1, y, x + 1, y + 1);
+      if (!filled(x, y + 1)) add(x + 1, y + 1, x, y + 1);
+      if (!filled(x - 1, y)) add(x, y + 1, x, y);
+    }
+  }
+  const loops = [];
+  for (const [startKey] of edges) {
+    while (edges.get(startKey)?.length) {
+      const sx = startKey % (size + 1);
+      const sy = Math.floor(startKey / (size + 1));
+      const loop = [[sx, sy]];
+      let [cx, cy] = edges.get(startKey).pop();
+      let dir = [cx - sx, cy - sy];
+      let guard = 0;
+      while ((cx !== sx || cy !== sy) && guard++ < size * size * 4) {
+        loop.push([cx, cy]);
+        const outs = edges.get(cy * (size + 1) + cx);
+        if (!outs || !outs.length) break;
+        // Prefer turning right at saddles so touching corners stay separate loops
+        let pick = 0;
+        if (outs.length > 1) {
+          let bestTurn = -Infinity;
+          outs.forEach((o, i) => {
+            const turn = dir[0] * (o[1] - cy) - dir[1] * (o[0] - cx);
+            if (turn > bestTurn) { bestTurn = turn; pick = i; }
+          });
+        }
+        const [nx, ny] = outs.splice(pick, 1)[0];
+        dir = [nx - cx, ny - cy];
+        cx = nx; cy = ny;
+      }
+      if (loop.length >= 4) loops.push(loop);
+    }
+  }
+  const area = (pts) => {
+    let a = 0;
+    for (let i = 0; i < pts.length; i++) {
+      const [x0, y0] = pts[i];
+      const [x1, y1] = pts[(i + 1) % pts.length];
+      a += x0 * y1 - x1 * y0;
+    }
+    return Math.abs(a) / 2;
+  };
+  return loops
+    .filter((l) => area(l) >= 6)
+    .map((l) => simplifyLoop(l, 0.7))
+    .map((l) => l.flatMap(([x, y]) => [Math.round((x / size - 0.5) * 1000) / 1000, Math.round((y / size - 0.5) * 1000) / 1000]));
+}
+
+/** Mean colour of a mesh as a CSS hex string. */
+export function meshAverageHex(mesh) {
+  const { colors } = mesh;
+  let r = 0, g = 0, b = 0, n = 0;
+  for (let i = 0; i + 2 < colors.length; i += 3 * 5) {
+    r += colors[i]; g += colors[i + 1]; b += colors[i + 2]; n++;
+  }
+  if (!n) return '#a0a0a0';
+  return '#' + [r, g, b].map((v) => Math.round(v / n).toString(16).padStart(2, '0')).join('');
 }
