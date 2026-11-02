@@ -234,5 +234,5 @@ export function PantryCabinetSilhouette({ widthCm, depthCm, hw, hd, color, handl
 }
 
 export function TvSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
-  return <g><rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} stroke="#080909" strokeWidth="1.2" /><rect x={-hw + 5} y={-hd + 3} width={widthCm - 10} height={depthCm - 7} fill="#293B4A" stroke={subColor} strokeWidth="1" /><line x1={0} y1={hd} x2={0} y2={hd + 7} stroke="#080909" strokeWidth="2" /><line x1={-12} y1={hd + 7} x2={12} y2={hd + 7} stroke="#080909" strokeWidth="2" /></g>;
+  return <g><rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} stroke="#080909" strokeWidth="1.2" /><rect x={-hw + 5} y={-hd + 3} width={Math.max(0, widthCm - 10)} height={Math.max(0, depthCm - 7)} fill="#293B4A" stroke={subColor} strokeWidth="1" /><line x1={0} y1={hd} x2={0} y2={hd + 7} stroke="#080909" strokeWidth="2" /><line x1={-12} y1={hd + 7} x2={12} y2={hd + 7} stroke="#080909" strokeWidth="2" /></g>;
 }
