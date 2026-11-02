@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
@@ -34,25 +34,11 @@ export function RoomCanvas() {
   const svgRef = useRef(null);
   const containerRef = useRef(null);
   const suppressClick = useRef(false);
-  const [scale, setScale] = useState(1); // px per cm
   const [isDragOver, setIsDragOver] = useState(false);
   const [marquee, setMarquee] = useState(null); // { x0, y0, x1, y1 } in cm
   const [measurements, setMeasurements] = useState([]);
 
   const issues = useClearanceIssues(room);
-
-  const updateScale = useCallback(() => {
-    if (svgRef.current) {
-      const ctm = svgRef.current.getScreenCTM();
-      if (ctm && ctm.a) setScale(ctm.a);
-    }
-  }, []);
-
-  useEffect(() => {
-    updateScale();
-    window.addEventListener('resize', updateScale);
-    return () => window.removeEventListener('resize', updateScale);
-  }, [updateScale, room?.widthCm, room?.depthCm]);
 
   // Leaving the measure tool or switching rooms clears old measurements
   useEffect(() => {
@@ -202,7 +188,7 @@ export function RoomCanvas() {
 
   // Check if any doors swing outward so we expand canvas padding so the arc & label don't get cut off or overlap UI
   const hasOutwardDoors = (room.doors || []).some((d) => d.swingDirection === 'outward');
-  const paddingCm = hasOutwardDoors ? 110 : 45;
+  const paddingCm = hasOutwardDoors ? 110 : 60;
   const viewBoxMinX = -paddingCm;
   const viewBoxMinY = -paddingCm;
   const viewBoxWidth = room.widthCm + paddingCm * 2;
@@ -223,7 +209,7 @@ export function RoomCanvas() {
       onDrop={handleDrop}
       tabIndex={0}
       role="region"
-      aria-label="Room drafting canvas"
+      aria-label="Room plan"
     >
       <svg
         ref={svgRef}
@@ -276,7 +262,6 @@ export function RoomCanvas() {
               isSelected={selectedItemIds.includes(item.id)}
               isPrimary={selectedItemIds.length === 1}
               isColliding={collidingItemIds.has(item.id)}
-              scale={scale}
               roomWidthCm={room.widthCm}
               roomDepthCm={room.depthCm}
               svgRef={svgRef}
@@ -325,15 +310,15 @@ export function RoomCanvas() {
         onClearMeasurements={() => setMeasurements([])}
       />
 
-      <div className={styles.canvasEmptyHint} aria-live="polite">
+      <p className={styles.hint} aria-live="polite">
         {measureActive
-          ? 'Measure: click two points · Esc to finish'
+          ? 'Click two points to measure. Press Esc when done.'
           : selectionCount > 1
-            ? `${selectionCount} selected · drag to move together · Ctrl+C / Ctrl+V to copy · Delete to remove`
+            ? `${selectionCount} pieces selected. Drag any one to move them together.`
             : selectedItemId
-              ? 'Use arrow keys to nudge, R to rotate, Delete to remove · Shift+click to multi-select'
-              : 'Drag pieces from catalog, click swatch to place, or drag on the floor to box-select'}
-      </div>
+              ? 'Drag to move. Arrow keys nudge, R rotates, Delete removes.'
+              : 'Click a piece in the list to add it, or drag it into the room.'}
+      </p>
     </div>
   );
 }

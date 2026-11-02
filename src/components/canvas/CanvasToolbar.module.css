@@ -1,157 +1,155 @@
-.wrap {
+/* Vertical tool strip on the left edge of the plan */
+.toolbar {
   position: absolute;
   top: var(--space-3);
   left: var(--space-3);
+  z-index: var(--z-chrome);
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
   gap: var(--space-2);
-  z-index: 5;
-  max-width: calc(100% - 24px);
 }
 
-.bar {
+.group {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 2px;
-  padding: 3px;
-  background: var(--color-linen);
-  border: 1px solid var(--color-taupe);
-  border-radius: var(--radius-md);
+  padding: 4px;
+  background: var(--color-paper);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
 
-.tool {
-  width: 32px;
-  height: 32px;
+.group button {
+  width: 36px;
+  height: 36px;
+}
+
+/* Messages and tool options sit at the top, clear of the tool strip */
+.stack {
+  position: absolute;
+  top: var(--space-3);
+  left: 64px;
+  right: var(--space-3);
+  z-index: var(--z-chrome);
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  color: var(--color-ink);
-  cursor: pointer;
+  gap: var(--space-2);
+  pointer-events: none;
 }
 
-.tool:hover {
-  background: var(--color-linen-surface);
-  border-color: var(--color-taupe);
+.stack > * {
+  pointer-events: auto;
+  max-width: 100%;
 }
 
-.tool:focus-visible {
-  outline: 2px solid var(--color-clay);
-  outline-offset: 1px;
-}
-
-.toolActive {
-  background: var(--color-indigo);
-  color: #fff;
-}
-
-.toolActive:hover {
-  background: var(--color-indigo-hover);
-  border-color: transparent;
-}
-
-.divider {
-  width: 1px;
-  height: 18px;
-  background: var(--color-taupe);
-  margin: 0 3px;
-}
-
-.panel {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: 6px 10px;
-  background: var(--color-linen);
-  border: 1px solid var(--color-taupe);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--color-ink);
-  box-shadow: var(--shadow-card);
-}
-
-.panel input[type='number'] {
-  width: 70px;
-  padding: 3px 6px;
-  border: 1px solid var(--color-taupe);
-  border-radius: var(--radius-sm);
-  background: #fff;
-}
-
-.inline {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.error {
-  color: var(--color-maroon);
-  border-color: var(--color-maroon);
-}
-
-.link {
+.issueChip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--color-maroon);
-  cursor: pointer;
-  font: inherit;
-  text-decoration: underline;
-}
-
-.issues {
-  position: relative;
-}
-
-.issueBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #FFF4E0;
-  border: 1px solid #B26B00;
-  border-radius: var(--radius-md);
-  color: #7A4A00;
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
+  gap: var(--space-2);
+  height: var(--control-h-sm);
+  padding: 0 var(--space-3);
+  font-size: var(--text-sm);
   font-weight: 600;
-  cursor: pointer;
+  color: var(--color-caution);
+  background: var(--color-caution-bg);
+  border-radius: 999px;
+  box-shadow: var(--shadow-card);
+}
+
+.issueChip:hover {
+  filter: brightness(0.97);
+}
+
+.issueChip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .issueList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
   list-style: none;
-  margin: 4px 0 0;
-  padding: 4px;
-  max-height: 220px;
-  overflow-y: auto;
-  background: var(--color-linen);
-  border: 1px solid var(--color-taupe);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-lift);
+  width: 280px;
 }
 
-.issueList button {
-  display: block;
+.issueRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   width: 100%;
+  padding: var(--space-2) var(--space-3);
   text-align: left;
-  background: none;
-  border: none;
-  padding: 6px 8px;
-  font-family: var(--font-sans);
-  font-size: var(--text-xs);
-  color: var(--color-ink);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: 1.35;
+  border-radius: var(--radius-md);
 }
 
-.issueList button:hover {
+.issueRow span {
+  color: var(--color-ink-muted);
+  font-size: var(--text-xs);
+}
+
+.issueRow:hover {
   background: var(--color-linen-surface);
+}
+
+.issueRow:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  background: var(--color-paper);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop);
+}
+
+.card > span {
+  align-self: center;
+}
+
+.opacity {
+  width: 180px;
+}
+
+.traceWidth {
+  width: 120px;
+}
+
+.errorWrap {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--color-paper);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-card);
+}
+
+@media (max-width: 560px) {
+  .toolbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    right: var(--space-3);
+  }
+
+  .group {
+    flex-direction: row;
+  }
+
+  .stack {
+    top: 60px;
+    left: var(--space-3);
+  }
 }

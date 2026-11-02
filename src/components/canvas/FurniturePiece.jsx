@@ -11,7 +11,6 @@ export function FurniturePiece({
   isSelected,
   isColliding,
   isPrimary = true,
-  scale, // px per cm
   roomWidthCm,
   roomDepthCm,
   svgRef,

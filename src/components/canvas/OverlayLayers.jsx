@@ -29,7 +29,7 @@ export function TraceLayer({ room }) {
 
 /** Door swing / window strips and highlights for pieces that break a clearance rule. */
 export function ClearanceLayer({ room }) {
-  const zones = useMemo(() => getClearanceZones(room), [room.doors, room.windows, room.widthCm, room.depthCm]);
+  const zones = useMemo(() => getClearanceZones(room), [room]);
   const issues = useMemo(() => evaluateClearance(room), [room]);
   const flagged = new Set(issues.map((i) => i.itemId));
 

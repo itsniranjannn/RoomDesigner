@@ -40,12 +40,15 @@ describe('2D silhouettes', () => {
   });
 });
 
-// The catalog preview scales each symbol so its longest side is 56 units, which makes thin pieces tiny
+// The catalog preview shrinks each symbol to fit a 100 x 70 box, which makes thin pieces tiny
 describe('2D silhouettes at catalog swatch size', () => {
-  it('render without negative dimensions for every catalog item', () => {
+  it.each([
+    ['fit to 56 units', (item) => 56 / Math.max(item.widthCm, item.depthCm)],
+    ['fit to 84 x 54 units', (item) => Math.min(84 / item.widthCm, 54 / item.depthCm)],
+  ])('render without negative dimensions for every catalog item (%s)', (_name, scaleOf) => {
     const bad = [];
     for (const item of FURNITURE_CATALOG) {
-      const scale = 56 / Math.max(item.widthCm, item.depthCm);
+      const scale = scaleOf(item);
       const html = renderToStaticMarkup(
         <svg>
           <ArchitecturalSilhouette item={item} widthCm={item.widthCm * scale} depthCm={item.depthCm * scale} isSwatch />

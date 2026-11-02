@@ -59,58 +59,6 @@ export function GridOverlay({ roomWidthCm, roomDepthCm, viewBoxMinX = -45, viewB
         rx="2"
       />
 
-      {/* Sheet Corner Framing Registration Marks */}
-      <g stroke="#9C8E7D" strokeWidth="1" opacity="0.65">
-        {/* Top-Left */}
-        <path d={`M ${plateX + 8} ${plateY + 22} L ${plateX + 8} ${plateY + 8} L ${plateX + 22} ${plateY + 8}`} fill="none" />
-        {/* Top-Right */}
-        <path d={`M ${plateX + plateW - 22} ${plateY + 8} L ${plateX + plateW - 8} ${plateY + 8} L ${plateX + plateW - 8} ${plateY + 22}`} fill="none" />
-        {/* Bottom-Left */}
-        <path d={`M ${plateX + 8} ${plateY + plateH - 22} L ${plateX + 8} ${plateY + plateH - 8} L ${plateX + 22} ${plateY + plateH - 8}`} fill="none" />
-        {/* Bottom-Right */}
-        <path d={`M ${plateX + plateW - 22} ${plateY + plateH - 8} L ${plateX + plateW - 8} ${plateY + plateH - 8} L ${plateX + plateW - 8} ${plateY + plateH - 22}`} fill="none" />
-      </g>
-
-      {/* Plate Alignment Crosshairs */}
-      <g stroke="#C4B9A8" strokeWidth="0.8" opacity="0.75">
-        {/* Top edge center crosshair */}
-        <line x1={roomWidthCm / 2} y1={plateY + 4} x2={roomWidthCm / 2} y2={plateY + 16} />
-        {/* Bottom edge center crosshair */}
-        <line x1={roomWidthCm / 2} y1={plateY + plateH - 16} x2={roomWidthCm / 2} y2={plateY + plateH - 4} />
-        {/* Left edge center crosshair */}
-        <line x1={plateX + 4} y1={roomDepthCm / 2} x2={plateX + 16} y2={roomDepthCm / 2} />
-        {/* Right edge center crosshair */}
-        <line x1={plateX + plateW - 16} y1={roomDepthCm / 2} x2={plateX + plateW - 4} y2={roomDepthCm / 2} />
-      </g>
-
-      {/* Plate Titleblock Classification Header (Top Right of drawing board) */}
-      <text
-        x={plateX + plateW - 14}
-        y={plateY + 18}
-        fill="#7A7062"
-        fontSize="7.5"
-        fontFamily="var(--font-mono)"
-        fontWeight="600"
-        letterSpacing="0.12em"
-        textAnchor="end"
-      >
-        FOLIO // TOP-DOWN ORTHOGRAPHIC 2D
-      </text>
-
-      {/* Plate Scale Tag (Bottom Right of drawing board) */}
-      <text
-        x={plateX + plateW - 14}
-        y={plateY + plateH - 12}
-        fill="#A67C43"
-        fontSize="7.5"
-        fontFamily="var(--font-mono)"
-        fontWeight="600"
-        letterSpacing="0.1em"
-        textAnchor="end"
-      >
-        SCALE 1:50 // CALIBRATED CM
-      </text>
-
       {/* Minor grid lines (10cm hairline, crisp taupe-linen) */}
       {minorVLines.map((x) => (
         <line
