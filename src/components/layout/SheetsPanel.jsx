@@ -1,29 +1,42 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Building2, DoorClosed, Plus, Trash2, X } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
-import { Button } from '../common/Button.jsx';
-import { Plus, X, Building2 } from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
+import { Button } from '../common/Button.jsx';
+import { ConfirmDialog } from '../common/ConfirmDialog.jsx';
+import { IconButton } from '../common/Section.jsx';
 import styles from './SheetsPanel.module.css';
 
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** Slide-in list of saved rooms and flats ("My designs"). */
 export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlatModal }) {
   const allRooms = useRoomStore((state) => state.allRooms);
+  const switchRoom = useRoomStore((state) => state.switchRoom);
   const flats = useFlatStore((state) => state.flats);
   const openFlat = useFlatStore((state) => state.openFlat);
   const deleteFlat = useFlatStore((state) => state.deleteFlat);
-  const switchRoom = useRoomStore((state) => state.switchRoom);
   const panelRef = useRef(null);
+  const [pendingFlat, setPendingFlat] = useState(null);
 
-  // Escape key to dismiss
+  // Escape closes the panel; focus moves in on open and back to the trigger on close
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) return undefined;
+    const previouslyFocused = document.activeElement;
+    panelRef.current?.querySelector('button')?.focus();
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      previouslyFocused?.focus?.();
+    };
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
+
+  const total = allRooms.length + flats.length;
 
   return (
     <div className={styles.backdrop} onClick={onClose}>
@@ -33,125 +46,110 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-label="Saved Sheets"
+        aria-label="My designs"
       >
-        <div className={styles.panelHeader}>
-          <div className={styles.panelHeaderLeft}>
-            <h2 className={styles.panelTitle}>Saved Sheets</h2>
-            <span className={styles.panelCount}>
-              {allRooms.length} {allRooms.length === 1 ? 'SHEET' : 'SHEETS'}
-            </span>
+        <header className={styles.header}>
+          <div>
+            <h2 className={styles.title}>My designs</h2>
+            <p className={styles.subtitle}>{total === 0 ? 'Nothing saved yet' : `${plural(allRooms.length, 'room')}, ${plural(flats.length, 'flat')}`}</p>
           </div>
-          <button
-            type="button"
-            className={styles.closeBtn}
-            onClick={onClose}
-            aria-label="Close sheets panel"
-          >
-            <X size={16} />
-          </button>
-        </div>
+          <IconButton label="Close" onClick={onClose}><X size={18} /></IconButton>
+        </header>
 
-        <div className={styles.brassRule} />
-
-        <div className={styles.sheetsList}>
+        <div className={styles.list}>
           {flats.map((f) => (
-            <div key={f.id} style={{ display: 'flex', gap: 6, alignItems: 'stretch' }}>
+            <div key={f.id} className={styles.row}>
               <button
                 type="button"
-                className={styles.sheetRow}
-                style={{ flex: 1 }}
+                className={styles.open}
                 onClick={() => {
                   openFlat(f.id);
                   onClose();
                 }}
               >
-                <span className={styles.sheetCode}>FLAT // {f.levels.length} {f.levels.length === 1 ? 'FLOOR' : 'FLOORS'}</span>
-                <span className={styles.sheetName}>{f.name}</span>
-                <div className={styles.sheetMeta}>
-                  <span className={styles.sheetDims}>
-                    <Building2 size={11} style={{ verticalAlign: -1 }} /> {f.spaces.length} spaces
+                <span className={styles.icon}><Building2 size={18} aria-hidden="true" /></span>
+                <span className={styles.text}>
+                  <span className={styles.name}>{f.name}</span>
+                  <span className={styles.meta}>
+                    Flat, {plural(f.levels.length, 'floor')}, {plural(f.spaces.length, 'space')}
+                    {f.stairs.length > 0 && `, ${plural(f.stairs.length, 'staircase')}`}
                   </span>
-                  <span className={styles.sheetSpecBadge}>{f.stairs.length} STAIRS</span>
-                </div>
+                </span>
               </button>
-              <button
-                type="button"
-                className={styles.closeBtn}
-                aria-label={`Delete flat ${f.name}`}
-                title="Delete flat"
-                onClick={() => window.confirm(`Delete flat "${f.name}" and all of its rooms?`) && deleteFlat(f.id)}
-              >
-                <X size={14} />
-              </button>
+              <IconButton label={`Delete flat ${f.name}`} danger onClick={() => setPendingFlat(f)}>
+                <Trash2 size={16} />
+              </IconButton>
             </div>
           ))}
-          {allRooms.length > 0 ? (
-            allRooms.map((r, index) => {
-              const widthM = (r.widthCm / 100).toFixed(2);
-              const depthM = (r.depthCm / 100).toFixed(2);
-              const furnitureCount = (r.placedFurniture || []).length;
-              const sheetCode = `SHEET // #0${index + 1}`;
 
-              return (
+          {allRooms.map((r) => {
+            const count = (r.placedFurniture || []).length;
+            return (
+              <div key={r.id} className={styles.row}>
                 <button
-                  key={r.id}
                   type="button"
-                  className={styles.sheetRow}
+                  className={styles.open}
                   onClick={() => {
                     switchRoom(r.id);
                     onClose();
                   }}
                 >
-                  <span className={styles.sheetCode}>{sheetCode}</span>
-                  <span className={styles.sheetName}>{r.name}</span>
-                  <div className={styles.sheetMeta}>
-                    <span className={styles.sheetDims}>
-                      {widthM} × {depthM}m
+                  <span className={styles.icon}><DoorClosed size={18} aria-hidden="true" /></span>
+                  <span className={styles.text}>
+                    <span className={styles.name}>{r.name}</span>
+                    <span className={styles.meta}>
+                      {(r.widthCm / 100).toFixed(2)} x {(r.depthCm / 100).toFixed(2)} m, {plural(count, 'piece')}
                     </span>
-                    <span className={styles.sheetSpecBadge}>
-                      {furnitureCount} {furnitureCount === 1 ? 'SPEC' : 'SPECS'}
-                    </span>
-                  </div>
+                  </span>
                 </button>
-              );
-            })
-          ) : (
-            <div className={styles.sheetsEmpty}>
-              <span className={styles.sheetsEmptyText}>
-                No sheets in folio
-              </span>
+              </div>
+            );
+          })}
+
+          {total === 0 && (
+            <div className={styles.empty}>
+              <p className={styles.emptyTitle}>No designs yet</p>
+              <p className={styles.emptyText}>Start a room or a flat and it will be saved here automatically.</p>
             </div>
           )}
         </div>
 
-        <div className={styles.panelFooter}>
+        <footer className={styles.footer}>
           <Button
             variant="primary"
-            size="normal"
-            icon={<Plus size={14} />}
+            icon={<Plus size={16} />}
             onClick={() => {
               onOpenNewRoomModal();
               onClose();
             }}
-            className={styles.newRoomBtn}
           >
-            Start a new room
+            New room
           </Button>
           <Button
             variant="secondary"
-            size="normal"
-            icon={<Building2 size={14} />}
+            icon={<Building2 size={16} />}
             onClick={() => {
               onOpenNewFlatModal?.();
               onClose();
             }}
-            className={styles.newRoomBtn}
           >
             Design a flat
           </Button>
-        </div>
+        </footer>
       </aside>
+
+      {pendingFlat && (
+        <ConfirmDialog
+          title={`Delete "${pendingFlat.name}"?`}
+          message="The flat and all of its rooms are removed for good. This cannot be undone."
+          confirmLabel="Delete flat"
+          onClose={() => setPendingFlat(null)}
+          onConfirm={() => {
+            deleteFlat(pendingFlat.id);
+            setPendingFlat(null);
+          }}
+        />
+      )}
     </div>
   );
 }
