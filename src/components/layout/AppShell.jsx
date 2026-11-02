@@ -4,6 +4,7 @@ import { TopBar } from './TopBar.jsx';
 import { NewRoomModal } from './NewRoomModal.jsx';
 import { LandingPage } from './LandingPage.jsx';
 import { AboutPage } from './AboutPage.jsx';
+import { useMediaQuery, usePersistentFlag } from './hooks.js';
 import { FurnitureCatalog } from '../catalog/FurnitureCatalog.jsx';
 import { RoomCanvas } from '../canvas/RoomCanvas.jsx';
 import { SelectedItemPanel } from '../inspector/SelectedItemPanel.jsx';
@@ -16,15 +17,17 @@ import { Button } from '../common/Button.jsx';
 import { decodeRoomFromHash } from '../../engine/share.js';
 import styles from './AppShell.module.css';
 
-// Dynamically lazy-load 3D Studio to keep initial 2D drafting bundle ultralight
+// The 3D view is loaded on demand to keep the first screen light
 const Room3DView = React.lazy(() =>
   import('../preview3d/Room3DView.jsx').then((m) => ({ default: m.Room3DView }))
 );
 
+// Below this width the side panels become drawers over the canvas
+const DOCK_QUERY = '(min-width: 1100px)';
+
 export function AppShell() {
   const room = useRoomStore((state) => state.room);
   const viewMode = useRoomStore((state) => state.viewMode);
-  const selectedItemId = useRoomStore((state) => state.selectedItemId);
 
   const [isNewRoomModalOpen, setIsNewRoomModalOpen] = useState(false);
   const [isNewFlatModalOpen, setIsNewFlatModalOpen] = useState(false);
@@ -32,6 +35,27 @@ export function AppShell() {
   const [currentPage, setCurrentPage] = useState('main'); // 'main' | 'about'
   const [incoming, setIncoming] = useState(null); // { room } | { error }
   const importRoomData = useRoomStore((state) => state.importRoomData);
+
+  const docked = useMediaQuery(DOCK_QUERY);
+  const [catalogDock, setCatalogDock] = usePersistentFlag('rd.catalogOpen', true);
+  const [inspectorDock, setInspectorDock] = usePersistentFlag('rd.inspectorOpen', true);
+  const [drawer, setDrawer] = useState(null); // 'catalog' | 'inspector' | null (narrow screens only)
+
+  const catalogOpen = docked ? catalogDock : drawer === 'catalog';
+  const inspectorOpen = docked ? inspectorDock : drawer === 'inspector';
+  const showInspector = viewMode === '2d';
+
+  const toggleCatalog = () => (docked ? setCatalogDock((v) => !v) : setDrawer((d) => (d === 'catalog' ? null : 'catalog')));
+  const toggleInspector = () => (docked ? setInspectorDock((v) => !v) : setDrawer((d) => (d === 'inspector' ? null : 'inspector')));
+  const closeDrawer = () => setDrawer(null);
+
+  // Escape closes an open drawer
+  useEffect(() => {
+    if (!drawer) return undefined;
+    const onKey = (e) => e.key === 'Escape' && setDrawer(null);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drawer]);
 
   // Open designs shared as a link (#share=...) after confirmation
   useEffect(() => {
@@ -54,30 +78,28 @@ export function AppShell() {
   const shareDialog = incoming && (
     <Modal
       title={incoming.error ? 'Link could not be opened' : 'Open shared design?'}
-      subtitle={incoming.error || `"${incoming.room.name}" · ${incoming.room.placedFurniture.length} pieces`}
+      subtitle={incoming.error || `"${incoming.room.name}" with ${incoming.room.placedFurniture.length} pieces`}
       onClose={closeIncoming}
       width={440}
       footer={
         incoming.error ? (
-          <Button variant="primary" size="small" onClick={closeIncoming}>Close</Button>
+          <Button variant="primary" onClick={closeIncoming}>Close</Button>
         ) : (
           <>
-            <Button variant="ghost" size="small" onClick={closeIncoming}>Not now</Button>
-            <Button variant="primary" size="small" onClick={acceptIncoming}>Open as new sheet</Button>
+            <Button variant="ghost" onClick={closeIncoming}>Not now</Button>
+            <Button variant="primary" onClick={acceptIncoming}>Open as new room</Button>
           </>
         )
       }
     >
-      {!incoming.error && (
-        <p style={{ margin: 0 }}>It opens as a new sheet. Your existing rooms are not changed.</p>
-      )}
+      {!incoming.error && <p>It opens as a new room. Your existing rooms are not changed.</p>}
     </Modal>
   );
 
   // Global Undo / Redo keyboard shortcuts (Ctrl+Z, Ctrl+Shift+Z, Ctrl+Y, Cmd+Z, Cmd+Shift+Z)
   useEffect(() => {
     const handleGlobalKeyDown = (e) => {
-      // Do not trigger undo/redo if user is editing text inputs, textareas, or dropdowns
+      // Leave undo to the text box while the user is typing
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) {
         return;
       }
@@ -108,14 +130,16 @@ export function AppShell() {
     return <FlatDesigner />;
   }
 
-  // Dedicated full-page About View
+  // Dedicated full-page About view
   if (currentPage === 'about') {
     return (
       <>
         <AboutPage
           onBack={() => setCurrentPage('main')}
           onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)}
+          onOpenNewFlatModal={() => setIsNewFlatModalOpen(true)}
         />
+        {isNewFlatModalOpen && <NewFlatModal onClose={() => setIsNewFlatModalOpen(false)} />}
         <NewRoomModal
           isOpen={isNewRoomModalOpen}
           onClose={() => setIsNewRoomModalOpen(false)}
@@ -144,24 +168,32 @@ export function AppShell() {
     );
   }
 
+  const catalogPanel = <FurnitureCatalog onClose={docked ? toggleCatalog : closeDrawer} onPlaced={docked ? undefined : closeDrawer} />;
+  const inspectorPanel = <SelectedItemPanel onClose={docked ? toggleInspector : closeDrawer} />;
+
   return (
     <div className={styles.appContainer}>
-      <TopBar onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)} />
+      <TopBar
+        onOpenNewRoomModal={() => setIsNewRoomModalOpen(true)}
+        catalogOpen={catalogOpen}
+        inspectorOpen={inspectorOpen}
+        onToggleCatalog={toggleCatalog}
+        onToggleInspector={toggleInspector}
+        showInspectorToggle={showInspector}
+      />
 
       <main className={styles.workspace}>
-        {/* Left rail: Furniture Catalog */}
-        <FurnitureCatalog />
+        {docked && catalogOpen && <div className={styles.dockLeft}>{catalogPanel}</div>}
 
-        {/* Center: Room Canvas (2D Drafting or 3D Studio) */}
         <div className={styles.canvasWrapper}>
           {viewMode === '2d' ? (
             <RoomCanvas />
           ) : (
             <Suspense
               fallback={
-                <div className={styles.loadingScreen}>
-                  <div className={styles.loadingLogo} aria-hidden="true" />
-                  <span className={styles.loadingText}>Loading 3D Studio...</span>
+                <div className={styles.loadingScreen} role="status">
+                  <span className={styles.loadingDot} aria-hidden="true" />
+                  <span className={styles.loadingText}>Loading 3D view...</span>
                 </div>
               }
             >
@@ -170,8 +202,15 @@ export function AppShell() {
           )}
         </div>
 
-        {/* Right contextual panel: Selected Item / Room Inspector (2D mode only) */}
-        {viewMode === '2d' && <SelectedItemPanel />}
+        {docked && showInspector && inspectorOpen && <div className={styles.dockRight}>{inspectorPanel}</div>}
+
+        {!docked && drawer && (
+          <>
+            <div className={styles.scrim} onClick={closeDrawer} aria-hidden="true" />
+            {drawer === 'catalog' && <div className={`${styles.drawer} ${styles.drawerLeft}`}>{catalogPanel}</div>}
+            {drawer === 'inspector' && showInspector && <div className={`${styles.drawer} ${styles.drawerRight}`}>{inspectorPanel}</div>}
+          </>
+        )}
       </main>
 
       <NewRoomModal
