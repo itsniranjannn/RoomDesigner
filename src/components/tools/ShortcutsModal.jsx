@@ -1,65 +1,75 @@
 import React from 'react';
 import { Modal } from '../common/Modal.jsx';
-import styles from '../common/Modal.module.css';
+import styles from './Tools.module.css';
 
+// Keys are written as "Ctrl + A"; "/" separates alternatives
 const SECTIONS = [
   {
-    title: 'Selection',
+    title: 'Selecting',
     rows: [
-      [['Click'], 'Select a piece'],
-      [['Shift', 'Click'], 'Add or remove a piece from the selection'],
-      [['Drag'], 'Drag on empty floor to box-select'],
-      [['Ctrl', 'A'], 'Select all pieces'],
-      [['Esc'], 'Clear selection / leave measure tool'],
+      ['Click', 'Select a piece'],
+      ['Shift + Click', 'Add or remove a piece'],
+      ['Drag', 'Box-select on empty floor'],
+      ['Ctrl + A', 'Select all pieces'],
+      ['Esc', 'Clear selection or leave measuring'],
     ],
   },
   {
     title: 'Editing',
     rows: [
-      [['Arrows'], 'Nudge 1 cm (hold Shift for 10 cm)'],
-      [['R'], 'Rotate 15° (Shift: 45°)'],
-      [['Ctrl', 'C'], 'Copy selection'],
-      [['Ctrl', 'V'], 'Paste (offset from the original)'],
-      [['Ctrl', 'D'], 'Duplicate selection'],
-      [['Del'], 'Remove selection'],
-      [['Ctrl', 'Z'], 'Undo'],
-      [['Ctrl', 'Y'], 'Redo (also Ctrl+Shift+Z)'],
+      ['Arrows', 'Nudge 1 cm (Shift: 10 cm)'],
+      ['R', 'Rotate 15 degrees (Shift: 45)'],
+      ['Ctrl + C / V', 'Copy and paste'],
+      ['Ctrl + D', 'Duplicate'],
+      ['Delete', 'Remove selection'],
+      ['Ctrl + Z / Y', 'Undo and redo'],
     ],
   },
   {
     title: 'Tools',
     rows: [
-      [['M'], 'Measure tool: click two points'],
-      [['?'], 'Show this help'],
+      ['M', 'Measure distance'],
+      ['?', 'Show this list'],
+    ],
+  },
+  {
+    title: '3D view',
+    rows: [
+      ['Drag', 'Orbit the camera'],
+      ['Right-drag', 'Pan the camera'],
+      ['W / A / S / D', 'Walk in the walkthrough'],
+      ['Esc', 'Leave the walkthrough'],
     ],
   },
 ];
 
+function Keys({ text }) {
+  const parts = text.split(/ ([+/]) /);
+  return (
+    <span className={styles.keys}>
+      {parts.map((part, i) => (i % 2 === 1 ? <span key={i} aria-hidden="true">{part}</span> : <kbd key={i} className={styles.kbd}>{part}</kbd>))}
+    </span>
+  );
+}
+
 export function ShortcutsModal({ onClose }) {
   return (
-    <Modal title="Keyboard shortcuts" subtitle="Shortcuts work on the 2D drafting canvas." onClose={onClose} width={520}>
-      {SECTIONS.map((section) => (
-        <section key={section.title}>
-          <div className={styles.label} style={{ marginBottom: 6 }}>{section.title}</div>
-          <table className={styles.table}>
-            <tbody>
+    <Modal title="Keyboard shortcuts" subtitle="Plan shortcuts work while the 2D plan is showing." onClose={onClose} width={680}>
+      <div className={styles.shortcutGrid}>
+        {SECTIONS.map((section) => (
+          <section key={section.title} className={styles.section}>
+            <h3 className={styles.sectionTitle}>{section.title}</h3>
+            <ul className={styles.keyList}>
               {section.rows.map(([keys, text]) => (
-                <tr key={text}>
-                  <td style={{ whiteSpace: 'nowrap', width: 150 }}>
-                    {keys.map((k, i) => (
-                      <React.Fragment key={k}>
-                        {i > 0 && ' + '}
-                        <span className={styles.kbd}>{k}</span>
-                      </React.Fragment>
-                    ))}
-                  </td>
-                  <td>{text}</td>
-                </tr>
+                <li key={text} className={styles.keyRow}>
+                  <Keys text={keys} />
+                  <span>{text}</span>
+                </li>
               ))}
-            </tbody>
-          </table>
-        </section>
-      ))}
+            </ul>
+          </section>
+        ))}
+      </div>
     </Modal>
   );
 }

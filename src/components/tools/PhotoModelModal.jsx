@@ -5,6 +5,8 @@ import * as THREE from 'three';
 import { Camera, X, Sparkles, Save } from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
+import { NumberField, RangeField, TextField } from '../common/Field.jsx';
+import { Notice } from '../common/Notice.jsx';
 import { useRoomStore } from '../../store/roomStore.js';
 import { readImage } from '../../engine/image.js';
 import {
@@ -15,7 +17,6 @@ import {
   buildModelFromViews,
   topDownImage,
 } from '../../engine/hull.js';
-import styles from '../common/Modal.module.css';
 import local from './PhotoModelModal.module.css';
 
 const PREVIEW_MAX = 360;
@@ -168,57 +169,49 @@ export function PhotoModelModal({ onClose }) {
     onClose();
   };
 
-  const setDim = (key, value) => {
-    const n = Math.max(5, Math.min(600, Number(value) || 5));
-    setDims((d) => ({ ...d, [key]: n }));
-  };
+  const setDim = (key, value) => setDims((d) => ({ ...d, [key]: value }));
 
   return (
     <Modal
       title="Create furniture from photos"
-      subtitle="Photograph a piece from a few sides. The 3D model is built on this device; photos are never uploaded."
+      subtitle="Photograph a piece from a few sides. The 3D model is built on this device and your photos are never uploaded."
       onClose={onClose}
-      width={800}
+      width={820}
       footer={
         <>
-          <Button variant="ghost" size="small" onClick={onClose}>Cancel</Button>
-          <Button variant="secondary" size="small" icon={<Sparkles size={12} />} onClick={handleBuild} disabled={photoCount < 2 || busy}>
-            {busy ? 'Building…' : model ? 'Rebuild model' : 'Build 3D model'}
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button variant="secondary" icon={<Sparkles size={16} />} onClick={handleBuild} disabled={photoCount < 2 || busy}>
+            {busy ? 'Building...' : model ? 'Rebuild model' : 'Build 3D model'}
           </Button>
-          <Button variant="primary" size="small" icon={<Save size={12} />} onClick={handleSave} disabled={!model}>
-            Save to My Furniture
+          <Button variant="primary" icon={<Save size={16} />} onClick={handleSave} disabled={!model}>
+            Save to My furniture
           </Button>
         </>
       }
     >
       <div className={local.columns}>
         <div className={local.left}>
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="pm-name">Name</label>
-            <input id="pm-name" className={styles.input} value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
-          </div>
+          <TextField label="Name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
 
-          <div className={styles.field}>
-            <span className={styles.label}>Real size (cm)</span>
-            <div className={styles.row}>
+          <div className={local.section}>
+            <h3 className={local.sectionTitle}>Real size</h3>
+            <div className={local.sizes}>
               {[['widthCm', 'Width'], ['depthCm', 'Depth'], ['heightCm', 'Height']].map(([key, label]) => (
-                <label key={key} className={local.dim}>
-                  {label}
-                  <input
-                    className={styles.input}
-                    type="number"
-                    min="5"
-                    max="600"
-                    value={dims[key]}
-                    onChange={(e) => setDim(key, e.target.value)}
-                  />
-                </label>
+                <NumberField
+                  key={key}
+                  label={label}
+                  suffix="cm"
+                  min={5}
+                  max={600}
+                  value={dims[key]}
+                  onCommit={(v) => setDim(key, v)}
+                />
               ))}
             </div>
           </div>
 
-          <div className={styles.field}>
-            <span className={styles.label}>Photos ({photoCount}/5 · need at least 2)</span>
+          <div className={local.section}>
+            <h3 className={local.sectionTitle}>Photos <span className={local.sectionNote}>{photoCount} of 5, at least 2 needed</span></h3>
             <div className={local.slots}>
               {VIEW_SLOTS.map((slot) => {
                 const photo = photos[slot.id];
@@ -228,7 +221,7 @@ export function PhotoModelModal({ onClose }) {
                       <span>{slot.label}</span>
                       {photo && (
                         <button type="button" className={local.iconBtn} onClick={() => removePhoto(slot.id)} aria-label={`Remove ${slot.label} photo`}>
-                          <X size={12} />
+                          <X size={14} />
                         </button>
                       )}
                     </div>
@@ -236,7 +229,7 @@ export function PhotoModelModal({ onClose }) {
                       <CutoutPreview photo={photo} mask={segmented[slot.id].mask} />
                     ) : (
                       <button type="button" className={local.addPhoto} onClick={() => inputs.current[slot.id]?.click()}>
-                        <Camera size={16} />
+                        <Camera size={18} aria-hidden="true" />
                         <span>Add photo</span>
                       </button>
                     )}
@@ -257,14 +250,14 @@ export function PhotoModelModal({ onClose }) {
             </div>
           </div>
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="pm-tol">Background removal strength: {tolerance}</label>
-            <input id="pm-tol" type="range" min="15" max="160" value={tolerance} onChange={(e) => setTolerance(Number(e.target.value))} />
-            <p className={styles.note}>
-              Works best with a plain, evenly lit background and the same camera distance for every side. Raise the
-              strength if background stays visible; lower it if parts of the piece disappear.
-            </p>
-          </div>
+          <RangeField
+            label="Background removal"
+            min={15}
+            max={160}
+            value={tolerance}
+            onChange={setTolerance}
+            hint="Works best with a plain, evenly lit background. Raise it if background stays visible; lower it if parts of the piece disappear."
+          />
         </div>
 
         <div className={local.right}>
@@ -284,30 +277,29 @@ export function PhotoModelModal({ onClose }) {
               </Canvas>
             ) : (
               <p className={local.placeholder}>
-                {photoCount < 2 ? 'Add a front and a side photo to begin.' : 'Press “Build 3D model” to preview it here.'}
+                {photoCount < 2 ? 'Add a front and a side photo to begin.' : 'Press "Build 3D model" to preview it here.'}
               </p>
             )}
           </div>
           {model && (
-            <p className={styles.note}>
-              {model.voxelCount.toLocaleString()} blocks · {model.triangleCount.toLocaleString()} triangles. Drag to rotate.
-              Models made from silhouettes look blocky and cannot show hollow parts; they are for planning, not rendering.
+            <p className={local.note}>
+              {model.voxelCount.toLocaleString()} blocks, {model.triangleCount.toLocaleString()} triangles. Drag to rotate.
+              Models built from silhouettes look blocky and cannot show hollow parts, so they suit planning rather than rendering.
             </p>
           )}
+          <p className={local.note}>
+            Furniture made from photos stays on this device. Shared links and JSON files keep its position but not its model.
+          </p>
         </div>
       </div>
 
       {weakSlots.length > 0 && (
-        <p className={styles.noteWarn} role="status">
+        <Notice kind="warn">
           The cut-out looks unreliable for: {weakSlots.map(([slot]) => VIEW_SLOTS.find((v) => v.id === slot).label).join(', ')}.
-          Adjust the background removal strength or retake the photo on a plain background.
-        </p>
+          Adjust the background removal or retake the photo on a plain background.
+        </Notice>
       )}
-      {message && <p className={styles.statusError} role="alert">{message.text}</p>}
-      <p className={styles.note}>
-        Furniture made from photos is stored on this device only. Shared links and JSON files keep its position but
-        not its model.
-      </p>
+      {message && <Notice kind="error">{message.text}</Notice>}
     </Modal>
   );
 }
