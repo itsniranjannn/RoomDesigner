@@ -1,7 +1,6 @@
 import React, { Suspense } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { ShortcutsModal } from './ShortcutsModal.jsx';
-import { CostModal } from './CostModal.jsx';
 import { LayoutModal } from './LayoutModal.jsx';
 import { ShareModal } from './ShareModal.jsx';
 
@@ -25,7 +24,6 @@ export function ModalHost() {
     );
   }
   if (!room) return null;
-  if (activeModal === 'cost') return <CostModal onClose={closeModal} />;
   if (activeModal === 'layout') return <LayoutModal onClose={closeModal} />;
   if (activeModal === 'share') return <ShareModal onClose={closeModal} />;
   return null;

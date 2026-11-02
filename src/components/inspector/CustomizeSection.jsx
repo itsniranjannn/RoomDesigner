@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { RotateCcw } from 'lucide-react';
 import { useRoomStore, RESIZE_MIN_RATIO, RESIZE_MAX_RATIO } from '../../store/roomStore.js';
 import { getFurnitureType } from '../../data/furnitureCatalog.js';
-import { estimatePriceNpr } from '../../engine/cost.js';
 import styles from './CustomizeSection.module.css';
 
 const PALETTE = ['#8B6F47', '#5C3524', '#C49746', '#22485E', '#3B4B42', '#8B2635', '#E6DDCB', '#2B2B2B'];
@@ -42,7 +41,7 @@ function NumberField({ label, value, placeholder, min, max, onCommit, suffix = '
   );
 }
 
-/** Per-piece size, finish and price overrides (non-destructive: reset restores the catalog values). */
+/** Per-piece size and finish overrides (non-destructive: reset restores the catalog values). */
 export function CustomizeSection({ item, def }) {
   const updateItemOverrides = useRoomStore((state) => state.updateItemOverrides);
   const base = getFurnitureType(item.furnitureTypeId);
@@ -62,7 +61,7 @@ export function CustomizeSection({ item, def }) {
             type="button"
             className={styles.reset}
             onClick={() => updateItemOverrides(item.id, {
-              widthCm: null, depthCm: null, heightCm: null, color: null, subColor: null, accentColor: null, priceNpr: null,
+              widthCm: null, depthCm: null, heightCm: null, color: null, subColor: null, accentColor: null,
             }, true)}
           >
             <RotateCcw size={11} /> Reset
@@ -102,15 +101,6 @@ export function CustomizeSection({ item, def }) {
         {base && item.overrides?.color && <span className={styles.hint}>Catalog colour: {base.color}</span>}
       </div>
 
-      <NumberField
-        label="Price"
-        suffix="NPR"
-        value={item.overrides?.priceNpr}
-        placeholder={`~${estimatePriceNpr(base).toLocaleString('en-US')}`}
-        min={0}
-        max={100000000}
-        onCommit={(v) => set({ priceNpr: v })}
-      />
     </div>
   );
 }

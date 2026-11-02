@@ -188,8 +188,7 @@ Inspired by the earthy materials, red ochre temples, and metallurgic heritage of
 | **Clearance warnings** | Door-swing zones, obstructed windows and cramped walking gaps (25–60 cm) are highlighted and listed. |
 | **Multi-select** | Shift-click or box-select; drag, nudge, copy / paste, duplicate and delete as a group. |
 | **Measure & wall distances** | Press `M` to measure between any two points; the selected piece shows live distances to every wall. |
-| **Customize pieces** | Resize (0.4×–2.5× of catalog size), recolour and set a price for each placed piece. Resets to the catalog values any time. |
-| **Cost estimate** | Bill of materials in NPR (estimated from category and volume unless you set a price), exportable as CSV. |
+| **Customize pieces** | Resize (0.4×–2.5× of catalog size) and recolour each placed piece. Resets to the catalog values any time. |
 | **Layout suggestions** | Pick a preset (bedroom, living, dining, study, Nepali sitting room) and pieces are placed against walls, clear of doors and windows. |
 | **Export & share** | PNG, PDF and JSON export, JSON import, and share links that carry the whole design in the URL (nothing is uploaded). |
 | **Trace a floor plan** | Import a photo or scan of a plan and draw over it with adjustable opacity and scale. |
