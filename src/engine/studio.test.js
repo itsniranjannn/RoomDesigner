@@ -6,6 +6,7 @@ import { buildBillOfMaterials, estimatePriceNpr, billToCsv } from './cost.js';
 import { encodeRoomToHash, decodeRoomFromHash, sanitizeImportedRoom } from './share.js';
 import { getWallDistances, formatCm } from './measure.js';
 import { jpegToPdf } from './pdf.js';
+import { getWalkStart, buildBlockers, isBlocked } from './walk.js';
 import { resolveItemDef, registerCustomFurniture, getFurnitureType } from '../data/furnitureCatalog.js';
 
 const room = {
@@ -129,5 +130,50 @@ describe('layout suggestion with existing furniture', () => {
     expect(placed).toHaveLength(2);
     const all = [...existing, ...placed];
     expect(evaluateAllCollisions(all, room.widthCm, room.depthCm).collidingIds.size).toBe(0);
+  });
+});
+
+describe('clearance noise control', () => {
+  it('ignores tiny gaps between neighbours but flags walk-through gaps', () => {
+    const mk = (gap) => ({
+      ...room,
+      placedFurniture: [
+        { id: 'a', furnitureTypeId: 'wardrobe-2door', x: 150, y: 100, rotationDeg: 0 },
+        { id: 'b', furnitureTypeId: 'wardrobe-2door', x: 150, y: 100 + 60 + gap, rotationDeg: 0 },
+      ],
+    });
+    expect(evaluateClearance(mk(10)).filter((i) => i.kind === 'tight-passage')).toHaveLength(0);
+    expect(evaluateClearance(mk(40)).filter((i) => i.kind === 'tight-passage')).toHaveLength(2);
+    expect(evaluateClearance(mk(80)).filter((i) => i.kind === 'tight-passage')).toHaveLength(0);
+  });
+
+  it('suggested layouts leave no tight passages in a normal room', () => {
+    const ids = ['bed-queen', 'nightstand', 'nightstand', 'wardrobe-2door', 'chest-drawers', 'rug-living'];
+    const { placed } = suggestLayout(room, ids);
+    const issues = evaluateClearance({ ...room, placedFurniture: placed });
+    expect(issues).toEqual([]);
+  });
+});
+
+describe('walkthrough helpers', () => {
+  it('starts just inside the first door facing the room', () => {
+    const start = getWalkStart(room);
+    expect(start.z).toBeLessThan(room.depthCm / 200);
+    expect(start.z).toBeGreaterThan(0);
+    expect(Math.abs(start.yaw - Math.atan2(start.x, start.z))).toBeLessThan(1e-9);
+  });
+
+  it('blocks walking through furniture but not rugs', () => {
+    const r = {
+      ...room,
+      placedFurniture: [
+        { id: 'a', furnitureTypeId: 'sofa-3seat', x: 260, y: 210, rotationDeg: 0 },
+        { id: 'b', furnitureTypeId: 'rug-living', x: 100, y: 100, rotationDeg: 0 },
+      ],
+    };
+    const blockers = buildBlockers(r);
+    expect(blockers).toHaveLength(1);
+    expect(isBlocked(0, 0, blockers)).toBe(true);
+    expect(isBlocked(-2.4, -1.9, blockers)).toBe(false);
   });
 });
