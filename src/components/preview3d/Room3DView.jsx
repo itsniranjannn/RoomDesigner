@@ -6,13 +6,24 @@ import { useRoomStore } from '../../store/roomStore.js';
 import { Room3DWalls } from './Room3DWalls.jsx';
 import { Furniture3DBox } from './Furniture3DBox.jsx';
 import { Button } from '../common/Button.jsx';
-import { Eye, RotateCcw, Footprints, Sun, Sunset, Moon } from 'lucide-react';
+import { Segmented } from '../common/Field.jsx';
+import { Box, Footprints, RotateCcw, Square, Sun, Sunset, Moon } from 'lucide-react';
 import { WalkControls } from './WalkControls.jsx';
 import styles from './Room3DView.module.css';
 
+const LIGHT_OPTIONS = [
+  { value: 'day', label: 'Day', icon: <Sun size={15} />, ariaLabel: 'Day lighting' },
+  { value: 'evening', label: 'Evening', icon: <Sunset size={15} />, ariaLabel: 'Evening lighting' },
+  { value: 'night', label: 'Night', icon: <Moon size={15} />, ariaLabel: 'Night lighting' },
+];
+
+const WALL_OPTIONS = [
+  { value: 'cutaway', label: 'Cutaway', icon: <Square size={15} />, ariaLabel: 'Cutaway walls' },
+  { value: 'full', label: 'Full walls', icon: <Box size={15} />, ariaLabel: 'Full-height walls' },
+];
+
 const LIGHTING = {
   day: {
-    label: 'Day',
     background: null,
     ambient: [1.15, '#FAF7F0'],
     hemi: 0.7,
@@ -21,7 +32,6 @@ const LIGHTING = {
     lamp: 0,
   },
   evening: {
-    label: 'Evening',
     background: '#E7D2BE',
     ambient: [0.55, '#F2D2B0'],
     hemi: 0.35,
@@ -30,7 +40,6 @@ const LIGHTING = {
     lamp: 1.1,
   },
   night: {
-    label: 'Night',
     background: '#1B2233',
     ambient: [0.16, '#8CA0C8'],
     hemi: 0.1,
@@ -43,7 +52,7 @@ const LIGHTING = {
 /**
  * CameraRig handles smooth camera animation from top-down drafting plane
  * into the 3D angled perspective view, with automatic elevation adjustment
- * between Cutaway (maquette) and Full-Height (architectural perspective) modes.
+ * between cutaway and full-height wall modes.
  */
 function CameraRig({ maxDimM, resetTrigger, isFullHeight, enabled = true }) {
   const { camera } = useThree();
@@ -109,7 +118,6 @@ function CameraRig({ maxDimM, resetTrigger, isFullHeight, enabled = true }) {
 export function Room3DView() {
   const room = useRoomStore((state) => state.room);
   const selectedItemId = useRoomStore((state) => state.selectedItemId);
-  const collidingItemIds = useRoomStore((state) => state.collidingItemIds);
 
   const [isFullHeight, setIsFullHeight] = useState(false);
   const [resetCounter, setResetCounter] = useState(0);
@@ -194,7 +202,6 @@ export function Room3DView() {
             roomWidthCm={room.widthCm}
             roomDepthCm={room.depthCm}
             isSelected={selectedItemId === item.id}
-            isColliding={collidingItemIds.has(item.id)}
           />
         ))}
 
@@ -217,53 +224,44 @@ export function Room3DView() {
         {walking && <WalkControls room={room} onExit={exitWalk} />}
       </Canvas>
 
-      <div className={styles.hintBadge} aria-live="polite">
+      <p className={styles.hint} aria-live="polite">
         {walking
-          ? 'Drag to look · W A S D or arrow keys to walk · Esc to leave'
-          : 'Left-click to orbit · Right-click to pan · Scroll to zoom'}
-      </div>
+          ? 'Drag to look around. Walk with W A S D or the arrow keys. Press Esc to leave.'
+          : 'Drag to turn the view, right-drag to move it, scroll to zoom.'}
+      </p>
 
-      <div className={styles.controlsOverlay}>
-        <div className={styles.lightingGroup} role="group" aria-label="Lighting">
-          {[['day', Sun], ['evening', Sunset], ['night', Moon]].map(([key, Icon]) => (
-            <button
-              key={key}
-              type="button"
-              className={`${styles.lightingBtn} ${lighting === key ? styles.lightingActive : ''}`}
-              onClick={() => setLighting(key)}
-              aria-pressed={lighting === key}
-              aria-label={`${LIGHTING[key].label} lighting`}
-              title={`${LIGHTING[key].label} lighting`}
+      <div className={styles.controls} role="toolbar" aria-label="3D view controls">
+        {!walking && (
+          <>
+            <Segmented ariaLabel="Lighting" options={LIGHT_OPTIONS} value={lighting} onChange={setLighting} className={styles.compactSeg} />
+            <Segmented
+              ariaLabel="Walls"
+              options={WALL_OPTIONS}
+              value={isFullHeight ? 'full' : 'cutaway'}
+              onChange={(v) => setIsFullHeight(v === 'full')}
+              className={styles.compactSeg}
+            />
+            <Button
+              variant="secondary"
+              icon={<RotateCcw size={16} />}
+              onClick={() => setResetCounter((c) => c + 1)}
+              aria-label="Reset view"
+              title="Reset view"
+              className={styles.controlBtn}
             >
-              <Icon size={14} />
-            </button>
-          ))}
-        </div>
+              <span className={styles.controlText}>Reset view</span>
+            </Button>
+          </>
+        )}
         <Button
           variant={walking ? 'primary' : 'secondary'}
-          size="small"
+          icon={<Footprints size={16} />}
           onClick={() => (walking ? exitWalk() : setWalking(true))}
-          icon={<Footprints size={12} />}
+          className={walking ? undefined : styles.controlBtn}
+          aria-label={walking ? 'Leave walkthrough' : 'Walk through the room'}
+          title={walking ? 'Leave walkthrough' : 'Walk through the room'}
         >
-          {walking ? 'Leave walkthrough' : 'Walk through'}
-        </Button>
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={() => setIsFullHeight(!isFullHeight)}
-          icon={<Eye size={12} />}
-          disabled={walking}
-        >
-          {isFullHeight ? 'Cutaway walls' : 'Full-height walls'}
-        </Button>
-        <Button
-          variant="secondary"
-          size="small"
-          onClick={() => setResetCounter((c) => c + 1)}
-          icon={<RotateCcw size={12} />}
-          disabled={walking}
-        >
-          Reset view
+          <span className={walking ? undefined : styles.controlText}>{walking ? 'Leave walkthrough' : 'Walk through'}</span>
         </Button>
       </div>
     </div>
