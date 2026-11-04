@@ -133,6 +133,30 @@
   opacity: 0.7;
 }
 
+.passageGhost {
+  fill: var(--color-indigo-subtle);
+  stroke: var(--color-indigo);
+  stroke-width: 3px;
+  stroke-dasharray: 10 6;
+}
+
+.passageGhostBad {
+  fill: var(--color-warning);
+  stroke: var(--color-maroon);
+  stroke-width: 3px;
+  stroke-dasharray: 10 6;
+}
+
+.passageArrow line,
+.passageArrow path {
+  fill: none;
+  stroke: var(--color-ink-muted);
+  stroke-width: 3px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.7;
+}
+
 .snapDot {
   fill: var(--color-indigo);
   opacity: 0.7;

@@ -155,4 +155,34 @@ describe('flatStore', () => {
       expect(Object.keys(st().rooms)).toHaveLength(rooms);
     }
   });
+
+  it('places, edits and rotates a passage, undoing and redoing each step', () => {
+    const spec = { x: 200, y: 200, lengthCm: 300, widthCm: 120, heading: 0 };
+    const placed = st().placePassage(spec);
+    expect(placed.ok).toBe(true);
+    expect(st().selected).toEqual({ type: 'space', id: placed.spaceId });
+    expect(st().flat.spaces[0]).toMatchObject({ kind: 'passage', name: 'Passage 1', widthCm: 300 });
+
+    expect(st().editPassage(placed.spaceId, { widthCm: 150 }).ok).toBe(true);
+    expect(st().flat.spaces[0]).toMatchObject({ depthCm: 150 });
+    const turned = st().editPassage(placed.spaceId, { turns: 1 });
+    expect(turned.ok).toBe(true);
+    expect(st().flat.spaces[0]).toMatchObject({ heading: 90, widthCm: 150, depthCm: 300 });
+
+    st().undo();
+    expect(st().flat.spaces[0]).toMatchObject({ heading: 0, widthCm: 300, depthCm: 150 });
+    st().undo();
+    st().undo();
+    expect(st().flat.spaces).toHaveLength(0);
+    st().redo();
+    expect(st().flat.spaces[0]).toMatchObject({ kind: 'passage', depthCm: 120 });
+  });
+
+  it('refuses a passage on top of a room and leaves the history alone', () => {
+    st().applyPreset('shell', { widthCm: 600, depthCm: 400 });
+    const depth = st().past.length;
+    const res = st().placePassage({ x: 100, y: 100, lengthCm: 300, widthCm: 120, heading: 0 });
+    expect(res.error).toMatch(/overlaps/);
+    expect(st().past.length).toBe(depth);
+  });
 });

@@ -7,7 +7,7 @@ import { Furniture3DBox } from '../preview3d/Furniture3DBox.jsx';
 import { Button } from '../common/Button.jsx';
 import { stairGeometry, stairFootprint, levelIndex, SPACE_KINDS } from '../../engine/flat.js';
 import { wallsOf, openingsOf, analyzeLevel } from '../../engine/flatPlan.js';
-import { edgesOf, wallBoxes, regionRects } from '../../engine/flatWalls.js';
+import { edgesOf, wallBoxes, skirtingBoxes, regionRects } from '../../engine/flatWalls.js';
 import styles from './FlatDesigner.module.css';
 
 /** Steps of one staircase as boxes, positioned in the flat's metre space. */
@@ -72,15 +72,33 @@ function Stairs3D({ stair, baseY }) {
   );
 }
 
+function WallBox({ box: b, color }) {
+  const len = (b.b - b.a) / 100;
+  const h = (b.z1 - b.z0) / 100;
+  const mid = (b.a + b.b) / 200;
+  const line = b.line / 100;
+  const y = (b.z0 + b.z1) / 200;
+  const pos = b.axis === 'h' ? [mid, y, line] : [line, y, mid];
+  const dims = b.axis === 'h' ? [len, h, b.thick / 100] : [b.thick / 100, h, len];
+  return (
+    <mesh position={pos} receiveShadow>
+      <boxGeometry args={dims} />
+      <meshStandardMaterial color={color} roughness={0.7} />
+    </mesh>
+  );
+}
+
 const WALL_COLOR = '#F2EDE4';
+const SKIRTING_COLOR = '#B79C78';
 
 /** Floors, walls (with door and window gaps) and furniture of one floor. */
 function LevelShell({ flat, level, rooms, baseY, fullHeight }) {
   const runs = wallsOf(flat, level.id);
   const openings = openingsOf(flat, level.id);
-  const boxes = useMemo(() => {
+  const { boxes, skirting } = useMemo(() => {
     const analysis = analyzeLevel(flat, level.id);
-    return wallBoxes(edgesOf(runs), analysis.isExteriorEdge, openings, { fullHeight });
+    const walls = wallBoxes(edgesOf(runs), analysis.isExteriorEdge, openings, { fullHeight });
+    return { boxes: walls, skirting: skirtingBoxes(walls) };
   }, [flat, level.id, runs, openings, fullHeight]);
   const spaces = flat.spaces.filter((s) => s.levelId === level.id);
   return (
@@ -123,6 +141,9 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight }) {
           </group>
         );
       })}
+      {skirting.map((b, i) => (
+        <WallBox key={`s${i}`} box={b} color={SKIRTING_COLOR} />
+      ))}
       {boxes.map((b, i) => {
         const len = (b.b - b.a) / 100;
         const h = (b.z1 - b.z0) / 100;
