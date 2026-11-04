@@ -571,10 +571,22 @@ export function planOpening(edges, openings, { type, x, y, widthCm, tolCm = 10, 
 // ---------- drawable stretches and 3D boxes ----------
 
 /**
+ * Which way is outside the flat for a wall edge: -1 towards the smaller coordinate (up or left),
+ * +1 towards the larger one, 0 when both or neither side is outside.
+ */
+export function outwardOf(key, outsideCell) {
+  const { axis, i, j } = parseEdge(key);
+  const before = axis === 'h' ? outsideCell(i, j - 1) : outsideCell(i - 1, j);
+  const after = outsideCell(i, j);
+  if (before === after) return 0;
+  return before ? -1 : 1;
+}
+
+/**
  * Maximal straight stretches of wall with one thickness each.
  * @returns {Array<{ axis, line, from, to, thick, exterior }>} in cm
  */
-export function wallStretches(edges, isExteriorEdge) {
+export function wallStretches(edges, isExteriorEdge, outsideCell = null) {
   const out = [];
   const lines = { h: new Map(), v: new Map() };
   for (const key of edges) {
@@ -582,7 +594,11 @@ export function wallStretches(edges, isExteriorEdge) {
     const line = axis === 'h' ? j : i;
     const pos = axis === 'h' ? i : j;
     if (!lines[axis].has(line)) lines[axis].set(line, []);
-    lines[axis].get(line).push({ pos, ext: isExteriorEdge(key) });
+    lines[axis].get(line).push({
+      pos,
+      ext: isExteriorEdge(key),
+      out: outsideCell ? outwardOf(key, outsideCell) : 0,
+    });
   }
   for (const axis of ['h', 'v']) {
     for (const [line, list] of lines[axis]) {
@@ -597,10 +613,11 @@ export function wallStretches(edges, isExteriorEdge) {
           to: (b.pos + 1) * CELL,
           thick: a.ext ? EXTERIOR_THICK_CM : INTERIOR_THICK_CM,
           exterior: a.ext,
+          outward: a.out,
         });
       for (let n = 1; n < list.length; n++) {
         const cur = list[n];
-        if (cur.pos !== prev.pos + 1 || cur.ext !== prev.ext) {
+        if (cur.pos !== prev.pos + 1 || cur.ext !== prev.ext || cur.out !== prev.out) {
           flush(start, prev);
           start = cur;
         }
@@ -612,16 +629,50 @@ export function wallStretches(edges, isExteriorEdge) {
   return out;
 }
 
+/** Thickness of interior walls in the 3D view: thinner than the plan symbol so furniture drawn on the room's edge does not sink into it. */
+export const WALL3D_INTERIOR_CM = 8;
+export const DOOR_HEIGHT = DOOR_HEIGHT_CM;
+export const WINDOW_SILL = WINDOW_SILL_CM;
+export const WALL_HEIGHT = WALL_HEIGHT_CM;
+export const CUTAWAY_HEIGHT = CUTAWAY_HEIGHT_CM;
+
+/** Whether a wall runs into this one at the grid vertex where a stretch ends. */
+function perpendicularAt(edges, axis, lineCell, posCell) {
+  return axis === 'h'
+    ? edges.has(edgeKey('v', posCell, lineCell)) || edges.has(edgeKey('v', posCell, lineCell - 1))
+    : edges.has(edgeKey('h', lineCell, posCell)) || edges.has(edgeKey('h', lineCell - 1, posCell));
+}
+
 /**
- * Wall solids for the 3D view with door and window gaps cut out.
- * Each box is { axis, line, a, b, thick, z0, z1, glass } (a..b along the wall, cm).
+ * Wall solids and the door and window fixtures for the 3D view.
+ *
+ * Every wall is built from separate boxes around each opening (left, right, above and below it),
+ * so doors and windows are real holes. Outer walls stand outside the room outline (their inner
+ * face is on the grid line, as in the room designer) and interior walls are centred on it.
+ *
+ * Boxes are { axis, line, off, a, b, thick, z0, z1, glass } (a..b along the wall, cm; `off` is how
+ * far the box centre sits off the grid line). Fixtures are { id, type, axis, line, off, a, b,
+ * thick, z1, sill, exterior, opening } for the frame, leaf or glazing of each opening.
  */
-export function wallBoxes(edges, isExteriorEdge, openings = [], { fullHeight = true } = {}) {
+export function wallPieces(
+  edges,
+  isExteriorEdge,
+  openings = [],
+  { fullHeight = true, outsideCell = null } = {}
+) {
   const H = fullHeight ? WALL_HEIGHT_CM : CUTAWAY_HEIGHT_CM;
   const sill = fullHeight ? WINDOW_SILL_CM : 18;
   const head = fullHeight ? DOOR_HEIGHT_CM : H;
   const boxes = [];
-  for (const s of wallStretches(edges, isExteriorEdge)) {
+  const fixtures = [];
+  for (const s of wallStretches(edges, isExteriorEdge, outsideCell)) {
+    const thick = s.exterior ? s.thick : WALL3D_INTERIOR_CM;
+    const off = (s.outward * thick) / 2;
+    const lineCell = Math.round(s.line / CELL);
+    const reach = (posCm) =>
+      s.outward !== 0 && perpendicularAt(edges, s.axis, lineCell, Math.round(posCm / CELL))
+        ? thick
+        : thick / 2;
     const ops = openings
       .filter(
         (o) =>
@@ -629,14 +680,31 @@ export function wallBoxes(edges, isExteriorEdge, openings = [], { fullHeight = t
       )
       .map((o) => ({ ...o, a: Math.max(s.from, o.start), b: Math.min(s.to, o.start + o.widthCm) }))
       .sort((p, q) => p.a - q.a);
-    const ext = s.thick / 2;
-    let cursor = s.from;
+    const from = s.from - reach(s.from);
+    const to = s.to + reach(s.to);
+    let cursor = from;
     const solid = (a, b, z0, z1) => {
       if (b - a > 0.5 && z1 - z0 > 0.5)
-        boxes.push({ axis: s.axis, line: s.line, a, b, thick: s.thick, z0, z1, glass: false });
+        boxes.push({ axis: s.axis, line: s.line, off, a, b, thick, z0, z1, glass: false });
     };
     for (const o of ops) {
-      solid(cursor === s.from ? cursor - ext : cursor, o.a, 0, H);
+      solid(cursor, o.a, 0, H);
+      const fixture = {
+        id: o.id,
+        type: o.type,
+        axis: s.axis,
+        line: s.line,
+        off,
+        a: o.a,
+        b: o.b,
+        thick,
+        z1: Math.min(head, H),
+        sill: o.type === 'window' ? Math.min(sill, H) : 0,
+        exterior: s.exterior,
+        outward: s.outward,
+        opening: o,
+      };
+      fixtures.push(fixture);
       if (o.type === 'door') {
         if (fullHeight) solid(o.a, o.b, head, H);
       } else {
@@ -645,9 +713,10 @@ export function wallBoxes(edges, isExteriorEdge, openings = [], { fullHeight = t
         boxes.push({
           axis: s.axis,
           line: s.line,
+          off,
           a: o.a,
           b: o.b,
-          thick: 4,
+          thick: 3,
           z0: Math.min(sill, H),
           z1: head,
           glass: true,
@@ -655,9 +724,14 @@ export function wallBoxes(edges, isExteriorEdge, openings = [], { fullHeight = t
       }
       cursor = o.b;
     }
-    solid(cursor === s.from ? cursor - ext : cursor, s.to + ext, 0, H);
+    solid(cursor, to, 0, H);
   }
-  return boxes;
+  return { boxes, fixtures };
+}
+
+/** Wall boxes only (see wallPieces). */
+export function wallBoxes(edges, isExteriorEdge, openings = [], options = {}) {
+  return wallPieces(edges, isExteriorEdge, openings, options).boxes;
 }
 
 export const SKIRTING_HEIGHT_CM = 8;
@@ -674,6 +748,7 @@ export function skirtingBoxes(boxes) {
     .map((b) => ({
       axis: b.axis,
       line: b.line,
+      off: b.off,
       a: b.a,
       b: b.b,
       thick: b.thick + SKIRTING_PROUD_CM * 2,
@@ -755,4 +830,31 @@ export function defaultSwing(analysis, op) {
   const areaA = ia >= 0 ? analysis.regions[ia].areaCm2 : Infinity;
   const areaB = ib >= 0 ? analysis.regions[ib].areaCm2 : Infinity;
   return areaA < areaB ? -1 : 1;
+}
+
+/** A rectangle (cm) with another cut out of it: up to four rectangles that tile what is left. */
+export function subtractRect(rect, hole) {
+  const x0 = rect.x;
+  const y0 = rect.y;
+  const x1 = rect.x + rect.widthCm;
+  const y1 = rect.y + rect.depthCm;
+  const hx0 = Math.max(x0, hole.x);
+  const hy0 = Math.max(y0, hole.y);
+  const hx1 = Math.min(x1, hole.x + hole.widthCm);
+  const hy1 = Math.min(y1, hole.y + hole.depthCm);
+  if (hx0 >= hx1 || hy0 >= hy1) return [rect];
+  const out = [];
+  const add = (x, y, w, d) => {
+    if (w > 0 && d > 0) out.push({ x, y, widthCm: w, depthCm: d });
+  };
+  add(x0, y0, rect.widthCm, hy0 - y0); // above the hole
+  add(x0, hy1, rect.widthCm, y1 - hy1); // below it
+  add(x0, hy0, hx0 - x0, hy1 - hy0); // left of it
+  add(hx1, hy0, x1 - hx1, hy1 - hy0); // right of it
+  return out;
+}
+
+/** Rectangles with every hole cut out of them. */
+export function carveHoles(rects, holes) {
+  return holes.reduce((list, hole) => list.flatMap((r) => subtractRect(r, hole)), rects);
 }

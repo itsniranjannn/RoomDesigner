@@ -32,6 +32,7 @@ import {
   uid,
   FLAT_VERSION,
   stairRect,
+  normalizeStairs,
 } from './flat.js';
 
 const NO_ITEMS = [];
@@ -343,7 +344,11 @@ export function reconcile(flat, rooms = {}) {
       spaces.push(space);
     }
   }
-  return { flat: { ...flat, spaces, roomCounter: counter }, rooms: nextRooms, removedRoomIds };
+  return {
+    flat: normalizeStairs({ ...flat, spaces, roomCounter: counter }),
+    rooms: nextRooms,
+    removedRoomIds,
+  };
 }
 
 // ---------- edits ----------
@@ -524,6 +529,82 @@ export function syncRoomToFlat(flat, rooms, spaceId, editedRoom) {
   return reconcile({ ...flat, openings: { ...flat.openings, [space.levelId]: merged } }, nextRooms);
 }
 
+// ---------- main entrance ----------
+
+/**
+ * For a door or window on an outer wall: which way leads into the flat on the plan
+ * (a unit step { dx, dy }), or null when the opening is not on an outer wall.
+ */
+export function inwardStep(flat, levelId, op) {
+  const analysis = analyzeLevel(flat, levelId);
+  if (!analysis.isOutsideCell) return null;
+  const mid = Math.floor((op.start + op.widthCm / 2) / CELL);
+  const line = Math.round(op.line / CELL);
+  const [a, b] =
+    op.axis === 'h'
+      ? [
+          [mid, line - 1],
+          [mid, line],
+        ]
+      : [
+          [line - 1, mid],
+          [line, mid],
+        ];
+  const outA = analysis.isOutsideCell(a[0], a[1]);
+  const outB = analysis.isOutsideCell(b[0], b[1]);
+  if (!outA && !outB) return null;
+  const sign = outA ? 1 : -1;
+  return op.axis === 'h' ? { dx: 0, dy: sign } : { dx: sign, dy: 0 };
+}
+
+/** Every door on an outer wall, ground floor first: { levelId, opening, inward }. */
+export function exteriorDoors(flat) {
+  const out = [];
+  for (const level of flat.levels) {
+    for (const opening of openingsOf(flat, level.id)) {
+      if (opening.type !== 'door') continue;
+      const inward = inwardStep(flat, level.id, opening);
+      if (inward) out.push({ levelId: level.id, opening, inward });
+    }
+  }
+  return out;
+}
+
+/**
+ * The main entrance: the door the user chose when it is still an outer door, otherwise the
+ * first outer door. `explicit` tells the two apart. Null when the flat has no outer door.
+ */
+export function entranceOf(flat) {
+  if (!flat) return null;
+  const doors = exteriorDoors(flat);
+  const chosen = flat.entranceId ? doors.find((d) => d.opening.id === flat.entranceId) : null;
+  if (chosen) return { ...chosen, explicit: true };
+  return doors[0] ? { ...doors[0], explicit: false } : null;
+}
+
+/**
+ * Makes a door the main entrance (only one per flat) or clears the choice with null.
+ * @returns {{ flat } | { error: string }}
+ */
+export function setEntrance(flat, openingId) {
+  if (openingId === null || openingId === undefined) {
+    if (!flat.entranceId) return { flat };
+    const { entranceId: _gone, ...rest } = flat;
+    return { flat: rest };
+  }
+  const found = exteriorDoors(flat).find((d) => d.opening.id === openingId);
+  if (!found) {
+    const anywhere = flat.levels.some((l) =>
+      openingsOf(flat, l.id).some((o) => o.id === openingId && o.type === 'door')
+    );
+    return {
+      error: anywhere
+        ? 'The main entrance has to be a door on an outer wall of the flat.'
+        : 'Only a door can be the main entrance.',
+    };
+  }
+  return { flat: { ...flat, entranceId: openingId } };
+}
 // ---------- stairs ----------
 
 /** Plain-language warnings for a staircase placed on a level. */
@@ -556,7 +637,10 @@ export function stairWarnings(flat, stair) {
 export function migrateFlat(flat, rooms = {}) {
   if (flat.walls && flat.version >= FLAT_VERSION) {
     // Areas that were not rectangles used to have no room record; they have one now
-    if ((flat.spaces || []).some((s) => !s.roomId || s.furnishable === false))
+    if (
+      (flat.spaces || []).some((s) => !s.roomId || s.furnishable === false) ||
+      normalizeStairs(flat) !== flat
+    )
       return { ...reconcile(flat, rooms), migrated: true };
     return { flat, rooms, removedRoomIds: [], migrated: false };
   }

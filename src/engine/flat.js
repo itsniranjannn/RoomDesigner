@@ -164,17 +164,52 @@ export const STAIR_TYPES = {
   U: 'U-shaped (half turn)',
 };
 
-export const STAIR_LIMITS = { widthCm: [70, 200], riseCm: [200, 450] };
+export const STAIR_LIMITS = { widthCm: [70, 200], riseCm: [200, 1200] };
+const MIN_RISER_CM = 12;
 
-function stairStepCount(riseCm) {
-  return Math.max(2, Math.ceil(riseCm / MAX_RISER_CM));
+/** Steps in a staircase: the one the user chose when it gives a comfortable riser, else the fewest that do. */
+export function stairStepCount(stair) {
+  const auto = Math.max(2, Math.ceil(stair.riseCm / MAX_RISER_CM));
+  const chosen = Number(stair.steps);
+  if (!Number.isFinite(chosen)) return auto;
+  const lo = Math.max(2, Math.ceil(stair.riseCm / 22));
+  const hi = Math.max(lo, Math.floor(stair.riseCm / MIN_RISER_CM));
+  return Math.max(lo, Math.min(hi, Math.round(chosen)));
+}
+
+/** Range of step counts a rise allows. */
+export function stairStepRange(riseCm) {
+  const lo = Math.max(2, Math.ceil(riseCm / 22));
+  return [lo, Math.max(lo, Math.floor(riseCm / MIN_RISER_CM))];
+}
+
+/** Index of the floor a staircase climbs to (default: the floor above), or -1 when there is none. */
+export function stairTargetIndex(flat, stair) {
+  const from = levelIndex(flat, stair.levelId);
+  const target = stair.toLevelId ? flat.levels.findIndex((l) => l.id === stair.toLevelId) : -1;
+  if (target > from) return target;
+  return from + 1 < flat.levels.length ? from + 1 : -1;
+}
+
+/** Whether a staircase opens a hole in the floor of a level (the floors it arrives on). */
+export function stairOpensOn(flat, stair, levelId) {
+  const from = levelIndex(flat, stair.levelId);
+  const to = stairTargetIndex(flat, stair);
+  const idx = flat.levels.findIndex((l) => l.id === levelId);
+  return to > from && idx > from && idx <= to;
+}
+
+/** Floor to floor height for climbing from one level to another. */
+export function stairRiseBetween(flat, fromId, toId) {
+  const span = Math.max(1, levelIndex(flat, toId) - levelIndex(flat, fromId));
+  return flat.floorHeightCm * span;
 }
 
 export function createStair(
   flat,
-  { levelId, type = 'straight', widthCm = 100, x = 0, y = 0, rotationDeg = 0 }
+  { levelId, type = 'straight', widthCm = 100, x = 0, y = 0, rotationDeg = 0, toLevelId, steps }
 ) {
-  return {
+  const stair = {
     id: uid('stair'),
     levelId,
     type,
@@ -184,16 +219,27 @@ export function createStair(
     x: snapToGrid(x),
     y: snapToGrid(y),
   };
+  const from = levelIndex(flat, levelId);
+  const to = toLevelId ? flat.levels.findIndex((l) => l.id === toLevelId) : -1;
+  if (to > from) {
+    stair.toLevelId = toLevelId;
+    stair.riseCm = flat.floorHeightCm * (to - from);
+  }
+  if (steps !== undefined && steps !== null) {
+    const [lo, hi] = stairStepRange(stair.riseCm);
+    stair.steps = Math.max(lo, Math.min(hi, Math.round(steps)));
+  }
+  return stair;
 }
 
 /**
- * Local (unrotated) geometry. Flights ascend in `dir` ('up' = toward -y, 'right' = +x, 'down' = +y).
+ * Local (unrotated) geometry. Flights ascend in `dir` ('up' = toward -y, 'left' = -x, 'right' = +x, 'down' = +y).
  * @returns {{ steps: number, riserCm: number, localWidthCm: number, localDepthCm: number,
  *             flights: Array, landing: Object|null }}
  */
 export function stairGeometry(stair) {
   const W = stair.widthCm;
-  const N = stairStepCount(stair.riseCm);
+  const N = stairStepCount(stair);
   const riserCm = stair.riseCm / N;
   const T = TREAD_CM;
 
@@ -208,7 +254,7 @@ export function stairGeometry(stair) {
         y: 0,
         widthCm: W,
         lengthCm: b * T,
-        dir: 'right',
+        dir: 'left',
         firstStep: a + 2,
         treads: b,
         horizontal: true,
@@ -289,4 +335,126 @@ export function flatSummary(flat) {
     levels: flat.levels.length,
     stairs: flat.stairs.length,
   };
+}
+
+/** The stair with its rise matched to the floors it joins (flat.floorHeightCm per floor climbed). */
+export function normalizeStair(flat, stair) {
+  const to = stairTargetIndex(flat, stair);
+  if (to < 0) return stair;
+  const rise = flat.floorHeightCm * (to - levelIndex(flat, stair.levelId));
+  const toLevelId = flat.levels[to].id;
+  if (stair.riseCm === rise && stair.toLevelId === toLevelId) return stair;
+  const next = { ...stair, riseCm: rise, toLevelId };
+  if (next.steps !== undefined) next.steps = stairStepCount(next);
+  return next;
+}
+
+/** Stairs of a flat with their rise matched to the floors; the same flat when nothing changes. */
+export function normalizeStairs(flat) {
+  const stairs = flat.stairs.map((s) => normalizeStair(flat, s));
+  return stairs.every((s, i) => s === flat.stairs[i]) ? flat : { ...flat, stairs };
+}
+
+// ---------- stair surfaces (3D, walking) ----------
+
+const quarterTurns = (stair) => ((Math.round((stair.rotationDeg || 0) / 90) % 4) + 4) % 4;
+
+/** Rotates a point about a centre by quarter turns clockwise on the plan (y points down). */
+function turnQuarter(px, py, cx, cy, quarters) {
+  const dx = px - cx;
+  const dy = py - cy;
+  switch (quarters) {
+    case 1:
+      return { x: cx - dy, y: cy + dx };
+    case 2:
+      return { x: cx - dx, y: cy - dy };
+    case 3:
+      return { x: cx + dy, y: cy - dx };
+    default:
+      return { x: px, y: py };
+  }
+}
+
+/**
+ * Every tread of a staircase as a rectangle on the plan (flat coordinates, cm) with the
+ * height of its top above the floor the stair starts on. Landings are included.
+ * @returns {Array<{ x0, y0, x1, y1, top, landing?: boolean }>}
+ */
+export function stairTreads(stair) {
+  const g = stairGeometry(stair);
+  const fp = stairFootprint(stair);
+  const q = quarterTurns(stair);
+  const cx = stair.x + fp.widthCm / 2;
+  const cy = stair.y + fp.depthCm / 2;
+  const lcx = g.localWidthCm / 2;
+  const lcy = g.localDepthCm / 2;
+  const out = [];
+  const push = (lx0, ly0, lx1, ly1, top, landing = false, extra = {}) => {
+    // Local box centred on the footprint, then turned and moved onto the plan
+    const a = turnQuarter(lx0 - lcx, ly0 - lcy, 0, 0, q);
+    const b = turnQuarter(lx1 - lcx, ly1 - lcy, 0, 0, q);
+    out.push({
+      x0: cx + Math.min(a.x, b.x),
+      y0: cy + Math.min(a.y, b.y),
+      x1: cx + Math.max(a.x, b.x),
+      y1: cy + Math.max(a.y, b.y),
+      top,
+      landing,
+      ...extra,
+    });
+  };
+  const T = TREAD_CM;
+  g.flights.forEach((f, flight) => {
+    const local =
+      f.dir === 'up' ? [0, -1] : f.dir === 'down' ? [0, 1] : f.dir === 'left' ? [-1, 0] : [1, 0];
+    const turned = turnQuarter(local[0], local[1], 0, 0, q);
+    const extra = { flight, dirX: turned.x, dirY: turned.y };
+    for (let i = 0; i < f.treads; i++) {
+      const top = (f.firstStep + i) * g.riserCm;
+      const meta = { ...extra, index: i };
+      if (f.dir === 'up')
+        push(
+          f.x,
+          f.y + f.lengthCm - (i + 1) * T,
+          f.x + f.widthCm,
+          f.y + f.lengthCm - i * T,
+          top,
+          false,
+          meta
+        );
+      else if (f.dir === 'down')
+        push(f.x, f.y + i * T, f.x + f.widthCm, f.y + (i + 1) * T, top, false, meta);
+      else if (f.dir === 'left')
+        push(
+          f.x + f.lengthCm - (i + 1) * T,
+          f.y,
+          f.x + f.lengthCm - i * T,
+          f.y + f.widthCm,
+          top,
+          false,
+          meta
+        );
+      else push(f.x + i * T, f.y, f.x + (i + 1) * T, f.y + f.widthCm, top, false, meta);
+    }
+  });
+  if (g.landing) {
+    const L = g.landing;
+    push(L.x, L.y, L.x + L.widthCm, L.y + L.depthCm, L.stepIndex * g.riserCm, true);
+  }
+  return out;
+}
+
+/** Height (cm above the start floor) of the staircase surface at a plan point, or null when it is not on a tread. */
+export function stairHeightAt(stair, x, y) {
+  let best = null;
+  for (const t of stairTreads(stair)) {
+    if (x >= t.x0 && x <= t.x1 && y >= t.y0 && y <= t.y1) best = Math.max(best ?? 0, t.top);
+  }
+  return best;
+}
+
+/** Height of the highest tread: standing here you step straight onto the floor above. */
+export function stairTopTread(stair) {
+  const g = stairGeometry(stair);
+  return (g.steps - 1) * g.riserCm;
 }

@@ -3,26 +3,55 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getWalkStart, buildBlockers, isBlocked, PLAYER_RADIUS } from '../../engine/walk.js';
 
-const EYE_HEIGHT = 1.6;
+export const EYE_HEIGHT = 1.6;
 const SPEED = 1.6; // metres per second
 const LOOK_SPEED = 0.0042;
+const EYE_EASE = 8; // how quickly the eye follows a staircase
 
-/** First-person walkthrough: drag to look, W/A/S/D or arrows to move, Esc to leave. */
-export function WalkControls({ room, onExit }) {
+/** Walking rules for a single room: its start, walls (the room bounds) and furniture. */
+function roomEnv(room) {
+  const blockers = buildBlockers(room);
+  const maxX = room.widthCm / 200 - PLAYER_RADIUS;
+  const maxZ = room.depthCm / 200 - PLAYER_RADIUS;
+  return {
+    start: { ...getWalkStart(room), levelIdx: 0, floorM: 0 },
+    isBlocked: (x, z) => Math.abs(x) > maxX || Math.abs(z) > maxZ || isBlocked(x, z, blockers),
+    surface: (x, z, levelIdx) => ({ levelIdx, floorM: 0 }),
+  };
+}
+
+/**
+ * First-person walkthrough: drag to look, W/A/S/D or arrows to move, Esc to leave.
+ *
+ * Pass `room` to walk one room, or `env` to walk anything else:
+ *   env.start      { x, z, yaw, levelIdx, floorM }  where the visitor begins (metres)
+ *   env.isBlocked  (x, z, levelIdx) => boolean       true when a position is inside something
+ *   env.surface    (x, z, levelIdx) => { levelIdx, floorM, blocked? }  the floor under a position
+ * `onLevelChange(levelIdx)` is called when a staircase takes the visitor to another floor.
+ */
+export function WalkControls({ room, env: envProp, onExit, onLevelChange }) {
   const { camera, gl } = useThree();
   const keys = useRef({});
   const look = useRef({ yaw: 0, pitch: 0 });
   const position = useRef(new THREE.Vector2());
-  const blockers = useMemo(() => buildBlockers(room), [room]);
-  const roomRef = useRef(room);
-  roomRef.current = room;
+  const walk = useRef({ levelIdx: 0, floorM: 0, eyeY: EYE_HEIGHT });
+  const env = useMemo(() => envProp || roomEnv(room), [envProp, room]);
+  const envRef = useRef(env);
+  envRef.current = env;
+  const onLevelRef = useRef(onLevelChange);
+  onLevelRef.current = onLevelChange;
 
   useEffect(() => {
-    const start = getWalkStart(roomRef.current);
+    const start = envRef.current.start;
     position.current.set(start.x, start.z);
     look.current = { yaw: start.yaw, pitch: -0.05 };
+    walk.current = {
+      levelIdx: start.levelIdx || 0,
+      floorM: start.floorM || 0,
+      eyeY: (start.floorM || 0) + EYE_HEIGHT,
+    };
     camera.rotation.order = 'YXZ';
-    camera.position.set(start.x, EYE_HEIGHT, start.z);
+    camera.position.set(start.x, walk.current.eyeY, start.z);
     camera.fov = 70;
     camera.updateProjectionMatrix();
 
@@ -84,24 +113,35 @@ export function WalkControls({ room, onExit }) {
     const forward = (k.w || k.arrowup ? 1 : 0) - (k.s || k.arrowdown ? 1 : 0);
     const strafe = (k.d || k.arrowright ? 1 : 0) - (k.a || k.arrowleft ? 1 : 0);
     const { yaw, pitch } = look.current;
+    const rules = envRef.current;
+    const w = walk.current;
+    const p = position.current;
 
     if (forward || strafe) {
       const len = Math.hypot(forward, strafe);
-      const step = (SPEED * delta) / len;
+      const step = (SPEED * Math.min(delta, 0.05)) / len;
       const dx = (-Math.sin(yaw) * forward + Math.cos(yaw) * strafe) * step;
       const dz = (-Math.cos(yaw) * forward - Math.sin(yaw) * strafe) * step;
-      const r = roomRef.current;
-      const maxX = r.widthCm / 200 - PLAYER_RADIUS;
-      const maxZ = r.depthCm / 200 - PLAYER_RADIUS;
-      const p = position.current;
       // Move per axis so the visitor slides along walls and furniture
-      const nx = Math.max(-maxX, Math.min(maxX, p.x + dx));
-      if (!isBlocked(nx, p.y, blockers)) p.x = nx;
-      const nz = Math.max(-maxZ, Math.min(maxZ, p.y + dz));
-      if (!isBlocked(p.x, nz, blockers)) p.y = nz;
+      for (const [nx, nz] of [
+        [p.x + dx, p.y],
+        [p.x, p.y + dz],
+      ]) {
+        const floor = rules.surface(nx, nz, w.levelIdx);
+        if (floor.blocked || rules.isBlocked(nx, nz, floor.levelIdx)) continue;
+        p.set(nx, nz);
+        w.floorM = floor.floorM;
+        if (floor.levelIdx !== w.levelIdx) {
+          w.levelIdx = floor.levelIdx;
+          onLevelRef.current?.(floor.levelIdx);
+        }
+      }
     }
 
-    camera.position.set(position.current.x, EYE_HEIGHT, position.current.y);
+    // The eye glides up and down staircases
+    const targetY = w.floorM + EYE_HEIGHT;
+    w.eyeY += (targetY - w.eyeY) * Math.min(1, delta * EYE_EASE);
+    camera.position.set(p.x, w.eyeY, p.y);
     camera.rotation.set(pitch, yaw, 0, 'YXZ');
   });
 

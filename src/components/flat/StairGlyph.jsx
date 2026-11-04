@@ -44,6 +44,10 @@ function Flight({ flight }) {
     a = [x + 8, y + w / 2];
     b = [x + len - 8, y + w / 2];
   }
+  if (dir === 'left') {
+    a = [x + len - 8, y + w / 2];
+    b = [x + 8, y + w / 2];
+  }
   return (
     <g>
       <rect

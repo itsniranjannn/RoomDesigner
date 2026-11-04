@@ -7,8 +7,8 @@
  */
 
 import { resolveItemDef } from '../data/furnitureCatalog.js';
-import { SPACE_KINDS, stairRect, stairGeometry, stairFootprint } from './flat.js';
-import { openingsOf, openWallsOf, levelSolidEdges } from './flatPlan.js';
+import { SPACE_KINDS, stairRect, stairGeometry, stairFootprint, stairTargetIndex } from './flat.js';
+import { openingsOf, openWallsOf, levelSolidEdges, entranceOf } from './flatPlan.js';
 import { hasOutline, outlineEdges, pointOnEdge, polygonArea } from './roomShape.js';
 import {
   CELL,
@@ -357,6 +357,36 @@ function roomLabel(space, measure, k) {
   return { id: space.id, x: pt.x, y: pt.y, font, lines, lineH, meta, metaFont };
 }
 
+/** Arrow and label for the main entrance when it is on this floor, drawn just outside its door. */
+function entranceMarker(flat, levelId, k, measure) {
+  const found = entranceOf(flat);
+  if (!found || found.levelId !== levelId) return null;
+  const { opening: op, inward } = found;
+  const mx = op.axis === 'h' ? op.start + op.widthCm / 2 : op.line;
+  const my = op.axis === 'h' ? op.line : op.start + op.widthCm / 2;
+  const font = 10 * k;
+  const tip = { x: mx - inward.dx * 12 * k, y: my - inward.dy * 12 * k };
+  const tail = { x: mx - inward.dx * 42 * k, y: my - inward.dy * 42 * k };
+  const base = { x: tip.x - inward.dx * 9 * k, y: tip.y - inward.dy * 9 * k };
+  const nx = -inward.dy * 5 * k;
+  const ny = inward.dx * 5 * k;
+  const text = 'Main entrance';
+  const w = measure(text, font, 700, SANS);
+  // The label sits beyond the tail; sideways entrances keep it clear of the arrow
+  const label =
+    inward.dy !== 0
+      ? { x: tail.x, y: tail.y - inward.dy * font * 0.9 + (inward.dy > 0 ? 0 : font * 0.3) }
+      : { x: tail.x - inward.dx * (w / 2 + font * 0.5), y: tail.y + font * 0.35 };
+  return {
+    text,
+    font,
+    x: label.x,
+    y: label.y,
+    shaft: { x1: tail.x, y1: tail.y, x2: base.x, y2: base.y },
+    head: `${base.x + nx},${base.y + ny} ${tip.x},${tip.y} ${base.x - nx},${base.y - ny}`,
+  };
+}
+
 /**
  * Sheet for one floor of a flat: rooms in their kind colours, walls at their real thickness,
  * doors and windows, stairs, the furniture of every room, room labels and overall dimensions.
@@ -453,7 +483,8 @@ export function buildFlatSheet(
   const stairFont = 9.5 * k;
   const stairLabels = stairs.map((st) => {
     const r = stairRect(st);
-    const text = `Up to ${flat.levels[flat.levels.findIndex((l) => l.id === st.levelId) + 1]?.name || 'next floor'}`;
+    const target = stairTargetIndex(flat, st);
+    const text = `Up to ${flat.levels[target]?.name || 'next floor'}`;
     const w = measure(text, stairFont, 600, SANS);
     const cx = r.x + r.widthCm / 2;
     const fits = r.widthCm >= w + 6;
@@ -480,6 +511,18 @@ export function buildFlatSheet(
   for (const l of stairLabels) {
     const w = measure(l.text, l.font, 600, SANS);
     box = grow(box, { x0: l.x - w / 2, y0: l.y - l.font, x1: l.x + w / 2, y1: l.y + l.font * 0.4 });
+  }
+
+  // The main entrance: an arrow pointing in through the door, with its label
+  const entrance = entranceMarker(flat, level.id, k, measure);
+  if (entrance) {
+    const w = measure(entrance.text, entrance.font, 700, SANS);
+    box = grow(box, {
+      x0: entrance.x - w / 2,
+      y0: entrance.y - entrance.font,
+      x1: entrance.x + w / 2,
+      y1: entrance.y + entrance.font * 0.4,
+    });
   }
 
   const wallBox = { x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y1 };
@@ -533,6 +576,7 @@ export function buildFlatSheet(
     pieces,
     roomLabels,
     stairLabels,
+    entrance,
     box: wallBox,
     empty: runs.length === 0 && stairs.length === 0,
     dims: {

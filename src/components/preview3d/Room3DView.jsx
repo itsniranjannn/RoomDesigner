@@ -9,47 +9,15 @@ import { hasOutline } from '../../engine/roomShape.js';
 import { Furniture3DBox } from './Furniture3DBox.jsx';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
-import { Box, Footprints, RotateCcw, Square, Sun, Sunset, Moon } from 'lucide-react';
+import { Box, Footprints, RotateCcw, Square } from 'lucide-react';
+import { LIGHTING, LIGHT_OPTIONS } from './lighting.jsx';
 import { WalkControls } from './WalkControls.jsx';
 import styles from './Room3DView.module.css';
-
-const LIGHT_OPTIONS = [
-  { value: 'day', label: 'Day', icon: <Sun size={15} />, ariaLabel: 'Day lighting' },
-  { value: 'evening', label: 'Evening', icon: <Sunset size={15} />, ariaLabel: 'Evening lighting' },
-  { value: 'night', label: 'Night', icon: <Moon size={15} />, ariaLabel: 'Night lighting' },
-];
 
 const WALL_OPTIONS = [
   { value: 'cutaway', label: 'Cutaway', icon: <Square size={15} />, ariaLabel: 'Cutaway walls' },
   { value: 'full', label: 'Full walls', icon: <Box size={15} />, ariaLabel: 'Full-height walls' },
 ];
-
-const LIGHTING = {
-  day: {
-    background: null,
-    ambient: [1.15, '#FAF7F0'],
-    hemi: 0.7,
-    sun: [1.25, '#FFF8EE'],
-    fill: [0.85, 0.65],
-    lamp: 0,
-  },
-  evening: {
-    background: '#E7D2BE',
-    ambient: [0.4, '#F0BE92'],
-    hemi: 0.25,
-    sun: [0.7, '#FF9A55'],
-    fill: [0.22, 0.14],
-    lamp: 1.1,
-  },
-  night: {
-    background: '#1B2233',
-    ambient: [0.16, '#8CA0C8'],
-    hemi: 0.1,
-    sun: [0.3, '#9DB4E0'],
-    fill: [0.08, 0.06],
-    lamp: 2.2,
-  },
-};
 
 /**
  * CameraRig handles smooth camera animation from top-down drafting plane

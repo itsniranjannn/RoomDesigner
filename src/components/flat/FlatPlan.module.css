@@ -311,3 +311,27 @@
   font-size: var(--text-sm);
   box-shadow: var(--shadow-lift);
 }
+
+/* Main entrance: an arrow pointing in through the door, with its label */
+.entranceMarker line,
+.entranceMarker path {
+  fill: var(--color-maroon);
+  stroke: var(--color-maroon);
+  stroke-width: 4px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.entranceMarker line {
+  fill: none;
+}
+
+.entranceMarker text {
+  fill: var(--color-maroon);
+  stroke: var(--color-linen);
+  stroke-width: 4px;
+  paint-order: stroke;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}

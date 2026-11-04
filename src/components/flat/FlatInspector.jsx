@@ -6,19 +6,28 @@ import { Section } from '../common/Section.jsx';
 import { ConfirmDialog } from '../common/ConfirmDialog.jsx';
 import { InspectorShell } from '../inspector/InspectorShell.jsx';
 import { Button } from '../common/Button.jsx';
-import { TextField, NumberField, SelectField, Switch } from '../common/Field.jsx';
+import { TextField, NumberField, SelectField, Switch, Segmented } from '../common/Field.jsx';
+import { STAIR_DIRECTIONS } from './FlatToolbar.jsx';
 import {
   SPACE_KINDS,
   STAIR_TYPES,
   STAIR_LIMITS,
   stairGeometry,
   stairRunLength,
+  stairStepRange,
+  stairTargetIndex,
   flatSummary,
   levelIndex,
   kindOptions,
   isPassageKind,
 } from '../../engine/flat.js';
-import { stairWarnings, wallsOf, openingsOf, levelOpenEdges } from '../../engine/flatPlan.js';
+import {
+  stairWarnings,
+  wallsOf,
+  openingsOf,
+  levelOpenEdges,
+  entranceOf,
+} from '../../engine/flatPlan.js';
 import { PASSAGE_LIMITS, isEditablePassage, passageDims } from '../../engine/flatPassage.js';
 import { edgesOf, wallRunAt, edgesToRuns } from '../../engine/flatWalls.js';
 import styles from './FlatDesigner.module.css';
@@ -206,6 +215,10 @@ function SpaceInspector({ space }) {
 function OpeningInspector({ opening }) {
   const updateOpening = useFlatStore((s) => s.updateOpening);
   const removeOpening = useFlatStore((s) => s.removeOpening);
+  const setEntrance = useFlatStore((s) => s.setEntrance);
+  const flat = useFlatStore((s) => s.flat);
+  const entrance = entranceOf(flat);
+  const isEntrance = entrance?.opening.id === opening.id;
   const label = opening.type === 'door' ? 'Door' : 'Window';
   const change = (patch) => {
     if (!updateOpening(opening.id, patch))
@@ -226,6 +239,29 @@ function OpeningInspector({ opening }) {
             checked={!!opening.flip}
             onChange={(flip) => change({ flip })}
           />
+        )}
+        {opening.type === 'door' && (
+          <>
+            <Switch
+              label="Main entrance"
+              checked={isEntrance}
+              onChange={(on) => {
+                if (!on && !entrance.explicit) {
+                  useFlatUi
+                    .getState()
+                    .setNotice('Switch another outer door on to make it the main entrance.');
+                  return;
+                }
+                const res = setEntrance(on ? opening.id : null);
+                if (res.error) useFlatUi.getState().setNotice(res.error);
+              }}
+            />
+            <p className={styles.helpText}>
+              {isEntrance && !entrance.explicit
+                ? 'This is the first door on an outer wall, so it counts as the main entrance until you choose one.'
+                : 'The main entrance is where the 3D walkthrough starts. Only a door on an outer wall can be it, and only one door per flat.'}
+            </p>
+          </>
         )}
         <Button
           variant="danger"
@@ -290,7 +326,11 @@ function StairInspector({ stair }) {
   const g = stairGeometry(stair);
   const warnings = stairWarnings(flat, stair);
   const idx = levelIndex(flat, stair.levelId);
-  const above = flat.levels[idx + 1];
+  const upper = flat.levels.slice(idx + 1);
+  const targetIdx = stairTargetIndex(flat, stair);
+  const target = targetIdx >= 0 ? flat.levels[targetIdx] : null;
+  const [minSteps, maxSteps] = stairStepRange(stair.riseCm);
+  const quarter = (((Math.round((stair.rotationDeg || 0) / 90) % 4) + 4) % 4) * 90;
   return (
     <div className={styles.inspectorBody}>
       <Section title="Staircase" collapsible={false}>
@@ -299,6 +339,13 @@ function StairInspector({ stair }) {
           options={stairOptions}
           value={stair.type}
           onChange={(type) => updateStair(stair.id, { type })}
+        />
+        <Segmented
+          options={STAIR_DIRECTIONS}
+          value={quarter}
+          onChange={(rotationDeg) => updateStair(stair.id, { rotationDeg })}
+          ariaLabel="Direction the staircase climbs"
+          size="small"
         />
         <div className={styles.row2}>
           <NumberField
@@ -311,6 +358,23 @@ function StairInspector({ stair }) {
             onCommit={(v) => updateStair(stair.id, { widthCm: v })}
           />
           <NumberField
+            label="Number of steps"
+            value={g.steps}
+            min={minSteps}
+            max={maxSteps}
+            step={1}
+            onCommit={(v) => updateStair(stair.id, { steps: v })}
+          />
+        </div>
+        {upper.length > 0 ? (
+          <SelectField
+            label="Climbs to"
+            options={upper.map((l) => ({ value: l.id, label: l.name }))}
+            value={target?.id || upper[0].id}
+            onChange={(toLevelId) => updateStair(stair.id, { toLevelId })}
+          />
+        ) : (
+          <NumberField
             label="Floor to floor"
             suffix="cm"
             value={stair.riseCm}
@@ -319,18 +383,24 @@ function StairInspector({ stair }) {
             step={5}
             onCommit={(v) => updateStair(stair.id, { riseCm: v })}
           />
-        </div>
+        )}
         <Facts
           rows={[
-            ['Steps', g.steps],
+            ['From', flat.levels[idx].name],
+            ['Rise', m(stair.riseCm)],
             ['Riser', `${g.riserCm.toFixed(1)} cm`],
             ['Tread', '27 cm'],
             ['Run', m(stairRunLength(stair))],
           ]}
         />
+        {stair.steps !== undefined && (
+          <Button variant="ghost" onClick={() => updateStair(stair.id, { steps: null })}>
+            Pick the steps for me
+          </Button>
+        )}
         {g.riserCm > 18 && (
           <p className={`${styles.callout} ${styles.calloutBad}`} role="alert">
-            Risers above 18 cm are steep. Add floor-to-floor height carefully.
+            Risers above 18 cm are steep. Add more steps.
           </p>
         )}
         {warnings.map((w) => (
@@ -343,6 +413,7 @@ function StairInspector({ stair }) {
             variant="secondary"
             icon={<RotateCw size={16} aria-hidden="true" />}
             onClick={() => updateStair(stair.id, { rotationDeg: (stair.rotationDeg || 0) + 90 })}
+            title="Rotate 90 degrees (R)"
           >
             Rotate
           </Button>
@@ -355,10 +426,10 @@ function StairInspector({ stair }) {
           </Button>
         </div>
         <p className={styles.helpText}>
-          {above
-            ? `${above.name} shows a matching opening.`
+          {target
+            ? `${target.name} shows a matching opening in its floor.`
             : 'Add another floor to see the opening above this staircase.'}{' '}
-          Drag the staircase on the plan to move it.
+          Drag the staircase on the plan to move it, or nudge it with the arrow keys.
         </p>
       </Section>
     </div>

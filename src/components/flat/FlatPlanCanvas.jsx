@@ -9,8 +9,16 @@ import {
   levelIndex,
   snapToGrid,
   createStair,
+  stairOpensOn,
 } from '../../engine/flat.js';
-import { wallsOf, openWallsOf, openingsOf, stairWarnings } from '../../engine/flatPlan.js';
+import {
+  wallsOf,
+  openWallsOf,
+  openingsOf,
+  stairWarnings,
+  entranceOf,
+  inwardStep,
+} from '../../engine/flatPlan.js';
 import {
   moveSpan,
   resizeSpan,
@@ -131,6 +139,35 @@ function Opening({ op, thick, swing = 1, selected, hot, ghost, invalid }) {
   );
 }
 
+/** Arrow pointing in through the main entrance, with its label, drawn outside the door. */
+function EntranceMarker({ op, inward }) {
+  const mx = op.axis === 'h' ? op.start + op.widthCm / 2 : op.line;
+  const my = op.axis === 'h' ? op.line : op.start + op.widthCm / 2;
+  const { dx, dy } = inward;
+  // Tip just outside the wall, tail further out
+  const tipX = mx - dx * 24;
+  const tipY = my - dy * 24;
+  const tailX = mx - dx * 84;
+  const tailY = my - dy * 84;
+  const nx = -dy * 14;
+  const ny = dx * 14;
+  const bx = tipX - dx * 20;
+  const by = tipY - dy * 20;
+  return (
+    <g className={styles.entranceMarker} pointerEvents="none">
+      <line x1={tailX} y1={tailY} x2={bx} y2={by} />
+      <path d={`M ${bx + nx} ${by + ny} L ${tipX} ${tipY} L ${bx - nx} ${by - ny} Z`} />
+      <text
+        x={tailX - dx * 14}
+        y={tailY - dy * 14 + (dy === 0 ? 5 : 0)}
+        textAnchor={dx > 0 ? 'end' : dx < 0 ? 'start' : 'middle'}
+      >
+        Main entrance
+      </text>
+    </g>
+  );
+}
+
 /** Arrow along a passage's long axis, pointing the way it faces. */
 function PassageArrow({ rect, heading, px }) {
   const cx = rect.x + rect.widthCm / 2;
@@ -210,6 +247,9 @@ export function FlatPlanCanvas() {
   const wallStyle = useFlatUi((s) => s.wallStyle);
   const stairType = useFlatUi((s) => s.stairType);
   const stairRotation = useFlatUi((s) => s.stairRotation);
+  const stairWidth = useFlatUi((s) => s.stairWidth);
+  const stairToLevelId = useFlatUi((s) => s.stairToLevelId);
+  const stairSteps = useFlatUi((s) => s.stairSteps);
   const passageSpec = useFlatUi((s) => s.passage);
   const cursor = useFlatUi((s) => s.cursor);
   const fitNonce = useFlatUi((s) => s.fitNonce);
@@ -295,10 +335,11 @@ export function FlatPlanCanvas() {
     [flat, belowId]
   );
   const openingStairs = useMemo(
-    () => (flat && belowId ? flat.stairs.filter((s) => s.levelId === belowId) : []),
-    [flat, belowId]
+    () => (flat ? flat.stairs.filter((s) => stairOpensOn(flat, s, levelId)) : []),
+    [flat, levelId]
   );
   const endpoints = useMemo(() => runEndpoints(runs), [runs]);
+  const entrance = useMemo(() => (flat ? entranceOf(flat) : null), [flat]);
 
   // ---------- view helpers ----------
   const fit = useCallback(() => {
@@ -326,6 +367,15 @@ export function FlatPlanCanvas() {
       const r = stairRect(sx);
       take(r.x, r.y);
       take(r.x + r.widthCm, r.y + r.depthCm);
+    }
+    const ent = entranceOf(fl);
+    if (ent && Number.isFinite(minX)) {
+      const op = ent.opening;
+      const cx = op.axis === 'h' ? op.start + op.widthCm / 2 : op.line;
+      const cy = op.axis === 'h' ? op.line : op.start + op.widthCm / 2;
+      // Room for the arrow and its label outside the door
+      take(cx - ent.inward.dx * 140 - 90, cy - ent.inward.dy * 140 - 30);
+      take(cx - ent.inward.dx * 140 + 90, cy - ent.inward.dy * 140 + 30);
     }
     if (!Number.isFinite(minX)) {
       minX = 0;
@@ -493,8 +543,17 @@ export function FlatPlanCanvas() {
 
   const stairDraft = useMemo(() => {
     if (!flat) return null;
-    return createStair(flat, { levelId, type: stairType, rotationDeg: stairRotation, x: 0, y: 0 });
-  }, [flat, levelId, stairType, stairRotation]);
+    return createStair(flat, {
+      levelId,
+      type: stairType,
+      rotationDeg: stairRotation,
+      widthCm: stairWidth,
+      toLevelId: stairToLevelId,
+      steps: stairSteps,
+      x: 0,
+      y: 0,
+    });
+  }, [flat, levelId, stairType, stairRotation, stairWidth, stairToLevelId, stairSteps]);
 
   /** The passage being placed with its top-left corner snapped to the grid and nearby walls. */
   const passageGhost = (p) => {
@@ -736,7 +795,12 @@ export function FlatPlanCanvas() {
     if (tool === 'stairs') {
       const h = computeHover(p);
       if (h?.type === 'stair') {
-        useFlatStore.getState().addStair(h.stair.type, h.stair.x, h.stair.y, h.stair.rotationDeg);
+        useFlatStore.getState().addStair(h.stair.type, h.stair.x, h.stair.y, h.stair.rotationDeg, {
+          widthCm: h.stair.widthCm,
+          toLevelId: h.stair.toLevelId,
+          steps: h.stair.steps,
+        });
+        if (h.warnings.length) useFlatUi.getState().setNotice(h.warnings[0]);
         useFlatUi.getState().setTool('select');
       }
       return;
@@ -865,9 +929,6 @@ export function FlatPlanCanvas() {
             ))}
           </g>
         )}
-        {openingStairs.map((s) => (
-          <StairGlyph key={`o-${s.id}`} stair={s} ghost />
-        ))}
         {spaces.map((space) => (
           <g key={space.id}>
             {regionRects(space).map((r, i) => (
@@ -898,6 +959,9 @@ export function FlatPlanCanvas() {
             )}
             <FurnitureGlyphs space={space} room={rooms[space.roomId]} />
           </g>
+        ))}
+        {openingStairs.map((s) => (
+          <StairGlyph key={`o-${s.id}`} stair={s} ghost />
         ))}
         <g className={styles.wall}>
           {stretches.map((s, i) =>
@@ -941,6 +1005,12 @@ export function FlatPlanCanvas() {
             selected={selected?.type === 'opening' && selected.id === op.id}
           />
         ))}
+        {entrance && entrance.levelId === levelId && (
+          <EntranceMarker
+            op={entrance.opening}
+            inward={inwardStep(flat, levelId, entrance.opening) || entrance.inward}
+          />
+        )}
       </>
     );
   }, [
@@ -955,6 +1025,8 @@ export function FlatPlanCanvas() {
     stretches,
     openings,
     openRuns,
+    entrance,
+    levelId,
   ]);
 
   if (!flat) return null;
