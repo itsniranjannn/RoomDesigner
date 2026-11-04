@@ -375,10 +375,11 @@ export function TankModel({ widthM, depthM, heightM, mainColor, subColor, accent
   );
 }
 
-export function BasketModel({ widthM, depthM, heightM, mainColor, accentColor }) {
+export function BasketModel({ def, widthM, depthM, heightM, mainColor, accentColor }) {
+  const doko = def?.id === 'nepali-doko';
   const r = Math.min(widthM, depthM) / 2;
-  const rBottom = r * 0.8;
-  const lidH = 0.05;
+  const rBottom = r * (doko ? 0.55 : 0.8);
+  const lidH = doko ? 0 : 0.05;
   const bodyH = heightM - lidH;
   const radiusAt = (y) => rBottom + (r - rBottom) * (y / bodyH);
   const tilt = Math.atan((r - rBottom) / bodyH);
@@ -434,22 +435,33 @@ export function BasketModel({ widthM, depthM, heightM, mainColor, accentColor })
           <meshStandardMaterial color={accentColor} roughness={0.85} />
         </mesh>
       ))}
-      <group name="basket-lid" position={[0, bodyH, 0]}>
-        <Cyl
-          position={[0, lidH * 0.4, 0]}
-          radiusTop={r * 0.9}
-          radiusBottom={r * 1.01}
-          height={lidH * 0.8}
-          color={mainColor}
-          roughness={0.95}
-          segments={28}
-        />
-        <mesh position={[0, lidH * 0.8, 0]} rotation={[Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[r * 0.5, 0.006, 6, 28]} />
-          <meshStandardMaterial color={accentColor} roughness={0.9} />
-        </mesh>
-        <Ball position={[0, lidH * 0.95, 0]} radius={0.022} color={accentColor} roughness={0.8} />
-      </group>
+      {!doko && (
+        <group name="basket-lid" position={[0, bodyH, 0]}>
+          <Cyl
+            position={[0, lidH * 0.4, 0]}
+            radiusTop={r * 0.9}
+            radiusBottom={r * 1.01}
+            height={lidH * 0.8}
+            color={mainColor}
+            roughness={0.95}
+            segments={28}
+          />
+          <mesh position={[0, lidH * 0.8, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[r * 0.5, 0.006, 6, 28]} />
+            <meshStandardMaterial color={accentColor} roughness={0.9} />
+          </mesh>
+          <Ball position={[0, lidH * 0.95, 0]} radius={0.022} color={accentColor} roughness={0.8} />
+        </group>
+      )}
+      {doko && (
+        <group name="doko-strap">
+          {/* Namlo: a rope tumpline looped from the rim across the front */}
+          <mesh position={[0, bodyH, 0]} scale={[1, 0.4, 1]} castShadow>
+            <torusGeometry args={[r * 0.98, 0.012, 6, 18, Math.PI]} />
+            <meshStandardMaterial color="#E4D3AE" roughness={0.95} />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }

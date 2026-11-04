@@ -839,3 +839,57 @@ export function CutawayCarcass({ width, depth, bodyTop, plinth, bowlDepth, hole,
     </group>
   );
 }
+
+/** Welting along the four top edges of a cushion whose top face is at y. */
+export function EdgePiping({ position, width, depth, color, inset = 0.06 }) {
+  const t = 0.011;
+  return (
+    <group name="piping" position={[position[0], position[1] - 0.004, position[2]]}>
+      {[-1, 1].map((sg) => (
+        <Box
+          key={`z${sg}`}
+          position={[0, 0, (sg * (depth - inset - t)) / 2]}
+          size={[width - inset - 0.02, t, t]}
+          color={color}
+          castShadow={false}
+          roughness={0.9}
+        />
+      ))}
+      {[-1, 1].map((sg) => (
+        <Box
+          key={`x${sg}`}
+          position={[(sg * (width - inset - t)) / 2, 0, 0]}
+          size={[t, t, depth - inset - 0.02]}
+          color={color}
+          castShadow={false}
+          roughness={0.9}
+        />
+      ))}
+    </group>
+  );
+}
+
+/** Grid of tufting buttons on a flat top face. */
+export function Buttons({ y, width, depth, cols, rows, color }) {
+  return (
+    <group name="tufting">
+      {Array.from({ length: cols }).flatMap((_, i) =>
+        Array.from({ length: rows }).map((__, j) => (
+          <Ball
+            key={`${i}-${j}`}
+            position={[
+              -width / 2 + (width * (i + 0.5)) / cols,
+              y,
+              -depth / 2 + (depth * (j + 0.5)) / rows,
+            ]}
+            radius={0.012}
+            scale={[1, 0.6, 1]}
+            color={color}
+            segments={8}
+            castShadow={false}
+          />
+        ))
+      )}
+    </group>
+  );
+}

@@ -1,31 +1,220 @@
 /** 3D models: nepali. Built from Three.js primitives; origin on the floor, centered on the footprint. */
+import {
+  Box,
+  Cyl,
+  Ball,
+  Pad,
+  XCyl,
+  DARK_GAP,
+  EdgePiping,
+  Buttons,
+  corners,
+  clamp,
+  shade,
+} from './shared.jsx';
 
-export function NepaliChowkiModel({ widthM, depthM, heightM, mainColor, accentColor }) {
+/** Brass colour for fittings; accentColor from the catalog is used where given. */
+const brassProps = (color) => ({ color, roughness: 0.32, metalness: 0.65 });
+
+/** Turned leg: tapered shaft with swelling collars, built from stacked cylinders. */
+function TurnedLeg({ position, height, radius, color }) {
+  const rings = [0.18, 0.5, 0.82];
+  return (
+    <group position={position}>
+      <Cyl
+        position={[0, height / 2, 0]}
+        radiusTop={radius * 0.82}
+        radiusBottom={radius}
+        height={height}
+        color={color}
+        roughness={0.7}
+        segments={14}
+      />
+      {rings.map((f) => (
+        <Cyl
+          key={f}
+          position={[0, height * f, 0]}
+          radiusTop={radius * 1.18}
+          radiusBottom={radius * 1.18}
+          height={height * 0.05}
+          color={shade(color, 0.05)}
+          roughness={0.65}
+          segments={14}
+          castShadow={false}
+        />
+      ))}
+      <Cyl
+        position={[0, height * 0.02, 0]}
+        radiusTop={radius * 1.1}
+        height={height * 0.04}
+        color={shade(color, -0.1)}
+        roughness={0.8}
+        segments={14}
+        castShadow={false}
+      />
+    </group>
+  );
+}
+
+export function NepaliChowkiModel({ def, widthM, depthM, heightM, mainColor, accentColor }) {
+  const topT = 0.07;
+  const legH = heightM - topT;
+  const apronH = Math.min(0.07, legH * 0.18);
+  const pooja = def?.id === 'nepali-pooja-table';
+  const brass = brassProps(accentColor);
+  const medR = Math.min(widthM, depthM) * 0.2;
   return (
     <group>
-      <mesh position={[0, heightM - 0.05, 0]} castShadow receiveShadow>
-        <boxGeometry args={[widthM, 0.1, depthM]} />
-        <meshStandardMaterial color={mainColor} roughness={0.65} />
-      </mesh>
-      {[
-        [-1, -1],
-        [1, -1],
-        [-1, 1],
-        [1, 1],
-      ].map(([x, z], i) => (
-        <mesh
-          key={i}
-          position={[x * (widthM / 2 - 0.07), (heightM - 0.1) / 2, z * (depthM / 2 - 0.07)]}
-          castShadow
-        >
-          <boxGeometry args={[0.07, heightM - 0.1, 0.07]} />
-          <meshStandardMaterial color={mainColor} roughness={0.7} />
-        </mesh>
+      <Box
+        position={[0, heightM - topT / 2, 0]}
+        size={[widthM, topT, depthM]}
+        color={mainColor}
+        roughness={0.6}
+      />
+      <Box
+        position={[0, heightM - topT - 0.006, 0]}
+        size={[widthM - 0.03, 0.012, depthM - 0.03]}
+        color={shade(mainColor, -0.12)}
+        roughness={0.75}
+        castShadow={false}
+      />
+      {/* Brass inlay border and a lotus medallion inlaid in the top */}
+      {[-1, 1].map((s) => (
+        <Box
+          key={`bz${s}`}
+          position={[0, heightM + 0.0015, (s * (depthM * 0.58)) / 2]}
+          size={[widthM * 0.72, 0.003, 0.008]}
+          {...brass}
+          castShadow={false}
+        />
       ))}
-      <mesh position={[0, heightM + 0.003, 0]} receiveShadow>
-        <boxGeometry args={[widthM * 0.72, 0.015, depthM * 0.58]} />
-        <meshStandardMaterial color={accentColor} roughness={0.55} />
+      {[-1, 1].map((s) => (
+        <Box
+          key={`bx${s}`}
+          position={[(s * (widthM * 0.72)) / 2, heightM + 0.0015, 0]}
+          size={[0.008, 0.003, depthM * 0.58]}
+          {...brass}
+          castShadow={false}
+        />
+      ))}
+      <Box
+        position={[0, heightM + 0.003, 0]}
+        size={[widthM * 0.7, 0.004, depthM * 0.56]}
+        color={accentColor}
+        roughness={0.55}
+        castShadow={false}
+      />
+      <Box
+        position={[0, heightM + 0.0045, 0]}
+        size={[widthM * 0.66, 0.004, depthM * 0.52]}
+        color={mainColor}
+        roughness={0.6}
+        castShadow={false}
+      />
+      <mesh position={[0, heightM + 0.008, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[medR, 0.004, 4, 28]} />
+        <meshStandardMaterial {...brass} />
       </mesh>
+      {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+        <Ball
+          key={i}
+          position={[
+            Math.cos((i * Math.PI) / 4) * medR,
+            heightM + 0.009,
+            Math.sin((i * Math.PI) / 4) * medR,
+          ]}
+          radius={0.007}
+          scale={[1, 0.5, 1]}
+          {...brass}
+          segments={6}
+          castShadow={false}
+        />
+      ))}
+      {/* Carved apron boards with panel recesses, turned legs */}
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <Box
+            position={[0, legH - apronH / 2, s * (depthM / 2 - 0.07)]}
+            size={[widthM - 0.14, apronH, 0.02]}
+            color={mainColor}
+            roughness={0.7}
+          />
+          <Box
+            position={[0, legH - apronH / 2, s * (depthM / 2 - 0.058)]}
+            size={[widthM * 0.5, apronH * 0.55, 0.004]}
+            color={shade(mainColor, -0.1)}
+            roughness={0.7}
+            castShadow={false}
+          />
+          <Box
+            position={[s * (widthM / 2 - 0.07), legH - apronH / 2, 0]}
+            size={[0.02, apronH, depthM - 0.14]}
+            color={mainColor}
+            roughness={0.7}
+          />
+        </group>
+      ))}
+      {corners(widthM, depthM, 0.07).map(([x, z], i) => (
+        <TurnedLeg key={i} position={[x, 0, z]} height={legH} radius={0.032} color={mainColor} />
+      ))}
+      {/* Offering set on the pooja table */}
+      {pooja && (
+        <group name="pooja-set" position={[0, heightM + 0.012, 0]}>
+          <Cyl
+            position={[0, 0.006, 0]}
+            radiusTop={Math.min(widthM, depthM) * 0.28}
+            radiusBottom={Math.min(widthM, depthM) * 0.25}
+            height={0.012}
+            {...brass}
+            segments={28}
+          />
+          <Cyl
+            position={[-0.07, 0.03, 0.02]}
+            radiusTop={0.025}
+            radiusBottom={0.016}
+            height={0.03}
+            {...brass}
+            segments={12}
+          />
+          <mesh position={[-0.07, 0.056, 0.02]}>
+            <coneGeometry args={[0.007, 0.028, 8]} />
+            <meshBasicMaterial color="#FFB347" />
+          </mesh>
+          <Cyl
+            position={[0.08, 0.03, -0.01]}
+            radiusTop={0.012}
+            radiusBottom={0.02}
+            height={0.06}
+            {...brass}
+            segments={10}
+          />
+          {[-1, 0, 1].map((k) => (
+            <Cyl
+              key={k}
+              position={[0.08 + k * 0.006, 0.09, -0.01]}
+              radiusTop={0.0015}
+              height={0.07}
+              color="#8B5A2B"
+              segments={4}
+              castShadow={false}
+            />
+          ))}
+          <Ball
+            position={[0.02, 0.014, -0.06]}
+            radius={0.016}
+            color="#F28C28"
+            roughness={0.9}
+            segments={8}
+          />
+          <Ball
+            position={[0.05, 0.014, -0.075]}
+            radius={0.014}
+            color="#E34234"
+            roughness={0.9}
+            segments={8}
+          />
+        </group>
+      )}
     </group>
   );
 }
@@ -38,45 +227,155 @@ export function NepaliPatukaChestModel({
   accentColor,
   subColor,
 }) {
-  const lidH = 0.04;
+  const lidH = 0.07;
   const bodyH = heightM - lidH;
+  const brass = brassProps(accentColor);
+  const front = depthM / 2;
   return (
     <group>
-      <mesh position={[0, bodyH / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[widthM, bodyH, depthM]} />
-        <meshStandardMaterial color={mainColor} roughness={0.7} />
-      </mesh>
-      <mesh position={[0, bodyH + lidH / 2, 0]} castShadow>
-        <boxGeometry args={[widthM, lidH, depthM]} />
-        <meshStandardMaterial color={subColor} roughness={0.65} />
-      </mesh>
-      <mesh position={[0, bodyH * 0.55, depthM / 2 + 0.003]} castShadow>
-        <boxGeometry args={[0.025, bodyH * 0.5, 0.008]} />
-        <meshStandardMaterial color={accentColor} metalness={0.6} roughness={0.35} />
-      </mesh>
-      <mesh position={[0, bodyH * 0.53, depthM / 2 + 0.008]} castShadow>
-        <sphereGeometry args={[0.03, 12, 8]} />
-        <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.3} />
-      </mesh>
+      <Box
+        position={[0, bodyH / 2 + 0.03, 0]}
+        size={[widthM, bodyH - 0.06, depthM]}
+        color={mainColor}
+        roughness={0.7}
+      />
+      {/* Plinth */}
+      <Box
+        position={[0, 0.03, 0]}
+        size={[widthM - 0.04, 0.06, depthM - 0.04]}
+        color={shade(mainColor, -0.1)}
+        roughness={0.8}
+      />
+      {/* Lid with a brass band and a raised panel */}
+      <Pad
+        position={[0, bodyH + lidH / 2 - 0.01, 0]}
+        size={[widthM + 0.02, lidH, depthM + 0.02]}
+        radius={0.03}
+        color={subColor}
+        roughness={0.6}
+      />
+      <Box
+        position={[0, bodyH + 0.0, 0]}
+        size={[widthM + 0.022, 0.012, depthM + 0.022]}
+        {...brass}
+      />
+      <Box
+        position={[0, bodyH + lidH - 0.005, 0]}
+        size={[widthM - 0.1, 0.004, depthM - 0.1]}
+        color={shade(subColor, 0.08)}
+        roughness={0.55}
+        castShadow={false}
+      />
+      {/* Carved front panels with brass borders and a boss */}
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <Box
+            position={[s * widthM * 0.25, bodyH * 0.5 + 0.02, front + 0.004]}
+            size={[widthM * 0.36, bodyH * 0.62, 0.008]}
+            color={shade(mainColor, -0.12)}
+            roughness={0.7}
+          />
+          <Box
+            position={[s * widthM * 0.25, bodyH * 0.5 + 0.02, front + 0.01]}
+            size={[widthM * 0.3, bodyH * 0.5, 0.006]}
+            color={shade(mainColor, 0.04)}
+            roughness={0.6}
+          />
+          {[-1, 1].map((k) => (
+            <Box
+              key={`h${k}`}
+              position={[
+                s * widthM * 0.25,
+                bodyH * 0.5 + 0.02 + (k * bodyH * 0.56) / 2,
+                front + 0.013,
+              ]}
+              size={[widthM * 0.32, 0.005, 0.004]}
+              {...brass}
+              castShadow={false}
+            />
+          ))}
+          {[-1, 1].map((k) => (
+            <Box
+              key={`v${k}`}
+              position={[
+                s * widthM * 0.25 + (k * widthM * 0.32) / 2,
+                bodyH * 0.5 + 0.02,
+                front + 0.013,
+              ]}
+              size={[0.005, bodyH * 0.56, 0.004]}
+              {...brass}
+              castShadow={false}
+            />
+          ))}
+          <Ball
+            position={[s * widthM * 0.25, bodyH * 0.5 + 0.02, front + 0.018]}
+            radius={0.016}
+            scale={[1, 1, 0.5]}
+            {...brass}
+            segments={10}
+          />
+        </group>
+      ))}
+      {/* Central hasp, padlock, corner fittings and side ring handles */}
+      <Box
+        position={[0, bodyH * 0.62, front + 0.012]}
+        size={[0.035, bodyH * 0.55, 0.008]}
+        {...brass}
+      />
+      <Box position={[0, bodyH - 0.01, front + 0.016]} size={[0.07, 0.08, 0.01]} {...brass} />
+      <Cyl
+        position={[0, bodyH * 0.45, front + 0.024]}
+        radiusTop={0.017}
+        height={0.012}
+        rotation={[Math.PI / 2, 0, 0]}
+        {...brass}
+        segments={12}
+      />
+      <Box
+        position={[0, bodyH * 0.45 - 0.005, front + 0.031]}
+        size={[0.004, 0.014, 0.002]}
+        color={DARK_GAP}
+        castShadow={false}
+      />
+      {corners(widthM, depthM, 0.012).map(([x, z], i) => (
+        <Box key={i} position={[x, bodyH - 0.03, z]} size={[0.05, 0.08, 0.05]} {...brass} />
+      ))}
+      {[-1, 1].map((s) => (
+        <mesh
+          key={s}
+          position={[s * (widthM / 2 + 0.008), bodyH * 0.62, 0]}
+          rotation={[0, Math.PI / 2, 0]}
+          castShadow
+        >
+          <torusGeometry args={[0.03, 0.005, 6, 16]} />
+          <meshStandardMaterial {...brass} />
+        </mesh>
+      ))}
     </group>
   );
 }
 
 export function NepaliBrassDiyaModel({ widthM, heightM, mainColor, accentColor }) {
+  const brass = brassProps(mainColor);
   return (
     <group>
-      <mesh position={[0, 0.035, 0]} castShadow>
-        <cylinderGeometry args={[widthM * 0.42, widthM * 0.5, 0.07, 24]} />
-        <meshStandardMaterial color={mainColor} metalness={0.8} roughness={0.28} />
-      </mesh>
-      <mesh position={[0, 0.1, 0]} castShadow>
-        <cylinderGeometry args={[widthM * 0.12, widthM * 0.18, heightM * 0.45, 16]} />
-        <meshStandardMaterial color={mainColor} metalness={0.8} roughness={0.28} />
-      </mesh>
-      <mesh position={[0, heightM * 0.35, 0]} castShadow>
-        <sphereGeometry args={[widthM * 0.2, 16, 8]} />
-        <meshStandardMaterial color={mainColor} metalness={0.85} roughness={0.25} />
-      </mesh>
+      <Cyl
+        position={[0, 0.035, 0]}
+        radiusTop={widthM * 0.42}
+        radiusBottom={widthM * 0.5}
+        height={0.07}
+        {...brass}
+        segments={24}
+      />
+      <Cyl
+        position={[0, 0.1, 0]}
+        radiusTop={widthM * 0.12}
+        radiusBottom={widthM * 0.18}
+        height={heightM * 0.45}
+        {...brass}
+        segments={16}
+      />
+      <Ball position={[0, heightM * 0.35, 0]} radius={widthM * 0.2} {...brass} segments={16} />
       <mesh position={[0.02, heightM * 0.62, 0]} castShadow>
         <coneGeometry args={[0.05, 0.12, 12]} />
         <meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={0.4} />
@@ -85,27 +384,50 @@ export function NepaliBrassDiyaModel({ widthM, heightM, mainColor, accentColor }
   );
 }
 
-export function NepaliPirkaModel({ widthM, depthM, heightM, mainColor }) {
-  // Traditional low Sal wood stool with carved plank top & twin angled cleats
+export function NepaliPirkaModel({ widthM, depthM, heightM, mainColor, accentColor }) {
+  // Traditional low sal-wood stool: plank top with chamfered edge, arched end cleats, inlay line
   const plankH = 0.035;
   const cleatH = heightM - plankH;
+  const dark = '#422517';
   return (
     <group>
-      {/* Top Solid Plank */}
-      <mesh position={[0, heightM - plankH / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[widthM, plankH, depthM]} />
-        <meshStandardMaterial color={mainColor} roughness={0.65} />
-      </mesh>
-      {/* Left Cleat Runner */}
-      <mesh position={[-widthM / 2 + 0.06, cleatH / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.04, cleatH, depthM - 0.04]} />
-        <meshStandardMaterial color="#422517" roughness={0.7} />
-      </mesh>
-      {/* Right Cleat Runner */}
-      <mesh position={[widthM / 2 - 0.06, cleatH / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.04, cleatH, depthM - 0.04]} />
-        <meshStandardMaterial color="#422517" roughness={0.7} />
-      </mesh>
+      <Box
+        position={[0, heightM - plankH / 2, 0]}
+        size={[widthM, plankH, depthM]}
+        color={mainColor}
+        roughness={0.6}
+      />
+      <Box
+        position={[0, heightM - plankH + 0.002, 0]}
+        size={[widthM + 0.012, 0.01, depthM + 0.012]}
+        color={shade(mainColor, -0.06)}
+        roughness={0.7}
+        castShadow={false}
+      />
+      <Box
+        position={[0, heightM + 0.001, 0]}
+        size={[widthM * 0.7, 0.002, 0.006]}
+        color={accentColor}
+        castShadow={false}
+      />
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <Box
+            position={[s * (widthM / 2 - 0.06), cleatH / 2, 0]}
+            size={[0.04, cleatH, depthM - 0.04]}
+            color={dark}
+            roughness={0.7}
+          />
+          {/* Arched cut-out between the feet */}
+          <Box
+            position={[s * (widthM / 2 - 0.06), cleatH * 0.3, 0]}
+            size={[0.042, cleatH * 0.5, depthM * 0.4]}
+            color={shade(mainColor, -0.1)}
+            roughness={0.8}
+            castShadow={false}
+          />
+        </group>
+      ))}
     </group>
   );
 }
@@ -118,11 +440,17 @@ export function NepaliCharpaiModel({
   fabricColor,
   cushionColor,
 }) {
-  // Handwoven Khat / Charpai daybed with turned wooden corner posts & woven rope webbing
+  // Handwoven khat daybed: turned corner legs, rope webbing woven over and under, bolster
   const legR = 0.04;
   const frameTop = heightM - 0.04;
   const frameThick = 0.06;
   const bolsterR = 0.06;
+  const ropeY = frameTop - 0.02;
+  const innerW = widthM - 0.12;
+  const innerD = depthM - 0.12;
+  const nAlong = Math.max(6, Math.round(innerD / 0.045));
+  const nAcross = Math.max(10, Math.round(innerW / 0.045));
+  const rope = shade(fabricColor, -0.05);
   const rails = [
     [0, -depthM / 2 + 0.03, widthM - 0.08, 0.05],
     [0, depthM / 2 - 0.03, widthM - 0.08, 0.05],
@@ -131,63 +459,219 @@ export function NepaliCharpaiModel({
   ];
   return (
     <group>
-      {/* 4 turned corner timber legs */}
       {[
         [-widthM / 2 + legR, -depthM / 2 + legR],
         [widthM / 2 - legR, -depthM / 2 + legR],
         [-widthM / 2 + legR, depthM / 2 - legR],
         [widthM / 2 - legR, depthM / 2 - legR],
       ].map(([lx, lz], idx) => (
-        <mesh key={idx} position={[lx, frameTop / 2, lz]} castShadow receiveShadow>
-          <cylinderGeometry args={[legR, legR * 1.1, frameTop, 16]} />
-          <meshStandardMaterial color={mainColor} roughness={0.75} />
-        </mesh>
+        <TurnedLeg
+          key={idx}
+          position={[lx, 0, lz]}
+          height={frameTop}
+          radius={legR}
+          color={mainColor}
+        />
       ))}
-      {/* Side rails */}
       {rails.map(([rx, rz, rw, rd], idx) => (
-        <mesh key={idx} position={[rx, frameTop - frameThick / 2, rz]} castShadow>
-          <boxGeometry args={[rw, frameThick, rd]} />
-          <meshStandardMaterial color={mainColor} roughness={0.7} />
-        </mesh>
+        <Box
+          key={idx}
+          position={[rx, frameTop - frameThick / 2, rz]}
+          size={[rw, frameThick, rd]}
+          color={mainColor}
+          roughness={0.7}
+        />
       ))}
-      {/* Woven jute rope webbing */}
-      <mesh position={[0, frameTop - 0.02, 0]} castShadow receiveShadow>
-        <boxGeometry args={[widthM - 0.12, 0.02, depthM - 0.12]} />
-        <meshStandardMaterial color={fabricColor} roughness={0.9} />
-      </mesh>
-      {/* Cylindrical bolster at the headrest */}
-      <mesh
-        position={[-widthM / 2 + 0.2, frameTop - 0.01 + bolsterR, 0]}
-        rotation={[Math.PI / 2, 0, 0]}
-        castShadow
-      >
-        <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.16, 16]} />
-        <meshStandardMaterial color={cushionColor} roughness={0.8} />
-      </mesh>
+      {/* Rope weave: ropes along the length, then ropes across, alternating over and under */}
+      <group name="rope-weave">
+        {Array.from({ length: nAlong }).map((_, i) => (
+          <XCyl
+            key={`a${i}`}
+            position={[0, ropeY + (i % 2 ? 0.006 : 0), -innerD / 2 + (innerD * (i + 0.5)) / nAlong]}
+            radius={0.0095}
+            length={innerW}
+            color={i % 3 ? fabricColor : rope}
+            roughness={0.95}
+            segments={6}
+            castShadow={false}
+          />
+        ))}
+        {Array.from({ length: nAcross }).map((_, i) => (
+          <Cyl
+            key={`c${i}`}
+            position={[
+              -innerW / 2 + (innerW * (i + 0.5)) / nAcross,
+              ropeY + (i % 2 ? 0 : 0.012),
+              0,
+            ]}
+            radiusTop={0.0095}
+            height={innerD}
+            rotation={[Math.PI / 2, 0, 0]}
+            color={i % 3 ? rope : fabricColor}
+            roughness={0.95}
+            segments={6}
+            castShadow={false}
+          />
+        ))}
+      </group>
+      {/* Rope wrappings round the rails */}
+      {[-1, 1].map((s) =>
+        [-0.35, 0, 0.35].map((f) => (
+          <Cyl
+            key={`${s}${f}`}
+            position={[widthM * f, frameTop - 0.005, (s * (depthM - 0.06)) / 2]}
+            radiusTop={0.03}
+            height={0.012}
+            color={fabricColor}
+            roughness={0.95}
+            segments={8}
+            castShadow={false}
+          />
+        ))
+      )}
+      {/* Cylindrical bolster with embroidered end discs and tie bands */}
+      <group position={[-widthM / 2 + 0.2, frameTop + bolsterR, 0]}>
+        <Cyl
+          rotation={[Math.PI / 2, 0, 0]}
+          radiusTop={bolsterR}
+          height={depthM - 0.16}
+          color={cushionColor}
+          roughness={0.85}
+          segments={18}
+        />
+        {[-1, 1].map((s) => (
+          <group key={s}>
+            <Cyl
+              position={[0, 0, (s * (depthM - 0.16)) / 2]}
+              rotation={[Math.PI / 2, 0, 0]}
+              radiusTop={bolsterR * 0.75}
+              height={0.004}
+              color="#C49746"
+              roughness={0.6}
+              segments={14}
+              castShadow={false}
+            />
+            <Cyl
+              position={[0, 0, (s * (depthM - 0.16)) / 2 - s * 0.03]}
+              rotation={[Math.PI / 2, 0, 0]}
+              radiusTop={bolsterR * 1.03}
+              height={0.012}
+              color={shade(cushionColor, -0.15)}
+              roughness={0.85}
+              segments={18}
+              castShadow={false}
+            />
+          </group>
+        ))}
+      </group>
     </group>
   );
 }
 
-export function NepaliGaddaModel({ widthM, depthM, heightM, mainColor, cushionColor }) {
-  // Floor mattress seating with twin cylindrical takiya bolsters
+export function NepaliGaddaModel({
+  widthM,
+  depthM,
+  heightM,
+  mainColor,
+  cushionColor,
+  accentColor,
+}) {
+  // Floor mattress seating with piped border, tufting and twin takiya bolsters
   const matH = heightM * 0.38;
   const bolsterR = (heightM - matH) / 2;
+  const tuft = shade(mainColor, -0.15);
+  const gold = accentColor || '#C49746';
+  const cols = clamp(Math.round(widthM / 0.22), 4, 10);
+  const rows = clamp(Math.round(depthM / 0.22), 2, 5);
   return (
     <group>
-      <mesh position={[0, matH / 2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[widthM, matH, depthM]} />
-        <meshStandardMaterial color={mainColor} roughness={0.85} />
-      </mesh>
+      <Pad
+        position={[0, matH / 2, 0]}
+        size={[widthM, matH, depthM]}
+        radius={0.04}
+        color={mainColor}
+        roughness={0.9}
+      />
+      <EdgePiping position={[0, matH, 0]} width={widthM} depth={depthM} color={gold} inset={0.07} />
+      {/* Gold border band running round the top face */}
       {[-1, 1].map((s) => (
-        <mesh
-          key={s}
-          position={[s * (widthM / 2 - bolsterR - 0.04), matH + bolsterR, 0]}
-          rotation={[Math.PI / 2, 0, 0]}
-          castShadow
-        >
-          <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.1, 16]} />
-          <meshStandardMaterial color={cushionColor} roughness={0.8} />
-        </mesh>
+        <Box
+          key={`gz${s}`}
+          position={[0, matH + 0.0015, (s * (depthM - 0.12)) / 2]}
+          size={[widthM - 0.16, 0.002, 0.02]}
+          color={gold}
+          roughness={0.7}
+          castShadow={false}
+        />
+      ))}
+      {[-1, 1].map((s) => (
+        <Box
+          key={`gx${s}`}
+          position={[(s * (widthM - 0.12)) / 2, matH + 0.0015, 0]}
+          size={[0.02, 0.002, depthM - 0.16]}
+          color={gold}
+          roughness={0.7}
+          castShadow={false}
+        />
+      ))}
+      <Buttons
+        y={matH + 0.003}
+        width={widthM - 0.3}
+        depth={depthM - 0.3}
+        cols={cols}
+        rows={rows}
+        color={tuft}
+      />
+      {[-1, 1].map((s) => (
+        <group key={s} position={[s * (widthM / 2 - bolsterR - 0.04), matH + bolsterR, 0]}>
+          <Cyl
+            rotation={[Math.PI / 2, 0, 0]}
+            radiusTop={bolsterR}
+            height={depthM - 0.1}
+            color={cushionColor}
+            roughness={0.85}
+            segments={18}
+          />
+          {[-1, 1].map((e) => (
+            <group key={e}>
+              <Cyl
+                position={[0, 0, (e * (depthM - 0.1)) / 2]}
+                rotation={[Math.PI / 2, 0, 0]}
+                radiusTop={bolsterR * 0.7}
+                height={0.004}
+                color={gold}
+                roughness={0.6}
+                segments={14}
+                castShadow={false}
+              />
+              <Cyl
+                position={[0, 0, (e * (depthM - 0.1)) / 2 - e * 0.025]}
+                rotation={[Math.PI / 2, 0, 0]}
+                radiusTop={bolsterR * 1.02}
+                height={0.01}
+                color={gold}
+                roughness={0.6}
+                segments={18}
+                castShadow={false}
+              />
+              <Cyl
+                position={[0, -bolsterR * 0.6, (e * (depthM - 0.1)) / 2 + e * 0.02]}
+                radiusTop={0.006}
+                height={0.05}
+                color={gold}
+                segments={6}
+                castShadow={false}
+              />
+              <Ball
+                position={[0, -bolsterR * 0.6 - 0.03, (e * (depthM - 0.1)) / 2 + e * 0.02]}
+                radius={0.01}
+                color={gold}
+                segments={6}
+                castShadow={false}
+              />
+            </group>
+          ))}
+        </group>
       ))}
     </group>
   );
@@ -255,7 +739,7 @@ export function NepaliDhokaDividerModel({ def, widthM, heightM, mainColor, accen
               [0.35, 0.85, 1.45].map((hy, hi) => (
                 <mesh key={`hinge-${hi}`} position={[panelW / 2, hy, 0]} castShadow>
                   <cylinderGeometry args={[0.012, 0.012, 0.04, 12]} />
-                  <meshStandardMaterial color={accentColor} metalness={0.85} roughness={0.25} />
+                  <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.25} />
                 </mesh>
               ))}
           </group>
@@ -290,7 +774,7 @@ export function NepaliPujaMandirModel({ def, widthM, depthM, heightM, mainColor,
         castShadow
       >
         <cylinderGeometry args={[0.012, 0.012, 0.018, 12]} />
-        <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+        <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.2} />
       </mesh>
       <mesh
         position={[widthM * 0.2, baseH / 2, depthM / 2 + 0.02]}
@@ -298,7 +782,7 @@ export function NepaliPujaMandirModel({ def, widthM, depthM, heightM, mainColor,
         castShadow
       >
         <cylinderGeometry args={[0.012, 0.012, 0.018, 12]} />
-        <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+        <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.2} />
       </mesh>
 
       {/* Sanctum Floor with Crimson Velvet Cloth */}
@@ -343,6 +827,100 @@ export function NepaliPujaMandirModel({ def, widthM, depthM, heightM, mainColor,
         </group>
       ))}
 
+      {/* Shrine contents: brass deity on a lotus seat, ghee lamp, hanging bell, incense, garland */}
+      <group name="shrine-contents" position={[0, baseH + 0.012, -depthM * 0.12]}>
+        <Cyl
+          position={[0, 0.02, 0]}
+          radiusTop={0.06}
+          radiusBottom={0.07}
+          height={0.04}
+          color={accentColor}
+          roughness={0.32}
+          metalness={0.65}
+          segments={16}
+        />
+        <Cyl
+          position={[0, 0.09, 0]}
+          radiusTop={0.025}
+          radiusBottom={0.04}
+          height={0.1}
+          color={accentColor}
+          roughness={0.32}
+          metalness={0.65}
+          segments={14}
+        />
+        <mesh position={[0, 0.17, 0]} castShadow>
+          <sphereGeometry args={[0.03, 12, 10]} />
+          <meshStandardMaterial color={accentColor} roughness={0.32} metalness={0.65} />
+        </mesh>
+        <mesh position={[0, 0.2, 0]}>
+          <coneGeometry args={[0.022, 0.04, 10]} />
+          <meshStandardMaterial color={accentColor} roughness={0.32} metalness={0.65} />
+        </mesh>
+        <group name="shrine-lamp" position={[widthM * 0.2, 0, depthM * 0.22]}>
+          <Cyl
+            position={[0, 0.012, 0]}
+            radiusTop={0.03}
+            radiusBottom={0.02}
+            height={0.024}
+            color={accentColor}
+            roughness={0.32}
+            metalness={0.65}
+            segments={14}
+          />
+          <mesh position={[0, 0.05, 0]}>
+            <coneGeometry args={[0.008, 0.035, 8]} />
+            <meshBasicMaterial color="#FFB347" />
+          </mesh>
+        </group>
+        <Cyl
+          position={[-widthM * 0.2, 0.03, depthM * 0.22]}
+          radiusTop={0.012}
+          radiusBottom={0.02}
+          height={0.06}
+          color={accentColor}
+          roughness={0.32}
+          metalness={0.65}
+          segments={10}
+        />
+      </group>
+      <group name="shrine-bell" position={[widthM * 0.2, baseH + columnH, depthM * 0.1]}>
+        <Cyl
+          position={[0, -0.04, 0]}
+          radiusTop={0.002}
+          height={0.08}
+          color="#C9C9C9"
+          segments={4}
+          castShadow={false}
+        />
+        <mesh position={[0, -0.1, 0]} castShadow>
+          <sphereGeometry args={[0.032, 14, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2]} />
+          <meshStandardMaterial color={accentColor} roughness={0.32} metalness={0.65} side={2} />
+        </mesh>
+        <mesh position={[0, -0.112, 0]}>
+          <sphereGeometry args={[0.008, 8, 6]} />
+          <meshStandardMaterial color={accentColor} roughness={0.32} metalness={0.65} />
+        </mesh>
+      </group>
+      {/* Marigold garland draped along the front lintel */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const t = i / 11;
+        return (
+          <mesh
+            key={`mg${i}`}
+            position={[
+              -widthM / 2 + 0.06 + (widthM - 0.12) * t,
+              baseH + columnH - 0.025 - Math.sin(t * Math.PI) * 0.035,
+              depthM / 2 - 0.03,
+            ]}
+            castShadow
+          >
+            <sphereGeometry args={[0.014, 8, 6]} />
+            <meshStandardMaterial color={i % 2 ? '#F28C28' : '#E8A317'} roughness={0.9} />
+          </mesh>
+        );
+      })}
+
       {/* Lower Tier Pagoda Roof Eave (Flared outward) */}
       <mesh position={[0, baseH + columnH + tier1H / 2, 0]} castShadow receiveShadow>
         <boxGeometry args={[widthM, tier1H, depthM]} />
@@ -351,7 +929,7 @@ export function NepaliPujaMandirModel({ def, widthM, depthM, heightM, mainColor,
       {/* Flared Eave Cornice Molding */}
       <mesh position={[0, baseH + columnH + tier1H, 0]} castShadow>
         <boxGeometry args={[widthM, 0.02, depthM]} />
-        <meshStandardMaterial color={accentColor} metalness={0.75} roughness={0.3} />
+        <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.3} />
       </mesh>
 
       {/* Upper Tier Pagoda Roof (Stepped inwards with pitched slope) */}
@@ -365,17 +943,17 @@ export function NepaliPujaMandirModel({ def, widthM, depthM, heightM, mainColor,
         {/* Stepped Brass Base Plinth */}
         <mesh position={[0, 0.015, 0]} castShadow>
           <cylinderGeometry args={[0.065, 0.08, 0.03, 16]} />
-          <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+          <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.2} />
         </mesh>
         {/* Sacred Kalasha Spherical Urn */}
         <mesh position={[0, 0.055, 0]} castShadow>
           <sphereGeometry args={[0.038, 16, 16]} />
-          <meshStandardMaterial color={accentColor} metalness={0.92} roughness={0.18} />
+          <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.18} />
         </mesh>
         {/* Pointed Spire Cone (Gajur Tip) */}
         <mesh position={[0, 0.12, 0]} castShadow>
           <coneGeometry args={[0.024, 0.11, 16]} />
-          <meshStandardMaterial color={accentColor} metalness={0.94} roughness={0.15} />
+          <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.15} />
         </mesh>
       </group>
     </group>
@@ -411,17 +989,36 @@ export function NepaliLotaDisplayModel({ widthM, heightM, mainColor, accentColor
       {/* Polished Brass Karuwa Vessel Body */}
       <mesh position={[0, standH + 0.1, 0]} castShadow>
         <sphereGeometry args={[0.09, 20, 20]} />
-        <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+        <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.2} />
       </mesh>
       {/* Karuwa Neck & Fluted Rim */}
       <mesh position={[0, standH + 0.21, 0]} castShadow>
         <cylinderGeometry args={[0.035, 0.025, 0.08, 16]} />
-        <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+        <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.2} />
+      </mesh>
+      {/* Lid with a finial knob, body bands and a tripod brace ring */}
+      <mesh position={[0, standH + 0.255, 0]} castShadow>
+        <sphereGeometry args={[0.032, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+        <meshStandardMaterial color={accentColor} roughness={0.32} metalness={0.65} />
+      </mesh>
+      <mesh position={[0, standH + 0.29, 0]} castShadow>
+        <sphereGeometry args={[0.012, 8, 6]} />
+        <meshStandardMaterial color={accentColor} roughness={0.32} metalness={0.65} />
+      </mesh>
+      {[0.08, 0.12].map((dy) => (
+        <mesh key={dy} position={[0, standH + dy, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.088 - Math.abs(0.1 - dy) * 0.6, 0.004, 6, 24]} />
+          <meshStandardMaterial color="#8A6A2B" roughness={0.4} metalness={0.6} />
+        </mesh>
+      ))}
+      <mesh position={[0, standH * 0.4, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[widthM * 0.33, 0.006, 6, 24]} />
+        <meshStandardMaterial color={mainColor} roughness={0.7} />
       </mesh>
       {/* Karuwa Curved Spout */}
       <mesh position={[0.07, standH + 0.15, 0]} rotation={[0, 0, -0.6]} castShadow>
         <cylinderGeometry args={[0.012, 0.018, 0.12, 12]} />
-        <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
+        <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.2} />
       </mesh>
     </group>
   );

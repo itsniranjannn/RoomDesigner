@@ -1,5 +1,5 @@
 /** 3D models: decor. Built from Three.js primitives; origin on the floor, centered on the footprint. */
-import { Box, Cyl, Strut } from './shared.jsx';
+import { Box, Cyl, Ball, Strut, Knob, RoundKnob, CHROME, BLACK_PLASTIC, shade } from './shared.jsx';
 
 const BRASS = '#C49746';
 
@@ -11,10 +11,35 @@ export function PlantModel({ def, widthM, depthM, heightM, mainColor }) {
   const leafL = 0.1 + heightM * 0.05;
   const leafW = leafL * 0.62;
   const spread = span / 2 - leafL * 0.8;
-  const leafCount = 11;
+  const leafCount = 18;
   return (
     <group>
-      {/* Glazed planter with a brass rim and soil */}
+      {/* Saucer, pebbles on the soil, glazed planter with a brass rim */}
+      <Cyl
+        position={[0, 0.008, 0]}
+        radiusTop={potRadius * 0.85}
+        radiusBottom={potRadius * 0.9}
+        height={0.016}
+        color={shade(def.subColor || '#DDD6C9', -0.08)}
+        roughness={0.5}
+        segments={28}
+      />
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+        <Ball
+          key={`pb${i}`}
+          position={[
+            Math.cos(i * 2.4) * potRadius * 0.6,
+            potH - 0.012,
+            Math.sin(i * 2.4) * potRadius * 0.6,
+          ]}
+          radius={0.012 + (i % 3) * 0.004}
+          scale={[1, 0.6, 1]}
+          color={i % 2 ? '#B8AFA2' : '#8E877C'}
+          roughness={0.9}
+          segments={6}
+          castShadow={false}
+        />
+      ))}
       <Cyl
         position={[0, potH / 2, 0]}
         radiusTop={potRadius}
@@ -58,7 +83,11 @@ export function PlantModel({ def, widthM, depthM, heightM, mainColor }) {
             <mesh
               position={[0, 0, reach]}
               rotation={[-0.55, 0, 0]}
-              scale={[leafW, 0.006, leafL * (1 - 0.25 * t)]}
+              scale={[
+                leafW * (0.8 + (0.4 * ((i * 7) % 5)) / 4),
+                0.006,
+                leafL * (1 - 0.25 * t) * (0.85 + (0.3 * ((i * 3) % 4)) / 3),
+              ]}
               castShadow
               receiveShadow
             >
@@ -119,6 +148,31 @@ export function LampModel({ def, widthM, depthM, heightM, mainColor }) {
           metalness={0.7}
         />
       ))}
+      <group name="lamp-switch">
+        <Cyl
+          position={[0, heightM * 0.45, z0]}
+          radiusTop={0.019}
+          height={0.07}
+          {...BLACK_PLASTIC}
+          segments={12}
+        />
+        <Knob
+          position={[0, heightM * 0.45, z0 + 0.02]}
+          radius={0.01}
+          depth={0.012}
+          color="#D8D8D8"
+        />
+      </group>
+      <Cyl
+        position={[0, 0.006, z0 - baseR * 0.5 - 0.1]}
+        radiusTop={0.004}
+        height={baseR + 0.2}
+        rotation={[Math.PI / 2, 0, 0]}
+        color="#1A1A1A"
+        roughness={0.8}
+        segments={6}
+        castShadow={false}
+      />
       <mesh position={[0, heightM * 0.8, z0]} castShadow>
         <sphereGeometry args={[0.024, 14, 12]} />
         <meshStandardMaterial color={BRASS} metalness={0.88} roughness={0.2} />
@@ -179,6 +233,33 @@ export function LampTripodModel({ def, widthM, depthM, heightM, mainColor }) {
         <sphereGeometry args={[0.035, 12, 12]} />
         <meshBasicMaterial color="#FFF5DF" />
       </mesh>
+      {[0, 1].map((k) => (
+        <mesh
+          key={k}
+          position={[0, apexY + 0.08 + (k ? shadeH : 0), 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+        >
+          <torusGeometry args={[shadeR * (k ? 0.8 : 1), 0.005, 6, 32]} />
+          <meshStandardMaterial color={shade(def.subColor || '#F2E8D5', -0.2)} roughness={0.7} />
+        </mesh>
+      ))}
+      <Ball
+        position={[0, apexY + 0.08 + shadeH + 0.02, 0]}
+        radius={0.017}
+        color={BRASS}
+        metalness={0.8}
+        roughness={0.25}
+      />
+      <Cyl
+        position={[0, 0.006, footR * 0.5]}
+        radiusTop={0.004}
+        height={footR}
+        rotation={[Math.PI / 2, 0, 0]}
+        color="#1A1A1A"
+        roughness={0.8}
+        segments={6}
+        castShadow={false}
+      />
     </group>
   );
 }
@@ -230,12 +311,190 @@ export function LampTorchiereModel({ def, widthM, depthM, heightM, mainColor }) 
         <sphereGeometry args={[0.04, 12, 12]} />
         <meshBasicMaterial color="#FFF5DF" />
       </mesh>
+      <mesh position={[0, heightM - 0.005, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[span * 0.5, 0.006, 6, 32]} />
+        <meshStandardMaterial color={mainColor} roughness={0.4} metalness={0.6} />
+      </mesh>
+      <group name="lamp-switch" position={[0, heightM * 0.4, 0]}>
+        <Cyl position={[0, 0, 0]} radiusTop={0.02} height={0.06} {...BLACK_PLASTIC} segments={12} />
+        <Knob position={[0, 0, 0.022]} radius={0.01} depth={0.012} color="#D8D8D8" />
+      </group>
+      <Cyl
+        position={[0, 0.036, span * 0.35]}
+        radiusTop={0.004}
+        height={span * 0.7}
+        rotation={[Math.PI / 2, 0, 0]}
+        color="#1A1A1A"
+        roughness={0.8}
+        segments={6}
+        castShadow={false}
+      />
     </group>
   );
 }
 
 /** Leaning mirror in a timber frame, propped by a rear easel; the lean is limited so it stays inside the footprint. */
-export function WallMirrorModel({ widthM, depthM, heightM, mainColor, legColor }) {
+function MirrorCabinet({ widthM, depthM, heightM, mainColor }) {
+  const door = 0.02;
+  const frame = 0.025;
+  return (
+    <group name="mirror-cabinet">
+      <Box
+        position={[0, heightM / 2, 0]}
+        size={[widthM, heightM, depthM - door]}
+        color={mainColor}
+        roughness={0.5}
+      />
+      <Box
+        position={[0, heightM / 2, depthM / 2 - door / 2]}
+        size={[widthM, heightM, door]}
+        color={shade(mainColor, 0.03)}
+        roughness={0.45}
+      />
+      <Box
+        position={[0, heightM / 2, depthM / 2 + 0.001]}
+        size={[widthM - frame * 2, heightM - frame * 2, 0.004]}
+        color="#DCEBF0"
+        roughness={0.04}
+        metalness={0.5}
+        castShadow={false}
+      />
+      <Box
+        position={[0, heightM / 2, depthM / 2 - 0.001]}
+        size={[widthM - frame * 1.4, heightM - frame * 1.4, 0.004]}
+        {...CHROME}
+        castShadow={false}
+      />
+      {[0.25, 0.4].map((f) => (
+        <mesh
+          key={f}
+          position={[widthM * (f - 0.3), heightM * 0.62, depthM / 2 + 0.0035]}
+          rotation={[0, 0, -0.5]}
+        >
+          <planeGeometry args={[widthM * 0.7, 0.025]} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.4} />
+        </mesh>
+      ))}
+      {/* Hinges on the left edge, finger pull on the right and a lit strip at the top */}
+      {[0.15, 0.85].map((f) => (
+        <Box
+          key={f}
+          position={[-widthM / 2 + 0.004, heightM * f, depthM / 2]}
+          size={[0.012, 0.05, 0.016]}
+          {...CHROME}
+        />
+      ))}
+      <RoundKnob
+        position={[widthM / 2 - 0.035, heightM * 0.5, depthM / 2 - 0.006]}
+        radius={0.012}
+        color="#D8D8D8"
+      />
+      <mesh position={[0, heightM - 0.03, depthM / 2 + 0.002]}>
+        <boxGeometry args={[widthM * 0.6, 0.008, 0.003]} />
+        <meshBasicMaterial color="#FFF1CC" />
+      </mesh>
+      <Box
+        position={[0, heightM + 0.005, 0]}
+        size={[widthM + 0.01, 0.01, depthM + 0.01]}
+        color={shade(mainColor, -0.06)}
+        roughness={0.5}
+      />
+    </group>
+  );
+}
+
+/** Cheval mirror: a tilting mirror between two posts with swivel knobs and sled feet. */
+function ChevalMirror({ widthM, depthM, heightM, mainColor }) {
+  const postX = widthM / 2 - 0.025;
+  const frameW = widthM - 0.12;
+  const pivotY = heightM * 0.58;
+  const mirrorH = heightM * 0.72;
+  return (
+    <group name="cheval-mirror">
+      {[-1, 1].map((sg) => (
+        <group key={sg}>
+          <Box
+            position={[sg * postX, heightM * 0.43, 0]}
+            size={[0.045, heightM * 0.86, 0.045]}
+            color={mainColor}
+            roughness={0.5}
+          />
+          <Ball
+            position={[sg * postX, heightM * 0.88, 0]}
+            radius={0.032}
+            color={mainColor}
+            roughness={0.45}
+          />
+          <Box
+            position={[sg * postX, 0.02, 0]}
+            size={[0.05, 0.04, depthM - 0.04]}
+            color={shade(mainColor, -0.08)}
+            roughness={0.55}
+          />
+          <Cyl
+            position={[sg * (postX - 0.04), pivotY, 0]}
+            radiusTop={0.012}
+            height={0.05}
+            rotation={[0, 0, Math.PI / 2]}
+            {...CHROME}
+            segments={10}
+          />
+          <Ball
+            position={[sg * (postX + 0.03), pivotY, 0]}
+            radius={0.02}
+            color="#C49746"
+            metalness={0.8}
+            roughness={0.25}
+          />
+        </group>
+      ))}
+      <Box
+        position={[0, 0.2, 0]}
+        size={[widthM - 0.05, 0.03, 0.03]}
+        color={mainColor}
+        roughness={0.55}
+      />
+      <group position={[0, pivotY, 0]} rotation={[-0.1, 0, 0]}>
+        <Box
+          position={[0, 0, 0]}
+          size={[frameW, mirrorH, 0.035]}
+          color={mainColor}
+          roughness={0.5}
+        />
+        <Box
+          position={[0, 0, 0.019]}
+          size={[frameW - 0.07, mirrorH - 0.07, 0.004]}
+          color="#DCEBF0"
+          roughness={0.04}
+          metalness={0.5}
+          castShadow={false}
+        />
+        <Box
+          position={[0, 0, 0.0165]}
+          size={[frameW - 0.05, mirrorH - 0.05, 0.002]}
+          color="#C49746"
+          metalness={0.7}
+          roughness={0.3}
+          castShadow={false}
+        />
+        <mesh position={[0, mirrorH * 0.12, 0.0215]} rotation={[0, 0, -0.45]}>
+          <planeGeometry args={[frameW * 0.8, 0.04]} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.4} />
+        </mesh>
+      </group>
+    </group>
+  );
+}
+
+export function WallMirrorModel({ def, widthM, depthM, heightM, mainColor, legColor }) {
+  if (def?.id === 'mirror-cabinet') {
+    return (
+      <MirrorCabinet widthM={widthM} depthM={depthM} heightM={heightM} mainColor={mainColor} />
+    );
+  }
+  if (def?.id === 'cheval-mirror') {
+    return <ChevalMirror widthM={widthM} depthM={depthM} heightM={heightM} mainColor={mainColor} />;
+  }
   const frameW = Math.min(0.055, widthM * 0.12);
   const frameT = Math.min(0.04, depthM * 0.5);
   const tilt = Math.asin(Math.min(0.14, (depthM * 0.35) / heightM));

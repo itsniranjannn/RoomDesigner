@@ -56,26 +56,86 @@ export function NepaliPatukaChestSilhouette({
         width={widthCm}
         height={depthCm}
         rx={3}
-        fill={color}
+        fill={subColor}
         stroke="#1A1615"
         strokeWidth="1.5"
       />
+      {/* Brass-bound lid with a raised centre panel and corner fittings */}
       <rect
         x={-hw + 5}
         y={-hd + 5}
         width={widthCm - 10}
         height={depthCm - 10}
-        fill={subColor}
+        fill={color}
+        fillOpacity="0.55"
         stroke={accentColor}
         strokeWidth="1"
       />
+      <rect
+        x={-hw + 10}
+        y={-hd + 10}
+        width={widthCm - 20}
+        height={depthCm - 20}
+        fill="none"
+        stroke="rgba(0,0,0,0.35)"
+        strokeWidth="0.7"
+      />
+      {[-1, 1].map((s) => (
+        <rect
+          key={s}
+          x={s * widthCm * 0.25 - 3}
+          y={-hd + 1}
+          width={6}
+          height={depthCm - 2}
+          fill={accentColor}
+          stroke="#1A1615"
+          strokeWidth="0.5"
+        />
+      ))}
+      {[
+        [-hw, -hd],
+        [hw - 7, -hd],
+        [-hw, hd - 7],
+        [hw - 7, hd - 7],
+      ].map(([x, y], i) => (
+        <rect
+          key={i}
+          x={x}
+          y={y}
+          width={7}
+          height={7}
+          fill={accentColor}
+          stroke="#1A1615"
+          strokeWidth="0.6"
+        />
+      ))}
+      {/* Centre hasp and padlock at the front, hinges at the back, ring handles */}
       <line x1={0} y1={-hd + 6} x2={0} y2={hd - 6} stroke={accentColor} strokeWidth="1.5" />
-      <circle cx={0} cy={0} r={4} fill={accentColor} />
-      <path
-        d={`M ${-hw + 8} ${-hd + 8} H ${hw - 8} M ${-hw + 8} ${hd - 8} H ${hw - 8}`}
-        stroke={accentColor}
-        strokeWidth="1"
+      <rect
+        x={-5}
+        y={hd - 10}
+        width={10}
+        height={8}
+        rx={1.5}
+        fill={accentColor}
+        stroke="#1A1615"
+        strokeWidth="0.6"
       />
+      <circle cx={0} cy={hd - 6} r={1.6} fill="#1A1615" />
+      {[-1, 1].map((s) => (
+        <rect
+          key={`h${s}`}
+          x={s * widthCm * 0.38 - 4}
+          y={-hd + 0.5}
+          width={8}
+          height={3}
+          fill="#C5CBD0"
+          stroke="#1A1615"
+          strokeWidth="0.4"
+        />
+      ))}
+      <circle cx={-hw - 1.5} cy={0} r={3} fill="none" stroke={accentColor} strokeWidth="1.2" />
+      <circle cx={hw + 1.5} cy={0} r={3} fill="none" stroke={accentColor} strokeWidth="1.2" />
     </g>
   );
 }
@@ -455,9 +515,49 @@ export function NepaliPujaMandirSilhouette({
       {/* Twin Carved Front Columns */}
       <circle cx={-hw + 11} cy={hd - 11} r={4} fill="#6E3E26" stroke="#1A1615" strokeWidth="1" />
       <circle cx={hw - 11} cy={hd - 11} r={4} fill="#6E3E26" stroke="#1A1615" strokeWidth="1" />
-      {/* Center Brass Diyo / Bell Iconography */}
-      <circle cx={0} cy={0} r={5} fill={accentColor} stroke="#1A1615" strokeWidth="1" />
-      <path d="M 0 -7 L 4 -2 L -4 -2 Z" fill={accentColor} />
+      {/* Brass deity on a lotus seat, ghee lamp, incense holder, hanging bell and garland */}
+      <circle cx={0} cy={-hd * 0.12} r={5} fill={accentColor} stroke="#1A1615" strokeWidth="1" />
+      <circle cx={0} cy={-hd * 0.12} r={2.4} fill="none" stroke="#1A1615" strokeWidth="0.5" />
+      <path
+        d={`M 0 ${-hd * 0.12 - 8} L 3.4 ${-hd * 0.12 - 3} L -3.4 ${-hd * 0.12 - 3} Z`}
+        fill={accentColor}
+        stroke="#1A1615"
+        strokeWidth="0.5"
+      />
+      <circle
+        cx={hw * 0.42}
+        cy={hd * 0.25}
+        r={3}
+        fill={accentColor}
+        stroke="#1A1615"
+        strokeWidth="0.6"
+      />
+      <circle cx={hw * 0.42} cy={hd * 0.25} r={1.1} fill="#FFB347" stroke="none" />
+      <circle
+        cx={-hw * 0.42}
+        cy={hd * 0.25}
+        r={2}
+        fill={accentColor}
+        stroke="#1A1615"
+        strokeWidth="0.5"
+      />
+      <circle
+        cx={hw * 0.4}
+        cy={hd * 0.6}
+        r={3.2}
+        fill="none"
+        stroke={accentColor}
+        strokeWidth="1.3"
+      />
+      <circle cx={hw * 0.4} cy={hd * 0.6} r={0.9} fill={accentColor} stroke="none" />
+      <path
+        d={`M ${-hw + 12} ${hd - 7} Q 0 ${hd - 1} ${hw - 12} ${hd - 7}`}
+        fill="none"
+        stroke="#F28C28"
+        strokeWidth="2.2"
+        strokeDasharray="2 1.2"
+        strokeLinecap="round"
+      />
     </g>
   );
 }
