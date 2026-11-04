@@ -2,9 +2,10 @@ import React, { useRef, useState } from 'react';
 import { DoorOpen, GripVertical, Plus, Square, Trash2 } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
-import { OPENING_LIMITS } from '../../engine/openings.js';
+import { isResizable } from '../../engine/openings.js';
+import { hasOutline, outlineEdges, polygonArea } from '../../engine/roomShape.js';
 import { Button } from '../common/Button.jsx';
-import { NumberField, SelectField } from '../common/Field.jsx';
+import { SelectField } from '../common/Field.jsx';
 import { Section, IconButton } from '../common/Section.jsx';
 import { InspectorShell } from './InspectorShell.jsx';
 import styles from './Inspector.module.css';
@@ -21,12 +22,20 @@ const SWING_OPTIONS = [
   { value: 'outward', label: 'Out of the room' },
 ];
 
-function OpeningRow({ type, opening, index, canRemove }) {
+function OpeningRow({ type, opening, index, canRemove, room }) {
   const updateOpening = useRoomStore((state) => state.updateOpening);
   const removeOpening = useRoomStore((state) => state.removeOpening);
   const isDoor = type === 'door';
   const name = isDoor ? 'Door' : 'Window';
-  const limits = OPENING_LIMITS[type];
+  const outlined = hasOutline(room);
+  const edgeOptions = outlined
+    ? outlineEdges(room)
+        .filter((e) => !e.open)
+        .map((e) => ({
+          value: String(e.i),
+          label: `Wall ${e.i + 1} (${(e.len / 100).toFixed(1)} m)`,
+        }))
+    : [];
 
   return (
     <div className={styles.opening}>
@@ -50,20 +59,26 @@ function OpeningRow({ type, opening, index, canRemove }) {
         )}
       </div>
       <div className={styles.wallRow}>
-        <SelectField
-          label="Wall"
-          options={WALL_OPTIONS}
-          value={opening.wall || (isDoor ? 'bottom' : 'top')}
-          onChange={(wall) => updateOpening(type, opening.id, { wall }, true)}
-        />
-        <NumberField
-          label="Width"
-          suffix="cm"
-          min={limits.minWidth}
-          max={limits.maxWidth}
-          value={opening.widthCm}
-          onCommit={(widthCm) => updateOpening(type, opening.id, { widthCm }, true)}
-        />
+        {outlined ? (
+          <SelectField
+            label="Wall"
+            options={edgeOptions}
+            value={String(opening.edge ?? 0)}
+            onChange={(edge) => updateOpening(type, opening.id, { edge: Number(edge) }, true)}
+          />
+        ) : (
+          <SelectField
+            label="Wall"
+            options={WALL_OPTIONS}
+            value={opening.wall || (isDoor ? 'bottom' : 'top')}
+            onChange={(wall) => updateOpening(type, opening.id, { wall }, true)}
+          />
+        )}
+        <p className={styles.note}>
+          {isResizable(type)
+            ? `${opening.widthCm} cm wide. Drag its ends on the plan to stretch it.`
+            : `Single door, ${opening.widthCm} cm. It slides along the wall but is not stretched.`}
+        </p>
       </div>
       {isDoor && (
         <SelectField
@@ -152,7 +167,9 @@ export function RoomPanel({ onClose }) {
   const doors = room.doors || [];
   const windows = room.windows || [];
 
-  const area = ((room.widthCm * room.depthCm) / 10000).toFixed(1);
+  const area = (
+    (hasOutline(room) ? polygonArea(room.outline) : room.widthCm * room.depthCm) / 10000
+  ).toFixed(1);
 
   return (
     <InspectorShell
@@ -166,6 +183,7 @@ export function RoomPanel({ onClose }) {
           <div className={styles.stat}>
             <span className={styles.statValue}>
               {(room.widthCm / 100).toFixed(2)} x {(room.depthCm / 100).toFixed(2)} m
+              {hasOutline(room) ? ' (outer)' : ''}
             </span>
             <span className={styles.statLabel}>Size</span>
           </div>
@@ -186,6 +204,7 @@ export function RoomPanel({ onClose }) {
             key={door.id}
             type="door"
             opening={door}
+            room={room}
             index={i}
             canRemove={doors.length > 1}
           />
@@ -195,6 +214,7 @@ export function RoomPanel({ onClose }) {
             key={win.id}
             type="window"
             opening={win}
+            room={room}
             index={i}
             canRemove={windows.length > 1}
           />

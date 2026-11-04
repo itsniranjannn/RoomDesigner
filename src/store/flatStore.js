@@ -27,6 +27,7 @@ import {
 import {
   addWall,
   eraseWallRun,
+  setWallsOpen,
   addOpening,
   removeOpening,
   updateOpening,
@@ -305,11 +306,15 @@ export const useFlatStore = create((set, get) => ({
   },
 
   // ---------- walls ----------
-  addWall: (x1, y1, x2, y2) => {
+  addWall: (x1, y1, x2, y2, options = {}) => {
     const { flat, rooms, levelId } = get();
     if (!flat || !levelId) return false;
-    const result = addWall(flat, rooms, levelId, x1, y1, x2, y2);
-    if (JSON.stringify(flat.walls[levelId]) === JSON.stringify(result.flat.walls[levelId]))
+    const result = addWall(flat, rooms, levelId, x1, y1, x2, y2, options);
+    if (
+      JSON.stringify(flat.walls[levelId]) === JSON.stringify(result.flat.walls[levelId]) &&
+      JSON.stringify(flat.openWalls?.[levelId] || []) ===
+        JSON.stringify(result.flat.openWalls?.[levelId] || [])
+    )
       return false;
     return get()._apply(result, {});
   },
@@ -321,6 +326,21 @@ export const useFlatStore = create((set, get) => ({
     const result = eraseWallRun(flat, rooms, levelId, key);
     if (!result) return false;
     return get()._apply(result, { selected: null });
+  },
+
+  /** Turns a wall run into an open divider (no wall, still splits rooms) or back into a wall. */
+  setWallOpen: (key, open) => {
+    const { flat, rooms, levelId } = get();
+    if (!flat || !levelId) return false;
+    const result = setWallsOpen(
+      flat,
+      rooms,
+      levelId,
+      wallRunAt(levelEdges(flat, levelId), key),
+      open
+    );
+    if (!result) return false;
+    return get()._apply(result, {});
   },
 
   // ---------- doors and windows ----------

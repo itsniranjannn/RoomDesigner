@@ -14,6 +14,8 @@ import {
   analyzeRuns,
   edgesOf,
   edgesToRuns,
+  segmentEdges,
+  solidEdges,
   pruneOpenings,
   runsOverlap,
   wallsCrossRect,
@@ -22,6 +24,7 @@ import {
   removeEdges,
   openingFitsWalls,
 } from './flatWalls.js';
+import { traceOutline, outlineEdges } from './roomShape.js';
 import {
   SPACE_KINDS,
   buildBlankRoom,
@@ -37,6 +40,13 @@ export const wallsOf = (flat, levelId) => flat.walls?.[levelId] || NO_ITEMS;
 export const openingsOf = (flat, levelId) => flat.openings?.[levelId] || NO_ITEMS;
 export const analyzeLevel = (flat, levelId) => analyzeRuns(wallsOf(flat, levelId));
 export const levelEdges = (flat, levelId) => edgesOf(wallsOf(flat, levelId));
+
+/** Wall runs of a level that have no wall: open dividers and archways that still split rooms. */
+export const openWallsOf = (flat, levelId) => flat.openWalls?.[levelId] || NO_ITEMS;
+export const levelOpenEdges = (flat, levelId) => edgesOf(openWallsOf(flat, levelId));
+/** Edges that are real walls (drawn, built in 3D and able to hold doors and windows). */
+export const levelSolidEdges = (flat, levelId) =>
+  solidEdges(levelEdges(flat, levelId), levelOpenEdges(flat, levelId));
 
 // ---------- openings <-> room record doors and windows ----------
 
@@ -77,6 +87,67 @@ function roomOpeningsFor(openings, rect) {
   return { doors, windows };
 }
 
+/** Openings that sit on the walled edges of a room outline, as { op, edge, offsetCm }. */
+function outlineOpenings(openings, room, origin) {
+  const out = [];
+  for (const e of outlineEdges(room)) {
+    if (e.open) continue;
+    const ax = e.p0.x + origin.x;
+    const ay = e.p0.y + origin.y;
+    const horizontal = e.dy === 0;
+    const lo = horizontal ? Math.min(ax, ax + e.dx * e.len) : Math.min(ay, ay + e.dy * e.len);
+    const hi = lo + e.len;
+    for (const op of openings) {
+      if (op.axis !== (horizontal ? 'h' : 'v')) continue;
+      if (op.line !== (horizontal ? ay : ax)) continue;
+      if (op.start < lo || op.start + op.widthCm > hi) continue;
+      const dir = horizontal ? e.dx : e.dy;
+      const from = horizontal ? ax : ay;
+      const offsetCm = dir > 0 ? op.start - from : from - (op.start + op.widthCm);
+      out.push({ op, edge: e.i, offsetCm });
+    }
+  }
+  return out;
+}
+
+function roomOpeningsForOutline(openings, room, origin) {
+  const doors = [];
+  const windows = [];
+  for (const { op, edge, offsetCm } of outlineOpenings(openings, room, origin)) {
+    if (op.type === 'door')
+      doors.push({
+        id: op.id,
+        edge,
+        offsetCm,
+        widthCm: op.widthCm,
+        swingDirection: op.swing || 'inward-left',
+      });
+    else windows.push({ id: op.id, edge, offsetCm, widthCm: op.widthCm });
+  }
+  return { doors, windows };
+}
+
+function openingFromOutlineItem(item, type, room, origin) {
+  const e = outlineEdges(room)[item.edge ?? 0];
+  if (!e) return null;
+  const horizontal = e.dy === 0;
+  const widthCm = Math.max(30, Math.min(e.len, Math.round(item.widthCm)));
+  const offset = Math.max(0, Math.min(e.len - widthCm, Math.round(item.offsetCm)));
+  const from = horizontal ? e.p0.x + origin.x : e.p0.y + origin.y;
+  const dir = horizontal ? e.dx : e.dy;
+  const start = dir > 0 ? from + offset : from - offset - widthCm;
+  const op = {
+    id: item.id,
+    type,
+    axis: horizontal ? 'h' : 'v',
+    line: horizontal ? e.p0.y + origin.y : e.p0.x + origin.x,
+    start,
+    widthCm,
+  };
+  if (type === 'door' && item.swingDirection) op.swing = item.swingDirection;
+  return op;
+}
+
 function openingFromRoomItem(item, type, rect) {
   const wall = item.wall || (type === 'door' ? 'bottom' : 'top');
   const horizontal = wall === 'top' || wall === 'bottom';
@@ -100,6 +171,8 @@ function openingFromRoomItem(item, type, rect) {
 
 // ---------- reconcile ----------
 
+const hasOutlineRoom = (room) => Array.isArray(room?.outline) && room.outline.length >= 3;
+
 const spaceRuns = (s) => {
   if (s.runs) return s.runs;
   const runs = [];
@@ -111,16 +184,33 @@ const spaceRuns = (s) => {
   return runs;
 };
 
+/** Whether any wall edge around a region is marked open. */
+function regionTouchesOpen(region, openSet) {
+  if (openSet.size === 0) return false;
+  for (const [j, i0, i1] of region.runs)
+    for (let i = i0; i < i1; i++)
+      if (
+        openSet.has(`h${i},${j}`) ||
+        openSet.has(`h${i},${j + 1}`) ||
+        openSet.has(`v${i},${j}`) ||
+        openSet.has(`v${i + 1},${j}`)
+      )
+        return true;
+  return false;
+}
+
 const spaceCells = (s) =>
   s.runs
     ? s.runs.reduce((n, [, a, b]) => n + (b - a), 0)
     : Math.round((s.widthCm * s.depthCm) / (CELL * CELL));
 
-function refitRoom(room, space, openings, flatId) {
+function refitRoom(room, space, openings, flatId, shape = null) {
   const rect = { x: space.x, y: space.y, widthCm: space.widthCm, depthCm: space.depthCm };
   const shiftX = space.roomX !== undefined ? space.roomX - space.x : 0;
   const shiftY = space.roomY !== undefined ? space.roomY - space.y : 0;
-  const { doors, windows } = roomOpeningsFor(openings, rect);
+  const { doors, windows } = shape
+    ? roomOpeningsForOutline(openings, shape, { x: space.x, y: space.y })
+    : roomOpeningsFor(openings, rect);
   let furnitureChanged = false;
   const placedFurniture = (room.placedFurniture || []).map((f) => {
     const x = Math.max(0, Math.min(rect.widthCm, f.x + shiftX));
@@ -129,6 +219,8 @@ function refitRoom(room, space, openings, flatId) {
     furnitureChanged = true;
     return { ...f, x, y };
   });
+  const outline = shape ? shape.outline : undefined;
+  const openEdges = shape && shape.openEdges.length ? shape.openEdges : undefined;
   const same =
     room.widthCm === rect.widthCm &&
     room.depthCm === rect.depthCm &&
@@ -137,17 +229,22 @@ function refitRoom(room, space, openings, flatId) {
     room.spaceId === space.id &&
     room.flatId === flatId &&
     !furnitureChanged &&
+    JSON.stringify(room.outline) === JSON.stringify(outline) &&
+    JSON.stringify(room.openEdges) === JSON.stringify(openEdges) &&
     JSON.stringify(room.doors || []) === JSON.stringify(doors) &&
     JSON.stringify(room.windows || []) === JSON.stringify(windows);
   if (same) return room;
+  const { outline: _o, openEdges: _e, ...base } = room;
   return {
-    ...room,
+    ...base,
     name: space.name,
     kind: space.kind,
     spaceId: space.id,
     flatId,
     widthCm: rect.widthCm,
     depthCm: rect.depthCm,
+    ...(outline ? { outline } : {}),
+    ...(openEdges ? { openEdges } : {}),
     doors,
     windows,
     placedFurniture: furnitureChanged ? placedFurniture : room.placedFurniture,
@@ -177,6 +274,7 @@ export function reconcile(flat, rooms = {}) {
   for (const level of flat.levels) {
     const analysis = analyzeLevel(flat, level.id);
     const openings = openingsOf(flat, level.id);
+    const openSet = levelOpenEdges(flat, level.id);
     const previous = flat.spaces.filter((s) => s.levelId === level.id);
 
     const pairs = [];
@@ -214,30 +312,34 @@ export function reconcile(flat, rooms = {}) {
         depthCm: region.depthCm,
         areaCm2: region.areaCm2,
         rect: region.rect,
-        furnishable: region.rect,
+        furnishable: true,
         runs: region.runs,
       };
       if (old?.heading !== undefined) space.heading = old.heading;
-      if (region.rect) {
-        let room = space.roomId ? nextRooms[space.roomId] : null;
-        if (!room) {
-          room = buildBlankRoom({
-            kind: space.kind,
-            name: space.name,
-            widthCm: space.widthCm,
-            depthCm: space.depthCm,
-            flatId: flat.id,
-            spaceId: space.id,
-          });
-          space.roomId = room.id;
-          space.roomX = space.x;
-          space.roomY = space.y;
-        }
-        const fitted = refitRoom(room, space, openings, flat.id);
-        nextRooms[fitted.id] = fitted;
+      // A region that is not a rectangle, or has an open side, gets its true outline
+      const traced =
+        !region.rect || regionTouchesOpen(region, openSet)
+          ? traceOutline(region.runs, { x: space.x, y: space.y }, openSet)
+          : null;
+      const shape = traced && traced.outline.length >= 3 ? traced : null;
+      let room = space.roomId ? nextRooms[space.roomId] : null;
+      if (!room) {
+        room = buildBlankRoom({
+          kind: space.kind,
+          name: space.name,
+          widthCm: space.widthCm,
+          depthCm: space.depthCm,
+          flatId: flat.id,
+          spaceId: space.id,
+        });
+        space.roomId = room.id;
         space.roomX = space.x;
         space.roomY = space.y;
       }
+      const fitted = refitRoom(room, space, openings, flat.id, shape);
+      nextRooms[fitted.id] = fitted;
+      space.roomX = space.x;
+      space.roomY = space.y;
       spaces.push(space);
     }
   }
@@ -246,21 +348,60 @@ export function reconcile(flat, rooms = {}) {
 
 // ---------- edits ----------
 
-function withLevelEdges(flat, levelId, edges) {
-  return {
+function withLevelEdges(flat, levelId, edges, openEdges = levelOpenEdges(flat, levelId)) {
+  // Open markers only make sense on edges that still exist
+  const stillOpen = new Set([...openEdges].filter((k) => edges.has(k)));
+  const hadOpen = openWallsOf(flat, levelId).length > 0;
+  const next = {
     ...flat,
     walls: { ...flat.walls, [levelId]: edgesToRuns(edges) },
-    openings: { ...flat.openings, [levelId]: pruneOpenings(openingsOf(flat, levelId), edges) },
+    openings: {
+      ...flat.openings,
+      [levelId]: pruneOpenings(openingsOf(flat, levelId), solidEdges(edges, stillOpen)),
+    },
   };
+  if (stillOpen.size > 0 || hadOpen)
+    next.openWalls = { ...flat.openWalls, [levelId]: edgesToRuns(stillOpen) };
+  return next;
 }
 
 /** Replaces a level's walls (openings that lose their wall are removed). */
-export function setLevelWalls(flat, rooms, levelId, edges) {
-  return reconcile(withLevelEdges(flat, levelId, edges), rooms);
+export function setLevelWalls(flat, rooms, levelId, edges, openEdges) {
+  return reconcile(withLevelEdges(flat, levelId, edges, openEdges), rooms);
 }
 
-export function addWall(flat, rooms, levelId, x1, y1, x2, y2) {
-  return setLevelWalls(flat, rooms, levelId, addSegment(levelEdges(flat, levelId), x1, y1, x2, y2));
+/**
+ * Draws a wall. With `open` the new stretch is an open divider: it still splits rooms but
+ * has no wall in 3D. Drawing a solid wall over an open divider makes it solid.
+ */
+export function addWall(flat, rooms, levelId, x1, y1, x2, y2, { open = false } = {}) {
+  const added = segmentEdges(x1, y1, x2, y2);
+  const edges = addSegment(levelEdges(flat, levelId), x1, y1, x2, y2);
+  const openEdges = new Set(levelOpenEdges(flat, levelId));
+  for (const k of added) {
+    if (open) openEdges.add(k);
+    else openEdges.delete(k);
+  }
+  return setLevelWalls(flat, rooms, levelId, edges, openEdges);
+}
+
+/** Turns wall edges into open dividers (no wall, still a boundary) or back into walls. */
+export function setWallsOpen(flat, rooms, levelId, keys, open) {
+  const edges = levelEdges(flat, levelId);
+  const openEdges = new Set(levelOpenEdges(flat, levelId));
+  let changed = false;
+  for (const k of keys) {
+    if (!edges.has(k)) continue;
+    if (open && !openEdges.has(k)) {
+      openEdges.add(k);
+      changed = true;
+    } else if (!open && openEdges.has(k)) {
+      openEdges.delete(k);
+      changed = true;
+    }
+  }
+  if (!changed) return null;
+  return setLevelWalls(flat, rooms, levelId, edges, openEdges);
 }
 
 /** Removes the straight run of wall (between junctions) that contains an edge. */
@@ -276,7 +417,7 @@ function setLevelOpenings(flat, rooms, levelId, openings) {
 }
 
 export function addOpening(flat, rooms, levelId, op) {
-  const edges = levelEdges(flat, levelId);
+  const edges = levelSolidEdges(flat, levelId);
   if (!openingFitsWalls(edges, op)) return null;
   return setLevelOpenings(flat, rooms, levelId, [...openingsOf(flat, levelId), op]);
 }
@@ -291,11 +432,13 @@ export function removeOpening(flat, rooms, levelId, openingId) {
 }
 
 export function updateOpening(flat, rooms, levelId, openingId, patch) {
-  const edges = levelEdges(flat, levelId);
+  const edges = levelSolidEdges(flat, levelId);
   const list = openingsOf(flat, levelId);
   const old = list.find((o) => o.id === openingId);
   if (!old) return null;
+  // A door keeps its standard width; only windows stretch
   const next = { ...old, ...patch };
+  if (old.type === 'door') next.widthCm = old.widthCm;
   if (!openingFitsWalls(edges, next)) return null;
   const clash = list.some(
     (o) =>
@@ -348,12 +491,23 @@ export function syncRoomToFlat(flat, rooms, spaceId, editedRoom) {
   if (!space || !space.furnishable) return { flat, rooms, removedRoomIds: [] };
   const rect = { x: space.x, y: space.y, widthCm: space.widthCm, depthCm: space.depthCm };
   const openings = openingsOf(flat, space.levelId);
-  const edges = levelEdges(flat, space.levelId);
-  const onBoundary = new Set(boundaryOpenings(openings, rect).map(({ op }) => op.id));
+  const edges = levelSolidEdges(flat, space.levelId);
+  const outlined = hasOutlineRoom(editedRoom);
+  const origin = { x: space.x, y: space.y };
+  const onBoundary = new Set(
+    (outlined
+      ? outlineOpenings(openings, editedRoom, origin)
+      : boundaryOpenings(openings, rect)
+    ).map(({ op }) => op.id)
+  );
+  const toOpening = (item, type) =>
+    outlined
+      ? openingFromOutlineItem(item, type, editedRoom, origin)
+      : openingFromRoomItem(item, type, rect);
   const fromRoom = [
-    ...(editedRoom.doors || []).map((d) => openingFromRoomItem(d, 'door', rect)),
-    ...(editedRoom.windows || []).map((w) => openingFromRoomItem(w, 'window', rect)),
-  ].filter((op) => openingFitsWalls(edges, op));
+    ...(editedRoom.doors || []).map((d) => toOpening(d, 'door')),
+    ...(editedRoom.windows || []).map((w) => toOpening(w, 'window')),
+  ].filter((op) => op && openingFitsWalls(edges, op));
   const kept = openings.filter((o) => !onBoundary.has(o.id));
   const merged = [...kept];
   for (const op of fromRoom) {
@@ -376,8 +530,8 @@ export function syncRoomToFlat(flat, rooms, spaceId, editedRoom) {
 export function stairWarnings(flat, stair) {
   const warnings = [];
   const rect = stairRect(stair);
-  const edges = levelEdges(flat, stair.levelId);
-  if (edges.size > 0) {
+  const edges = levelSolidEdges(flat, stair.levelId);
+  if (levelEdges(flat, stair.levelId).size > 0) {
     if (wallsCrossRect(edges, rect))
       warnings.push('This staircase runs through a wall. Move it or open the wall.');
     const analysis = analyzeLevel(flat, stair.levelId);
@@ -400,8 +554,12 @@ export function stairWarnings(flat, stair) {
  * walls (shared sides merge) and its room record keeps its doors and windows.
  */
 export function migrateFlat(flat, rooms = {}) {
-  if (flat.walls && flat.version >= FLAT_VERSION)
+  if (flat.walls && flat.version >= FLAT_VERSION) {
+    // Areas that were not rectangles used to have no room record; they have one now
+    if ((flat.spaces || []).some((s) => !s.roomId || s.furnishable === false))
+      return { ...reconcile(flat, rooms), migrated: true };
     return { flat, rooms, removedRoomIds: [], migrated: false };
+  }
   const snap = (v) => Math.round(v / CELL) * CELL;
   const walls = {};
   const openings = {};

@@ -19,6 +19,7 @@ import { ConfirmDialog } from '../common/ConfirmDialog.jsx';
 import { EditableTitle } from '../common/EditableTitle.jsx';
 import { SaveStatus } from '../common/SaveStatus.jsx';
 import { AppHeader } from './SiteHeader.jsx';
+import { hasOutline, polygonArea } from '../../engine/roomShape.js';
 import { Popover, MenuItem, MenuLabel, MenuDivider } from '../common/Popover.jsx';
 import { IconButton } from '../common/Section.jsx';
 import { Segmented } from '../common/Field.jsx';
@@ -70,7 +71,9 @@ export function TopBar({
 
   const goBack = () => (inFlat ? backToFlat() : closeRoom());
   const backLabel = inFlat ? `Back to ${flatName}` : 'Back to all rooms';
-  const dims = `${(room.widthCm / 100).toFixed(2)} x ${(room.depthCm / 100).toFixed(2)} m`;
+  const dims = hasOutline(room)
+    ? `${(polygonArea(room.outline) / 10000).toFixed(1)} m²`
+    : `${(room.widthCm / 100).toFixed(2)} x ${(room.depthCm / 100).toFixed(2)} m`;
 
   const confirmDelete = async () => {
     setDialog(null);

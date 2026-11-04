@@ -10,10 +10,19 @@ import {
   snapToGrid,
   createStair,
 } from '../../engine/flat.js';
-import { wallsOf, openingsOf, stairWarnings } from '../../engine/flatPlan.js';
+import { wallsOf, openWallsOf, openingsOf, stairWarnings } from '../../engine/flatPlan.js';
+import {
+  moveSpan,
+  resizeSpan,
+  isResizable,
+  DOOR_WIDTH_CM,
+  WINDOW_WIDTH_CM,
+} from '../../engine/openings.js';
 import {
   CELL,
   edgesOf,
+  solidEdges,
+  openingWallSpan,
   analyzeRuns,
   hitTestEdge,
   wallRunAt,
@@ -47,8 +56,9 @@ import styles from './FlatPlan.module.css';
 const EMPTY = [];
 const MIN_K = 0.05;
 const MAX_K = 3;
-const DOOR_W = 90;
-const WINDOW_W = 120;
+const DOOR_W = DOOR_WIDTH_CM;
+const WINDOW_W = WINDOW_WIDTH_CM;
+const HANDLE_PX = 12; // size of a window end handle on screen
 
 const clampK = (k) => Math.max(MIN_K, Math.min(MAX_K, k));
 /** Shortens text so it fits a width in px at roughly charPx per character. */
@@ -197,6 +207,7 @@ export function FlatPlanCanvas() {
   const select = useFlatStore((s) => s.select);
   const openSpace = useFlatStore((s) => s.openSpace);
   const tool = useFlatUi((s) => s.tool);
+  const wallStyle = useFlatUi((s) => s.wallStyle);
   const stairType = useFlatUi((s) => s.stairType);
   const stairRotation = useFlatUi((s) => s.stairRotation);
   const passageSpec = useFlatUi((s) => s.passage);
@@ -248,9 +259,28 @@ export function FlatPlanCanvas() {
   const idx = flat ? levelIndex(flat, levelId) : 0;
   const runs = useMemo(() => (flat ? wallsOf(flat, levelId) : EMPTY), [flat, levelId]);
   const edges = useMemo(() => edgesOf(runs), [runs]);
+  const openRuns = useMemo(() => (flat ? openWallsOf(flat, levelId) : EMPTY), [flat, levelId]);
+  const openEdges = useMemo(() => edgesOf(openRuns), [openRuns]);
+  // Walls proper: open dividers split rooms but hold no doors and are not built in 3D
+  const solid = useMemo(() => solidEdges(edges, openEdges), [edges, openEdges]);
   const analysis = useMemo(() => analyzeRuns(runs), [runs]);
-  const openings = useMemo(() => (flat ? openingsOf(flat, levelId) : EMPTY), [flat, levelId]);
-  const stretches = useMemo(() => wallStretches(edges, analysis.isExteriorEdge), [edges, analysis]);
+  const storedOpenings = useMemo(() => (flat ? openingsOf(flat, levelId) : EMPTY), [flat, levelId]);
+  const [dragOp, setDragOpState] = useState(null); // { id, start, widthCm } while an opening is dragged
+  const dragOpRef = useRef(null);
+  const setDragOp = useCallback((d) => {
+    dragOpRef.current = d;
+    setDragOpState(d);
+  }, []);
+  const openings = useMemo(
+    () =>
+      dragOp
+        ? storedOpenings.map((o) =>
+            o.id === dragOp.id ? { ...o, start: dragOp.start, widthCm: dragOp.widthCm } : o
+          )
+        : storedOpenings,
+    [storedOpenings, dragOp]
+  );
+  const stretches = useMemo(() => wallStretches(solid, analysis.isExteriorEdge), [solid, analysis]);
   const spaces = useMemo(
     () => (flat ? flat.spaces.filter((s) => s.levelId === levelId) : []),
     [flat, levelId]
@@ -482,6 +512,54 @@ export function FlatPlanCanvas() {
     };
   };
 
+  // ---------- opening drag and stretch ----------
+  /** The selected window (the only opening with stretch handles). */
+  const selectedWindow = () => {
+    if (selected?.type !== 'opening') return null;
+    const op = openings.find((o) => o.id === selected.id);
+    return op && isResizable(op.type) ? op : null;
+  };
+
+  /** Which end handle of a window the point is on, 'start' or 'end', or null. */
+  const handleAt = (op, p) => {
+    const tol = Math.max(HANDLE_PX / viewRef.current.k, 5);
+    const along = op.axis === 'h' ? p.x : p.y;
+    const across = op.axis === 'h' ? p.y : p.x;
+    if (Math.abs(across - op.line) > Math.max(tol, 12)) return null;
+    if (Math.abs(along - op.start) <= tol) return 'start';
+    if (Math.abs(along - (op.start + op.widthCm)) <= tol) return 'end';
+    return null;
+  };
+
+  /** Where an opening drag puts the opening for a pointer at p. */
+  const dragResult = (g, p) => {
+    const along = g.op.axis === 'h' ? p.x : p.y;
+    const delta = along - g.grab;
+    if (g.mode === 'move') {
+      const start = moveSpan({ start: g.op.start, width: g.op.widthCm, delta, ...g.bounds });
+      return { start, widthCm: g.op.widthCm };
+    }
+    const pointer = g.mode === 'end' ? g.op.start + g.op.widthCm + delta : g.op.start + delta;
+    const res = resizeSpan({
+      side: g.mode,
+      start: g.op.start,
+      width: g.op.widthCm,
+      pointer,
+      ...g.bounds,
+    });
+    return { start: res.start, widthCm: res.width };
+  };
+
+  /** Free stretch of wall around an opening, and its neighbours on the same wall. */
+  const openingBounds = (op) => {
+    const span = openingWallSpan(solid, op);
+    if (!span) return null;
+    const others = storedOpenings
+      .filter((o) => o.id !== op.id && o.axis === op.axis && o.line === op.line)
+      .map((o) => ({ start: o.start, width: o.widthCm }));
+    return { lo: span.lo, hi: span.hi, others, min: 40, max: 300, step: CELL };
+  };
+
   // ---------- pointer handling ----------
   const computeHover = (p) => {
     const sp = snapPoint(p);
@@ -500,7 +578,7 @@ export function FlatPlanCanvas() {
     if (tool === 'door' || tool === 'window') {
       const existing = openingAtPoint(openings, p.x, p.y, hitTol + 4);
       if (existing && existing.type === tool) return { type: 'remove-opening', op: existing };
-      const plan = planOpening(edges, openings, {
+      const plan = planOpening(solid, openings, {
         type: tool,
         x: p.x,
         y: p.y,
@@ -508,6 +586,14 @@ export function FlatPlanCanvas() {
         tolCm: hitTol,
       });
       return plan ? { type: 'opening', plan } : null;
+    }
+    if (tool === 'select') {
+      const sel = selectedWindow();
+      const side = sel ? handleAt(sel, p) : null;
+      if (side) return { type: 'handle', axis: sel.axis };
+      const over = openingAtPoint(openings, p.x, p.y, hitTol + 4);
+      if (over) return { type: 'opening-hover', axis: over.axis };
+      return null;
     }
     if (tool === 'passage') return passageGhost(p);
     if (tool === 'stairs' && stairDraft) {
@@ -540,6 +626,13 @@ export function FlatPlanCanvas() {
       setDragStair({ id: g.stair.id, x: snapped.x, y: snapped.y, guides: snapped.guides });
       return;
     }
+    if (g?.type === 'opening') {
+      const along = g.op.axis === 'h' ? p.x : p.y;
+      if (!g.moved && Math.abs(along - g.grab) * viewRef.current.k < 3) return;
+      g.moved = true;
+      setDragOp({ id: g.op.id, ...dragResult(g, p) });
+      return;
+    }
     if (g?.type === 'wall-drag') {
       const d = draftRef.current;
       if (d)
@@ -554,7 +647,9 @@ export function FlatPlanCanvas() {
 
   const finishWall = (d) => {
     if (d && (d.ex !== d.sx || d.ey !== d.sy))
-      useFlatStore.getState().addWall(d.sx, d.sy, d.ex, d.ey);
+      useFlatStore
+        .getState()
+        .addWall(d.sx, d.sy, d.ex, d.ey, { open: useFlatUi.getState().wallStyle === 'open' });
     setHover(null);
   };
 
@@ -647,10 +742,35 @@ export function FlatPlanCanvas() {
       return;
     }
 
-    // Select tool: openings, then stairs, then walls, then rooms
+    // Select tool: opening handles, openings, then stairs, then walls, then rooms
+    const sel = selectedWindow();
+    const side = sel ? handleAt(sel, p) : null;
+    if (sel && side) {
+      const bounds = openingBounds(sel);
+      if (bounds)
+        gesture.current = {
+          type: 'opening',
+          mode: side,
+          op: sel,
+          bounds,
+          grab: sel.axis === 'h' ? p.x : p.y,
+          moved: false,
+        };
+      return;
+    }
     const op = openingAtPoint(openings, p.x, p.y, hitTol + 4);
     if (op) {
       select({ type: 'opening', id: op.id });
+      const bounds = openingBounds(op);
+      if (bounds)
+        gesture.current = {
+          type: 'opening',
+          mode: 'move',
+          op,
+          bounds,
+          grab: op.axis === 'h' ? p.x : p.y,
+          moved: false,
+        };
       return;
     }
     const stair = [...stairs].reverse().find((st) => {
@@ -695,6 +815,14 @@ export function FlatPlanCanvas() {
       useFlatStore.getState().updateStair(g.stair.id, { x: dropped.x, y: dropped.y });
     }
     setDragStair(null);
+    if (g.type === 'opening') {
+      const result = dragOpRef.current;
+      setDragOp(null);
+      if (g.moved && result && (result.start !== g.op.start || result.widthCm !== g.op.widthCm)) {
+        if (!useFlatStore.getState().updateOpening(g.op.id, result))
+          useFlatUi.getState().setNotice('That does not fit on this wall piece.');
+      }
+    }
     if (g.type === 'wall-drag') {
       const d = draftRef.current;
       if (d && (d.ex !== d.sx || d.ey !== d.sy)) {
@@ -792,6 +920,13 @@ export function FlatPlanCanvas() {
             )
           )}
         </g>
+        {openRuns.length > 0 && (
+          <g className={styles.openWall} pointerEvents="none">
+            {openRuns.map((r, i) => (
+              <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} />
+            ))}
+          </g>
+        )}
         {selWall.length > 0 && (
           <g className={styles.wallSelected} pointerEvents="none">
             {runRects(selWall, INTERIOR_THICK_CM + 8)}
@@ -819,6 +954,7 @@ export function FlatPlanCanvas() {
     rooms,
     stretches,
     openings,
+    openRuns,
   ]);
 
   if (!flat) return null;
@@ -833,7 +969,7 @@ export function FlatPlanCanvas() {
     overlay.push(
       <rect
         key="draft"
-        className={styles.draftWall}
+        className={wallStyle === 'open' ? styles.draftOpenWall : styles.draftWall}
         x={Math.min(hv.sx, hv.ex) - thick / 2}
         y={Math.min(hv.sy, hv.ey) - thick / 2}
         width={horizontal ? Math.abs(hv.ex - hv.sx) + thick : thick}
@@ -1008,6 +1144,36 @@ export function FlatPlanCanvas() {
     });
   }
 
+  const winSel = tool === 'select' ? selectedWindow() : null;
+  if (winSel) {
+    const handleW = Math.max(HANDLE_PX / k, 5);
+    const thick = thicknessAt(winSel, analysis);
+    for (const side of ['start', 'end']) {
+      const at = side === 'start' ? winSel.start : winSel.start + winSel.widthCm;
+      const horizontal = winSel.axis === 'h';
+      overlay.push(
+        <rect
+          key={`h-${side}`}
+          className={styles.openingHandle}
+          x={horizontal ? at - handleW / 2 : winSel.line - thick / 2 - 3 * px}
+          y={horizontal ? winSel.line - thick / 2 - 3 * px : at - handleW / 2}
+          width={horizontal ? handleW : thick + 6 * px}
+          height={horizontal ? thick + 6 * px : handleW}
+          rx={2 * px}
+          pointerEvents="none"
+        />
+      );
+    }
+    labels.push({
+      key: 'winw',
+      x: winSel.axis === 'h' ? winSel.start + winSel.widthCm / 2 : winSel.line,
+      y: winSel.axis === 'h' ? winSel.line : winSel.start + winSel.widthCm / 2,
+      text: `Window ${fmtM(winSel.widthCm)}`,
+      pill: true,
+      dy: -22,
+    });
+  }
+
   const wallSel = selected?.type === 'wall' ? wallRunAt(edges, selected.id) : [];
   if (wallSel.length > 0 && tool === 'select') {
     const rs = edgesToRuns(new Set(wallSel))[0];
@@ -1058,14 +1224,20 @@ export function FlatPlanCanvas() {
   const cursorClass =
     panning || spaceDown
       ? styles.cursorGrab
-      : {
-          wall: styles.cursorCross,
-          eraser: styles.cursorEraser,
-          door: styles.cursorCross,
-          window: styles.cursorCross,
-          stairs: styles.cursorCross,
-          passage: styles.cursorCross,
-        }[tool] || '';
+      : dragOp || hv?.type === 'handle'
+        ? (dragOp ? openings.find((o) => o.id === dragOp.id)?.axis : hv.axis) === 'h'
+          ? styles.cursorEw
+          : styles.cursorNs
+        : hv?.type === 'opening-hover'
+          ? styles.cursorMove
+          : {
+              wall: styles.cursorCross,
+              eraser: styles.cursorEraser,
+              door: styles.cursorCross,
+              window: styles.cursorCross,
+              stairs: styles.cursorCross,
+              passage: styles.cursorCross,
+            }[tool] || '';
 
   return (
     <div ref={wrapRef} className={`${styles.canvasWrap} ${cursorClass}`}>
@@ -1112,7 +1284,6 @@ export function FlatPlanCanvas() {
                 {!small && (
                   <text className={styles.roomMeta} textAnchor="middle" y={14}>
                     {(space.areaCm2 / 10000).toFixed(1)} m²
-                    {space.furnishable ? '' : ' · not a rectangle'}
                   </text>
                 )}
               </g>

@@ -13,6 +13,7 @@ import {
 } from './geometry.js';
 import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { isRestingOn } from './stacking.js';
+import { cornersInOutline } from './roomShape.js';
 
 /**
  * Checks if two convex polygons collide using the Separating Axis Theorem (SAT).
@@ -100,7 +101,13 @@ export function checkFurnitureCollision(itemA, itemB, epsilon = 0.5) {
  * @param {number} epsilon - Permitted edge tolerance in cm
  * @returns {boolean} True if the furniture is out of bounds or colliding with outer walls
  */
-export function checkRoomBoundaryCollision(item, roomWidthCm, roomDepthCm, epsilon = 0.1) {
+export function checkRoomBoundaryCollision(
+  item,
+  roomWidthCm,
+  roomDepthCm,
+  epsilon = 0.1,
+  outline = null
+) {
   const corners = getRotatedRectCorners(
     item.x,
     item.y,
@@ -108,6 +115,8 @@ export function checkRoomBoundaryCollision(item, roomWidthCm, roomDepthCm, epsil
     item.depthCm,
     item.rotationDeg || 0
   );
+
+  if (outline) return !cornersInOutline(corners, outline, Math.max(epsilon, 0.1));
 
   for (const c of corners) {
     if (
@@ -131,7 +140,7 @@ export function checkRoomBoundaryCollision(item, roomWidthCm, roomDepthCm, epsil
  * @param {number} roomDepthCm - Room depth in cm
  * @returns {{ collidingIds: Set<string>, boundaryCollidingIds: Set<string> }}
  */
-export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm) {
+export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm, outline = null) {
   const collidingIds = new Set();
   const boundaryCollidingIds = new Set();
 
@@ -162,6 +171,13 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
   // Check boundary violations
   for (const item of items) {
     const corners = cornersMap.get(item.id);
+    if (outline) {
+      if (!cornersInOutline(corners, outline)) {
+        boundaryCollidingIds.add(item.id);
+        collidingIds.add(item.id);
+      }
+      continue;
+    }
     for (const c of corners) {
       if (c.x < -0.1 || c.x > roomWidthCm + 0.1 || c.y < -0.1 || c.y > roomDepthCm + 0.1) {
         boundaryCollidingIds.add(item.id);

@@ -6,6 +6,7 @@
 
 import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { degToRad } from './geometry.js';
+import { hasOutline, outlineEdges, pointOnEdge, pointInOutline } from './roomShape.js';
 
 export const PLAYER_RADIUS = 0.22;
 
@@ -16,7 +17,14 @@ export function getWalkStart(room) {
   const door = (room.doors || [])[0];
   let x = 0;
   let z = D / 2 - 0.9;
-  if (door) {
+  if (door && hasOutline(room)) {
+    const e = outlineEdges(room)[door.edge ?? 0];
+    if (e) {
+      const p = pointOnEdge(e, door.offsetCm + door.widthCm / 2, 90);
+      x = (p.x - room.widthCm / 2) / 100;
+      z = (p.y - room.depthCm / 2) / 100;
+    }
+  } else if (door) {
     const along = (door.offsetCm + door.widthCm / 2) / 100;
     switch (door.wall || 'bottom') {
       case 'top':
@@ -41,7 +49,7 @@ export function getWalkStart(room) {
 
 /** Furniture footprints the visitor cannot walk through. */
 export function buildBlockers(room) {
-  return (room.placedFurniture || [])
+  const list = (room.placedFurniture || [])
     .map((item) => {
       const def = resolveItemDef(item);
       if (!def) return null;
@@ -61,9 +69,24 @@ export function buildBlockers(room) {
       };
     })
     .filter((b) => b && b.bottom < 1.2);
+  // A room that is not a rectangle also blocks everything off its floor
+  if (hasOutline(room)) list.floorRoom = room;
+  return list;
 }
 
 export function isBlocked(px, pz, blockers) {
+  const floor = blockers.floorRoom;
+  if (floor) {
+    const r = PLAYER_RADIUS;
+    for (const [dx, dz] of [
+      [0, 0],
+      [r, 0],
+      [-r, 0],
+      [0, r],
+      [0, -r],
+    ])
+      if (!isOnFloor(floor, px + dx, pz + dz)) return true;
+  }
   for (const b of blockers) {
     const dx = px - b.x;
     const dz = pz - b.z;
@@ -75,4 +98,10 @@ export function isBlocked(px, pz, blockers) {
       return true;
   }
   return false;
+}
+
+/** Whether a walking position (metres from the room centre) is on the floor of an outline room. */
+export function isOnFloor(room, px, pz) {
+  if (!hasOutline(room)) return true;
+  return pointInOutline(px * 100 + room.widthCm / 2, pz * 100 + room.depthCm / 2, room.outline, 0);
 }

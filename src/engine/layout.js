@@ -9,6 +9,13 @@ import { getRotatedRectCorners, getAABB } from './geometry.js';
 import { checkPolygonCollision } from './collision.js';
 import { offersSurface, surfaceTopOf } from './stacking.js';
 import { getClearanceZones, facingGap, isTightPassage } from './clearance.js';
+import {
+  hasOutline,
+  outlineEdges,
+  pointOnEdge,
+  cornersInOutline,
+  nudgeIntoOutline,
+} from './roomShape.js';
 
 const WALL_GAP = 2;
 const STEP = 20;
@@ -66,8 +73,12 @@ function tightWithAny(entry, placed) {
 }
 
 function fits(entry, placed, zones, room, strict = false) {
-  for (const c of entry.corners) {
-    if (c.x < 0 || c.x > room.widthCm || c.y < 0 || c.y > room.depthCm) return false;
+  if (hasOutline(room)) {
+    if (!cornersInOutline(entry.corners, room.outline)) return false;
+  } else {
+    for (const c of entry.corners) {
+      if (c.x < 0 || c.x > room.widthCm || c.y < 0 || c.y > room.depthCm) return false;
+    }
   }
   for (const other of placed) {
     if (isRug(other.def)) continue;
@@ -81,7 +92,25 @@ function fits(entry, placed, zones, room, strict = false) {
   return true;
 }
 
+/** Spots flush against every walled edge of an outline, backs to the wall. */
+function outlineWallCandidates(def, room) {
+  const out = [];
+  for (const e of outlineEdges(room)) {
+    if (e.open) continue;
+    const rot = e.ny > 0 ? 0 : e.nx < 0 ? 90 : e.ny < 0 ? 180 : 270;
+    const aabb = getAABB(getRotatedRectCorners(0, 0, def.widthCm, def.depthCm, rot));
+    const halfAlong = (e.dx !== 0 ? aabb.maxX - aabb.minX : aabb.maxY - aabb.minY) / 2;
+    const halfAcross = (e.dx !== 0 ? aabb.maxY - aabb.minY : aabb.maxX - aabb.minX) / 2;
+    for (let t = halfAlong + WALL_GAP; t <= e.len - halfAlong - WALL_GAP; t += STEP) {
+      const p = pointOnEdge(e, t, halfAcross + WALL_GAP);
+      out.push({ x: p.x, y: p.y, rot, wall: 'edge' });
+    }
+  }
+  return out;
+}
+
 function wallCandidates(def, room) {
+  if (hasOutline(room)) return outlineWallCandidates(def, room);
   const out = [];
   for (const wall of WALL_ORDER) {
     const rot = WALL_ROTATION[wall];
@@ -105,7 +134,8 @@ function centerCandidates(room) {
   const cx = room.widthCm / 2;
   const cy = room.depthCm / 2;
   const out = [{ x: cx, y: cy, rot: 0 }];
-  for (let r = STEP; r < Math.max(room.widthCm, room.depthCm) / 2; r += STEP) {
+  const reach = Math.max(room.widthCm, room.depthCm) * (hasOutline(room) ? 0.75 : 0.5);
+  for (let r = STEP; r < reach; r += STEP) {
     for (let a = 0; a < 360; a += 30) {
       const rad = (a * Math.PI) / 180;
       out.push({ x: cx + Math.cos(rad) * r, y: cy + Math.sin(rad) * r, rot: 0 });
@@ -182,8 +212,16 @@ export function suggestLayout(room, typeIds) {
     }
 
     let candidates;
-    if (isRug(def)) candidates = [{ x: room.widthCm / 2, y: room.depthCm / 2, rot: 0 }];
-    else if (CENTER_SHAPES.has(def.shapeType)) candidates = centerCandidates(room);
+    if (isRug(def)) {
+      const middle = {
+        x: room.widthCm / 2,
+        y: room.depthCm / 2,
+        widthCm: def.widthCm,
+        depthCm: def.depthCm,
+      };
+      const at = hasOutline(room) ? nudgeIntoOutline(middle, room.outline) : middle;
+      candidates = [{ x: at.x, y: at.y, rot: 0 }];
+    } else if (CENTER_SHAPES.has(def.shapeType)) candidates = centerCandidates(room);
     else if (COMPANION_SHAPES.has(def.shapeType)) {
       const anchor = placed.find((p) => ANCHOR_SHAPES.has(p.def.shapeType));
       candidates = [

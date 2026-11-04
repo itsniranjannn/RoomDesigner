@@ -6,8 +6,8 @@ import { useFlatStore } from '../../store/flatStore.js';
 import { Furniture3DBox } from '../preview3d/Furniture3DBox.jsx';
 import { Button } from '../common/Button.jsx';
 import { stairGeometry, stairFootprint, levelIndex, SPACE_KINDS } from '../../engine/flat.js';
-import { wallsOf, openingsOf, analyzeLevel } from '../../engine/flatPlan.js';
-import { edgesOf, wallBoxes, skirtingBoxes, regionRects } from '../../engine/flatWalls.js';
+import { wallsOf, openingsOf, analyzeLevel, levelSolidEdges } from '../../engine/flatPlan.js';
+import { wallBoxes, skirtingBoxes, regionRects } from '../../engine/flatWalls.js';
 import styles from './FlatDesigner.module.css';
 
 /** Steps of one staircase as boxes, positioned in the flat's metre space. */
@@ -93,13 +93,14 @@ const SKIRTING_COLOR = '#B79C78';
 
 /** Floors, walls (with door and window gaps) and furniture of one floor. */
 function LevelShell({ flat, level, rooms, baseY, fullHeight }) {
-  const runs = wallsOf(flat, level.id);
   const openings = openingsOf(flat, level.id);
   const { boxes, skirting } = useMemo(() => {
     const analysis = analyzeLevel(flat, level.id);
-    const walls = wallBoxes(edgesOf(runs), analysis.isExteriorEdge, openings, { fullHeight });
+    const walls = wallBoxes(levelSolidEdges(flat, level.id), analysis.isExteriorEdge, openings, {
+      fullHeight,
+    });
     return { boxes: walls, skirting: skirtingBoxes(walls) };
-  }, [flat, level.id, runs, openings, fullHeight]);
+  }, [flat, level.id, openings, fullHeight]);
   const spaces = flat.spaces.filter((s) => s.levelId === level.id);
   return (
     <group position={[0, baseY, 0]}>

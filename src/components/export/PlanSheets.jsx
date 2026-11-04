@@ -522,7 +522,166 @@ function RoomGrid({ W, D }) {
   return <g>{lines}</g>;
 }
 
+const polyPoints = (pts) => pts.map((p) => `${p[0]},${p[1]}`).join(' ');
+
+/** Window or door gap on an outline edge: the four corners across the wall. */
+function edgeQuad(e, a, b, half) {
+  const at = (t, d) => [e.p0.x + e.dx * t + e.nx * d, e.p0.y + e.dy * t + e.ny * d];
+  return [at(a, -half), at(b, -half), at(b, half), at(a, half)];
+}
+
+function OutlineWindow({ win, edge, wall }) {
+  const a = win.offsetCm;
+  const b = win.offsetCm + win.widthCm;
+  const half = wall / 2;
+  const at = (t, d) => [
+    edge.p0.x + edge.dx * t + edge.nx * d,
+    edge.p0.y + edge.dy * t + edge.ny * d,
+  ];
+  const quad = edgeQuad(edge, a, b, half);
+  const [m0, m1] = [at(a, 0), at(b, 0)];
+  return (
+    <g>
+      <polygon points={polyPoints(edgeQuad(edge, a - 0.5, b + 0.5, half + 1))} fill={LINEN} />
+      <polygon points={polyPoints(quad)} fill="rgba(90, 115, 142, 0.16)" />
+      {[a, b].map((t) => {
+        const [p, q] = [at(t, -half), at(t, half)];
+        return (
+          <line
+            key={t}
+            x1={p[0]}
+            y1={p[1]}
+            x2={q[0]}
+            y2={q[1]}
+            stroke={WALL_LINE}
+            strokeWidth="2.5"
+          />
+        );
+      })}
+      <line x1={m0[0]} y1={m0[1]} x2={m1[0]} y2={m1[1]} stroke="#5A738E" strokeWidth="1.2" />
+    </g>
+  );
+}
+
+function OutlineDoor({ door, edge, wall }) {
+  const a = door.offsetCm;
+  const b = door.offsetCm + door.widthCm;
+  const half = wall / 2;
+  const s = door.outward ? -1 : 1;
+  const at = (t, d) => [
+    edge.p0.x + edge.dx * t + edge.nx * d,
+    edge.p0.y + edge.dy * t + edge.ny * d,
+  ];
+  const hinge = at(a, 0);
+  const far = at(b, 0);
+  const leaf = at(a, s * door.widthCm);
+  const sweep = door.outward ? 1 : 0;
+  const w = door.widthCm;
+  return (
+    <g>
+      <polygon points={polyPoints(edgeQuad(edge, a, b, half))} fill={LINEN} />
+      <path
+        d={`M ${leaf[0]} ${leaf[1]} A ${w} ${w} 0 0 ${sweep} ${far[0]} ${far[1]}`}
+        fill="none"
+        stroke="#9E8870"
+        strokeWidth="1.2"
+        strokeDasharray="3 3"
+      />
+      <line
+        x1={hinge[0]}
+        y1={hinge[1]}
+        x2={leaf[0]}
+        y2={leaf[1]}
+        stroke="#2D231B"
+        strokeWidth="2.8"
+        strokeLinecap="round"
+      />
+      <polygon
+        points={polyPoints(edgeQuad(edge, a, b, half))}
+        fill="#EADCC6"
+        stroke="#784A28"
+        strokeWidth="1.2"
+      />
+    </g>
+  );
+}
+
+/** A room that is not a rectangle: its floor outline, walls on solid edges, dashes where open. */
+function OutlineDrawing({ model }) {
+  const { W, D, wall } = model.room;
+  const { points, edges } = model.outline;
+  return (
+    <g transform={`translate(${model.ox} ${model.oy})`}>
+      <polygon points={polyPoints(points)} fill={LINEN} />
+      <defs>
+        <clipPath id="outline-clip">
+          <polygon points={polyPoints(points)} />
+        </clipPath>
+      </defs>
+      <g clipPath="url(#outline-clip)">
+        <RoomGrid W={W} D={D} />
+      </g>
+      {edges.map((e) =>
+        e.open ? (
+          <line
+            key={e.i}
+            x1={e.p0.x}
+            y1={e.p0.y}
+            x2={e.p1.x}
+            y2={e.p1.y}
+            stroke={MAROON}
+            strokeWidth="2.5"
+            strokeDasharray="10 7"
+          />
+        ) : (
+          <g key={e.i}>
+            <line
+              x1={e.p0.x}
+              y1={e.p0.y}
+              x2={e.p1.x}
+              y2={e.p1.y}
+              stroke={WALL_CORE}
+              strokeWidth={wall}
+              strokeLinecap="square"
+            />
+            <line
+              x1={e.p0.x}
+              y1={e.p0.y}
+              x2={e.p1.x}
+              y2={e.p1.y}
+              stroke={WALL_LINE}
+              strokeWidth="3.2"
+              strokeLinecap="square"
+            />
+          </g>
+        )
+      )}
+      {model.windows.map((win) =>
+        edges[win.edge] ? (
+          <OutlineWindow key={win.id} win={win} edge={edges[win.edge]} wall={wall} />
+        ) : null
+      )}
+      {model.doors.map((door) =>
+        edges[door.edge] ? (
+          <OutlineDoor key={door.id} door={door} edge={edges[door.edge]} wall={wall} />
+        ) : null
+      )}
+      <Furniture pieces={model.pieces} />
+      <PieceLabels labels={model.labels} font={model.labelFont} k={model.k} />
+      <DimensionLines
+        dims={model.dims}
+        x1={W + wall / 2}
+        y1={D + wall / 2}
+        topText={model.dims.top}
+        leftText={model.dims.left}
+        k={model.k}
+      />
+    </g>
+  );
+}
+
 function RoomDrawing({ model }) {
+  if (model.outline) return <OutlineDrawing model={model} />;
   const { W, D, wall } = model.room;
   return (
     <g transform={`translate(${model.ox} ${model.oy})`}>
@@ -736,6 +895,13 @@ function FlatDrawing({ model }) {
         </g>
       ))}
       <Furniture pieces={model.pieces} />
+      {model.openRuns?.length > 0 && (
+        <g stroke={MAROON} strokeWidth={4 * sk} strokeDasharray={`${14 * sk} ${10 * sk}`}>
+          {model.openRuns.map((r, i) => (
+            <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} />
+          ))}
+        </g>
+      )}
       <g fill={INK}>
         {model.stretches.map((s, i) =>
           s.axis === 'h' ? (

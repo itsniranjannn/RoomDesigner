@@ -26,6 +26,11 @@ const TOOL_DEFS = [
   { id: 'passage', label: 'Passage', key: 'P', icon: RectangleHorizontal },
 ];
 
+const WALL_STYLE_OPTIONS = [
+  { value: 'solid', label: 'Wall' },
+  { value: 'open', label: 'Open divider' },
+];
+
 const STAIR_OPTIONS = [
   { value: 'straight', label: 'Straight' },
   { value: 'L', label: 'L' },
@@ -36,6 +41,8 @@ const STAIR_OPTIONS = [
 export function FlatToolbar() {
   const tool = useFlatUi((s) => s.tool);
   const setTool = useFlatUi((s) => s.setTool);
+  const wallStyle = useFlatUi((s) => s.wallStyle);
+  const setWallStyle = useFlatUi((s) => s.setWallStyle);
   const stairType = useFlatUi((s) => s.stairType);
   const setStairType = useFlatUi((s) => s.setStairType);
   const rotateStair = useFlatUi((s) => s.rotateStair);
@@ -60,6 +67,22 @@ export function FlatToolbar() {
           </ToolButton>
         ))}
       </ToolGroup>
+      {tool === 'wall' && (
+        <div className={styles.railOptions}>
+          <Segmented
+            options={WALL_STYLE_OPTIONS}
+            value={wallStyle}
+            onChange={setWallStyle}
+            ariaLabel="Wall style"
+            size="small"
+          />
+          <p className={styles.railHint}>
+            {wallStyle === 'open'
+              ? 'An open divider splits the space into named zones with no wall.'
+              : 'Drag on the plan to draw a wall.'}
+          </p>
+        </div>
+      )}
       {tool === 'stairs' && (
         <div className={styles.railOptions}>
           <Segmented

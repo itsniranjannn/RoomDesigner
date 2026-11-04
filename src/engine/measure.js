@@ -4,6 +4,7 @@
  */
 
 import { getRotatedRectCorners, getAABB } from './geometry.js';
+import { distancesToOutline } from './roomShape.js';
 
 export function distanceCm(a, b) {
   return Math.hypot(b.x - a.x, b.y - a.y);
@@ -15,10 +16,11 @@ export function formatCm(cm) {
 }
 
 /** Gap from an item's bounding box to each of the four room walls. */
-export function getWallDistances(item, widthCm, depthCm, roomWidthCm, roomDepthCm) {
+export function getWallDistances(item, widthCm, depthCm, roomWidthCm, roomDepthCm, outline = null) {
   const aabb = getAABB(
     getRotatedRectCorners(item.x, item.y, widthCm, depthCm, item.rotationDeg || 0)
   );
+  if (outline) return { aabb, ...distancesToOutline(aabb, outline) };
   return {
     aabb,
     left: Math.max(0, aabb.minX),

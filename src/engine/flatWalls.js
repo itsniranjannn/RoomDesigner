@@ -100,6 +100,14 @@ export function edgesToRuns(edges) {
   return runs;
 }
 
+/** Edges that are solid walls: every wall edge that is not marked open. */
+export function solidEdges(edges, openEdges) {
+  if (!openEdges || openEdges.size === 0) return edges;
+  const out = new Set();
+  for (const k of edges) if (!openEdges.has(k)) out.add(k);
+  return out;
+}
+
 const runsEdgesCache = new WeakMap();
 
 /** Edge set for a runs array (cached per array, treat the result as read-only). */
@@ -111,6 +119,20 @@ export function edgesOf(runs) {
     runsEdgesCache.set(runs, edges);
   }
   return edges;
+}
+
+/** The unit edges an orthogonal segment would cover (a diagonal drag snaps to its dominant axis). */
+export function segmentEdges(x1, y1, x2, y2) {
+  const ax = clampCoord(x1);
+  const ay = clampCoord(y1);
+  let bx = clampCoord(x2);
+  let by = clampCoord(y2);
+  if (Math.abs(bx - ax) >= Math.abs(by - ay)) by = ay;
+  else bx = ax;
+  if (ax === bx && ay === by) return new Set();
+  return runsToEdges([
+    { x1: Math.min(ax, bx), y1: Math.min(ay, by), x2: Math.max(ax, bx), y2: Math.max(ay, by) },
+  ]);
 }
 
 /** Adds an orthogonal wall; a diagonal drag snaps to its dominant axis. */
@@ -232,6 +254,16 @@ function runSpan(edges, key) {
     lo: Math.min(...pos) * CELL,
     hi: (Math.max(...pos) + 1) * CELL,
   };
+}
+
+/** The straight stretch of wall (junction to junction, cm) an opening sits on, or null. */
+export function openingWallSpan(edges, op) {
+  const line = Math.round(op.line / CELL);
+  const n = Math.floor(op.start / CELL);
+  const key = op.axis === 'h' ? edgeKey('h', n, line) : edgeKey('v', line, n);
+  if (!edges.has(key)) return null;
+  const span = runSpan(edges, key);
+  return { lo: span.lo, hi: span.hi };
 }
 
 // ---------- regions ----------

@@ -31,7 +31,11 @@ import {
   analyzeLevel,
   levelEdges,
   openingsOf,
+  setWallsOpen,
+  levelSolidEdges,
+  openWallsOf,
 } from './flatPlan.js';
+import { outlineEdges } from './roomShape.js';
 import { buildPresetFlat } from './flatPresets.js';
 import {
   createFlat,
@@ -261,7 +265,7 @@ describe('editing walls', () => {
     expect(bigger.rooms[flat.spaces[0].roomId].widthCm).toBe(500);
   });
 
-  it('keeps non-rectangular rooms named but not furnishable, and never crashes', () => {
+  it('gives an L-shaped room a record with its true outline', () => {
     const l = new Set();
     for (const [x1, y1, x2, y2] of [
       [0, 0, 300, 0],
@@ -274,11 +278,137 @@ describe('editing walls', () => {
       for (const k of addSegment(new Set(), x1, y1, x2, y2)) l.add(k);
     }
     const { flat, rooms } = withWalls(l);
-    expect(flat.spaces[0].furnishable).toBe(false);
-    expect(flat.spaces[0].roomId).toBeNull();
-    expect(furnishSpace(flat, rooms, flat.spaces[0].id)).toBeNull();
+    const space = flat.spaces[0];
+    expect(space.rect).toBe(false);
+    expect(space.furnishable).toBe(true);
+    const room = rooms[space.roomId];
+    expect(room.outline).toHaveLength(6);
+    expect(room.widthCm).toBe(300);
+    expect(room.depthCm).toBe(300);
+    expect(furnishSpace(flat, rooms, space.id)).not.toBeNull();
   });
 
+  it('puts doors on the edges of an L-shaped room and syncs edits back', () => {
+    const l = new Set();
+    for (const [x1, y1, x2, y2] of [
+      [0, 0, 300, 0],
+      [300, 0, 300, 100],
+      [300, 100, 100, 100],
+      [100, 100, 100, 300],
+      [100, 300, 0, 300],
+      [0, 300, 0, 0],
+    ]) {
+      for (const k of addSegment(new Set(), x1, y1, x2, y2)) l.add(k);
+    }
+    const { flat, rooms, levelId } = withWalls(l);
+    const placed = addOpening(flat, rooms, levelId, door('h', 300, 0));
+    const room = placed.rooms[placed.flat.spaces[0].roomId];
+    expect(room.doors).toHaveLength(1);
+    const edge = outlineEdges(room)[room.doors[0].edge];
+    expect(edge.dy).toBe(0); // on the bottom of the left arm
+    expect(edge.dx).toBe(-1);
+    // Slide it along the edge in the room designer: the plan follows
+    const edited = {
+      ...room,
+      doors: [{ ...room.doors[0], offsetCm: 0 }],
+    };
+    const synced = syncRoomToFlat(placed.flat, placed.rooms, placed.flat.spaces[0].id, edited);
+    const op = openingsOf(synced.flat, levelId)[0];
+    expect(op.start).toBe(10);
+  });
+});
+
+describe('open walls', () => {
+  const twoRooms = () => {
+    const e = rectEdges(0, 0, 400, 200);
+    for (const k of addSegment(new Set(), 200, 0, 200, 200)) e.add(k);
+    return withWalls(e);
+  };
+
+  it('splits a hall from a dining area without a wall', () => {
+    const { flat, rooms, levelId } = twoRooms();
+    expect(flat.spaces).toHaveLength(2);
+    const mid = wallRunAt(levelEdges(flat, levelId), 'v20,5');
+    const result = setWallsOpen(flat, rooms, levelId, mid, true);
+    expect(result.flat.spaces).toHaveLength(2); // still two named zones
+    expect(levelSolidEdges(result.flat, levelId).has('v20,5')).toBe(false);
+    expect(levelEdges(result.flat, levelId).has('v20,5')).toBe(true);
+    // Both rectangles now have one side without a wall
+    for (const s of result.flat.spaces) {
+      const room = result.rooms[s.roomId];
+      expect(room.outline).toHaveLength(4);
+      expect(room.openEdges).toHaveLength(1);
+    }
+  });
+
+  it('keeps doors off open edges and out of the 3D walls', () => {
+    const { flat, rooms, levelId } = twoRooms();
+    const mid = wallRunAt(levelEdges(flat, levelId), 'v20,5');
+    const open = setWallsOpen(flat, rooms, levelId, mid, true);
+    expect(addOpening(open.flat, open.rooms, levelId, door('v', 200, 50))).toBeNull();
+    const boxes = wallBoxes(levelSolidEdges(open.flat, levelId), () => false, []);
+    expect(boxes.every((b) => !(b.axis === 'v' && b.line === 200))).toBe(true);
+  });
+
+  it('draws an open divider with the wall tool option and turns it solid again', () => {
+    const { flat, rooms, levelId } = withWalls(rectEdges(0, 0, 400, 200));
+    const divided = addWall(flat, rooms, levelId, 200, 0, 200, 200, { open: true });
+    expect(divided.flat.spaces).toHaveLength(2);
+    expect(levelSolidEdges(divided.flat, levelId).has('v20,5')).toBe(false);
+    const solid = setWallsOpen(divided.flat, divided.rooms, levelId, ['v20,5'], false);
+    expect(levelSolidEdges(solid.flat, levelId).has('v20,5')).toBe(true);
+    // Drawing a real wall over an open divider also makes it solid
+    const over = addWall(divided.flat, divided.rooms, levelId, 200, 0, 200, 200);
+    expect(levelSolidEdges(over.flat, levelId).has('v20,5')).toBe(true);
+  });
+
+  it('merges two rooms into one designable space when the wall between is erased', () => {
+    const { flat, rooms, levelId } = twoRooms();
+    const erased = eraseWallRun(flat, rooms, levelId, 'v20,5');
+    expect(erased.flat.spaces).toHaveLength(1);
+    expect(erased.flat.spaces[0].furnishable).toBe(true);
+    expect(erased.rooms[erased.flat.spaces[0].roomId].widthCm).toBe(400);
+  });
+
+  it('forgets an open marker when its wall is erased', () => {
+    const { flat, rooms, levelId } = twoRooms();
+    const open = setWallsOpen(
+      flat,
+      rooms,
+      levelId,
+      wallRunAt(levelEdges(flat, levelId), 'v20,5'),
+      true
+    );
+    const erased = eraseWallRun(open.flat, open.rooms, levelId, 'v20,5');
+    expect(openWallsOf(erased.flat, levelId)).toEqual([]);
+  });
+
+  it('loads old flats that have no room record for a non-rectangular area', () => {
+    const l = new Set();
+    for (const [x1, y1, x2, y2] of [
+      [0, 0, 300, 0],
+      [300, 0, 300, 100],
+      [300, 100, 100, 100],
+      [100, 100, 100, 300],
+      [100, 300, 0, 300],
+      [0, 300, 0, 0],
+    ]) {
+      for (const k of addSegment(new Set(), x1, y1, x2, y2)) l.add(k);
+    }
+    const { flat, rooms } = withWalls(l);
+    const old = {
+      ...flat,
+      spaces: flat.spaces.map((s) => ({ ...s, furnishable: false, roomId: null })),
+    };
+    const migrated = migrateFlat(old, {});
+    expect(migrated.migrated).toBe(true);
+    expect(migrated.flat.spaces[0].roomId).toBeTruthy();
+    expect(Object.values(migrated.rooms)[0].outline).toBeTruthy();
+    expect(Object.keys(rooms)).toHaveLength(1);
+  });
+});
+
+describe('editing walls (continued)', () => {
   it('derives room doors and windows from boundary openings', () => {
     const { flat, rooms, levelId } = withWalls(rectEdges(0, 100, 400, 300));
     const a = addOpening(flat, rooms, levelId, door('h', 400, 50));
