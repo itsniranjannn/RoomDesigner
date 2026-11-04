@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
 import { clampMoveOpening, clampResizeEnd, clampResizeStart } from '../../engine/openings.js';
+import cursors from './Cursors.module.css';
 
 /**
  * RoomBoundary.jsx
@@ -207,7 +208,7 @@ export function RoomBoundary({ room, svgRef }) {
 
             {/* Draggable Window Body */}
             <g
-              style={{ cursor: isHorizontal ? 'ew-resize' : 'ns-resize' }}
+              className={isHorizontal ? cursors.ewResize : cursors.nsResize}
               onPointerDown={(e) => handleStartMove(e, 'window', win, wallLen)}
             >
               {/* Active / hover halo */}
@@ -303,7 +304,7 @@ export function RoomBoundary({ room, svgRef }) {
                 fill="var(--color-clay)"
                 stroke="#FFFFFF"
                 strokeWidth="1"
-                style={{ cursor: isHorizontal ? 'ew-resize' : 'ns-resize' }}
+                className={isHorizontal ? cursors.ewResize : cursors.nsResize}
                 onPointerDown={(e) => handleStartResize(e, 'window', win, wallLen, 'start')}
               />
             )}
@@ -319,7 +320,7 @@ export function RoomBoundary({ room, svgRef }) {
                 fill="var(--color-clay)"
                 stroke="#FFFFFF"
                 strokeWidth="1"
-                style={{ cursor: isHorizontal ? 'ew-resize' : 'ns-resize' }}
+                className={isHorizontal ? cursors.ewResize : cursors.nsResize}
                 onPointerDown={(e) => handleStartResize(e, 'window', win, wallLen, 'end')}
               />
             )}
@@ -559,7 +560,7 @@ export function RoomBoundary({ room, svgRef }) {
 
             {/* Draggable Door Body */}
             <g
-              style={{ cursor: isHorizontal ? 'ew-resize' : 'ns-resize' }}
+              className={isHorizontal ? cursors.ewResize : cursors.nsResize}
               onPointerDown={(e) => handleStartMove(e, 'door', door, wallLen)}
             >
               {(isHovered || isActive) && (
@@ -597,7 +598,7 @@ export function RoomBoundary({ room, svgRef }) {
                 fill="var(--color-clay)"
                 stroke="#FFFFFF"
                 strokeWidth="1"
-                style={{ cursor: isHorizontal ? 'ew-resize' : 'ns-resize' }}
+                className={isHorizontal ? cursors.ewResize : cursors.nsResize}
                 onPointerDown={(e) => handleStartResize(e, 'door', door, wallLen, 'start')}
               />
             )}
@@ -613,7 +614,7 @@ export function RoomBoundary({ room, svgRef }) {
                 fill="var(--color-clay)"
                 stroke="#FFFFFF"
                 strokeWidth="1"
-                style={{ cursor: isHorizontal ? 'ew-resize' : 'ns-resize' }}
+                className={isHorizontal ? cursors.ewResize : cursors.nsResize}
                 onPointerDown={(e) => handleStartResize(e, 'door', door, wallLen, 'end')}
               />
             )}

@@ -70,8 +70,8 @@
 }
 
 .iconBtn {
-  width: var(--control-h-sm);
-  height: var(--control-h-sm);
+  width: var(--control-h);
+  height: var(--control-h);
   display: inline-flex;
   align-items: center;
   justify-content: center;

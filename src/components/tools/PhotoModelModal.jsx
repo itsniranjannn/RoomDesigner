@@ -211,7 +211,7 @@ export function PhotoModelModal({ onClose }) {
       title="Create furniture from photos"
       subtitle="Photograph a piece from a few sides. The 3D model is built on this device and your photos are never uploaded."
       onClose={onClose}
-      width={820}
+      size="xl"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>

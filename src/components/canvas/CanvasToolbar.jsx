@@ -139,7 +139,7 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
         )}
 
         {trace && (
-          <div className={`${styles.card} ${styles.traceCard}`} role="group" aria-label="Traced image" {...stop}>
+          <div className={styles.card} role="group" aria-label="Traced image" {...stop}>
             <RangeField
               label="Image opacity"
               className={styles.opacity}

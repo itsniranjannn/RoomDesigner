@@ -43,7 +43,13 @@ export function PiecePanel({ item, def, onClose }) {
   return (
     <InspectorShell
       label="Selected piece"
-      title="Selected piece"
+      title={def.name}
+      subtitle={categoryName || 'Selected piece'}
+      media={
+        <svg className={styles.pieceThumb} viewBox="-40 -25 80 50" aria-hidden="true">
+          <ArchitecturalSilhouette item={def} widthCm={def.widthCm * previewScale} depthCm={def.depthCm * previewScale} isSwatch />
+        </svg>
+      }
       onClose={onClose}
       onBack={deselectItem}
       backLabel="Room overview"
@@ -54,18 +60,6 @@ export function PiecePanel({ item, def, onClose }) {
         </>
       }
     >
-      <Section title="Piece">
-        <div className={styles.pieceCard}>
-          <svg className={styles.pieceThumb} viewBox="-40 -25 80 50" aria-hidden="true">
-            <ArchitecturalSilhouette item={def} widthCm={def.widthCm * previewScale} depthCm={def.depthCm * previewScale} isSwatch />
-          </svg>
-          <div className={styles.pieceText}>
-            <p className={styles.pieceName}>{def.name}</p>
-            {categoryName && <p className={styles.pieceMeta}>{categoryName}</p>}
-          </div>
-        </div>
-      </Section>
-
       <SizeSection item={item} def={def} />
       <FinishSection item={item} def={def} />
 

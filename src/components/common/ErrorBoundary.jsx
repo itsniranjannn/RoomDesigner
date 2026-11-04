@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrandMark } from './BrandMark.jsx';
 import { Button } from './Button.jsx';
 import styles from './ErrorBoundary.module.css';
 
@@ -27,9 +28,13 @@ export class ErrorBoundary extends React.Component {
 
     return (
       <div role="alert" className={styles.screen}>
-        <h1 className={styles.title}>Something went wrong</h1>
-        <p className={styles.text}>Your saved rooms are safe. Reload the page to carry on designing.</p>
-        <Button variant="primary" onClick={() => window.location.reload()}>Reload page</Button>
+        <section className={styles.card}>
+          <BrandMark size={36} />
+          <p className={styles.eyebrow}>Room Designer Studio</p>
+          <h1 className={styles.title}>Something went wrong</h1>
+          <p className={styles.text}>Your saved rooms are safe. Reload the page to carry on designing.</p>
+          <Button variant="primary" onClick={() => window.location.reload()}>Reload page</Button>
+        </section>
       </div>
     );
   }

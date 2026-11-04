@@ -15,6 +15,7 @@ import {
   MeasureLayer,
   useClearanceIssues,
 } from './OverlayLayers.jsx';
+import { MousePointerClick } from 'lucide-react';
 import styles from './RoomCanvas.module.css';
 
 const isTyping = () => ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
@@ -195,6 +196,7 @@ export function RoomCanvas() {
   const viewBoxHeight = room.depthCm + paddingCm * 2;
 
   const selectionCount = selectedItemIds.length;
+  const isEmpty = (room.placedFurniture || []).length === 0;
 
   return (
     <div
@@ -310,7 +312,15 @@ export function RoomCanvas() {
         onClearMeasurements={() => setMeasurements([])}
       />
 
-      <p className={styles.hint} aria-live="polite">
+      {isEmpty && !measureActive && (
+        <div className={styles.empty}>
+          <MousePointerClick size={22} aria-hidden="true" />
+          <p className={styles.emptyTitle}>Pick a piece on the left to start</p>
+          <p className={styles.emptyText}>Click one to add it, or drag it into the room.</p>
+        </div>
+      )}
+
+      <p className={`${styles.hint} ${isEmpty && !measureActive ? styles.hintHidden : ''}`} aria-live="polite">
         {measureActive
           ? 'Click two points to measure. Press Esc when done.'
           : selectionCount > 1

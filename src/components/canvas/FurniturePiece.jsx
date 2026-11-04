@@ -5,6 +5,7 @@ import { useRoomStore } from '../../store/roomStore.js';
 import { applySnapping } from '../../engine/snapping.js';
 import { normalizeAngle } from '../../engine/geometry.js';
 import { ArchitecturalSilhouette } from './ArchitecturalSilhouette.jsx';
+import cursors from './Cursors.module.css';
 
 export function FurniturePiece({
   item,
@@ -187,7 +188,7 @@ export function FurniturePiece({
   return (
     <g
       transform={`translate(${item.x}, ${item.y}) rotate(${rotation})`}
-      style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+      className={isDragging ? cursors.grabbing : cursors.grab}
       onPointerDown={handlePointerDown}
       onClick={(e) => {
         e.stopPropagation();
@@ -247,10 +248,9 @@ export function FurniturePiece({
         {/* Direct Rotation Compass Handle (visible when selected) */}
         {isSelected && isPrimary && (
           <g
-            className="rotation-handle"
+            className={cursors.crosshair}
             transform={`translate(0, ${-hd - 24})`}
             onPointerDown={handleRotatePointerDown}
-            style={{ cursor: 'crosshair' }}
           >
             {/* White Under-casing for stem */}
             <line

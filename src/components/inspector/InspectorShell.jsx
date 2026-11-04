@@ -5,7 +5,7 @@ import { IconButton } from '../common/Section.jsx';
 import styles from './Inspector.module.css';
 
 /** Frame shared by the room, piece and group views: header, scrolling body and an optional pinned footer. */
-export function InspectorShell({ label, title, subtitle, onClose, onBack, backLabel, footer, children }) {
+export function InspectorShell({ label, title, subtitle, media, onClose, onBack, backLabel, footer, children }) {
   return (
     <aside className={styles.panel} aria-label={label} onClick={(e) => e.stopPropagation()}>
       <header className={styles.header}>
@@ -15,8 +15,13 @@ export function InspectorShell({ label, title, subtitle, onClose, onBack, backLa
               {backLabel}
             </Button>
           )}
-          <h2 className={styles.title}>{title}</h2>
-          {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+          <div className={styles.titleRow}>
+            {media}
+            <div className={styles.titleText}>
+              <h2 className={styles.title}>{title}</h2>
+              {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
+            </div>
+          </div>
         </div>
         {onClose && (
           <IconButton label="Hide details panel" onClick={onClose}>

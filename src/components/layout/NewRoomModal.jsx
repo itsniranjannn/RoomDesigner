@@ -43,7 +43,7 @@ function NewRoomForm({ onClose }) {
       title="New room"
       subtitle="Pick a starting size or enter your own. You can change the name later."
       onClose={onClose}
-      width={540}
+      size="md"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>

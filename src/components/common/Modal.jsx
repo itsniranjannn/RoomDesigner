@@ -8,7 +8,9 @@ const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]):not([ty
  * Accessible dialog shell with a header, scrolling body and optional footer.
  * Escape and the backdrop close it, Tab stays inside, and focus returns to the trigger on close.
  */
-export function Modal({ title, subtitle, onClose, children, footer, width = 520 }) {
+const SIZES = { sm: styles.sm, md: styles.md, lg: styles.lg, xl: styles.xl };
+
+export function Modal({ title, subtitle, onClose, children, footer, size = 'md' }) {
   const dialogRef = useRef(null);
   const titleId = useId();
   const onCloseRef = useRef(onClose);
@@ -53,8 +55,7 @@ export function Modal({ title, subtitle, onClose, children, footer, width = 520 
     <div className={styles.backdrop} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div
         ref={dialogRef}
-        className={styles.dialog}
-        style={{ maxWidth: width }}
+        className={`${styles.dialog} ${SIZES[size] || styles.md}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

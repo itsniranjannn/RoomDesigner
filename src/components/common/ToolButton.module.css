@@ -13,11 +13,6 @@
   flex-direction: row;
 }
 
-.group button {
-  width: var(--control-h-sm);
-  height: var(--control-h-sm);
-}
-
 .kbd {
   margin-left: var(--space-2);
   padding: 0 5px;
