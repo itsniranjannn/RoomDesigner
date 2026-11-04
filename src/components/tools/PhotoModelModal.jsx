@@ -19,6 +19,8 @@ import {
   renderMesh,
   footprintOutline,
   meshAverageHex,
+  pickPlanSlot,
+  cutoutImage,
 } from '../../engine/hull.js';
 import { CustomMeshModel } from '../preview3d/models/customMesh.jsx';
 import local from './PhotoModelModal.module.css';
@@ -26,11 +28,11 @@ import local from './PhotoModelModal.module.css';
 const PHOTO_MAX = 480;
 const PLAN_SIZE = 128;
 
-function rgbaToDataUrl(rgba, size) {
+function rgbaToDataUrl(rgba, size, height = size) {
   const canvas = document.createElement('canvas');
   canvas.width = size;
-  canvas.height = size;
-  canvas.getContext('2d').putImageData(new ImageData(rgba, size, size), 0, 0);
+  canvas.height = height;
+  canvas.getContext('2d').putImageData(new ImageData(rgba, size, height), 0, 0);
   return canvas.toDataURL('image/png');
 }
 
@@ -210,6 +212,14 @@ export function PhotoModelModal({ onClose }) {
   const handleSave = async () => {
     if (!model) return;
     const topPixels = topDownImage(model, PLAN_SIZE);
+    // The user's own photo, cut out, is what the 2D plan shows
+    let planImage;
+    const slot = pickPlanSlot(Object.keys(photos));
+    if (slot) {
+      const photo = photos[slot];
+      const cut = cutoutImage(photo.rgba, segmented[slot].mask, photo.width, photo.height);
+      if (cut) planImage = rgbaToDataUrl(cut.rgba, cut.width, cut.height);
+    }
     try {
       await addCustomFurniture({
         id: `custom-${Date.now().toString(36)}`,
@@ -222,6 +232,7 @@ export function PhotoModelModal({ onClose }) {
         color: modelColor,
         mesh: { positions: model.positions, colors: model.colors, indices: model.indices },
         topImage: rgbaToDataUrl(topPixels, PLAN_SIZE),
+        planImage,
         topOutline: footprintOutline(topPixels, PLAN_SIZE),
         thumb: rgbaToDataUrl(renderMesh(model, { size: PLAN_SIZE }), PLAN_SIZE),
       });
@@ -390,8 +401,9 @@ export function PhotoModelModal({ onClose }) {
             </p>
           )}
           <p className={local.note}>
-            Furniture made from photos stays on this device. Shared links and JSON files keep its
-            position but not its model.
+            Furniture made from photos stays on this device. Your photo is shown on the 2D plan and
+            the model in 3D. Shared links and JSON files keep its position but not its photo or
+            model.
           </p>
         </div>
       </div>

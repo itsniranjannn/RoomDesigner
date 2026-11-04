@@ -8,6 +8,8 @@ import {
   maskBounds,
   carveVoxels,
   upgradeLegacyMesh,
+  pickPlanSlot,
+  cutoutImage,
   renderMesh,
   topDownImage,
   footprintOutline,
@@ -654,5 +656,44 @@ describe('size checks', () => {
       proportionWarnings({ front: { mask: new Uint8Array(100), width: 10, height: 10 } }, dims)
     ).toEqual([]);
     expect(proportionWarnings({}, dims)).toEqual([]);
+  });
+});
+
+describe('plan photo cut-out', () => {
+  it('prefers the top photo, then the front', () => {
+    expect(pickPlanSlot(['right', 'front'])).toBe('front');
+    expect(pickPlanSlot(['front', 'top', 'left'])).toBe('top');
+    expect(pickPlanSlot(['left'])).toBe('left');
+    expect(pickPlanSlot([])).toBeNull();
+  });
+
+  it('crops to the object and makes the background transparent', () => {
+    const w = 10;
+    const h = 8;
+    const rgba = new Uint8ClampedArray(w * h * 4).fill(200);
+    const mask = new Uint8Array(w * h);
+    for (let y = 2; y < 6; y++) for (let x = 3; x < 9; x++) mask[y * w + x] = 1;
+    rgba[(2 * w + 3) * 4] = 10;
+    const cut = cutoutImage(rgba, mask, w, h);
+    expect(cut.width).toBe(6);
+    expect(cut.height).toBe(4);
+    expect(cut.rgba[0]).toBe(10);
+    expect(cut.rgba[3]).toBe(255);
+    // Every pixel inside the box belongs to the object here
+    expect(Array.from(cut.rgba).filter((_, i) => i % 4 === 3 && cut.rgba[i] === 0)).toHaveLength(0);
+  });
+
+  it('leaves unmasked pixels transparent, scales down and handles an empty mask', () => {
+    const w = 400;
+    const h = 100;
+    const rgba = new Uint8ClampedArray(w * h * 4).fill(90);
+    const mask = new Uint8Array(w * h);
+    for (let x = 0; x < w; x++) mask[x] = 1;
+    mask[(h - 1) * w + w - 1] = 1;
+    const cut = cutoutImage(rgba, mask, w, h, 192);
+    expect(cut.width).toBe(192);
+    expect(cut.height).toBeLessThanOrEqual(100);
+    expect(cut.rgba[(cut.height * cut.width - 192) * 4 + 3]).toBe(0);
+    expect(cutoutImage(rgba, new Uint8Array(w * h), w, h)).toBeNull();
   });
 });

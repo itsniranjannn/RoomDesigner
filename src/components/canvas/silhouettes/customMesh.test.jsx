@@ -89,4 +89,32 @@ describe('photo furniture plan symbol', () => {
       expect(html).not.toMatch(/\s(width|height)="-/);
     }
   });
+
+  it('shows the cut-out photo clipped to the footprint, scaled to the piece size', () => {
+    const html = render({ planImage: 'data:image/png;base64,PHOTO', topOutline: LOOPS }, 120, 70);
+    expect(html).toContain('PHOTO');
+    expect(html).toContain('<clipPath');
+    expect(html).toMatch(/clip-path="url\(#plan-photo-/);
+    expect(html).toMatch(/width="120"/);
+    expect(html).toMatch(/height="70"/);
+    expect(html).toContain('stroke="#22180E"');
+    expect(html).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('shows the cut-out photo on a rounded rectangle when there is no outline', () => {
+    const html = render({ planImage: 'data:image/png;base64,PHOTO' });
+    expect(html).toContain('PHOTO');
+    expect(html).toContain('<rect');
+  });
+
+  it('keeps the 3D thumbnail on the catalog swatch even with a photo', () => {
+    const html = render(
+      { planImage: 'data:image/png;base64,PHOTO', thumb: 'data:image/png;base64,BBBB' },
+      80,
+      50,
+      { isSwatch: true }
+    );
+    expect(html).toContain('BBBB');
+    expect(html).not.toContain('PHOTO');
+  });
 });

@@ -1354,8 +1354,39 @@ export function listCustomFurniture() {
   return Array.from(customFurniture.values());
 }
 
+// Stand-ins for photo-made pieces that arrived without their photos (shared links, JSON files). They are
+// never listed in the catalog and never saved; they only keep the piece visible as a plain box.
+const placeholderFurniture = new Map();
+const PLACEHOLDER_NAME = 'Photo furniture (photos not shared)';
+
+function placeholderDef(id, meta = {}) {
+  const dim = (v, fallback) => (Number.isFinite(v) ? Math.min(600, Math.max(5, v)) : fallback);
+  return {
+    id,
+    name: typeof meta.name === 'string' && meta.name ? meta.name.slice(0, 60) : PLACEHOLDER_NAME,
+    category: 'custom',
+    shapeType: 'custom-mesh',
+    widthCm: dim(meta.widthCm, 80),
+    depthCm: dim(meta.depthCm, 60),
+    heightCm: dim(meta.heightCm, 80),
+    color: /^#[0-9a-fA-F]{6}$/.test(meta.color) ? meta.color : '#a8a29a',
+    placeholder: true,
+  };
+}
+
+/** Remembers a stand-in for a photo-made piece this device does not have. A real piece with the same id wins. */
+export function registerPlaceholderFurniture(meta) {
+  if (!meta || typeof meta.id !== 'string' || !meta.id.startsWith('custom-')) return;
+  if (customFurniture.has(meta.id)) return;
+  placeholderFurniture.set(meta.id, placeholderDef(meta.id, meta));
+}
+
 export function getFurnitureType(id) {
-  return FURNITURE_CATALOG.find((item) => item.id === id) || customFurniture.get(id) || null;
+  const found = FURNITURE_CATALOG.find((item) => item.id === id) || customFurniture.get(id);
+  if (found) return found;
+  if (typeof id !== 'string' || !id.startsWith('custom-')) return null;
+  if (!placeholderFurniture.has(id)) placeholderFurniture.set(id, placeholderDef(id));
+  return placeholderFurniture.get(id);
 }
 
 /** Fields a user may override per placed item (size and finish). */

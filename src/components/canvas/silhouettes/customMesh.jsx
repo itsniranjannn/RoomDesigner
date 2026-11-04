@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { getFurnitureType } from '../../../data/furnitureCatalog.js';
 
 const OUTLINE = '#22180E';
@@ -17,6 +18,7 @@ export function outlinePath(loops, widthCm, depthCm) {
 /** 2D plan symbols: customMesh. Coordinates are centered at (0, 0), widthCm x depthCm. */
 export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, isSwatch }) {
   const loops = item.topOutline;
+  const clipId = `plan-photo-${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`;
 
   // The catalog card shows the piece itself rather than its footprint
   if (isSwatch && item.thumb) {
@@ -29,6 +31,57 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
         height={60}
         preserveAspectRatio="xMidYMid meet"
       />
+    );
+  }
+
+  // The user's own photo, cut out, sits on the footprint and turns with the piece
+  if (item.planImage) {
+    const hasLoops = loops && loops.length > 0;
+    const d = hasLoops ? outlinePath(loops, widthCm, depthCm) : null;
+    return (
+      <g>
+        <defs>
+          <clipPath id={clipId}>
+            {d ? <path d={d} /> : <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} />}
+          </clipPath>
+        </defs>
+        {d ? (
+          <path d={d} fill={color} fillOpacity="0.28" />
+        ) : (
+          <rect
+            x={-hw}
+            y={-hd}
+            width={widthCm}
+            height={depthCm}
+            rx={3}
+            fill={color}
+            fillOpacity="0.28"
+          />
+        )}
+        <image
+          href={item.planImage}
+          x={-hw}
+          y={-hd}
+          width={widthCm}
+          height={depthCm}
+          preserveAspectRatio="none"
+          clipPath={`url(#${clipId})`}
+        />
+        {d ? (
+          <path d={d} fill="none" stroke={OUTLINE} strokeWidth="1.4" strokeLinejoin="round" />
+        ) : (
+          <rect
+            x={-hw}
+            y={-hd}
+            width={widthCm}
+            height={depthCm}
+            rx={3}
+            fill="none"
+            stroke={OUTLINE}
+            strokeWidth="1.4"
+          />
+        )}
+      </g>
     );
   }
 
