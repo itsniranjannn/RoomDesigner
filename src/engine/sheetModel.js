@@ -298,7 +298,7 @@ function roomLabel(space, measure, k) {
   const avail = Math.max(20, rowWidthAt(space, pt.x, pt.y) - 10 * k);
   let font = 13 * k;
   const nameW = (f) => measure(space.name, f, 700, SANS);
-  while (font > 8.5 * k && nameW(font) > avail) font -= 0.5 * k;
+  while (font > 6.5 * k && nameW(font) > avail) font -= 0.5 * k;
   const lines = [];
   if (nameW(font) <= avail) lines.push(space.name);
   else {
