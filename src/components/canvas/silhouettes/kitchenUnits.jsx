@@ -9,6 +9,7 @@ import {
   DETAIL,
   METAL,
   METAL_DARK,
+  P,
 } from './parts.jsx';
 
 export function SinkUnitSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
@@ -43,8 +44,8 @@ export function SinkUnitSilhouette({ widthCm, depthCm, hw, hd, color, subColor }
       <rect
         x={bowlX - bowlW / 2 + 3}
         y={-hd + depthCm * 0.18 + 3}
-        width={bowlW - 6}
-        height={bowlH - 6}
+        width={P(bowlW - 6)}
+        height={P(bowlH - 6)}
         rx={3}
         fill="#E2E6EA"
         stroke="#AAB3BA"
@@ -133,8 +134,8 @@ export function ApplianceSilhouette({
       <rect
         x={-hw + 2}
         y={-hd + 2}
-        width={widthCm - 4}
-        height={depthCm - 4}
+        width={P(widthCm - 4)}
+        height={P(depthCm - 4)}
         rx={2}
         fill="none"
         stroke="rgba(255,255,255,0.4)"

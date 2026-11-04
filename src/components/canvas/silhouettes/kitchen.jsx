@@ -9,6 +9,7 @@ import {
   DETAIL,
   METAL,
   METAL_DARK,
+  P,
 } from './parts.jsx';
 
 /** Gooseneck tap in plan: base ring, arched spout reaching towards +y. */
@@ -49,8 +50,8 @@ export function KitchenIslandSilhouette({ widthCm, depthCm, hw, hd, color }) {
       <rect
         x={-hw + 2}
         y={-hd + 2}
-        width={widthCm - 4}
-        height={depthCm - 4}
+        width={P(widthCm - 4)}
+        height={P(depthCm - 4)}
         rx={2.5}
         fill="none"
         stroke="rgba(255,255,255,0.6)"
@@ -166,7 +167,7 @@ export function KitchenCounterSilhouette({ widthCm, depthCm, hw, hd, color }) {
             x={holeX + s * holeW * 0.25 - holeW * 0.22}
             y={holeY - holeD / 2 + 3}
             width={holeW * 0.44}
-            height={holeD - 6}
+            height={P(holeD - 6)}
             rx={2.5}
             fill="#E2E6EA"
             stroke="#AAB3BA"
@@ -266,8 +267,8 @@ export function KitchenStoveSilhouette({ widthCm, depthCm, hw, hd, color, subCol
       <rect
         x={-hw + 2}
         y={-hd + 2}
-        width={widthCm - 4}
-        height={depthCm - 4}
+        width={P(widthCm - 4)}
+        height={P(depthCm - 4)}
         rx={1.5}
         fill="none"
         stroke="rgba(255,255,255,0.28)"
@@ -291,7 +292,7 @@ export function KitchenStoveSilhouette({ widthCm, depthCm, hw, hd, color, subCol
       <rect
         x={-hw + 2}
         y={hd - 11}
-        width={widthCm - 4}
+        width={P(widthCm - 4)}
         height={9}
         rx={1.5}
         fill={subColor || '#52575C'}
@@ -336,8 +337,8 @@ export function KitchenFridgeSilhouette({ widthCm, depthCm, hw, hd, color, handl
       <rect
         x={-hw + 2}
         y={-hd + 2}
-        width={widthCm - 4}
-        height={depthCm - 4}
+        width={P(widthCm - 4)}
+        height={P(depthCm - 4)}
         rx={2}
         fill="none"
         stroke="rgba(255,255,255,0.3)"

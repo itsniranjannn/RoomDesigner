@@ -1,5 +1,5 @@
 /** 2D plan symbols: bed. Coordinates are centered at (0, 0), widthCm x depthCm. */
-import { HAIR, DETAIL } from './parts.jsx';
+import { HAIR, DETAIL, P } from './parts.jsx';
 
 function PillowPlan({ x, y, w, h }) {
   return (
@@ -17,8 +17,8 @@ function PillowPlan({ x, y, w, h }) {
       <rect
         x={x + 3}
         y={y + 3}
-        width={w - 6}
-        height={h - 6}
+        width={P(w - 6)}
+        height={P(h - 6)}
         rx={2.5}
         fill="none"
         stroke="#DDD3C4"
@@ -74,8 +74,8 @@ export function BedSilhouette({
       <rect
         x={-hw + 1.5}
         y={-hd + hbH}
-        width={widthCm - 3}
-        height={depthCm - hbH - 1.5}
+        width={P(widthCm - 3)}
+        height={P(depthCm - hbH - 1.5)}
         rx={3}
         fill="none"
         stroke={DETAIL}
@@ -126,8 +126,8 @@ export function BedSilhouette({
       <rect
         x={-hw + 3}
         y={-hd + hbH + 1.5}
-        width={widthCm - 6}
-        height={depthCm - hbH - 4.5}
+        width={P(widthCm - 6)}
+        height={P(depthCm - hbH - 4.5)}
         rx={3}
         fill={fabricColor}
         stroke="#C9BFAE"
@@ -136,8 +136,8 @@ export function BedSilhouette({
       <rect
         x={-hw + 5.5}
         y={-hd + hbH + 4}
-        width={widthCm - 11}
-        height={depthCm - hbH - 9.5}
+        width={P(widthCm - 11)}
+        height={P(depthCm - hbH - 9.5)}
         rx={2}
         fill="none"
         stroke="#DCD3C3"
@@ -173,8 +173,8 @@ export function BedSilhouette({
       <rect
         x={-hw + 3}
         y={duvetTopY}
-        width={widthCm - 6}
-        height={hd - duvetTopY - 3}
+        width={P(widthCm - 6)}
+        height={P(hd - duvetTopY - 3)}
         rx={2}
         fill={accentColor}
         fillOpacity="0.9"
@@ -184,7 +184,7 @@ export function BedSilhouette({
       <rect
         x={-hw + 3}
         y={duvetTopY}
-        width={widthCm - 6}
+        width={P(widthCm - 6)}
         height={depthCm * 0.06}
         fill="#FFFFFF"
         fillOpacity="0.85"
@@ -314,7 +314,7 @@ export function BedBunkSilhouette({ widthCm, depthCm, hw, hd, color, fabricColor
       <rect
         x={-hw + postSize}
         y={-hd + depthCm * 0.1}
-        width={widthCm - postSize * 2}
+        width={P(widthCm - postSize * 2)}
         height={depthCm * 0.84}
         rx={2}
         fill={fabricColor}
@@ -342,7 +342,7 @@ export function BedBunkSilhouette({ widthCm, depthCm, hw, hd, color, fabricColor
       <rect
         x={-hw + postSize}
         y={-hd + depthCm * 0.42}
-        width={widthCm - postSize * 2}
+        width={P(widthCm - postSize * 2)}
         height={depthCm * 0.52}
         fill={accentColor}
         fillOpacity={0.4}

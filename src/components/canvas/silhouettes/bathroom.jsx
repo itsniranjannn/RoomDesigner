@@ -9,6 +9,7 @@ import {
   DETAIL,
   METAL,
   METAL_DARK,
+  P,
 } from './parts.jsx';
 
 export function VanitySilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
@@ -29,8 +30,8 @@ export function VanitySilhouette({ widthCm, depthCm, hw, hd, color, subColor }) 
       <rect
         x={-hw + 1.5}
         y={-hd + 1.5}
-        width={widthCm - 3}
-        height={depthCm - 3}
+        width={P(widthCm - 3)}
+        height={P(depthCm - 3)}
         rx={2}
         fill={subColor}
         stroke={DETAIL}
