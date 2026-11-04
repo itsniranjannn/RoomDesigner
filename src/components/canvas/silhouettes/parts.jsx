@@ -7,6 +7,11 @@ export const HAIR = 'rgba(40, 34, 28, 0.32)';
 export const METAL = '#C5CBD0';
 export const METAL_DARK = '#8E959B';
 
+/** Clamp a computed dimension at zero so tiny or heavily resized pieces never get negative sizes. */
+export function P(v) {
+  return Math.max(0, v);
+}
+
 /** Keep detail marks at a legible size however the piece is resized. */
 export function detailScale(widthCm, depthCm, base = 45, lo = 0.8, hi = 1.5) {
   return Math.min(hi, Math.max(lo, Math.min(widthCm, depthCm) / base));
