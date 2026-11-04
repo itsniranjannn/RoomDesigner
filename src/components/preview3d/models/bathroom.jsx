@@ -178,15 +178,16 @@ export function SquatToiletModel({ widthM, depthM, heightM, mainColor, subColor 
         </group>
       ))}
       {/* Flush pipe up the back wall with collar rings, elbow into the pan and a stop valve */}
-      <Cyl
-        name="flush-pipe"
-        position={[0, heightM / 2, pipeZ]}
-        radiusTop={0.022}
-        height={heightM}
-        color="#D8DBDD"
-        roughness={0.3}
-        segments={14}
-      />
+      <group name="flush-pipe">
+        <Cyl
+          position={[0, heightM / 2, pipeZ]}
+          radiusTop={0.022}
+          height={heightM}
+          color="#D8DBDD"
+          roughness={0.3}
+          segments={14}
+        />
+      </group>
       {[0.2, 0.85].map((f) => (
         <Cyl
           key={f}

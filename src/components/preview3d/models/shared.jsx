@@ -13,7 +13,12 @@ export function Box({
   castShadow = true,
 }) {
   return (
-    <mesh position={position} rotation={rotation} castShadow={castShadow} receiveShadow>
+    <mesh
+      position={position}
+      rotation={rotation}
+      castShadow={castShadow && Math.min(...size) >= 0.02}
+      receiveShadow
+    >
       <boxGeometry args={size} />
       <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
     </mesh>
@@ -52,7 +57,12 @@ export function Cyl({
   rotation,
 }) {
   return (
-    <mesh position={position} rotation={rotation} castShadow={castShadow} receiveShadow>
+    <mesh
+      position={position}
+      rotation={rotation}
+      castShadow={castShadow && Math.min(radiusTop, radiusBottom) >= 0.01}
+      receiveShadow
+    >
       <cylinderGeometry args={[radiusTop, radiusBottom, height, segments]} />
       <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
     </mesh>
@@ -160,7 +170,7 @@ export function Ball({
   castShadow = true,
 }) {
   return (
-    <mesh position={position} scale={scale} castShadow={castShadow}>
+    <mesh position={position} scale={scale} castShadow={castShadow && radius >= 0.012}>
       <sphereGeometry args={[radius, segments, Math.max(6, segments - 2)]} />
       <meshStandardMaterial color={color} roughness={roughness} metalness={metalness} />
     </mesh>

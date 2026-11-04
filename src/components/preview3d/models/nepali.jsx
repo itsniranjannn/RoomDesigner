@@ -448,8 +448,8 @@ export function NepaliCharpaiModel({
   const ropeY = frameTop - 0.02;
   const innerW = widthM - 0.12;
   const innerD = depthM - 0.12;
-  const nAlong = Math.max(6, Math.round(innerD / 0.045));
-  const nAcross = Math.max(10, Math.round(innerW / 0.045));
+  const nAlong = Math.max(6, Math.round(innerD / 0.06));
+  const nAcross = Math.max(10, Math.round(innerW / 0.06));
   const rope = shade(fabricColor, -0.05);
   const rails = [
     [0, -depthM / 2 + 0.03, widthM - 0.08, 0.05],

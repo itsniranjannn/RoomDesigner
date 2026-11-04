@@ -45,7 +45,7 @@ function BookRow({ x0, x1, y, depth, seed, maxH = 0.28 }) {
   const books = [];
   let x = x0;
   let i = 0;
-  while (x < x1 - 0.03 && i < 18) {
+  while (x < x1 - 0.03 && i < 13) {
     const t = 0.018 + rand() * 0.026;
     const h = clamp(maxH * (0.6 + rand() * 0.4), 0.1, maxH);
     books.push({ x: x + t / 2, t, h, c: BOOK_COLORS[Math.floor(rand() * BOOK_COLORS.length)] });
@@ -61,12 +61,6 @@ function BookRow({ x0, x1, y, depth, seed, maxH = 0.28 }) {
             size={[b.t, b.h, depth * 0.68]}
             color={b.c}
             roughness={0.75}
-          />
-          <Box
-            position={[b.x, y + b.h * 0.7, 0.01 + depth * 0.34]}
-            size={[b.t * 0.7, 0.012, 0.002]}
-            color="#E8D9A8"
-            castShadow={false}
           />
         </group>
       ))}

@@ -313,21 +313,6 @@ function Burner({ position, r }) {
           castShadow={false}
         />
       ))}
-      {[0, 1, 2, 3].map((i) => (
-        <Box
-          key={i}
-          position={[
-            Math.cos((i * Math.PI) / 2 + 0.78) * r * 0.9,
-            0.04,
-            Math.sin((i * Math.PI) / 2 + 0.78) * r * 0.9,
-          ]}
-          size={[0.012, 0.012, r * 1.2]}
-          rotation={[0, -((i * Math.PI) / 2 + 0.78) + Math.PI / 2, 0]}
-          color="#1C1C1E"
-          roughness={0.55}
-          castShadow={false}
-        />
-      ))}
     </group>
   );
 }
