@@ -56,3 +56,41 @@ export async function readImage(file, maxDim = 1400, mime = 'image/jpeg', qualit
     rgba: ctx.getImageData(0, 0, width, height).data,
   };
 }
+
+/** Same shape as readImage's result, for pixels already in memory (a crop of a bigger picture). */
+export function imageFromPixels(
+  rgba,
+  width,
+  height,
+  maxDim = 480,
+  mime = 'image/jpeg',
+  quality = 0.85
+) {
+  const src = document.createElement('canvas');
+  src.width = width;
+  src.height = height;
+  src
+    .getContext('2d')
+    .putImageData(new ImageData(new Uint8ClampedArray(rgba), width, height), 0, 0);
+  const scale = Math.min(1, maxDim / Math.max(width, height));
+  const w = Math.max(1, Math.round(width * scale));
+  const h = Math.max(1, Math.round(height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, 0, 0, w, h);
+  const thumb = document.createElement('canvas');
+  thumb.width = 96;
+  thumb.height = Math.max(1, Math.round(96 / (w / h)));
+  thumb.getContext('2d').drawImage(canvas, 0, 0, thumb.width, thumb.height);
+  return {
+    width: w,
+    height: h,
+    aspect: w / h,
+    thumbUrl: thumb.toDataURL('image/jpeg', 0.7),
+    dataUrl: canvas.toDataURL(mime, quality),
+    rgba: ctx.getImageData(0, 0, w, h).data,
+  };
+}

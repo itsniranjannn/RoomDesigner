@@ -1,7 +1,13 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { buildPhotoGeometry, photoRecolor, CustomMeshModel } from './customMesh.jsx';
+import {
+  buildPhotoGeometry,
+  photoRecolor,
+  CustomMeshModel,
+  TEXTURE_SLOTS,
+  PHOTO_PROJECTION_GLSL,
+} from './customMesh.jsx';
 import { resolveModel } from './index.js';
 
 // One triangle, indexed
@@ -43,6 +49,18 @@ describe('photo mesh geometry', () => {
       indices: Array.from(indexed.indices),
     });
     expect(g.index.count).toBe(3);
+  });
+});
+
+describe('photo projection', () => {
+  it('projects each photo along its own viewing direction with one texture unit per slot', () => {
+    expect(TEXTURE_SLOTS).toEqual(['front', 'right', 'back', 'left', 'top']);
+    for (let i = 0; i < TEXTURE_SLOTS.length; i++)
+      expect(PHOTO_PROJECTION_GLSL).toContain(`uTex${i}`);
+    // Same mapping as the carving: front looks down -z, the right photo has the front on its left
+    expect(PHOTO_PROJECTION_GLSL).toContain('vec2(p.x, 1.0 - p.y)');
+    expect(PHOTO_PROJECTION_GLSL).toContain('vec2(1.0 - p.z, 1.0 - p.y)');
+    expect(PHOTO_PROJECTION_GLSL).toContain('vec2(p.x, p.z)');
   });
 });
 

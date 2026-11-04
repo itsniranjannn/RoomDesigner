@@ -1,13 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { Camera, X, Sparkles, Save } from 'lucide-react';
+import { Camera, X, Sparkles, Save, LayoutGrid } from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
 import { NumberField, RangeField, TextField } from '../common/Field.jsx';
 import { Notice } from '../common/Notice.jsx';
 import { useRoomStore } from '../../store/roomStore.js';
-import { readImage } from '../../engine/image.js';
+import { readImage, imageFromPixels } from '../../engine/image.js';
+import {
+  detectSheetViews,
+  cropSheetView,
+  assignSheetViews,
+  chooseSideSlot,
+  prepareCrop,
+  estimateProportions,
+  dimensionsFromProportions,
+} from '../../engine/sheet.js';
 import {
   VIEW_SLOTS,
   segmentObject,
@@ -21,11 +30,40 @@ import {
   meshAverageHex,
   pickPlanSlot,
   cutoutImage,
+  fitBackground,
 } from '../../engine/hull.js';
 import { CustomMeshModel } from '../preview3d/models/customMesh.jsx';
 import local from './PhotoModelModal.module.css';
 
 const PHOTO_MAX = 480;
+const SHEET_MAX = 1800;
+const SHEET_SLOT_CHOICES = [
+  ['', 'Not used'],
+  ['front', 'Front'],
+  ['right', 'Right side'],
+  ['left', 'Left side'],
+  ['back', 'Back'],
+  ['top', 'Top'],
+];
+
+/** One detected view of a sheet picture: a small crop with the slot it is assigned to. */
+function SheetThumb({ rgba, width, height, detection, view }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const crop = cropSheetView(rgba, width, height, detection, view, 0.04);
+    const scale = Math.min(1, 160 / Math.max(crop.width, crop.height));
+    const src = document.createElement('canvas');
+    src.width = crop.width;
+    src.height = crop.height;
+    src.getContext('2d').putImageData(new ImageData(crop.rgba, crop.width, crop.height), 0, 0);
+    canvas.width = Math.max(1, Math.round(crop.width * scale));
+    canvas.height = Math.max(1, Math.round(crop.height * scale));
+    canvas.getContext('2d').drawImage(src, 0, 0, canvas.width, canvas.height);
+  }, [rgba, width, height, detection, view]);
+  return <canvas ref={ref} className={local.cutout} aria-label="Detected view" />;
+}
 const PLAN_SIZE = 128;
 
 function rgbaToDataUrl(rgba, size, height = size) {
@@ -34,6 +72,24 @@ function rgbaToDataUrl(rgba, size, height = size) {
   canvas.height = height;
   canvas.getContext('2d').putImageData(new ImageData(rgba, size, height), 0, 0);
   return canvas.toDataURL('image/png');
+}
+
+const TEXTURE_SIZE = 256;
+
+/** Opaque colour image of a prepared view (rgb triples), stored as the photo texture of the model. */
+function rgbToDataUrl(rgb, size) {
+  const rgba = new Uint8ClampedArray(size * size * 4);
+  for (let p = 0; p < size * size; p++) {
+    rgba[p * 4] = rgb[p * 3];
+    rgba[p * 4 + 1] = rgb[p * 3 + 1];
+    rgba[p * 4 + 2] = rgb[p * 3 + 2];
+    rgba[p * 4 + 3] = 255;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  canvas.getContext('2d').putImageData(new ImageData(rgba, size, size), 0, 0);
+  return canvas.toDataURL('image/jpeg', 0.92);
 }
 
 /** Source photo with the removed background greyed out so users can judge the cut-out. */
@@ -76,15 +132,15 @@ function FitCamera({ distance, target }) {
 }
 
 /** The finished model at its real size, drawn with the same component the room view uses. */
-function ModelPreview({ model, dims, color }) {
+function ModelPreview({ model, textures, dims, color }) {
   const w = dims.widthCm / 100;
   const d = dims.depthCm / 100;
   const h = dims.heightCm / 100;
   const reach = Math.max(w, d, h);
-  const def = useMemo(() => ({ mesh: model, color }), [model, color]);
+  const def = useMemo(() => ({ mesh: model, textures, color }), [model, textures, color]);
   return (
     <Canvas shadows camera={{ fov: 40 }}>
-      <FitCamera distance={reach * 2.1 + 0.4} target={h / 2} />
+      <FitCamera distance={reach * 1.55 + 0.3} target={h / 2} />
       <ambientLight intensity={1.15} color="#FAF7F0" />
       <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={0.7} />
       <directionalLight
@@ -124,9 +180,16 @@ export function PhotoModelModal({ onClose }) {
   const [photos, setPhotos] = useState({}); // slotId -> { width, height, rgba, thumbUrl }
   const [tolerance, setTolerance] = useState(60);
   const [model, setModel] = useState(null);
+  const [textures, setTextures] = useState(null); // slot -> photo texture (data URL)
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [sheet, setSheet] = useState(null); // { rgba, width, height, detection, slots: [slot|''] }
+  const [keepRatio, setKeepRatio] = useState(true);
+  const [anchor, setAnchor] = useState('widthCm');
   const inputs = useRef({});
+  const sheetInput = useRef(null);
+  const dimsRef = useRef(dims);
+  dimsRef.current = dims;
 
   const segmented = useMemo(() => {
     const out = {};
@@ -175,9 +238,91 @@ export function PhotoModelModal({ onClose }) {
       ),
     [segmented, photos, dims]
   );
+  const ratios = useMemo(
+    () =>
+      estimateProportions(
+        Object.fromEntries(
+          Object.entries(photos).map(([slot, photo]) => [
+            slot,
+            { mask: segmented[slot].mask, width: photo.width, height: photo.height },
+          ])
+        )
+      ),
+    [segmented, photos]
+  );
+  const ratioKey = ratios ? `${ratios.widthCm.toFixed(3)}/${ratios.depthCm.toFixed(3)}` : '';
+  // New photos change the shape: rescale the other sizes around the one the user last set
+  useEffect(() => {
+    if (!keepRatio || !ratios) return;
+    setDims(dimensionsFromProportions(ratios, anchor, dimsRef.current[anchor]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ratioKey, keepRatio]);
   const weakSlots = Object.entries(segmented).filter(
     ([, s]) => s.coverage < 0.03 || s.coverage > 0.92
   );
+
+  const loadSheet = async (file) => {
+    if (!file) return;
+    setMessage(null);
+    try {
+      const img = await readImage(file, SHEET_MAX, 'image/png');
+      const detection = detectSheetViews(img.rgba, img.width, img.height);
+      if (detection.views.length < 2) {
+        setMessage({
+          kind: 'error',
+          text: 'Only one object was found in that picture. Use the Add photo buttons for single photos.',
+        });
+        return;
+      }
+      const slots = assignSheetViews(detection.views);
+      // Which side photo is which needs the other views: try both ways round and keep the better fit
+      const crops = detection.views.map((v) =>
+        cropSheetView(img.rgba, img.width, img.height, detection, v)
+      );
+      const prepared = (slot) => {
+        const i = slots.indexOf(slot);
+        return i >= 0 ? prepareCrop(crops[i]) : null;
+      };
+      const sideIndex = slots.indexOf('right');
+      if (sideIndex >= 0) {
+        const side = prepareCrop(crops[sideIndex]);
+        if (side)
+          slots[sideIndex] = chooseSideSlot({
+            front: prepared('front'),
+            top: prepared('top'),
+            side,
+          });
+      }
+      setSheet({ rgba: img.rgba, width: img.width, height: img.height, detection, slots });
+    } catch (err) {
+      setMessage({ kind: 'error', text: err.message });
+    }
+  };
+
+  const applySheet = () => {
+    if (!sheet) return;
+    const next = {};
+    const used = new Set();
+    sheet.detection.views.forEach((v, i) => {
+      const slot = sheet.slots[i];
+      if (!slot || used.has(slot)) return;
+      used.add(slot);
+      const crop = cropSheetView(sheet.rgba, sheet.width, sheet.height, sheet.detection, v);
+      next[slot] = imageFromPixels(crop.rgba, crop.width, crop.height, PHOTO_MAX);
+    });
+    if (Object.keys(next).length < 2) {
+      setMessage({ kind: 'error', text: 'Give at least two of the views a different role.' });
+      return;
+    }
+    setPhotos(next);
+    // A clean render on pure white can use a fine threshold, which keeps white pillows and linen
+    const noisy = Object.values(next).some(
+      (p) => fitBackground(p.rgba, p.width, p.height).noise > 1.5
+    );
+    setTolerance(noisy ? 35 : 16);
+    setKeepRatio(true);
+    setSheet(null);
+  };
 
   const handleBuild = () => {
     setBusy(true);
@@ -199,7 +344,23 @@ export function PhotoModelModal({ onClose }) {
             );
           return { slot: slot.id, angle: slot.angle, ...norm };
         });
-        setModel(buildModelFromViews(views));
+        const built = buildModelFromViews(views);
+        // The photos themselves, cut to the piece, are projected back onto the surface for crisp colour
+        const tex = {};
+        for (const slot of VIEW_SLOTS) {
+          const photo = photos[slot.id];
+          if (!photo) continue;
+          const norm = normalizeView(
+            photo.rgba,
+            segmented[slot.id].mask,
+            photo.width,
+            photo.height,
+            TEXTURE_SIZE
+          );
+          if (norm) tex[slot.id] = rgbToDataUrl(norm.rgb, TEXTURE_SIZE);
+        }
+        setTextures(tex);
+        setModel(built);
       } catch (err) {
         setModel(null);
         setMessage({ kind: 'error', text: err.message });
@@ -231,6 +392,7 @@ export function PhotoModelModal({ onClose }) {
         heightCm: dims.heightCm,
         color: modelColor,
         mesh: { positions: model.positions, colors: model.colors, indices: model.indices },
+        textures: textures || undefined,
         topImage: rgbaToDataUrl(topPixels, PLAN_SIZE),
         planImage,
         topOutline: footprintOutline(topPixels, PLAN_SIZE),
@@ -243,7 +405,11 @@ export function PhotoModelModal({ onClose }) {
     onClose();
   };
 
-  const setDim = (key, value) => setDims((d) => ({ ...d, [key]: value }));
+  const setDim = (key, value) => {
+    setAnchor(key);
+    if (keepRatio && ratios) setDims(dimensionsFromProportions(ratios, key, value));
+    else setDims((d) => ({ ...d, [key]: value }));
+  };
 
   return (
     <Modal
@@ -303,6 +469,18 @@ export function PhotoModelModal({ onClose }) {
                 />
               ))}
             </div>
+            {ratios && (
+              <label className={local.check}>
+                <input
+                  type="checkbox"
+                  checked={keepRatio}
+                  onChange={(e) => setKeepRatio(e.target.checked)}
+                />
+                <span>
+                  Keep the photos' proportions: enter one real size and the others follow.
+                </span>
+              </label>
+            )}
           </div>
 
           <div className={local.section}>
@@ -322,6 +500,80 @@ export function PhotoModelModal({ onClose }) {
                 photos give a better shape.
               </li>
             </ul>
+            <div className={local.sheetRow}>
+              <Button
+                variant="secondary"
+                size="small"
+                icon={<LayoutGrid size={14} />}
+                onClick={() => sheetInput.current?.click()}
+              >
+                Split one picture into views
+              </Button>
+              <span className={local.sectionNote}>
+                For a product sheet that shows the piece from several sides.
+              </span>
+              <input
+                ref={sheetInput}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                hidden
+                aria-label="Picture with several views"
+                onChange={(e) => {
+                  loadSheet(e.target.files?.[0]);
+                  e.target.value = '';
+                }}
+              />
+            </div>
+            {sheet && (
+              <div
+                className={local.sheetPanel}
+                role="group"
+                aria-label="Views found in the picture"
+              >
+                <p className={local.note}>
+                  Found {sheet.detection.views.length} views. Check what each one shows, then use
+                  them. A three-quarter view is not needed.
+                </p>
+                <div className={local.slots}>
+                  {sheet.detection.views.map((v, i) => (
+                    <div key={v.id} className={local.slot}>
+                      <SheetThumb
+                        rgba={sheet.rgba}
+                        width={sheet.width}
+                        height={sheet.height}
+                        detection={sheet.detection}
+                        view={v}
+                      />
+                      <select
+                        className={local.select}
+                        value={sheet.slots[i] || ''}
+                        aria-label={`Role of view ${i + 1}`}
+                        onChange={(e) =>
+                          setSheet((cur) => ({
+                            ...cur,
+                            slots: cur.slots.map((x, j) => (j === i ? e.target.value : x)),
+                          }))
+                        }
+                      >
+                        {SHEET_SLOT_CHOICES.map(([id, label]) => (
+                          <option key={id} value={id}>
+                            {label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                </div>
+                <div className={local.sheetActions}>
+                  <Button variant="ghost" size="small" onClick={() => setSheet(null)}>
+                    Cancel
+                  </Button>
+                  <Button variant="primary" size="small" onClick={applySheet}>
+                    Use these views
+                  </Button>
+                </div>
+              </div>
+            )}
             <div className={local.slots}>
               {VIEW_SLOTS.map((slot) => {
                 const photo = photos[slot.id];
@@ -384,7 +636,7 @@ export function PhotoModelModal({ onClose }) {
         <div className={local.right}>
           <div className={local.preview} aria-label="3D model preview">
             {model ? (
-              <ModelPreview model={model} dims={dims} color={modelColor} />
+              <ModelPreview model={model} textures={textures} dims={dims} color={modelColor} />
             ) : (
               <p className={local.placeholder}>
                 {photoCount < 2

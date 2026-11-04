@@ -697,3 +697,42 @@ describe('plan photo cut-out', () => {
     expect(cutoutImage(rgba, new Uint8Array(w * h), w, h)).toBeNull();
   });
 });
+
+describe('pale parts on a pale background', () => {
+  const white = [252, 252, 252];
+  const dark = [90, 70, 60];
+
+  it('fills the gap between two parts that stand on more of the piece', () => {
+    // A tall left end and a lower right end with a white valley between them, on a slab
+    const w = 160;
+    const h = 100;
+    const rgba = makePhoto(
+      w,
+      h,
+      [
+        rect(30, 20, 50, 80, dark), // tall end
+        rect(70, 55, 130, 80, dark), // low end
+        rect(30, 70, 130, 80, dark), // slab joining them
+        rect(52, 55, 68, 70, white), // white linen in the valley
+      ],
+      () => [255, 255, 255]
+    );
+    const mask = segmentObject(rgba, w, h, 16);
+    expect(mask[62 * w + 60]).toBe(1); // inside the valley, held up by the slab
+    expect(mask[10 * w + 75]).toBe(0); // well above the piece
+  });
+
+  it('keeps the space between the legs of a table open', () => {
+    const w = 160;
+    const h = 100;
+    const rgba = makePhoto(
+      w,
+      h,
+      [rect(20, 20, 140, 35, dark), rect(22, 35, 32, 85, dark), rect(128, 35, 138, 85, dark)],
+      () => [255, 255, 255]
+    );
+    const mask = segmentObject(rgba, w, h, 16);
+    expect(mask[60 * w + 80]).toBe(0);
+    expect(mask[28 * w + 80]).toBe(1);
+  });
+});

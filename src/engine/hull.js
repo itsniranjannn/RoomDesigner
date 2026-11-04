@@ -23,8 +23,8 @@ export const VIEW_SLOTS = [
   { id: 'top', label: 'Top', angle: null },
 ];
 
-const MESH_RESOLUTION = 64;
-const NORMAL_SIZE = 128;
+const MESH_RESOLUTION = 88;
+const NORMAL_SIZE = 160;
 const LEGACY_RESOLUTION = 40;
 
 // ---------- segmentation ----------
@@ -277,6 +277,62 @@ function fillHoles(mask, width, height) {
 }
 
 /**
+ * Fills background pixels that have the object above and below them close by in the same column. White
+ * linen or a pale cushion on a white backdrop leaves such gaps inside a piece that is open to the side, which
+ * hole filling cannot reach. Gaps are only filled when short compared with the object and held up
+ * by more of it below, so the space under a table or between chair legs stays open.
+ */
+function fillSandwiched(mask, width, height) {
+  const box = maskBounds(mask, width, height);
+  if (!box) return mask;
+  const maxRun = Math.max(2, Math.round(box.height * 0.25));
+  const out = Uint8Array.from(mask);
+  for (let x = box.minX; x <= box.maxX; x++) {
+    let y = box.minY;
+    while (y <= box.maxY) {
+      if (mask[y * width + x]) {
+        y++;
+        continue;
+      }
+      let end = y;
+      while (end <= box.maxY && !mask[end * width + x]) end++;
+      // A run that starts below the top edge and ends before the bottom is bounded on both sides
+      if (y > box.minY && end <= box.maxY && end - y <= maxRun) {
+        for (let k = y; k < end; k++) out[k * width + x] = 1;
+      }
+      y = end;
+    }
+  }
+  // Short gaps between two parts of the object in a row, with more of the object under them: the valley
+  // between a headboard and a duvet seen from the side. Gaps with nothing below (between legs) stay open.
+  const supported = new Uint8Array(mask.length);
+  for (let x = box.minX; x <= box.maxX; x++) {
+    let seen = 0;
+    for (let y = box.maxY; y >= box.minY; y--) {
+      supported[y * width + x] = seen;
+      if (mask[y * width + x]) seen = 1;
+    }
+  }
+  const maxGap = Math.max(2, Math.round(box.width * 0.25));
+  for (let y = box.minY; y <= box.maxY; y++) {
+    let x = box.minX;
+    while (x <= box.maxX) {
+      if (mask[y * width + x]) {
+        x++;
+        continue;
+      }
+      let end = x;
+      while (end <= box.maxX && !mask[y * width + end]) end++;
+      if (x > box.minX && end <= box.maxX && end - x <= maxGap) {
+        for (let k = x; k < end; k++) if (supported[y * width + k]) out[y * width + k] = 1;
+      }
+      x = end;
+    }
+  }
+  return out;
+}
+
+/**
  * Separates the object from a plain (possibly unevenly lit) background.
  * A pixel is object when it differs from the locally fitted background by more than the tolerance
  * and is not just a soft, same-coloured shadow of it. The raw cut is then cleaned up: thin fringes
@@ -318,7 +374,8 @@ export function segmentObject(rgba, width, height, tolerance = 60) {
     radius,
     'max'
   );
-  const mask = fillHoles(keepLargestComponent(opened, width, height), width, height);
+  const filled = fillHoles(keepLargestComponent(opened, width, height), width, height);
+  const mask = fillHoles(fillSandwiched(filled, width, height), width, height);
   return majority(mask, width, height);
 }
 

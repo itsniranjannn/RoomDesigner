@@ -79,6 +79,22 @@ describe('photo furniture plan symbol', () => {
     expect(changed).toContain('mix-blend-mode');
   });
 
+  it('tints the cut-out photo on the plan only when the colour was changed', () => {
+    registerCustomFurniture({
+      id: 'photo-test',
+      name: 'Photo',
+      widthCm: 100,
+      depthCm: 60,
+      heightCm: 50,
+      color: '#885533',
+    });
+    const plan = { id: 'photo-test', planImage: 'data:image/png;base64,CCCC', topOutline: LOOPS };
+    expect(render(plan)).not.toContain('mix-blend-mode');
+    const changed = render({ ...plan, color: '#2b7a78' });
+    expect(changed).toContain('mix-blend-mode');
+    expect(changed).toContain('CCCC');
+  });
+
   it('stays well-formed when resized to 0.4x and 2.5x', () => {
     for (const [w, d] of [
       [40, 24],

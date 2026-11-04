@@ -37,6 +37,8 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
   // The user's own photo, cut out, sits on the footprint and turns with the piece
   if (item.planImage) {
     const hasLoops = loops && loops.length > 0;
+    const photoBase = getFurnitureType(item.id)?.color;
+    const tinted = photoBase && String(photoBase).toLowerCase() !== String(color).toLowerCase();
     const d = hasLoops ? outlinePath(loops, widthCm, depthCm) : null;
     return (
       <g>
@@ -67,6 +69,19 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
           preserveAspectRatio="none"
           clipPath={`url(#${clipId})`}
         />
+        {tinted && (
+          <g clipPath={`url(#${clipId})`}>
+            <rect
+              x={-hw}
+              y={-hd}
+              width={widthCm}
+              height={depthCm}
+              fill={color}
+              fillOpacity="0.55"
+              style={{ mixBlendMode: 'color' }}
+            />
+          </g>
+        )}
         {d ? (
           <path d={d} fill="none" stroke={OUTLINE} strokeWidth="1.4" strokeLinejoin="round" />
         ) : (
