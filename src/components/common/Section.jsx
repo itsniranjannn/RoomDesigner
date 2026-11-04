@@ -25,14 +25,14 @@ export function Section({ title, defaultOpen = true, action, children, collapsib
 }
 
 /** Square icon-only button with a tooltip. */
-export function IconButton({ label, active = false, danger = false, children, className = '', ...props }) {
+export function IconButton({ label, active, quiet = false, danger = false, children, className = '', ...props }) {
   return (
     <button
       type="button"
-      className={`${styles.iconBtn} ${active ? styles.iconBtnOn : ''} ${danger ? styles.iconBtnDanger : ''} ${className}`}
+      className={`${styles.iconBtn} ${active ? (quiet ? styles.iconBtnQuiet : styles.iconBtnOn) : ''} ${danger ? styles.iconBtnDanger : ''} ${className}`}
       aria-label={label}
       title={label}
-      aria-pressed={active || undefined}
+      aria-pressed={active === undefined ? undefined : active}
       {...props}
     >
       {children}

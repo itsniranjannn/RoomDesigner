@@ -4,7 +4,7 @@ import { useFlatUi } from '../../store/flatUiStore.js';
 import styles from './FlatDesigner.module.css';
 
 const HINTS = {
-  select: 'Click a room, wall, door, window or staircase to edit it. Double-click a room to furnish it.',
+  select: 'Click to edit. Double-click a room to furnish it. Hold Space and drag to pan.',
   wall: 'Drag, or click twice, to draw a wall. Click the same spot again or press Esc to finish.',
   eraser: 'Click a wall to remove the piece between two corners.',
   door: 'Click a wall to add a door. Click an existing door to remove it.',

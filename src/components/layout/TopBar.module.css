@@ -1,157 +1,26 @@
-.topBar {
-  position: relative;
-  z-index: var(--z-chrome);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-  align-items: center;
-  gap: var(--space-3);
-  height: var(--topbar-height);
-  padding: 0 var(--space-4);
-  background: var(--color-paper);
-  border-bottom: var(--border-soft);
-}
-
-.left,
-.center,
-.right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-width: 0;
-}
-
-.right {
-  justify-content: flex-end;
-}
-
-.center {
-  gap: var(--space-3);
-}
-
 .history {
   display: flex;
   gap: 2px;
 }
 
-.logo {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex-shrink: 0;
-  height: var(--control-h);
-  padding: 0 var(--space-2);
-  border-radius: var(--radius-md);
-  transition: background-color var(--transition-fast);
-}
-
-.logo:hover {
-  background: var(--color-linen-surface);
-}
-
-.logo:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.wordmark {
-  font-family: var(--font-serif);
-  font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  white-space: nowrap;
-}
-
 .roomMenu {
-  min-width: 0;
-}
-
-.roomButton {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  min-width: 0;
-  height: var(--control-h);
-  padding: 0 var(--space-2) 0 var(--space-3);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  background: var(--color-linen-surface);
-  border-radius: var(--radius-md);
-  transition: background-color var(--transition-fast);
-}
-
-.roomButton:hover {
-  background: var(--color-linen-subtle);
-}
-
-.roomButton:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.roomName {
-  min-width: 0;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.save {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
   flex-shrink: 0;
-  padding: 0 var(--space-2);
-  font-size: var(--text-xs);
-  color: var(--color-ink-faint);
-}
-
-.saveDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-success);
-}
-
-.saveDotBusy {
-  background: var(--color-brass);
 }
 
 .viewSwitch {
   flex-shrink: 0;
 }
 
-.topBar .panelToggle {
-  color: var(--color-ink-muted);
-}
-
-.topBar .panelToggleOn {
-  color: var(--color-ink);
-  background: var(--color-linen-surface);
-}
-
 .action {
   flex-shrink: 0;
 }
 
-/* Tablet: keep labels short */
+/* Icon-only actions on narrower screens */
 @media (max-width: 1099px) {
-  .wordmark { display: none; }
-  .roomName { max-width: 160px; }
-}
-
-@media (max-width: 899px) {
-  .topBar { padding: 0 var(--space-3); gap: var(--space-2); }
   .actionText { display: none; }
   .action { min-width: var(--control-h); padding: 0; }
-  .saveText { display: none; }
-  .roomName { max-width: 120px; }
 }
 
-/* Phone */
-@media (max-width: 560px) {
-  .topBar { padding: 0 var(--space-2); }
-  .roomName { max-width: none; }
+@media (max-width: 640px) {
   .viewSwitch span { display: none; }
-  .save { display: none; }
 }

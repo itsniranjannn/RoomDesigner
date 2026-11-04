@@ -1,10 +1,14 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { ChevronLeft, Plus, Undo2, Redo2, ZoomIn, ZoomOut, Maximize, Layers, Box } from 'lucide-react';
+import { Plus, Undo2, Redo2, ZoomIn, ZoomOut, Maximize, Layers, Box } from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
 import { useFlatUi } from '../../store/flatUiStore.js';
-import { Button } from '../common/Button.jsx';
 import { IconButton } from '../common/Section.jsx';
-import { TextField, Segmented } from '../common/Field.jsx';
+import { Segmented } from '../common/Field.jsx';
+import { EditableTitle } from '../common/EditableTitle.jsx';
+import { SaveStatus } from '../common/SaveStatus.jsx';
+import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
+import { CanvasLoader } from '../common/CanvasLoader.jsx';
+import { AppHeader } from '../layout/SiteHeader.jsx';
 import { FlatPlanCanvas } from './FlatPlanCanvas.jsx';
 import { FlatToolbar } from './FlatToolbar.jsx';
 import { FlatInspector } from './FlatInspector.jsx';
@@ -41,9 +45,7 @@ export function FlatDesigner() {
   const redo = useFlatStore((s) => s.redo);
   const requestZoom = useFlatUi((s) => s.requestZoom);
   const requestFit = useFlatUi((s) => s.requestFit);
-  const [name, setName] = useState(flat?.name || '');
   const [dismissedFor, setDismissedFor] = useState(null);
-  useEffect(() => setName(flat?.name || ''), [flat?.id, flat?.name]);
 
   // Keyboard shortcuts for tools, undo / redo, delete and rotate
   useEffect(() => {
@@ -101,76 +103,74 @@ export function FlatDesigner() {
   const hasContent = flat.levels.some((l) => (flat.walls?.[l.id] || []).length > 0) || flat.stairs.length > 0;
   const showStart = !hasContent && viewMode === '2d' && dismissedFor !== flat.id;
   const levelOptions = flat.levels.map((l) => ({ value: l.id, label: l.name }));
+  const plan = viewMode === '2d';
 
   return (
     <div className={styles.shell}>
-      <header className={styles.header}>
-        <div className={styles.headerGroup}>
-          <Button variant="ghost" icon={<ChevronLeft size={18} aria-hidden="true" />} onClick={closeFlat} aria-label="Back to your studio">
-            Studio
-          </Button>
-          <TextField
-            className={styles.nameField}
-            aria-label="Flat name"
-            value={name}
-            maxLength={80}
-            onChange={(e) => setName(e.target.value)}
-            onBlur={() => (name.trim() ? renameFlat(name) : setName(flat.name))}
-            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          />
-        </div>
-
-        <div className={styles.headerGroup}>
-          <Segmented options={levelOptions} value={levelId} onChange={setLevel} ariaLabel="Floors" />
-          <IconButton label="Add a floor" onClick={addLevel} disabled={flat.levels.length >= 6}>
-            <Plus size={18} aria-hidden="true" />
-          </IconButton>
-        </div>
-
-        <span className={styles.headerSpacer} />
-
-        <div className={styles.headerGroup}>
-          <IconButton label="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
-            <Undo2 size={18} aria-hidden="true" />
-          </IconButton>
-          <IconButton label="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo}>
-            <Redo2 size={18} aria-hidden="true" />
-          </IconButton>
-        </div>
-
-        {viewMode === '2d' && (
-          <div className={styles.headerGroup} role="group" aria-label="Zoom">
-            <IconButton label="Zoom out" onClick={() => requestZoom(1 / 1.25)}>
-              <ZoomOut size={18} aria-hidden="true" />
-            </IconButton>
-            <IconButton label="Zoom in" onClick={() => requestZoom(1.25)}>
-              <ZoomIn size={18} aria-hidden="true" />
-            </IconButton>
-            <IconButton label="Fit to screen" onClick={requestFit}>
-              <Maximize size={18} aria-hidden="true" />
-            </IconButton>
-          </div>
-        )}
-
-        <Segmented options={VIEW_OPTIONS} value={viewMode} onChange={setViewMode} ariaLabel="View" />
-      </header>
+      <AppHeader
+        onHome={closeFlat}
+        homeLabel="Back to your studio"
+        start={
+          <>
+            <EditableTitle value={flat.name} onCommit={renameFlat} label="Flat name" maxLength={80} />
+            <SaveStatus />
+          </>
+        }
+        center={
+          <>
+            <div className={styles.history} role="group" aria-label="History">
+              <IconButton label="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
+                <Undo2 size={18} aria-hidden="true" />
+              </IconButton>
+              <IconButton label="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo}>
+                <Redo2 size={18} aria-hidden="true" />
+              </IconButton>
+            </div>
+            <Segmented options={VIEW_OPTIONS} value={viewMode} onChange={setViewMode} ariaLabel="View" className={styles.viewSwitch} />
+          </>
+        }
+      />
 
       <div className={styles.body}>
-        <FlatToolbar disabled={viewMode !== '2d'} />
-        <main className={styles.stage}>
-          {viewMode === '2d' ? (
-            <FlatPlanCanvas />
-          ) : (
-            <Suspense fallback={<div className={styles.loading}>Loading 3D view...</div>}>
-              <Flat3DView />
-            </Suspense>
-          )}
-          {showStart && <FlatStartCard onDismiss={() => setDismissedFor(flat.id)} />}
-        </main>
+        <section className={styles.stage} aria-label={plan ? 'Flat plan' : 'Flat in 3D'}>
+          <div className={styles.stageBody}>
+            {plan ? (
+              <FlatPlanCanvas />
+            ) : (
+              <Suspense fallback={<CanvasLoader label="Loading 3D view" />}>
+                <Flat3DView />
+              </Suspense>
+            )}
+
+            {plan && <FlatToolbar />}
+
+            <div className={styles.floors}>
+              <Segmented options={levelOptions} value={levelId} onChange={setLevel} ariaLabel="Floors" size="small" />
+              <IconButton label="Add a floor" onClick={addLevel} disabled={flat.levels.length >= 6}>
+                <Plus size={18} aria-hidden="true" />
+              </IconButton>
+            </div>
+
+            {plan && (
+              <ToolGroup vertical={false} className={styles.zoom} aria-label="Zoom">
+                <ToolButton label="Zoom out" side="top" onClick={() => requestZoom(1 / 1.25)}>
+                  <ZoomOut size={18} aria-hidden="true" />
+                </ToolButton>
+                <ToolButton label="Zoom in" side="top" onClick={() => requestZoom(1.25)}>
+                  <ZoomIn size={18} aria-hidden="true" />
+                </ToolButton>
+                <ToolButton label="Fit to screen" side="top" onClick={requestFit}>
+                  <Maximize size={18} aria-hidden="true" />
+                </ToolButton>
+              </ToolGroup>
+            )}
+
+            {showStart && <FlatStartCard onDismiss={() => setDismissedFor(flat.id)} />}
+          </div>
+          <FlatStatusBar viewMode={viewMode} />
+        </section>
         <FlatInspector />
       </div>
-
-      <FlatStatusBar viewMode={viewMode} />
     </div>
   );
 }

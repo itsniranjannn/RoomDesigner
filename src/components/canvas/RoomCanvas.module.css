@@ -7,7 +7,11 @@
   min-width: 0;
   height: 100%;
   overflow: hidden;
-  background-color: var(--color-linen-subtle);
+  background-color: var(--color-linen);
+  background-image:
+    linear-gradient(var(--color-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+  background-size: 32px 32px;
   outline: none;
   transition: background-color var(--transition-fast);
 }
@@ -40,7 +44,9 @@
   line-height: 1.4;
   text-align: center;
   color: var(--color-ink-muted);
-  background: rgba(252, 250, 246, 0.85);
+  background: var(--color-paper);
+  border: var(--border-soft);
   border-radius: 999px;
+  box-shadow: var(--shadow-card);
   pointer-events: none;
 }

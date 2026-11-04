@@ -3,6 +3,8 @@ import { DoorOpen, Sparkles, Trash2, RotateCw } from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
 import { useFlatUi } from '../../store/flatUiStore.js';
 import { Section } from '../common/Section.jsx';
+import { ConfirmDialog } from '../common/ConfirmDialog.jsx';
+import { InspectorShell } from '../inspector/InspectorShell.jsx';
 import { Button } from '../common/Button.jsx';
 import { TextField, NumberField, SelectField, Switch } from '../common/Field.jsx';
 import {
@@ -48,6 +50,15 @@ function NameField({ label, value, onCommit, maxLength = 60 }) {
   );
 }
 
+/** Colour dot for a room kind. Drawn as SVG so the colour stays data, not inline CSS. */
+function KindDot({ color }) {
+  return (
+    <svg className={styles.dot} width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+      <circle cx="5" cy="5" r="4.25" fill={color} stroke="var(--color-ink-faint)" strokeWidth="1" />
+    </svg>
+  );
+}
+
 function Facts({ rows }) {
   return (
     <dl className={styles.facts}>
@@ -65,17 +76,18 @@ function SpaceInspector({ space }) {
   const openSpace = useFlatStore((s) => s.openSpace);
   const kind = SPACE_KINDS[space.kind] || SPACE_KINDS.room;
   const pieces = room?.placedFurniture?.length || 0;
+  const [confirming, setConfirming] = useState(false);
 
   const furnish = () => {
-    if (pieces > 0 && !window.confirm(`Replace the ${pieces} pieces in "${space.name}" with the default furniture?`)) return;
-    furnishSpace(space.id);
+    if (pieces > 0) setConfirming(true);
+    else furnishSpace(space.id);
   };
 
   return (
     <div className={styles.inspectorBody}>
-      <Section title="Room" collapsible={false}>
+      <Section title="Details" collapsible={false}>
         <span className={styles.tag}>
-          <span className={styles.dot} style={{ background: kind.color }} aria-hidden="true" />
+          <KindDot color={kind.color} />
           {kind.label}
         </span>
         <NameField label="Name" value={space.name} onCommit={(name) => setSpaceMeta(space.id, { name })} />
@@ -102,11 +114,23 @@ function SpaceInspector({ space }) {
             </p>
           </>
         ) : (
-          <p className={`${styles.callout}`} role="note">
+          <p className={styles.callout} role="note">
             Not furnishable until the walls form a rectangle. You can still name this area and see its size. Move or remove a wall to square it off.
           </p>
         )}
       </Section>
+      {confirming && (
+        <ConfirmDialog
+          title="Replace the furniture?"
+          message={`The ${pieces} pieces in "${space.name}" are replaced with the default furniture for a ${kind.label.toLowerCase()}.`}
+          confirmLabel="Replace furniture"
+          onClose={() => setConfirming(false)}
+          onConfirm={() => {
+            setConfirming(false);
+            furnishSpace(space.id);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -207,6 +231,7 @@ function SummaryInspector() {
   const select = useFlatStore((s) => s.select);
   const renameLevel = useFlatStore((s) => s.renameLevel);
   const removeLevel = useFlatStore((s) => s.removeLevel);
+  const [confirmingFloor, setConfirmingFloor] = useState(false);
   const summary = flatSummary(flat);
   const level = flat.levels[levelIndex(flat, levelId)];
   const spaces = flat.spaces.filter((s) => s.levelId === levelId);
@@ -214,8 +239,7 @@ function SummaryInspector() {
   const windows = openingsOf(flat, levelId).filter((o) => o.type === 'window').length;
   return (
     <div className={styles.inspectorBody}>
-      <Section title="This flat" collapsible={false}>
-        <h2 className={styles.inspectorTitle}>{flat.name}</h2>
+      <Section title="Overview" collapsible={false}>
         <Facts
           rows={[
             ['Total area', `${summary.areaM2.toFixed(1)} m²`],
@@ -233,7 +257,7 @@ function SummaryInspector() {
           <div className={styles.roomList}>
             {spaces.map((s) => (
               <Button key={s.id} variant="ghost" size="small" className={styles.roomRow} onClick={() => select({ type: 'space', id: s.id })}>
-                <span className={styles.dot} style={{ background: (SPACE_KINDS[s.kind] || SPACE_KINDS.room).color }} aria-hidden="true" />
+                <KindDot color={(SPACE_KINDS[s.kind] || SPACE_KINDS.room).color} />
                 {s.name}
                 <span className={styles.roomRowMeta}>{m2(s.areaCm2)}</span>
               </Button>
@@ -247,12 +271,24 @@ function SummaryInspector() {
           <Button
             variant="danger"
             icon={<Trash2 size={16} aria-hidden="true" />}
-            onClick={() => window.confirm(`Remove "${level.name}" and everything on it?`) && removeLevel(level.id)}
+            onClick={() => setConfirmingFloor(true)}
           >
             Remove this floor
           </Button>
         )}
       </Section>
+      {confirmingFloor && (
+        <ConfirmDialog
+          title={`Remove "${level.name}"?`}
+          message="The walls, doors, windows and stairs on this floor are removed with it."
+          confirmLabel="Remove floor"
+          onClose={() => setConfirmingFloor(false)}
+          onConfirm={() => {
+            setConfirmingFloor(false);
+            removeLevel(level.id);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -261,24 +297,45 @@ export function FlatInspector() {
   const flat = useFlatStore((s) => s.flat);
   const levelId = useFlatStore((s) => s.levelId);
   const selected = useFlatStore((s) => s.selected);
+  const select = useFlatStore((s) => s.select);
   if (!flat) return null;
   const space = selected?.type === 'space' ? flat.spaces.find((s) => s.id === selected.id) : null;
   const stair = selected?.type === 'stair' ? flat.stairs.find((s) => s.id === selected.id) : null;
   const opening = selected?.type === 'opening' ? openingsOf(flat, levelId).find((o) => o.id === selected.id) : null;
   const wall = selected?.type === 'wall' && edgesOf(wallsOf(flat, levelId)).has(selected.id) ? selected.id : null;
+
+  let title = flat.name;
+  let subtitle = 'Select a room, wall, door, window or staircase on the plan to edit it.';
+  let body = <SummaryInspector />;
+  if (space) {
+    title = space.name;
+    subtitle = `${(SPACE_KINDS[space.kind] || SPACE_KINDS.room).label}, ${m2(space.areaCm2)}`;
+    body = <SpaceInspector key={space.id} space={space} />;
+  } else if (stair) {
+    title = 'Staircase';
+    subtitle = 'Drag it on the plan to move it.';
+    body = <StairInspector key={stair.id} stair={stair} />;
+  } else if (opening) {
+    title = opening.type === 'door' ? 'Door' : 'Window';
+    subtitle = 'Set its width, or remove it.';
+    body = <OpeningInspector key={opening.id} opening={opening} />;
+  } else if (wall) {
+    title = 'Wall';
+    subtitle = 'Part of the walls you drew.';
+    body = <WallInspector key={wall} wallKey={wall} />;
+  }
+
   return (
-    <aside className={styles.inspector} aria-label="Details">
-      {space ? (
-        <SpaceInspector key={space.id} space={space} />
-      ) : stair ? (
-        <StairInspector key={stair.id} stair={stair} />
-      ) : opening ? (
-        <OpeningInspector key={opening.id} opening={opening} />
-      ) : wall ? (
-        <WallInspector key={wall} wallKey={wall} />
-      ) : (
-        <SummaryInspector />
-      )}
-    </aside>
+    <div className={styles.inspector}>
+      <InspectorShell
+        label="Details"
+        title={title}
+        subtitle={subtitle}
+        onBack={selected && body.type !== SummaryInspector ? () => select(null) : undefined}
+        backLabel="Flat overview"
+      >
+        {body}
+      </InspectorShell>
+    </div>
   );
 }

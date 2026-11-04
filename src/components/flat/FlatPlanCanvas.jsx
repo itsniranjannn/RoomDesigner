@@ -26,7 +26,7 @@ import {
   INTERIOR_THICK_CM,
 } from '../../engine/flatWalls.js';
 import { StairGlyph, StairDefs } from './StairGlyph.jsx';
-import styles from './FlatDesigner.module.css';
+import styles from './FlatPlan.module.css';
 
 const EMPTY = [];
 const MIN_K = 0.05;
@@ -668,9 +668,8 @@ export function FlatPlanCanvas() {
     <div ref={wrapRef} className={`${styles.canvasWrap} ${cursorClass}`}>
       <svg
         ref={svgRef}
-        className={styles.svg}
+        className={`${styles.svg} ${fitted ? '' : styles.unfitted}`}
         tabIndex={0}
-        style={{ visibility: fitted ? 'visible' : 'hidden' }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
