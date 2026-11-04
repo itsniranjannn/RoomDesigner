@@ -16,7 +16,7 @@ function Brand({ onHome, label = HOME_LABEL }) {
       aria-label={label}
       title={label}
     >
-      <BrandMark size={30} />
+      <BrandMark size={30} className={styles.mark} />
       <span className={styles.name}>Room Designer Studio</span>
     </button>
   );
