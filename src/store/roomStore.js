@@ -27,6 +27,7 @@ import {
 import { sanitizeImportedRoom } from '../engine/share.js';
 import { cleanOverrides } from '../engine/overrides.js';
 import { evaluateAllCollisions } from '../engine/collision.js';
+import { reconcileStacking, pickDefaultSupport } from '../engine/stacking.js';
 import { clamp, normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
 import { clampOpening } from '../engine/openings.js';
@@ -366,12 +367,11 @@ export const useRoomStore = create((set, get) => ({
     const offsetX = (count % 4) * 20 - 30;
     const offsetY = ((count * 2) % 5) * 15 - 30;
 
-    const stackBase = catalogDef.stackableOn
-      ?.map((baseId) =>
-        (room.placedFurniture || []).find((item) => item.furnitureTypeId === baseId)
-      )
-      .find(Boolean);
-    const stackBaseDef = stackBase ? resolveItemDef(stackBase) : null;
+    // Small pieces dropped without a position land on a free surface (TV on its console)
+    const stackBase =
+      catalogDef.restsOnTop && customX === null
+        ? pickDefaultSupport(catalogDef, room.placedFurniture || [])
+        : null;
     let targetX =
       customX !== null ? customX : stackBase ? stackBase.x : Math.round(room.widthCm / 2 + offsetX);
     let targetY =
@@ -396,15 +396,13 @@ export const useRoomStore = create((set, get) => ({
       x: clamped.x,
       y: clamped.y,
       rotationDeg: 0,
-      elevationCm: stackBaseDef ? stackBaseDef.heightCm : 0,
+      elevationCm: 0,
     };
 
     let updatedFurniture = [...(room.placedFurniture || []), newItem];
     if (catalogDef.id === 'media-console') {
       updatedFurniture = updatedFurniture.map((item) =>
-        item.furnitureTypeId === 'tv-43'
-          ? { ...item, x: clamped.x, y: clamped.y, elevationCm: catalogDef.heightCm }
-          : item
+        item.furnitureTypeId === 'tv-43' ? { ...item, x: clamped.x, y: clamped.y } : item
       );
     }
     get()._commitFurnitureUpdate(updatedFurniture, newItem.id);
@@ -1100,9 +1098,12 @@ export const useRoomStore = create((set, get) => ({
   },
 
   // Internal helper to update furniture list, evaluate collisions, and queue persistence
-  _commitFurnitureUpdate: (updatedFurniture, activeId = null) => {
+  _commitFurnitureUpdate: (editedFurniture, activeId = null) => {
     const { room } = get();
     if (!room) return;
+
+    // Pieces resting on a moved support travel with it; orphaned ones drop to the floor
+    const updatedFurniture = reconcileStacking(room.placedFurniture || [], editedFurniture);
 
     const enrichedItems = updatedFurniture.map((item) => {
       const def = resolveItemDef(item);

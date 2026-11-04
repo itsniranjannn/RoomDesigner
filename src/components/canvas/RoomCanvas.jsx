@@ -20,6 +20,14 @@ import styles from './RoomCanvas.module.css';
 
 const isTyping = () => ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
 
+/** Pieces standing on others draw above them; otherwise the layer order is kept. */
+function drawOrder(items) {
+  return items
+    .map((item, index) => ({ item, index }))
+    .sort((a, b) => (a.item.elevationCm || 0) - (b.item.elevationCm || 0) || a.index - b.index)
+    .map((e) => e.item);
+}
+
 export function RoomCanvas() {
   const room = useRoomStore((state) => state.room);
   const selectedItemId = useRoomStore((state) => state.selectedItemId);
@@ -298,7 +306,7 @@ export function RoomCanvas() {
           {showClearance && <ClearanceLayer room={room} />}
 
           {/* Placed Furniture Items */}
-          {(room.placedFurniture || []).map((item) => (
+          {drawOrder(room.placedFurniture || []).map((item) => (
             <FurniturePiece
               key={item.id}
               item={item}

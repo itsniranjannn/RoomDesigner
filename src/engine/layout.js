@@ -7,6 +7,7 @@
 import { getFurnitureType, resolveItemDef } from '../data/furnitureCatalog.js';
 import { getRotatedRectCorners, getAABB } from './geometry.js';
 import { checkPolygonCollision } from './collision.js';
+import { offersSurface, surfaceTopOf } from './stacking.js';
 import { getClearanceZones, facingGap, isTightPassage } from './clearance.js';
 
 const WALL_GAP = 2;
@@ -39,6 +40,18 @@ function makeEntry(typeId, def, x, y, rotationDeg, id) {
     def,
     corners: getRotatedRectCorners(x, y, def.widthCm, def.depthCm, rotationDeg),
   };
+}
+
+/** A free support for a resting piece, preferring the types it lists in `stackableOn`. */
+function pickBase(def, placed) {
+  const supports = placed.filter((p) => offersSurface(p.def));
+  const taken = (p) =>
+    placed.some(
+      (o) => o !== p && o.def.restsOnTop && o.item.x === p.item.x && o.item.y === p.item.y
+    );
+  const free = supports.filter((p) => !taken(p));
+  const pool = free.length ? free : supports;
+  return pool.find((p) => def.stackableOn?.includes(p.item.furnitureTypeId)) || null;
 }
 
 function tightWithAny(entry, placed) {
@@ -157,12 +170,12 @@ export function suggestLayout(room, typeIds) {
   const nextId = () => `item-auto-${Date.now()}-${counter++}`;
 
   for (const { id, def } of defs) {
-    // Items that rest on another item (TV on console)
-    if (def.stackableOn) {
-      const base = placed.find((p) => def.stackableOn.includes(p.item.furnitureTypeId));
+    // Small pieces rest on a free surface (TV on its console) instead of taking floor space
+    if (def.restsOnTop) {
+      const base = pickBase(def, placed);
       if (base) {
         const entry = makeEntry(id, def, base.item.x, base.item.y, base.item.rotationDeg, nextId());
-        entry.item.elevationCm = base.def.heightCm;
+        entry.item.elevationCm = surfaceTopOf(base.item, base.def);
         placed.push(entry);
         continue;
       }
