@@ -72,8 +72,12 @@ export function AppShell() {
   };
 
   const acceptIncoming = async () => {
-    await importRoomData(incoming.room);
-    closeIncoming();
+    try {
+      await importRoomData(incoming.room);
+      closeIncoming();
+    } catch {
+      setIncoming({ error: 'This design could not be saved on this device.' });
+    }
   };
 
   const shareDialog = incoming && (

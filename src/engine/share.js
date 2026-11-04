@@ -4,6 +4,9 @@
  * and import/export designs as JSON files.
  */
 
+import { cleanOverrides } from './overrides.js';
+import { clamp } from './geometry.js';
+
 const HASH_KEY = 'share=';
 const MAX_HASH_CHARS = 60000;
 
@@ -54,29 +57,32 @@ export async function decodeRoomFromHash(hash) {
 /** Validates and normalizes imported room data (from a link or a JSON file). */
 export function sanitizeImportedRoom(data) {
   if (!data || typeof data !== 'object') throw new Error('Not a valid room file.');
-  const num = (v, min, max, fallback) => (Number.isFinite(v) ? Math.max(min, Math.min(max, v)) : fallback);
+  const num = (v, min, max, fallback) => (Number.isFinite(v) ? clamp(v, min, max) : fallback);
+  const stamp = Date.now();
+  const isObject = (v) => v && typeof v === 'object';
   const openings = (list, fallbackWall) =>
-    (Array.isArray(list) ? list : []).slice(0, 40).map((o, i) => ({
-      id: String(o.id || `${fallbackWall}-${i}-${Date.now()}`),
+    (Array.isArray(list) ? list : []).filter(isObject).slice(0, 40).map((o, i) => ({
+      id: String(o.id || `${fallbackWall}-${i}-${stamp}`),
       wall: ['top', 'bottom', 'left', 'right'].includes(o.wall) ? o.wall : fallbackWall,
       offsetCm: num(o.offsetCm, 0, 2000, 20),
       widthCm: num(o.widthCm, 40, 400, 90),
       ...(o.swingDirection ? { swingDirection: String(o.swingDirection) } : {}),
     }));
   const furniture = (Array.isArray(data.placedFurniture) ? data.placedFurniture : [])
+    .filter((f) => isObject(f) && typeof f.furnitureTypeId === 'string')
     .slice(0, 500)
-    .filter((f) => f && typeof f.furnitureTypeId === 'string')
     .map((f, i) => ({
-      id: String(f.id || `item-import-${i}-${Date.now()}`),
+      id: String(f.id || `item-import-${i}-${stamp}`),
       furnitureTypeId: f.furnitureTypeId,
       x: num(f.x, 0, 2000, 100),
       y: num(f.y, 0, 2000, 100),
       rotationDeg: num(f.rotationDeg, 0, 360, 0),
       elevationCm: num(f.elevationCm, 0, 400, 0),
-      ...(f.overrides && typeof f.overrides === 'object' ? { overrides: f.overrides } : {}),
-    }));
+      ...(cleanOverrides(f.overrides) ? { overrides: cleanOverrides(f.overrides) } : {}),
+    }))
+    .map((f, i, all) => (all.findIndex((g) => g.id === f.id) === i ? f : { ...f, id: `${f.id}-dup${i}` }));
   return {
-    id: `room-${Date.now()}`,
+    id: `room-${stamp}`,
     name: String(data.name || 'Imported Room').slice(0, 80),
     widthCm: num(data.widthCm, 200, 1500, 400),
     depthCm: num(data.depthCm, 200, 1500, 400),

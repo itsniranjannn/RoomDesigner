@@ -9,6 +9,11 @@
  * - Rotation angles are in degrees, clockwise-positive.
  */
 
+/** Limits a value to the range [min, max]. */
+export function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 export function degToRad(deg) {
   return (deg * Math.PI) / 180;
 }

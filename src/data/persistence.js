@@ -33,6 +33,23 @@ export async function getDB() {
   });
 }
 
+/** Remembers which room to reopen on the next visit (best effort: storage may be unavailable). */
+export function setActiveRoomId(id) {
+  try {
+    localStorage.setItem(ACTIVE_ROOM_KEY, id);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function clearActiveRoomId() {
+  try {
+    localStorage.removeItem(ACTIVE_ROOM_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 export async function saveRoomToDB(room) {
   try {
     const db = await getDB();
@@ -42,9 +59,7 @@ export async function saveRoomToDB(room) {
       updatedAt: new Date().toISOString(),
     };
     await db.put(STORE_ROOMS, updatedRoom);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(ACTIVE_ROOM_KEY, room.id);
-    }
+    setActiveRoomId(room.id);
     return updatedRoom;
   } catch (error) {
     if (import.meta.env?.DEV) {
@@ -84,7 +99,12 @@ export async function listRoomsFromDB() {
 
 export async function getInitialRoom() {
   try {
-    const activeId = typeof localStorage !== 'undefined' ? localStorage.getItem(ACTIVE_ROOM_KEY) : null;
+    let activeId = null;
+    try {
+      activeId = localStorage.getItem(ACTIVE_ROOM_KEY);
+    } catch {
+      /* storage unavailable */
+    }
     if (activeId) {
       const room = await loadRoomFromDB(activeId);
       if (room) return room;
@@ -104,11 +124,10 @@ export async function deleteRoomFromDB(id) {
     const db = await getDB();
     if (!db) return;
     await db.delete(STORE_ROOMS, id);
-    if (typeof localStorage !== 'undefined') {
-      const activeId = localStorage.getItem(ACTIVE_ROOM_KEY);
-      if (activeId === id) {
-        localStorage.removeItem(ACTIVE_ROOM_KEY);
-      }
+    try {
+      if (localStorage.getItem(ACTIVE_ROOM_KEY) === id) clearActiveRoomId();
+    } catch {
+      /* storage unavailable */
     }
   } catch (err) {
     if (import.meta.env?.DEV) {

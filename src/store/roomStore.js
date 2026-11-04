@@ -14,6 +14,8 @@ import {
   renameRoomInDB,
   saveCustomFurnitureToDB,
   listCustomFurnitureFromDB,
+  setActiveRoomId,
+  clearActiveRoomId,
   deleteCustomFurnitureFromDB,
 } from '../data/persistence.js';
 import {
@@ -23,8 +25,9 @@ import {
   unregisterCustomFurniture,
 } from '../data/furnitureCatalog.js';
 import { sanitizeImportedRoom } from '../engine/share.js';
+import { cleanOverrides } from '../engine/overrides.js';
 import { evaluateAllCollisions } from '../engine/collision.js';
-import { normalizeAngle } from '../engine/geometry.js';
+import { clamp, normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
 import { clampOpening } from '../engine/openings.js';
 
@@ -33,27 +36,6 @@ let saveDebounceTimer = null;
 
 async function listStandaloneRooms() {
   return (await listRoomsFromDB()).filter((r) => !r.flatId);
-}
-
-const SIZE_LIMITS = {
-  widthCm: [10, 600],
-  depthCm: [10, 600],
-  heightCm: [1, 400],
-};
-
-function cleanOverrides(raw) {
-  const out = {};
-  for (const [key, value] of Object.entries(raw || {})) {
-    if (value === undefined || value === null || value === '') continue;
-    if (SIZE_LIMITS[key]) {
-      const n = Number(value);
-      if (!Number.isFinite(n)) continue;
-      out[key] = Math.max(SIZE_LIMITS[key][0], Math.min(SIZE_LIMITS[key][1], Math.round(n)));
-    } else if (typeof value === 'string' && /^#[0-9a-fA-F]{3,8}$/.test(value)) {
-      out[key] = value;
-    }
-  }
-  return Object.keys(out).length ? out : undefined;
 }
 
 // Resizing stays within a believable range of the catalog size (also keeps 2D symbols well-formed)
@@ -271,10 +253,12 @@ export const useRoomStore = create((set, get) => ({
   },
 
   // Close active room and return to Studio Overview landing page
+  // Resolves once any unsaved edit has been written
+  flushSave: () => flushPendingSave(set),
+
   closeRoom: () => {
-    if (typeof localStorage !== 'undefined') {
-      localStorage.removeItem('active_room_id');
-    }
+    // Save any unsaved edit first: saving marks a room as the one to reopen next time
+    flushPendingSave(set).then(clearActiveRoomId);
     set({
       room: null,
       selectedItemId: null,
@@ -861,6 +845,7 @@ export const useRoomStore = create((set, get) => ({
 
   importRoomData: async (data) => {
     const imported = sanitizeImportedRoom(data);
+    await flushPendingSave(set);
     await saveRoomToDB(imported);
     const allRooms = await listStandaloneRooms();
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
@@ -894,7 +879,12 @@ export const useRoomStore = create((set, get) => ({
 
   addCustomFurniture: async (def) => {
     registerCustomFurniture(def);
-    await saveCustomFurnitureToDB(def);
+    try {
+      await saveCustomFurnitureToDB(def);
+    } catch (err) {
+      unregisterCustomFurniture(def.id);
+      throw err;
+    }
     set((state) => ({ customVersion: state.customVersion + 1 }));
   },
 
@@ -909,8 +899,8 @@ export const useRoomStore = create((set, get) => ({
     const newRoom = {
       id: `room-${Date.now()}`,
       name: name || 'Custom Room',
-      widthCm: Math.max(200, Math.min(1500, widthCm)),
-      depthCm: Math.max(200, Math.min(1500, depthCm)),
+      widthCm: clamp(widthCm, 200, 1500),
+      depthCm: clamp(depthCm, 200, 1500),
       doors: [
         { id: `door-${Date.now()}`, wall: 'bottom', offsetCm: 50, widthCm: 90, swingDirection: 'inward-left' },
       ],
@@ -921,6 +911,7 @@ export const useRoomStore = create((set, get) => ({
       updatedAt: new Date().toISOString(),
     };
 
+    await flushPendingSave(set);
     await saveRoomToDB(newRoom);
     const allRooms = await listStandaloneRooms();
 
@@ -941,8 +932,10 @@ export const useRoomStore = create((set, get) => ({
 
   // Switch to another room
   switchRoom: async (roomId) => {
+    await flushPendingSave(set);
     const loaded = await loadRoomFromDB(roomId);
     if (!loaded) return;
+    setActiveRoomId(loaded.id);
 
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       loaded.placedFurniture || [],
@@ -969,6 +962,7 @@ export const useRoomStore = create((set, get) => ({
     const trimmed = (newName || '').trim();
     if (!trimmed) return;
 
+    await flushPendingSave(set);
     await renameRoomInDB(roomId, trimmed);
     const allRooms = await listStandaloneRooms();
     const { room } = get();
@@ -985,6 +979,7 @@ export const useRoomStore = create((set, get) => ({
 
   // Delete a room with fallback logic
   deleteRoom: async (roomId) => {
+    await flushPendingSave(set);
     await deleteRoomFromDB(roomId);
     const remainingRooms = await listStandaloneRooms();
     const { room } = get();

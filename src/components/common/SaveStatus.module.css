@@ -20,6 +20,10 @@
   background: var(--color-brass);
 }
 
+.failed {
+  background: var(--color-maroon);
+}
+
 @media (max-width: 1000px) {
   .text { display: none; }
 }

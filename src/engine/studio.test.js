@@ -84,6 +84,23 @@ describe('share', () => {
     expect(clean.placedFurniture).toHaveLength(1);
     expect(clean.placedFurniture[0].x).toBe(2000);
   });
+
+  it('survives null entries, bad overrides and repeated ids', () => {
+    const clean = sanitizeImportedRoom({
+      doors: [null, 'x', { wall: 'left', offsetCm: 10, widthCm: 90 }],
+      windows: [7],
+      placedFurniture: [
+        null,
+        { id: 'same', furnitureTypeId: 'bed-queen', x: 10, y: 10, overrides: { widthCm: 9999, colour: 'url(x)', fill: '#ff0000', evil: {} } },
+        { id: 'same', furnitureTypeId: 'bed-queen', x: 50, y: 50 },
+      ],
+    });
+    expect(clean.doors).toHaveLength(1);
+    expect(clean.windows).toHaveLength(0);
+    expect(clean.placedFurniture).toHaveLength(2);
+    expect(new Set(clean.placedFurniture.map((f) => f.id)).size).toBe(2);
+    expect(clean.placedFurniture[0].overrides).toEqual({ widthCm: 600, fill: '#ff0000' });
+  });
 });
 
 describe('measure and pdf', () => {

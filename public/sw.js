@@ -3,7 +3,7 @@
  * - Same-origin assets (hashed build files, icons): stale-while-revalidate.
  * Fonts are self-hosted, so they are cached with the other same-origin assets and work offline.
  * Cross-origin requests are left to the browser. Bump CACHE to drop old files. */
-const CACHE = 'room-studio-v1';
+const CACHE = 'room-studio-v2';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
