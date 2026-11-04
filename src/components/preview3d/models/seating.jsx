@@ -1,5 +1,19 @@
 /** 3D models: seating. Built from Three.js primitives; origin on the floor, centered on the footprint. */
-import { Box, Cyl, Pad, Strut, corners } from './shared.jsx';
+import {
+  Box,
+  Cyl,
+  Pad,
+  Ball,
+  Pillow,
+  Strut,
+  CHROME,
+  BLACK_PLASTIC,
+  corners,
+  clamp,
+  shade,
+  EdgePiping,
+  Buttons,
+} from './shared.jsx';
 
 const FOOT_H = 0.1;
 
@@ -16,6 +30,8 @@ function Upholstered({
   seatH = 0.44,
   armH = 0.62,
   roughness,
+  recliner = false,
+  scatter = false,
 }) {
   const armW = widthM * armRatio;
   const backThick = depthM * 0.26;
@@ -23,6 +39,7 @@ function Upholstered({
   const seatW = innerW / seats;
   const seatDepth = depthM - backThick;
   const backCushionH = heightM - seatH - 0.06;
+  const welt = shade(cushionColor, -0.1);
   return (
     <group>
       {/* Frame below the seat, standing on feet */}
@@ -65,31 +82,121 @@ function Upholstered({
         />
       ))}
 
-      {/* Seat cushions */}
+      {/* Seat cushions with welting, front seam and a base welt line */}
+      {Array.from({ length: seats }).map((_, i) => {
+        const cx = -innerW / 2 + seatW * (i + 0.5);
+        return (
+          <group key={i} name="seat-cushion">
+            <Pad
+              position={[cx, seatH - 0.07, backThick / 2]}
+              size={[seatW - 0.015, 0.14, seatDepth - 0.02]}
+              radius={0.05}
+              color={cushionColor}
+            />
+            <EdgePiping
+              position={[cx, seatH - 0.004, backThick / 2]}
+              width={seatW - 0.015}
+              depth={seatDepth - 0.02}
+              color={welt}
+            />
+          </group>
+        );
+      })}
+      <Box
+        position={[0, seatH - 0.17, depthM / 2 + 0.002]}
+        size={[widthM - 0.04, 0.006, 0.006]}
+        color={shade(mainColor, -0.1)}
+        castShadow={false}
+      />
+      {/* Loose back cushions leaning on the backrest, stitched and buttoned */}
       {Array.from({ length: seats }).map((_, i) => (
-        <Pad
-          key={i}
-          position={[-innerW / 2 + seatW * (i + 0.5), seatH - 0.07, backThick / 2]}
-          size={[seatW - 0.015, 0.14, seatDepth - 0.02]}
-          radius={0.05}
-          color={cushionColor}
-        />
-      ))}
-      {/* Loose back cushions leaning on the backrest */}
-      {Array.from({ length: seats }).map((_, i) => (
-        <Pad
+        <group
           key={i}
           position={[
             -innerW / 2 + seatW * (i + 0.5),
             seatH + backCushionH / 2 - 0.02,
             -depthM / 2 + backThick + 0.06,
           ]}
-          size={[seatW - 0.03, backCushionH, 0.13]}
-          radius={0.05}
-          color={cushionColor}
           rotation={[-0.22, 0, 0]}
+        >
+          <Pad size={[seatW - 0.03, backCushionH, 0.13]} radius={0.05} color={cushionColor} />
+          <Box
+            position={[0, 0, 0.066]}
+            size={[seatW - 0.1, 0.004, 0.003]}
+            color={welt}
+            castShadow={false}
+          />
+          {[-0.18, 0.18].map((f) => (
+            <Ball
+              key={f}
+              position={[(seatW - 0.03) * f, backCushionH * 0.05, 0.068]}
+              radius={0.011}
+              color={welt}
+              segments={8}
+              castShadow={false}
+            />
+          ))}
+        </group>
+      ))}
+      {/* Arm top welting */}
+      {[-1, 1].map((sg) => (
+        <Box
+          key={sg}
+          position={[sg * (widthM / 2 - armW / 2), armH + 0.001, 0]}
+          size={[armW - 0.09, 0.006, depthM - 0.12]}
+          color={shade(mainColor, -0.04)}
+          castShadow={false}
         />
       ))}
+      {scatter &&
+        (seats > 1 ? [-1, 1] : [-1]).map((sg) => (
+          <Pillow
+            key={sg}
+            position={[sg * (innerW / 2 - 0.2), seatH + 0.17, -depthM / 2 + backThick + 0.15]}
+            size={[0.38, 0.1, 0.38]}
+            color={sg > 0 ? shade(mainColor, 0.18) : '#E9DFCF'}
+            rotation={[-0.5, sg * 0.35, 0]}
+          />
+        ))}
+      {recliner && (
+        <group name="recliner-mech">
+          <Pad
+            position={[0, heightM - 0.07, -depthM / 2 + backThick / 2 + 0.01]}
+            size={[widthM * 0.5, 0.2, 0.12]}
+            radius={0.05}
+            color={cushionColor}
+            rotation={[-0.15, 0, 0]}
+          />
+          <Pad
+            position={[0, seatH - 0.2, depthM / 2 - 0.1]}
+            size={[widthM * 0.62, 0.1, 0.14]}
+            radius={0.04}
+            color={cushionColor}
+          />
+          {[-1, 1].map((sg) => (
+            <Box
+              key={sg}
+              position={[sg * (widthM / 2 - 0.003), seatH - 0.1, 0.12]}
+              size={[0.012, 0.02, 0.36]}
+              {...CHROME}
+            />
+          ))}
+          <Box
+            position={[widthM / 2 + 0.012, seatH - 0.02, 0.18]}
+            size={[0.02, 0.012, 0.1]}
+            {...BLACK_PLASTIC}
+          />
+          {[0.28, 0.4, 0.52].map((f) => (
+            <Box
+              key={f}
+              position={[0, heightM * f + 0.1, -depthM / 2 + backThick + 0.0]}
+              size={[widthM * 0.5, 0.005, 0.004]}
+              color={shade(cushionColor, -0.12)}
+              castShadow={false}
+            />
+          ))}
+        </group>
+      )}
     </group>
   );
 }
@@ -107,11 +214,12 @@ export function SofaModel({ widthM, depthM, heightM, mainColor, cushionColor, le
       armRatio={0.1}
       seats={seats}
       roughness={0.85}
+      scatter={widthM > 1.5}
     />
   );
 }
 
-export function ArmchairModel({ widthM, depthM, heightM, mainColor, cushionColor, legColor }) {
+export function ArmchairModel({ def, widthM, depthM, heightM, mainColor, cushionColor, legColor }) {
   return (
     <Upholstered
       widthM={widthM}
@@ -125,6 +233,8 @@ export function ArmchairModel({ widthM, depthM, heightM, mainColor, cushionColor
       seatH={0.42}
       armH={0.58}
       roughness={0.7}
+      recliner={def?.id === 'recliner-chair'}
+      scatter={def?.id !== 'recliner-chair'}
     />
   );
 }
@@ -143,6 +253,19 @@ export function ChairModel({ widthM, depthM, heightM, mainColor, cushionColor, l
         color={cushionColor}
         roughness={0.75}
       />
+      <EdgePiping
+        position={[0, seatH + 0.0005, 0.01]}
+        width={widthM}
+        depth={depthM - 0.02}
+        inset={0.03}
+        color={shade(cushionColor, -0.12)}
+      />
+      <Box
+        position={[0, seatH + 0.001, 0.01]}
+        size={[widthM - 0.1, 0.002, 0.003]}
+        color={shade(cushionColor, -0.14)}
+        castShadow={false}
+      />
       {/* Front legs stop under the seat, rear legs run up to form the back posts */}
       {[-1, 1].map((s) => (
         <group key={s}>
@@ -160,6 +283,20 @@ export function ChairModel({ widthM, depthM, heightM, mainColor, cushionColor, l
           />
         </group>
       ))}
+      {[-1, 1].flatMap((sx) =>
+        [-1, 1].map((sz) => (
+          <Cyl
+            key={`f${sx}${sz}`}
+            position={[sx * (widthM / 2 - legInset), 0.008, sz * (depthM / 2 - legInset)]}
+            radiusTop={0.019}
+            height={0.016}
+            color="#2A2A2C"
+            roughness={0.6}
+            segments={8}
+            castShadow={false}
+          />
+        ))
+      )}
       {/* Stretchers and seat rails */}
       <Box
         position={[0, seatH * 0.38, depthM / 2 - legInset]}
@@ -223,10 +360,24 @@ export function DeskChairModel({ widthM, depthM, heightM, mainColor, cushionColo
               roughness={0.4}
               metalness={0.5}
             />
-            <mesh position={[x, 0.025, z]} castShadow>
-              <sphereGeometry args={[0.025, 12, 10]} />
-              <meshStandardMaterial color="#1B1B1B" roughness={0.6} />
-            </mesh>
+            <group name="caster" position={[x, 0.03, z]} rotation={[0, a, 0]}>
+              <Box position={[0, 0.012, 0]} size={[0.014, 0.03, 0.014]} {...CHROME} />
+              <Box
+                position={[0, 0.0, 0]}
+                size={[0.03, 0.006, 0.012]}
+                color="#2A2A2C"
+                roughness={0.6}
+              />
+              <Cyl
+                position={[0, -0.006, 0]}
+                radiusTop={0.022}
+                height={0.016}
+                rotation={[0, 0, Math.PI / 2]}
+                color="#1B1B1B"
+                roughness={0.7}
+                segments={12}
+              />
+            </group>
           </group>
         );
       })}
@@ -234,9 +385,15 @@ export function DeskChairModel({ widthM, depthM, heightM, mainColor, cushionColo
         position={[0, 0.1 + (seatH - 0.14) / 2, 0]}
         radiusTop={0.028}
         height={seatH - 0.14}
-        color="#9AA0A6"
-        roughness={0.25}
-        metalness={0.8}
+        {...CHROME}
+        segments={14}
+      />
+      <Cyl
+        position={[0, 0.14 + (seatH - 0.14) * 0.3, 0]}
+        radiusTop={0.04}
+        radiusBottom={0.046}
+        height={(seatH - 0.14) * 0.6}
+        {...BLACK_PLASTIC}
         segments={14}
       />
       <Cyl
@@ -262,6 +419,32 @@ export function DeskChairModel({ widthM, depthM, heightM, mainColor, cushionColo
         color={mainColor}
         rotation={[-0.1, 0, 0]}
       />
+      <Box
+        position={[0, seatH - 0.065, 0.02]}
+        size={[widthM * 0.5, 0.03, depthM * 0.45]}
+        {...BLACK_PLASTIC}
+      />
+      <Box
+        position={[widthM * 0.3, seatH - 0.085, 0.02]}
+        size={[0.1, 0.012, 0.02]}
+        {...BLACK_PLASTIC}
+      />
+      <EdgePiping
+        position={[0, seatH + 0.045, 0.02]}
+        width={widthM * 0.72}
+        depth={depthM * 0.7}
+        color={shade(cushionColor, -0.1)}
+      />
+      {[0.18, 0.4, 0.62].map((f) => (
+        <Box
+          key={f}
+          position={[0, seatH + (heightM - seatH) * f + 0.05, -depthM * 0.3 + 0.036]}
+          size={[widthM * 0.56, 0.004, 0.003]}
+          color={shade(mainColor, -0.1)}
+          castShadow={false}
+          rotation={[-0.1, 0, 0]}
+        />
+      ))}
       {[-1, 1].map((s) => (
         <group key={s}>
           <Box
@@ -319,6 +502,35 @@ export function BarStoolModel({ widthM, depthM, heightM, mainColor, cushionColor
         roughness={0.5}
         segments={28}
       />
+      <mesh position={[0, seatH + 0.056, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <torusGeometry args={[seatR * 0.97, 0.007, 6, 32]} />
+        <meshStandardMaterial color={shade(cushionColor, -0.12)} roughness={0.8} />
+      </mesh>
+      <Ball
+        position={[0, seatH + 0.058, 0]}
+        radius={0.012}
+        scale={[1, 0.6, 1]}
+        color={shade(cushionColor, -0.15)}
+        segments={8}
+        castShadow={false}
+      />
+      {[
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ].map(([sx, sz], i) => (
+        <Cyl
+          key={`rf${i}`}
+          position={[sx * seatR * 0.98, 0.006, sz * seatR * 0.98]}
+          radiusTop={0.017}
+          height={0.012}
+          color="#101010"
+          roughness={0.9}
+          segments={8}
+          castShadow={false}
+        />
+      ))}
       {/* Round cushioned seat and a low curved back rail */}
       <Cyl
         position={[0, seatH + 0.02, 0]}
@@ -352,26 +564,51 @@ export function BarStoolModel({ widthM, depthM, heightM, mainColor, cushionColor
 
 export function OttomanModel({ widthM, depthM, heightM, cushionColor, legColor }) {
   const baseH = 0.06;
+  const footH = 0.05;
+  const cols = clamp(Math.round(widthM / 0.2), 2, 6);
+  const rows = clamp(Math.round(depthM / 0.2), 1, 3);
+  const dark = shade(cushionColor, -0.14);
   return (
     <group>
+      {/* Bun feet under a plinth, welted top and buttoned surface */}
+      {corners(widthM, depthM, 0.07).map(([x, z], i) => (
+        <Ball
+          key={i}
+          position={[x, footH / 2, z]}
+          radius={0.032}
+          scale={[1, 0.8, 1]}
+          color={legColor}
+          roughness={0.5}
+          segments={10}
+        />
+      ))}
       <Box
-        position={[0, baseH / 2, 0]}
-        size={[widthM * 0.9, baseH, depthM * 0.9]}
+        position={[0, footH + baseH / 2 - 0.02, 0]}
+        size={[widthM * 0.92, baseH, depthM * 0.92]}
         color={legColor}
         roughness={0.8}
       />
       <Pad
-        position={[0, baseH + (heightM - baseH) / 2, 0]}
-        size={[widthM, heightM - baseH, depthM]}
+        position={[0, baseH + footH - 0.02 + (heightM - baseH - footH + 0.02) / 2, 0]}
+        size={[widthM, heightM - baseH - footH + 0.02, depthM]}
         radius={0.05}
         color={cushionColor}
       />
-      {[-0.25, 0.25].map((f, i) => (
-        <mesh key={i} position={[widthM * f, heightM + 0.002, 0]} castShadow>
-          <sphereGeometry args={[0.02, 12, 10]} />
-          <meshStandardMaterial color={legColor} roughness={0.9} />
-        </mesh>
-      ))}
+      <EdgePiping position={[0, heightM - 0.004, 0]} width={widthM} depth={depthM} color={dark} />
+      <Box
+        position={[0, heightM * 0.5, depthM / 2 + 0.001]}
+        size={[widthM - 0.1, 0.004, 0.004]}
+        color={dark}
+        castShadow={false}
+      />
+      <Buttons
+        y={heightM + 0.0}
+        width={widthM - 0.1}
+        depth={depthM - 0.1}
+        cols={cols}
+        rows={rows}
+        color={dark}
+      />
     </group>
   );
 }
