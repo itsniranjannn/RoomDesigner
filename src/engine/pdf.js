@@ -9,16 +9,18 @@ const enc = new TextEncoder();
  * @param {Uint8Array} jpegBytes - JPEG file bytes
  * @param {number} imgW - image width in px
  * @param {number} imgH - image height in px
- * @returns {Uint8Array} PDF file bytes (A4, orientation chosen from image aspect)
+ * @param {{ pageWidthPt: number, pageHeightPt: number, drawWidthPt: number, drawHeightPt: number }} [layout]
+ *   - a page size and the size the image is drawn at (centred), for true-scale prints
+ * @returns {Uint8Array} PDF file bytes (A4 with the orientation chosen from the image aspect by default)
  */
-export function jpegToPdf(jpegBytes, imgW, imgH) {
+export function jpegToPdf(jpegBytes, imgW, imgH, layout) {
   const landscape = imgW >= imgH;
-  const pageW = landscape ? 842 : 595;
-  const pageH = landscape ? 595 : 842;
+  const pageW = layout ? layout.pageWidthPt : landscape ? 842 : 595;
+  const pageH = layout ? layout.pageHeightPt : landscape ? 595 : 842;
   const margin = 28;
   const fit = Math.min((pageW - margin * 2) / imgW, (pageH - margin * 2) / imgH);
-  const drawW = imgW * fit;
-  const drawH = imgH * fit;
+  const drawW = layout ? layout.drawWidthPt : imgW * fit;
+  const drawH = layout ? layout.drawHeightPt : imgH * fit;
   const x = (pageW - drawW) / 2;
   const y = (pageH - drawH) / 2;
 
