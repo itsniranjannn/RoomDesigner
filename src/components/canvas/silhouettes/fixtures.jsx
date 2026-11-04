@@ -10,6 +10,7 @@ import {
   DETAIL,
   METAL,
   METAL_DARK,
+  P,
 } from './parts.jsx';
 
 export function FixtureToiletSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
@@ -154,8 +155,8 @@ export function FixtureShowerSilhouette({ widthCm, depthCm, hw, hd, color, subCo
       <rect
         x={-hw + 4}
         y={-hd + 4}
-        width={widthCm - 8}
-        height={depthCm - 8}
+        width={P(widthCm - 8)}
+        height={P(depthCm - 8)}
         fill={subColor}
         strokeWidth="0.7"
       />
@@ -224,8 +225,8 @@ export function FixtureBathtubSilhouette({ widthCm, depthCm, hw, hd, color, subC
       <rect
         x={-hw + 7}
         y={-hd + 7}
-        width={widthCm - 22}
-        height={depthCm - 14}
+        width={P(widthCm - 22)}
+        height={P(depthCm - 14)}
         rx={inner}
         fill={subColor}
         stroke={METAL_DARK}
@@ -257,8 +258,8 @@ export function FixtureWasherSilhouette({ widthCm, depthCm, hw, hd, color, subCo
       <rect
         x={-hw + 2}
         y={-hd + 2}
-        width={widthCm - 4}
-        height={depthCm - 4}
+        width={P(widthCm - 4)}
+        height={P(depthCm - 4)}
         rx={2}
         fill="none"
         strokeWidth="0.5"
