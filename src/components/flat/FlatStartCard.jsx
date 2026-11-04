@@ -68,15 +68,26 @@ export function FlatStartCard({ onDismiss }) {
             Add shell
           </Button>
         </div>
-        <Button
-          variant="ghost"
-          onClick={() => {
-            useFlatUi.getState().setTool('wall');
-            onDismiss();
-          }}
-        >
-          Start with a blank plan
-        </Button>
+        <div className={styles.startActions}>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              useFlatUi.getState().setTool('wall');
+              onDismiss();
+            }}
+          >
+            Start with a blank plan
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => {
+              useFlatUi.getState().setTool('passage');
+              onDismiss();
+            }}
+          >
+            Start with a passage
+          </Button>
+        </div>
       </section>
     </div>
   );

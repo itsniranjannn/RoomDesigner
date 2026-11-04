@@ -24,13 +24,19 @@ export const SPACE_KINDS = {
   kitchen: { label: 'Kitchen', color: '#F1E2C8' },
   bathroom: { label: 'Bathroom', color: '#D9E8EC' },
   dining: { label: 'Dining', color: '#EBD7C4' },
-  corridor: { label: 'Corridor', color: '#E9E4DA' },
+  passage: { label: 'Passage', color: '#DCE4D6' },
+  // Older flats and presets call a passage a corridor; it reads and behaves the same
+  corridor: { label: 'Passage', color: '#DCE4D6', legacy: true },
   store: { label: 'Store', color: '#DDD3C0' },
   room: { label: 'Other', color: '#EAE6DC' },
 };
 
 export const kindOptions = () =>
-  Object.entries(SPACE_KINDS).map(([value, def]) => ({ value, label: def.label }));
+  Object.entries(SPACE_KINDS)
+    .filter(([, def]) => !def.legacy)
+    .map(([value, def]) => ({ value, label: def.label }));
+
+export const isPassageKind = (kind) => kind === 'passage' || kind === 'corridor';
 
 export const uid = (prefix) =>
   `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;

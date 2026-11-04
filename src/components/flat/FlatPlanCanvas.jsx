@@ -32,6 +32,15 @@ import {
   EXTERIOR_THICK_CM,
   INTERIOR_THICK_CM,
 } from '../../engine/flatWalls.js';
+import {
+  clampPassageSize,
+  isEditablePassage,
+  passageDims,
+  passageOrigin,
+  passageRect,
+  previewPassage,
+  snapPassageToWalls,
+} from '../../engine/flatPassage.js';
 import { StairGlyph, StairDefs } from './StairGlyph.jsx';
 import styles from './FlatPlan.module.css';
 
@@ -112,6 +121,33 @@ function Opening({ op, thick, swing = 1, selected, hot, ghost, invalid }) {
   );
 }
 
+/** Arrow along a passage's long axis, pointing the way it faces. */
+function PassageArrow({ rect, heading, px }) {
+  const cx = rect.x + rect.widthCm / 2;
+  const cy = rect.y + rect.depthCm / 2;
+  const horizontal = heading % 180 === 0;
+  const sign = heading === 0 || heading === 90 ? 1 : -1;
+  const half = Math.max(0, (horizontal ? rect.widthCm : rect.depthCm) / 2 - 18);
+  const len = Math.min(half, 60 * Math.max(1, px * 2));
+  const head = Math.min(14, len);
+  const [dx, dy] = horizontal ? [sign, 0] : [0, sign];
+  const tipX = cx + dx * len;
+  const tipY = cy + dy * len;
+  const tailX = cx - dx * len;
+  const tailY = cy - dy * len;
+  const bx = tipX - dx * head;
+  const by = tipY - dy * head;
+  const nx = -dy * head * 0.6;
+  const ny = dx * head * 0.6;
+  if (len < 8) return null;
+  return (
+    <g className={styles.passageArrow}>
+      <line x1={tailX} y1={tailY} x2={tipX} y2={tipY} />
+      <path d={`M ${bx + nx} ${by + ny} L ${tipX} ${tipY} L ${bx - nx} ${by - ny}`} />
+    </g>
+  );
+}
+
 function FurnitureGlyphs({ space, room }) {
   if (!room || !space.furnishable) return null;
   return (
@@ -163,6 +199,8 @@ export function FlatPlanCanvas() {
   const tool = useFlatUi((s) => s.tool);
   const stairType = useFlatUi((s) => s.stairType);
   const stairRotation = useFlatUi((s) => s.stairRotation);
+  const passageSpec = useFlatUi((s) => s.passage);
+  const cursor = useFlatUi((s) => s.cursor);
   const fitNonce = useFlatUi((s) => s.fitNonce);
   const zoomRequest = useFlatUi((s) => s.zoomRequest);
   const notice = useFlatUi((s) => s.notice);
@@ -414,6 +452,22 @@ export function FlatPlanCanvas() {
     return createStair(flat, { levelId, type: stairType, rotationDeg: stairRotation, x: 0, y: 0 });
   }, [flat, levelId, stairType, stairRotation]);
 
+  /** The passage being placed with its top-left corner snapped to the grid and nearby walls. */
+  const passageGhost = (p) => {
+    const size = clampPassageSize(passageSpec);
+    const spec = { ...size, heading: passageSpec.heading };
+    const origin = passageOrigin(p.x, p.y, spec);
+    const first = passageRect({ ...origin, ...spec });
+    const nudge = snapPassageToWalls(runs, first, Math.max(10, Math.min(40, 18 / view.k)));
+    const x = Math.max(0, origin.x + nudge.dx);
+    const y = Math.max(0, origin.y + nudge.dy);
+    return {
+      type: 'passage',
+      spec: { ...spec, x, y },
+      plan: previewPassage(flat, levelId, { ...spec, x, y }),
+    };
+  };
+
   // ---------- pointer handling ----------
   const computeHover = (p) => {
     const sp = snapPoint(p);
@@ -441,6 +495,7 @@ export function FlatPlanCanvas() {
       });
       return plan ? { type: 'opening', plan } : null;
     }
+    if (tool === 'passage') return passageGhost(p);
     if (tool === 'stairs' && stairDraft) {
       const fp = stairFootprint(stairDraft);
       const snapped = snapStair(p.x - fp.widthCm / 2, p.y - fp.depthCm / 2, fp);
@@ -543,6 +598,25 @@ export function FlatPlanCanvas() {
       } else {
         useFlatUi.getState().setNotice('Click on a wall to place a ' + tool + '.');
       }
+      setHover(null);
+      return;
+    }
+
+    if (tool === 'passage') {
+      const h = computeHover(p);
+      if (h?.type !== 'passage') return;
+      if (!h.plan.valid) {
+        useFlatUi.getState().setNotice(h.plan.reason);
+        return;
+      }
+      const res = useFlatStore.getState().placePassage(h.spec);
+      if (res.error) {
+        useFlatUi.getState().setNotice(res.error);
+        return;
+      }
+      useFlatUi.getState().setTool('select');
+      if (!res.connected)
+        useFlatUi.getState().setNotice('Passage added. Use the Door tool to open it onto a room.');
       setHover(null);
       return;
     }
@@ -674,6 +748,9 @@ export function FlatPlanCanvas() {
                   pointerEvents="none"
                 />
               ))}
+            {space.id === selSpaceId && isEditablePassage(space) && (
+              <PassageArrow rect={space} heading={passageDims(space).heading} px={1} />
+            )}
             <FurnitureGlyphs space={space} room={rooms[space.roomId]} />
           </g>
         ))}
@@ -732,7 +809,7 @@ export function FlatPlanCanvas() {
   // Overlay content in world units
   const overlay = [];
   const labels = [];
-  const hv = hover;
+  const hv = tool === 'passage' ? (cursor ? passageGhost(cursor) : null) : hover;
   if (hv?.type === 'wall') {
     const thick = INTERIOR_THICK_CM;
     const horizontal = hv.sy === hv.ey;
@@ -887,6 +964,33 @@ export function FlatPlanCanvas() {
       });
   }
 
+  if (hv?.type === 'passage') {
+    const r = hv.plan.rect;
+    overlay.push(
+      <g key="passage" pointerEvents="none">
+        <rect
+          x={r.x}
+          y={r.y}
+          width={r.widthCm}
+          height={r.depthCm}
+          className={hv.plan.valid ? styles.passageGhost : styles.passageGhostBad}
+        />
+        <PassageArrow rect={r} heading={hv.spec.heading} px={px} />
+      </g>
+    );
+    labels.push({
+      key: 'passage',
+      x: r.x + r.widthCm / 2,
+      y: r.y,
+      text: hv.plan.valid
+        ? `Passage ${fmtM(hv.spec.lengthCm)} � ${fmtM(hv.spec.widthCm)}`
+        : hv.plan.reason,
+      pill: true,
+      dy: -16,
+      warn: !hv.plan.valid,
+    });
+  }
+
   const wallSel = selected?.type === 'wall' ? wallRunAt(edges, selected.id) : [];
   if (wallSel.length > 0 && tool === 'select') {
     const rs = edgesToRuns(new Set(wallSel))[0];
@@ -943,6 +1047,7 @@ export function FlatPlanCanvas() {
           door: styles.cursorCross,
           window: styles.cursorCross,
           stairs: styles.cursorCross,
+          passage: styles.cursorCross,
         }[tool] || '';
 
   return (

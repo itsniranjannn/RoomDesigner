@@ -39,6 +39,10 @@ import {
   openingsOf,
 } from '../engine/flatPlan.js';
 import { buildPresetFlat } from '../engine/flatPresets.js';
+import {
+  placePassage as placePassageIn,
+  editPassage as editPassageIn,
+} from '../engine/flatPassage.js';
 import { wallRunAt } from '../engine/flatWalls.js';
 import { useRoomStore } from './roomStore.js';
 
@@ -362,6 +366,31 @@ export const useFlatStore = create((set, get) => ({
     const result = furnishSpace(flat, rooms, id);
     if (!result) return false;
     return get()._apply(result, {});
+  },
+
+  // ---------- passages ----------
+  /**
+   * Builds a passage with its top-left corner at (x, y).
+   * @returns {{ ok: true, spaceId, connected } | { error: string }}
+   */
+  placePassage: (spec) => {
+    const { flat, rooms, levelId } = get();
+    if (!flat || !levelId) return { error: 'Open a flat first.' };
+    const result = placePassageIn(flat, rooms, levelId, spec);
+    if (result.error) return { error: result.error };
+    get()._apply(result, { selected: { type: 'space', id: result.spaceId } });
+    return { ok: true, spaceId: result.spaceId, connected: result.connected };
+  },
+
+  /** Changes a passage's length or width, or turns it (`turns` quarter turns clockwise). */
+  editPassage: (spaceId, patch) => {
+    const { flat, rooms } = get();
+    if (!flat) return { error: 'Open a flat first.' };
+    const result = editPassageIn(flat, rooms, spaceId, patch);
+    if (result.error) return { error: result.error };
+    if (result.flat === flat && result.rooms === rooms) return { ok: true, spaceId };
+    get()._apply(result, { selected: { type: 'space', id: result.spaceId } });
+    return { ok: true, spaceId: result.spaceId };
   },
 
   // ---------- stairs ----------

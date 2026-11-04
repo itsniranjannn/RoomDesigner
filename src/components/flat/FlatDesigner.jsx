@@ -9,6 +9,7 @@ import { SaveStatus } from '../common/SaveStatus.jsx';
 import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
 import { CanvasLoader } from '../common/CanvasLoader.jsx';
 import { AppHeader } from '../layout/SiteHeader.jsx';
+import { isEditablePassage } from '../../engine/flatPassage.js';
 import { FlatPlanCanvas } from './FlatPlanCanvas.jsx';
 import { FlatToolbar } from './FlatToolbar.jsx';
 import { FlatInspector } from './FlatInspector.jsx';
@@ -25,7 +26,15 @@ const VIEW_OPTIONS = [
   { value: '3d', label: '3D', icon: <Box size={16} aria-hidden="true" />, title: '3D view' },
 ];
 
-const TOOL_KEYS = { v: 'select', w: 'wall', e: 'eraser', d: 'door', n: 'window', s: 'stairs' };
+const TOOL_KEYS = {
+  v: 'select',
+  w: 'wall',
+  e: 'eraser',
+  d: 'door',
+  n: 'window',
+  s: 'stairs',
+  p: 'passage',
+};
 
 const typing = () => {
   const el = document.activeElement;
@@ -78,7 +87,14 @@ export function FlatDesigner() {
       }
       if (key === 'r') {
         if (ui.tool === 'stairs') ui.rotateStair();
-        else if (st.selected?.type === 'stair') {
+        else if (ui.tool === 'passage') ui.rotatePassage();
+        else if (st.selected?.type === 'space') {
+          const space = st.flat.spaces.find((x) => x.id === st.selected.id);
+          if (isEditablePassage(space)) {
+            const res = st.editPassage(space.id, { turns: 1 });
+            if (res.error) ui.setNotice(res.error);
+          }
+        } else if (st.selected?.type === 'stair') {
           const stair = st.flat.stairs.find((x) => x.id === st.selected.id);
           if (stair) st.updateStair(stair.id, { rotationDeg: (stair.rotationDeg || 0) + 90 });
         }

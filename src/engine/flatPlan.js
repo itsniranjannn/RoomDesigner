@@ -217,6 +217,7 @@ export function reconcile(flat, rooms = {}) {
         furnishable: region.rect,
         runs: region.runs,
       };
+      if (old?.heading !== undefined) space.heading = old.heading;
       if (region.rect) {
         let room = space.roomId ? nextRooms[space.roomId] : null;
         if (!room) {
@@ -254,7 +255,7 @@ function withLevelEdges(flat, levelId, edges) {
 }
 
 /** Replaces a level's walls (openings that lose their wall are removed). */
-function setLevelWalls(flat, rooms, levelId, edges) {
+export function setLevelWalls(flat, rooms, levelId, edges) {
   return reconcile(withLevelEdges(flat, levelId, edges), rooms);
 }
 

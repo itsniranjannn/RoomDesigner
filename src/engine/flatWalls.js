@@ -628,6 +628,29 @@ export function wallBoxes(edges, isExteriorEdge, openings = [], { fullHeight = t
   return boxes;
 }
 
+export const SKIRTING_HEIGHT_CM = 8;
+const SKIRTING_PROUD_CM = 1.5;
+
+/**
+ * Skirting boards for the 3D view: a low band that stands slightly proud of every solid wall
+ * piece that reaches the floor, so doors and window openings are left clear.
+ * Takes the boxes from wallBoxes().
+ */
+export function skirtingBoxes(boxes) {
+  return boxes
+    .filter((b) => !b.glass && b.z0 === 0)
+    .map((b) => ({
+      axis: b.axis,
+      line: b.line,
+      a: b.a,
+      b: b.b,
+      thick: b.thick + SKIRTING_PROUD_CM * 2,
+      z0: 0,
+      z1: Math.min(SKIRTING_HEIGHT_CM, b.z1),
+      glass: false,
+    }));
+}
+
 /** Whether any wall edge crosses the interior of a rectangle (cm). */
 export function wallsCrossRect(edges, rect) {
   const x0 = rect.x;

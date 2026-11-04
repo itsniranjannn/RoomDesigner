@@ -6,12 +6,14 @@ import {
   DoorOpen,
   AppWindow,
   Footprints,
+  RectangleHorizontal,
   RotateCw,
 } from 'lucide-react';
 import { Button } from '../common/Button.jsx';
-import { Segmented } from '../common/Field.jsx';
+import { Segmented, NumberField } from '../common/Field.jsx';
 import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
 import { useFlatUi } from '../../store/flatUiStore.js';
+import { PASSAGE_LIMITS, clampPassageSize } from '../../engine/flatPassage.js';
 import styles from './FlatDesigner.module.css';
 
 const TOOL_DEFS = [
@@ -21,6 +23,7 @@ const TOOL_DEFS = [
   { id: 'door', label: 'Door', key: 'D', icon: DoorOpen },
   { id: 'window', label: 'Window', key: 'N', icon: AppWindow },
   { id: 'stairs', label: 'Stairs', key: 'S', icon: Footprints },
+  { id: 'passage', label: 'Passage', key: 'P', icon: RectangleHorizontal },
 ];
 
 const STAIR_OPTIONS = [
@@ -36,6 +39,10 @@ export function FlatToolbar() {
   const stairType = useFlatUi((s) => s.stairType);
   const setStairType = useFlatUi((s) => s.setStairType);
   const rotateStair = useFlatUi((s) => s.rotateStair);
+  const passage = useFlatUi((s) => s.passage);
+  const setPassage = useFlatUi((s) => s.setPassage);
+  const rotatePassage = useFlatUi((s) => s.rotatePassage);
+  const setSize = (patch) => setPassage(clampPassageSize({ ...passage, ...patch }));
 
   return (
     <div className={styles.rail}>
@@ -71,6 +78,40 @@ export function FlatToolbar() {
           >
             Rotate
           </Button>
+        </div>
+      )}
+      {tool === 'passage' && (
+        <div className={styles.railOptions}>
+          <div className={styles.row2}>
+            <NumberField
+              label="Length"
+              suffix="cm"
+              value={passage.lengthCm}
+              min={PASSAGE_LIMITS.lengthCm[0]}
+              max={PASSAGE_LIMITS.lengthCm[1]}
+              step={10}
+              onCommit={(v) => setSize({ lengthCm: v })}
+            />
+            <NumberField
+              label="Width"
+              suffix="cm"
+              value={passage.widthCm}
+              min={PASSAGE_LIMITS.widthCm[0]}
+              max={PASSAGE_LIMITS.widthCm[1]}
+              step={10}
+              onCommit={(v) => setSize({ widthCm: v })}
+            />
+          </div>
+          <Button
+            variant="secondary"
+            size="small"
+            icon={<RotateCw size={16} aria-hidden="true" />}
+            onClick={rotatePassage}
+            title="Turn the passage a quarter turn (R). Walls run straight, so it turns in 90 degree steps."
+          >
+            Rotate
+          </Button>
+          <p className={styles.railHint}>Click the plan to place it.</p>
         </div>
       )}
     </div>

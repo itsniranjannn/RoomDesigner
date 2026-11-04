@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { DoorOpen, Sparkles, Trash2, RotateCw } from 'lucide-react';
+import { DoorOpen, Sparkles, Trash2, RotateCw, RectangleHorizontal } from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
 import { useFlatUi } from '../../store/flatUiStore.js';
 import { Section } from '../common/Section.jsx';
@@ -16,8 +16,10 @@ import {
   flatSummary,
   levelIndex,
   kindOptions,
+  isPassageKind,
 } from '../../engine/flat.js';
 import { stairWarnings, wallsOf, openingsOf } from '../../engine/flatPlan.js';
+import { PASSAGE_LIMITS, isEditablePassage, passageDims } from '../../engine/flatPassage.js';
 import { edgesOf, wallRunAt, edgesToRuns } from '../../engine/flatWalls.js';
 import styles from './FlatDesigner.module.css';
 
@@ -72,6 +74,54 @@ function Facts({ rows }) {
   );
 }
 
+const HEADING_WORDS = { 0: 'Right', 90: 'Down', 180: 'Left', 270: 'Up' };
+
+/** Length, width and direction of a passage. */
+function PassageSection({ space }) {
+  const editPassage = useFlatStore((s) => s.editPassage);
+  const dims = passageDims(space);
+  const apply = (patch) => {
+    const res = editPassage(space.id, patch);
+    if (res.error) useFlatUi.getState().setNotice(res.error);
+  };
+  return (
+    <Section title="Passage" collapsible={false}>
+      <div className={styles.row2}>
+        <NumberField
+          label="Length"
+          suffix="cm"
+          value={dims.lengthCm}
+          min={PASSAGE_LIMITS.lengthCm[0]}
+          max={PASSAGE_LIMITS.lengthCm[1]}
+          step={10}
+          onCommit={(v) => apply({ lengthCm: v })}
+        />
+        <NumberField
+          label="Width"
+          suffix="cm"
+          value={dims.widthCm}
+          min={PASSAGE_LIMITS.widthCm[0]}
+          max={PASSAGE_LIMITS.widthCm[1]}
+          step={10}
+          onCommit={(v) => apply({ widthCm: v })}
+        />
+      </div>
+      <Button
+        variant="secondary"
+        icon={<RotateCw size={16} aria-hidden="true" />}
+        onClick={() => apply({ turns: 1 })}
+        title="Turn a quarter turn about its centre (R)"
+      >
+        Rotate ({HEADING_WORDS[dims.heading]})
+      </Button>
+      <p className={styles.helpText}>
+        Turns in quarter turns about its centre, because walls run straight on the grid. A change
+        that would hit another room is refused.
+      </p>
+    </Section>
+  );
+}
+
 function SpaceInspector({ space }) {
   const room = useFlatStore((s) => s.rooms[space.roomId]);
   const setSpaceMeta = useFlatStore((s) => s.setSpaceMeta);
@@ -101,7 +151,7 @@ function SpaceInspector({ space }) {
         <SelectField
           label="Kind of room"
           options={KIND_OPTIONS}
-          value={space.kind}
+          value={space.kind === 'corridor' ? 'passage' : space.kind}
           onChange={(k) => setSpaceMeta(space.id, { kind: k })}
         />
         <Facts
@@ -118,6 +168,7 @@ function SpaceInspector({ space }) {
           ]}
         />
       </Section>
+      {isEditablePassage(space) && <PassageSection space={space} />}
       <Section title="Furniture" collapsible={false}>
         {space.furnishable ? (
           <>
@@ -132,7 +183,7 @@ function SpaceInspector({ space }) {
               variant="secondary"
               icon={<Sparkles size={16} aria-hidden="true" />}
               onClick={furnish}
-              disabled={space.kind === 'corridor' || space.kind === 'room'}
+              disabled={isPassageKind(space.kind) || space.kind === 'room'}
             >
               Furnish with defaults
             </Button>
@@ -340,6 +391,15 @@ function SummaryInspector() {
             ['Doors / windows here', `${doors} / ${windows}`],
           ]}
         />
+      </Section>
+      <Section title="Add" collapsible={false}>
+        <Button
+          variant="secondary"
+          icon={<RectangleHorizontal size={16} aria-hidden="true" />}
+          onClick={() => useFlatUi.getState().setTool('passage')}
+        >
+          Add a passage
+        </Button>
       </Section>
       <Section title={`Rooms on ${level?.name || 'this floor'}`} defaultOpen>
         {spaces.length === 0 ? (
