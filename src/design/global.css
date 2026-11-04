@@ -82,3 +82,10 @@ textarea {
     scroll-behavior: auto !important;
   }
 }
+
+/* The landing and about pages keep their original type scale and radius. */
+.legacy-theme {
+  --radius-sm: 4px;
+  --text-sm: 13px;
+  --font-mono: var(--font-sans);
+}
