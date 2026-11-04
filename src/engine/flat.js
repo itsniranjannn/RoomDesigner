@@ -29,9 +29,11 @@ export const SPACE_KINDS = {
   room: { label: 'Other', color: '#EAE6DC' },
 };
 
-export const kindOptions = () => Object.entries(SPACE_KINDS).map(([value, def]) => ({ value, label: def.label }));
+export const kindOptions = () =>
+  Object.entries(SPACE_KINDS).map(([value, def]) => ({ value, label: def.label }));
 
-export const uid = (prefix) => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+export const uid = (prefix) =>
+  `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
 export function createFlat(name = 'My Flat') {
   const levelId = 'lvl-0';
@@ -78,7 +80,10 @@ export function removeLevel(flat, levelId) {
 }
 
 export function levelIndex(flat, levelId) {
-  return Math.max(0, flat.levels.findIndex((l) => l.id === levelId));
+  return Math.max(
+    0,
+    flat.levels.findIndex((l) => l.id === levelId)
+  );
 }
 
 export function snapToGrid(v, step = GRID_CM) {
@@ -92,7 +97,9 @@ function starterFurnitureIds(kind, widthCm, depthCm) {
   const areaM2 = (widthCm * depthCm) / 10000;
   switch (kind) {
     case 'bathroom':
-      return areaM2 >= 5 ? ['shower-tray', 'toilet', 'bath-vanity', 'washing-machine'] : ['shower-tray', 'toilet', 'wash-basin'];
+      return areaM2 >= 5
+        ? ['shower-tray', 'toilet', 'bath-vanity', 'washing-machine']
+        : ['shower-tray', 'toilet', 'wash-basin'];
     case 'bedroom':
       return areaM2 >= 11
         ? ['bed-king', 'nightstand', 'nightstand', 'wardrobe-3door']
@@ -108,7 +115,9 @@ function starterFurnitureIds(kind, widthCm, depthCm) {
         ? ['sofa-l-shaped', 'coffee-table', 'tv-unit-low', 'floor-lamp']
         : ['sofa-3seat', 'coffee-table', 'media-console', 'tv-43'];
     case 'dining':
-      return areaM2 >= 9 ? ['dining-table-large', 'sideboard-buffet'] : ['dining-table-4', 'sideboard-buffet'];
+      return areaM2 >= 9
+        ? ['dining-table-large', 'sideboard-buffet']
+        : ['dining-table-4', 'sideboard-buffet'];
     case 'store':
       return ['pantry-cabinet', 'shoe-rack'];
     default:
@@ -155,7 +164,10 @@ function stairStepCount(riseCm) {
   return Math.max(2, Math.ceil(riseCm / MAX_RISER_CM));
 }
 
-export function createStair(flat, { levelId, type = 'straight', widthCm = 100, x = 0, y = 0, rotationDeg = 0 }) {
+export function createStair(
+  flat,
+  { levelId, type = 'straight', widthCm = 100, x = 0, y = 0, rotationDeg = 0 }
+) {
   return {
     id: uid('stair'),
     levelId,
@@ -185,7 +197,16 @@ export function stairGeometry(stair) {
     const b = treads - a;
     const flights = [
       { x: b * T, y: W, widthCm: W, lengthCm: a * T, dir: 'up', firstStep: 1, treads: a },
-      { x: 0, y: 0, widthCm: W, lengthCm: b * T, dir: 'right', firstStep: a + 2, treads: b, horizontal: true },
+      {
+        x: 0,
+        y: 0,
+        widthCm: W,
+        lengthCm: b * T,
+        dir: 'right',
+        firstStep: a + 2,
+        treads: b,
+        horizontal: true,
+      },
     ];
     return {
       steps: N,
@@ -230,7 +251,7 @@ export function stairGeometry(stair) {
 /** Bounding footprint after rotation (multiples of 90°). */
 export function stairFootprint(stair) {
   const g = stairGeometry(stair);
-  const quarter = (((Math.round((stair.rotationDeg || 0) / 90) % 4) + 4) % 4);
+  const quarter = ((Math.round((stair.rotationDeg || 0) / 90) % 4) + 4) % 4;
   return quarter % 2 === 1
     ? { widthCm: g.localDepthCm, depthCm: g.localWidthCm }
     : { widthCm: g.localWidthCm, depthCm: g.localDepthCm };
@@ -255,5 +276,11 @@ export function flatSummary(flat) {
     areaCm2 += s.areaCm2 || 0;
     counts[s.kind] = (counts[s.kind] || 0) + 1;
   }
-  return { areaM2: areaCm2 / 10000, counts, rooms: flat.spaces.length, levels: flat.levels.length, stairs: flat.stairs.length };
+  return {
+    areaM2: areaCm2 / 10000,
+    counts,
+    rooms: flat.spaces.length,
+    levels: flat.levels.length,
+    stairs: flat.stairs.length,
+  };
 }

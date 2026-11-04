@@ -50,7 +50,10 @@ export function WalkControls({ room, onExit }) {
     const onMove = (e) => {
       if (!dragging) return;
       look.current.yaw -= (e.clientX - lastX) * LOOK_SPEED;
-      look.current.pitch = Math.max(-1.2, Math.min(1.2, look.current.pitch - (e.clientY - lastY) * LOOK_SPEED));
+      look.current.pitch = Math.max(
+        -1.2,
+        Math.min(1.2, look.current.pitch - (e.clientY - lastY) * LOOK_SPEED)
+      );
       lastX = e.clientX;
       lastY = e.clientY;
     };

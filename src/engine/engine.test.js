@@ -12,12 +12,7 @@ import {
   clampInsideRoom,
   applySnapping,
 } from './snapping.js';
-import {
-  normalizeAngle,
-  rotatePoint,
-  getRotatedRectCorners,
-  getAABB,
-} from './geometry.js';
+import { normalizeAngle, rotatePoint, getRotatedRectCorners, getAABB } from './geometry.js';
 
 describe('Geometry Engine', () => {
   it('normalizes angles into [0, 360) range', () => {

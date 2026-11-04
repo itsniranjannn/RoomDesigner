@@ -1266,14 +1266,7 @@ export function getFurnitureType(id) {
 }
 
 /** Fields a user may override per placed item (size and finish). */
-const OVERRIDABLE_FIELDS = [
-  'widthCm',
-  'depthCm',
-  'heightCm',
-  'color',
-  'subColor',
-  'accentColor',
-];
+const OVERRIDABLE_FIELDS = ['widthCm', 'depthCm', 'heightCm', 'color', 'subColor', 'accentColor'];
 
 /**
  * Resolves the effective definition of a placed item:

@@ -65,12 +65,17 @@ describe('flatStore', () => {
     expect(placed).not.toBeNull();
     expect(openingsOf(st().flat, levelId)).toHaveLength(doorsBefore + 1);
     expect(st().rooms[st().flat.spaces[0].roomId].doors.some((d) => d.wall === 'left')).toBe(true);
-    expect(st().placeOpening({ type: 'window', axis: 'v', line: 100, start: 100, widthCm: 90 })).toBeNull();
+    expect(
+      st().placeOpening({ type: 'window', axis: 'v', line: 100, start: 100, widthCm: 90 })
+    ).toBeNull();
     expect(st().removeOpening(placed.id)).toBe(true);
     expect(openingsOf(st().flat, levelId)).toHaveLength(doorsBefore);
 
     st().setSpaceMeta(id, { name: 'Master', kind: 'bedroom' });
-    expect(st().rooms[st().flat.spaces[0].roomId]).toMatchObject({ name: 'Master', kind: 'bedroom' });
+    expect(st().rooms[st().flat.spaces[0].roomId]).toMatchObject({
+      name: 'Master',
+      kind: 'bedroom',
+    });
     st().furnishSpace(id);
     expect(st().rooms[st().flat.spaces[0].roomId].placedFurniture.length).toBeGreaterThan(0);
   });
@@ -139,7 +144,12 @@ describe('flatStore', () => {
   });
 
   it('builds each starting point', async () => {
-    for (const [preset, rooms] of [['studio', 3], ['1bhk', 5], ['2bhk', 8], ['3bhk', 10]]) {
+    for (const [preset, rooms] of [
+      ['studio', 3],
+      ['1bhk', 5],
+      ['2bhk', 8],
+      ['3bhk', 10],
+    ]) {
       await st().createNewFlat(`p-${preset}`, preset);
       expect(st().flat.spaces).toHaveLength(rooms);
       expect(Object.keys(st().rooms)).toHaveLength(rooms);

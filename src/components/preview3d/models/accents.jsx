@@ -14,11 +14,35 @@ export function PlanterModel({ widthM, depthM, heightM, mainColor, subColor }) {
   ];
   return (
     <group>
-      <Cyl position={[0, potH / 2, 0]} radiusTop={r * 0.9} radiusBottom={r * 0.68} height={potH} color={subColor} roughness={0.55} />
-      <Cyl position={[0, potH - 0.01, 0]} radiusTop={r * 0.82} height={0.02} color="#2E1C12" roughness={0.95} castShadow={false} />
+      <Cyl
+        position={[0, potH / 2, 0]}
+        radiusTop={r * 0.9}
+        radiusBottom={r * 0.68}
+        height={potH}
+        color={subColor}
+        roughness={0.55}
+      />
+      <Cyl
+        position={[0, potH - 0.01, 0]}
+        radiusTop={r * 0.82}
+        height={0.02}
+        color="#2E1C12"
+        roughness={0.95}
+        castShadow={false}
+      />
       {/* Bushy foliage built from overlapping ellipsoids */}
       {blobs.map((b, idx) => (
-        <mesh key={idx} position={[b.x * r * 0.7, potH + foliageH * b.y, b.z * r * 0.7]} scale={[r * 0.8 * b.s + r * 0.15, foliageH * 0.45 * b.s + foliageH * 0.1, r * 0.8 * b.s + r * 0.15]} castShadow receiveShadow>
+        <mesh
+          key={idx}
+          position={[b.x * r * 0.7, potH + foliageH * b.y, b.z * r * 0.7]}
+          scale={[
+            r * 0.8 * b.s + r * 0.15,
+            foliageH * 0.45 * b.s + foliageH * 0.1,
+            r * 0.8 * b.s + r * 0.15,
+          ]}
+          castShadow
+          receiveShadow
+        >
           <sphereGeometry args={[1, 18, 14]} />
           <meshStandardMaterial color={b.tone} roughness={0.85} />
         </mesh>
@@ -39,9 +63,26 @@ export function RugRoundModel({ widthM, depthM, heightM, mainColor, subColor, ac
   ];
   return (
     <group>
-      <Cyl position={[0, heightM / 2, 0]} radiusTop={r} height={heightM} color={mainColor} roughness={0.95} segments={48} castShadow={false} />
+      <Cyl
+        position={[0, heightM / 2, 0]}
+        radiusTop={r}
+        height={heightM}
+        color={mainColor}
+        roughness={0.95}
+        segments={48}
+        castShadow={false}
+      />
       {rings.map(([f, color], idx) => (
-        <Cyl key={idx} position={[0, heightM + 0.0006 * (idx + 1), 0]} radiusTop={r * f} height={0.0008} color={color} roughness={0.95} segments={48} castShadow={false} />
+        <Cyl
+          key={idx}
+          position={[0, heightM + 0.0006 * (idx + 1), 0]}
+          radiusTop={r * f}
+          height={0.0008}
+          color={color}
+          roughness={0.95}
+          segments={48}
+          castShadow={false}
+        />
       ))}
     </group>
   );
@@ -60,12 +101,37 @@ export function ScreenModel({ widthM, depthM, heightM, mainColor, accentColor })
         const cx = -widthM / 2 + step * (idx + 0.5);
         return (
           <group key={idx} position={[cx, 0, (z0 + z1) / 2]} rotation={[0, angle, 0]}>
-            <Box position={[0, heightM / 2, 0]} size={[chord, heightM, 0.025]} color={mainColor} roughness={0.7} />
+            <Box
+              position={[0, heightM / 2, 0]}
+              size={[chord, heightM, 0.025]}
+              color={mainColor}
+              roughness={0.7}
+            />
             {/* Inset lattice panel */}
-            <Box position={[0, heightM / 2, 0]} size={[chord * 0.82, heightM * 0.84, 0.032]} color={accentColor} roughness={0.9} />
-            <Box position={[0, heightM / 2, 0.018]} size={[chord * 0.82, 0.012, 0.004]} color={mainColor} castShadow={false} />
-            <Box position={[0, heightM * 0.3, 0.018]} size={[chord * 0.82, 0.012, 0.004]} color={mainColor} castShadow={false} />
-            <Box position={[0, heightM * 0.7, 0.018]} size={[chord * 0.82, 0.012, 0.004]} color={mainColor} castShadow={false} />
+            <Box
+              position={[0, heightM / 2, 0]}
+              size={[chord * 0.82, heightM * 0.84, 0.032]}
+              color={accentColor}
+              roughness={0.9}
+            />
+            <Box
+              position={[0, heightM / 2, 0.018]}
+              size={[chord * 0.82, 0.012, 0.004]}
+              color={mainColor}
+              castShadow={false}
+            />
+            <Box
+              position={[0, heightM * 0.3, 0.018]}
+              size={[chord * 0.82, 0.012, 0.004]}
+              color={mainColor}
+              castShadow={false}
+            />
+            <Box
+              position={[0, heightM * 0.7, 0.018]}
+              size={[chord * 0.82, 0.012, 0.004]}
+              color={mainColor}
+              castShadow={false}
+            />
           </group>
         );
       })}

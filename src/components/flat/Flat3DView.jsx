@@ -58,7 +58,12 @@ function Stairs3D({ stair, baseY }) {
   return (
     <group position={[cx, baseY, cz]} rotation={[0, rot, 0]}>
       {steps.map((s) => (
-        <mesh key={s.key} position={[s.x - offX, s.height / 2, s.z - offZ]} castShadow receiveShadow>
+        <mesh
+          key={s.key}
+          position={[s.x - offX, s.height / 2, s.z - offZ]}
+          castShadow
+          receiveShadow
+        >
           <boxGeometry args={[s.w, s.height, s.d]} />
           <meshStandardMaterial color="#C9B79C" roughness={0.75} />
         </mesh>
@@ -86,15 +91,32 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight }) {
         return (
           <group key={space.id}>
             {regionRects(space).map((r, i) => (
-              <mesh key={i} position={[(r.x + r.widthCm / 2) / 100, -0.03, (r.y + r.depthCm / 2) / 100]} receiveShadow>
+              <mesh
+                key={i}
+                position={[(r.x + r.widthCm / 2) / 100, -0.03, (r.y + r.depthCm / 2) / 100]}
+                receiveShadow
+              >
                 <boxGeometry args={[r.widthCm / 100, 0.06, r.depthCm / 100]} />
                 <meshStandardMaterial color={color} roughness={0.9} />
               </mesh>
             ))}
             {room && space.furnishable && (
-              <group position={[(space.x + space.widthCm / 2) / 100, 0, (space.y + space.depthCm / 2) / 100]}>
+              <group
+                position={[
+                  (space.x + space.widthCm / 2) / 100,
+                  0,
+                  (space.y + space.depthCm / 2) / 100,
+                ]}
+              >
                 {(room.placedFurniture || []).map((item) => (
-                  <Furniture3DBox key={item.id} item={item} roomWidthCm={room.widthCm} roomDepthCm={room.depthCm} isSelected={false} isColliding={false} />
+                  <Furniture3DBox
+                    key={item.id}
+                    item={item}
+                    roomWidthCm={room.widthCm}
+                    roomDepthCm={room.depthCm}
+                    isSelected={false}
+                    isColliding={false}
+                  />
                 ))}
               </group>
             )}
@@ -152,7 +174,14 @@ export function Flat3DView() {
       <Canvas
         key={levelId}
         shadows
-        camera={{ position: [layout.cx + layout.span * 0.7, layout.span * 0.95 + 3 + activeIdx * floorH, layout.cz + layout.span * 1.25], fov: 45 }}
+        camera={{
+          position: [
+            layout.cx + layout.span * 0.7,
+            layout.span * 0.95 + 3 + activeIdx * floorH,
+            layout.cz + layout.span * 1.25,
+          ],
+          fov: 45,
+        }}
       >
         <ambientLight intensity={1.1} color="#FAF7F0" />
         <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={0.7} />
@@ -176,15 +205,29 @@ export function Flat3DView() {
           const baseY = li * floorH;
           return (
             <group key={level.id}>
-              <LevelShell flat={flat} level={level} rooms={rooms} baseY={baseY} fullHeight={fullHeight || li < activeIdx} />
-              {flat.stairs.filter((s) => s.levelId === level.id).map((stair) => (
-                <Stairs3D key={stair.id} stair={stair} baseY={baseY} />
-              ))}
+              <LevelShell
+                flat={flat}
+                level={level}
+                rooms={rooms}
+                baseY={baseY}
+                fullHeight={fullHeight || li < activeIdx}
+              />
+              {flat.stairs
+                .filter((s) => s.levelId === level.id)
+                .map((stair) => (
+                  <Stairs3D key={stair.id} stair={stair} baseY={baseY} />
+                ))}
             </group>
           );
         })}
 
-        <ContactShadows position={[layout.cx, 0.002, layout.cz]} opacity={0.35} scale={layout.span * 2.4} blur={1.8} far={layout.span} />
+        <ContactShadows
+          position={[layout.cx, 0.002, layout.cz]}
+          opacity={0.35}
+          scale={layout.span * 2.4}
+          blur={1.8}
+          far={layout.span}
+        />
         <OrbitControls
           target={[layout.cx, 0.3 + activeIdx * floorH, layout.cz]}
           maxPolarAngle={Math.PI / 2 - 0.04}
@@ -194,7 +237,11 @@ export function Flat3DView() {
         />
       </Canvas>
       <div className={styles.view3dControls}>
-        <Button variant="secondary" icon={<Eye size={16} aria-hidden="true" />} onClick={() => setFullHeight((v) => !v)}>
+        <Button
+          variant="secondary"
+          icon={<Eye size={16} aria-hidden="true" />}
+          onClick={() => setFullHeight((v) => !v)}
+        >
           {fullHeight ? 'Low walls' : 'Full-height walls'}
         </Button>
       </div>

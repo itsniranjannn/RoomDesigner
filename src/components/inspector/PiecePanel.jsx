@@ -30,12 +30,16 @@ export function PiecePanel({ item, def, onClose }) {
 
   const beginSlide = () => {
     if (sliderStart.current) return;
-    sliderStart.current = { snapshot: useRoomStore.getState().getCurrentSnapshot(), value: rotation };
+    sliderStart.current = {
+      snapshot: useRoomStore.getState().getCurrentSnapshot(),
+      value: rotation,
+    };
   };
   const endSlide = () => {
     const start = sliderStart.current;
     sliderStart.current = null;
-    if (start && start.value !== rotation) useRoomStore.getState().pushExplicitSnapshot(start.snapshot);
+    if (start && start.value !== rotation)
+      useRoomStore.getState().pushExplicitSnapshot(start.snapshot);
   };
 
   const previewScale = Math.min(72 / def.widthCm, 44 / def.depthCm);
@@ -47,7 +51,12 @@ export function PiecePanel({ item, def, onClose }) {
       subtitle={categoryName || 'Selected piece'}
       media={
         <svg className={styles.pieceThumb} viewBox="-40 -25 80 50" aria-hidden="true">
-          <ArchitecturalSilhouette item={def} widthCm={def.widthCm * previewScale} depthCm={def.depthCm * previewScale} isSwatch />
+          <ArchitecturalSilhouette
+            item={def}
+            widthCm={def.widthCm * previewScale}
+            depthCm={def.depthCm * previewScale}
+            isSwatch
+          />
         </svg>
       }
       onClose={onClose}
@@ -55,8 +64,20 @@ export function PiecePanel({ item, def, onClose }) {
       backLabel="Room overview"
       footer={
         <>
-          <Button variant="secondary" icon={<Copy size={16} />} onClick={() => duplicateFurniture(item.id)}>Duplicate</Button>
-          <Button variant="danger" icon={<Trash2 size={16} />} onClick={() => removeFurniture(item.id)}>Delete</Button>
+          <Button
+            variant="secondary"
+            icon={<Copy size={16} />}
+            onClick={() => duplicateFurniture(item.id)}
+          >
+            Duplicate
+          </Button>
+          <Button
+            variant="danger"
+            icon={<Trash2 size={16} />}
+            onClick={() => removeFurniture(item.id)}
+          >
+            Delete
+          </Button>
         </>
       }
     >
@@ -95,7 +116,9 @@ export function PiecePanel({ item, def, onClose }) {
           size="small"
           fill
         />
-        <p className={styles.note}>Drag the piece on the plan to move it. Press R to turn it in 15 degree steps.</p>
+        <p className={styles.note}>
+          Drag the piece on the plan to move it. Press R to turn it in 15 degree steps.
+        </p>
       </Section>
 
       <Section title="Layer order">
@@ -119,7 +142,9 @@ export function PiecePanel({ item, def, onClose }) {
             Bring forward
           </Button>
         </div>
-        <p className={styles.note}>Pieces further forward are drawn on top, such as a table over a rug.</p>
+        <p className={styles.note}>
+          Pieces further forward are drawn on top, such as a table over a rug.
+        </p>
       </Section>
     </InspectorShell>
   );

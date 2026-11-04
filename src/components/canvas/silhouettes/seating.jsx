@@ -100,24 +100,10 @@ export function ArmchairSilhouette({ widthCm, depthCm, hw, hd, color, cushionCol
       />
 
       {/* Left Armrest */}
-      <rect
-        x={-hw}
-        y={-hd}
-        width={armW}
-        height={depthCm}
-        rx={4}
-        fill={cushionColor}
-      />
+      <rect x={-hw} y={-hd} width={armW} height={depthCm} rx={4} fill={cushionColor} />
 
       {/* Right Armrest */}
-      <rect
-        x={hw - armW}
-        y={-hd}
-        width={armW}
-        height={depthCm}
-        rx={4}
-        fill={cushionColor}
-      />
+      <rect x={hw - armW} y={-hd} width={armW} height={depthCm} rx={4} fill={cushionColor} />
 
       {/* Deep Seat Cushion */}
       <rect
@@ -188,7 +174,15 @@ export function DeskChairSilhouette({ hw, hd, cushionColor }) {
         const ly = -Math.cos(rad) * (hd * 0.85);
         return (
           <g key={idx}>
-            <line x1={0} y1={0} x2={lx} y2={ly} stroke="#1C1A17" strokeWidth="2.5" strokeLinecap="round" />
+            <line
+              x1={0}
+              y1={0}
+              x2={lx}
+              y2={ly}
+              stroke="#1C1A17"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+            />
             <circle cx={lx} cy={ly} r={2.5} fill="#111111" />
           </g>
         );
@@ -210,10 +204,30 @@ export function BarStoolSilhouette({ hw, hd, color, cushionColor }) {
   return (
     <g>
       <circle cx={0} cy={0} r={r * 0.95} fill="none" stroke="#1C1A17" strokeWidth="1.5" />
-      <line x1={-r * 0.8} y1={-r * 0.8} x2={r * 0.8} y2={r * 0.8} stroke="#1C1A17" strokeWidth="1" />
-      <line x1={r * 0.8} y1={-r * 0.8} x2={-r * 0.8} y2={r * 0.8} stroke="#1C1A17" strokeWidth="1" />
+      <line
+        x1={-r * 0.8}
+        y1={-r * 0.8}
+        x2={r * 0.8}
+        y2={r * 0.8}
+        stroke="#1C1A17"
+        strokeWidth="1"
+      />
+      <line
+        x1={r * 0.8}
+        y1={-r * 0.8}
+        x2={-r * 0.8}
+        y2={r * 0.8}
+        stroke="#1C1A17"
+        strokeWidth="1"
+      />
       <circle cx={0} cy={0} r={r * 0.75} fill={cushionColor} stroke={color} strokeWidth="1.5" />
-      <path d={`M ${-r * 0.55} ${-r * 0.3} Q 0 ${-r * 0.75} ${r * 0.55} ${-r * 0.3}`} fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" />
+      <path
+        d={`M ${-r * 0.55} ${-r * 0.3} Q 0 ${-r * 0.75} ${r * 0.55} ${-r * 0.3}`}
+        fill="none"
+        stroke={color}
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
     </g>
   );
 }
@@ -221,9 +235,35 @@ export function BarStoolSilhouette({ hw, hd, color, cushionColor }) {
 export function OttomanSilhouette({ widthCm, depthCm, hw, hd, color, cushionColor }) {
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={6} fill={color} stroke="#2D251E" strokeWidth="1.2" />
-      <rect x={-hw + 4} y={-hd + 4} width={widthCm - 8} height={depthCm - 8} rx={4} fill={cushionColor} stroke="rgba(0,0,0,0.15)" strokeWidth="0.8" />
-      <line x1={-hw + 10} y1={0} x2={hw - 10} y2={0} stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" strokeDasharray="3 3" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={6}
+        fill={color}
+        stroke="#2D251E"
+        strokeWidth="1.2"
+      />
+      <rect
+        x={-hw + 4}
+        y={-hd + 4}
+        width={widthCm - 8}
+        height={depthCm - 8}
+        rx={4}
+        fill={cushionColor}
+        stroke="rgba(0,0,0,0.15)"
+        strokeWidth="0.8"
+      />
+      <line
+        x1={-hw + 10}
+        y1={0}
+        x2={hw - 10}
+        y2={0}
+        stroke="rgba(0,0,0,0.25)"
+        strokeWidth="0.8"
+        strokeDasharray="3 3"
+      />
       <circle cx={-hw * 0.35} cy={0} r={2} fill="#2D251E" />
       <circle cx={hw * 0.35} cy={0} r={2} fill="#2D251E" />
     </g>

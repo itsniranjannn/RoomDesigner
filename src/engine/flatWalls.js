@@ -52,10 +52,12 @@ export function runsToEdges(runs = []) {
   for (const r of runs) {
     if (r.y1 === r.y2) {
       const j = Math.round(r.y1 / CELL);
-      for (let i = Math.round(r.x1 / CELL); i < Math.round(r.x2 / CELL); i++) edges.add(edgeKey('h', i, j));
+      for (let i = Math.round(r.x1 / CELL); i < Math.round(r.x2 / CELL); i++)
+        edges.add(edgeKey('h', i, j));
     } else if (r.x1 === r.x2) {
       const i = Math.round(r.x1 / CELL);
-      for (let j = Math.round(r.y1 / CELL); j < Math.round(r.y2 / CELL); j++) edges.add(edgeKey('v', i, j));
+      for (let j = Math.round(r.y1 / CELL); j < Math.round(r.y2 / CELL); j++)
+        edges.add(edgeKey('v', i, j));
     }
   }
   return edges;
@@ -224,7 +226,12 @@ function runSpan(edges, key) {
   const run = wallRunAt(edges, key);
   const { axis } = parseEdge(key);
   const pos = run.map((k) => (axis === 'h' ? parseEdge(k).i : parseEdge(k).j));
-  return { axis, line: (axis === 'h' ? parseEdge(key).j : parseEdge(key).i) * CELL, lo: Math.min(...pos) * CELL, hi: (Math.max(...pos) + 1) * CELL };
+  return {
+    axis,
+    line: (axis === 'h' ? parseEdge(key).j : parseEdge(key).i) * CELL,
+    lo: Math.min(...pos) * CELL,
+    hi: (Math.max(...pos) + 1) * CELL,
+  };
 }
 
 // ---------- regions ----------
@@ -278,13 +285,25 @@ export function analyzeEdges(edges) {
       const r = (cur / W) | 0;
       const c = cur - r * W;
       // right
-      if (c + 1 < W && !vWall[r * (W + 1) + c + 1] && label[cur + 1] < 0) { label[cur + 1] = id; stack[top++] = cur + 1; }
+      if (c + 1 < W && !vWall[r * (W + 1) + c + 1] && label[cur + 1] < 0) {
+        label[cur + 1] = id;
+        stack[top++] = cur + 1;
+      }
       // left
-      if (c > 0 && !vWall[r * (W + 1) + c] && label[cur - 1] < 0) { label[cur - 1] = id; stack[top++] = cur - 1; }
+      if (c > 0 && !vWall[r * (W + 1) + c] && label[cur - 1] < 0) {
+        label[cur - 1] = id;
+        stack[top++] = cur - 1;
+      }
       // down
-      if (r + 1 < H && !hWall[(r + 1) * W + c] && label[cur + W] < 0) { label[cur + W] = id; stack[top++] = cur + W; }
+      if (r + 1 < H && !hWall[(r + 1) * W + c] && label[cur + W] < 0) {
+        label[cur + W] = id;
+        stack[top++] = cur + W;
+      }
       // up
-      if (r > 0 && !hWall[r * W + c] && label[cur - W] < 0) { label[cur - W] = id; stack[top++] = cur - W; }
+      if (r > 0 && !hWall[r * W + c] && label[cur - W] < 0) {
+        label[cur - W] = id;
+        stack[top++] = cur - W;
+      }
     }
     return count;
   };
@@ -303,7 +322,8 @@ export function analyzeEdges(edges) {
       let end = c + 1;
       while (end < W && label[r * W + end] === l) end++;
       if (l > 0 && counts[l] >= MIN_REGION_CELLS) {
-        if (!info.has(l)) info.set(l, { runs: [], x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity });
+        if (!info.has(l))
+          info.set(l, { runs: [], x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity });
         const rec = info.get(l);
         rec.runs.push([r + oj, c + oi, end + oi]);
         rec.x0 = Math.min(rec.x0, c + oi);
@@ -316,7 +336,9 @@ export function analyzeEdges(edges) {
   }
   const regions = [];
   const indexOfLabel = new Map();
-  for (const [l, rec] of [...info.entries()].sort((a, b) => a[1].y0 - b[1].y0 || a[1].x0 - b[1].x0)) {
+  for (const [l, rec] of [...info.entries()].sort(
+    (a, b) => a[1].y0 - b[1].y0 || a[1].x0 - b[1].x0
+  )) {
     indexOfLabel.set(l, regions.length);
     const widthCm = (rec.x1 - rec.x0) * CELL;
     const depthCm = (rec.y1 - rec.y0) * CELL;
@@ -348,7 +370,9 @@ export function analyzeEdges(edges) {
   };
   const isExteriorEdge = (key) => {
     const { axis, i, j } = parseEdge(key);
-    return axis === 'h' ? isOutsideCell(i, j - 1) || isOutsideCell(i, j) : isOutsideCell(i - 1, j) || isOutsideCell(i, j);
+    return axis === 'h'
+      ? isOutsideCell(i, j - 1) || isOutsideCell(i, j)
+      : isOutsideCell(i - 1, j) || isOutsideCell(i, j);
   };
 
   return { regions, labelAt: labelAtCell, isExteriorEdge, isOutsideCell, empty: false };
@@ -404,7 +428,13 @@ export function regionRects(region) {
     const nextActive = new Map();
     for (const [k, v] of active) {
       if (cur.has(k)) nextActive.set(k, v);
-      else rects.push({ x: v.i0 * CELL, y: v.j0 * CELL, widthCm: (v.i1 - v.i0) * CELL, depthCm: (j - v.j0) * CELL });
+      else
+        rects.push({
+          x: v.i0 * CELL,
+          y: v.j0 * CELL,
+          widthCm: (v.i1 - v.i0) * CELL,
+          depthCm: (j - v.j0) * CELL,
+        });
     }
     for (const [k, [i0, i1]] of cur) {
       if (!nextActive.has(k)) nextActive.set(k, { i0, i1, j0: j });
@@ -413,7 +443,13 @@ export function regionRects(region) {
     active = nextActive;
   }
   const lastJ = js[js.length - 1] + 1;
-  for (const v of active.values()) rects.push({ x: v.i0 * CELL, y: v.j0 * CELL, widthCm: (v.i1 - v.i0) * CELL, depthCm: (lastJ - v.j0) * CELL });
+  for (const v of active.values())
+    rects.push({
+      x: v.i0 * CELL,
+      y: v.j0 * CELL,
+      widthCm: (v.i1 - v.i0) * CELL,
+      depthCm: (lastJ - v.j0) * CELL,
+    });
   return rects;
 }
 
@@ -428,7 +464,8 @@ function openingEdgeKeys(op) {
   const first = Math.floor(op.start / CELL);
   const last = Math.ceil((op.start + op.widthCm) / CELL) - 1;
   const line = Math.round(op.line / CELL);
-  for (let n = first; n <= last; n++) keys.push(op.axis === 'h' ? edgeKey('h', n, line) : edgeKey('v', line, n));
+  for (let n = first; n <= last; n++)
+    keys.push(op.axis === 'h' ? edgeKey('h', n, line) : edgeKey('v', line, n));
   return keys;
 }
 
@@ -440,9 +477,10 @@ export function openingFitsWalls(edges, op) {
   const last = Math.ceil((op.start + op.widthCm) / CELL) - 1;
   for (let n = first; n <= last; n++) {
     if (n * CELL <= op.start || n * CELL >= op.start + op.widthCm) continue;
-    const side = op.axis === 'h'
-      ? edges.has(edgeKey('v', n, line)) || edges.has(edgeKey('v', n, line - 1))
-      : edges.has(edgeKey('h', line, n)) || edges.has(edgeKey('h', line - 1, n));
+    const side =
+      op.axis === 'h'
+        ? edges.has(edgeKey('v', n, line)) || edges.has(edgeKey('v', n, line - 1))
+        : edges.has(edgeKey('h', line, n)) || edges.has(edgeKey('h', line - 1, n));
     if (side) return false;
   }
   return true;
@@ -455,7 +493,12 @@ export function pruneOpenings(openings = [], edges) {
 }
 
 function openingsTouch(a, b) {
-  return a.axis === b.axis && a.line === b.line && a.start < b.start + b.widthCm && b.start < a.start + a.widthCm;
+  return (
+    a.axis === b.axis &&
+    a.line === b.line &&
+    a.start < b.start + b.widthCm &&
+    b.start < a.start + a.widthCm
+  );
 }
 
 /** Opening whose wall gap contains the point (cm), or null. */
@@ -463,7 +506,12 @@ export function openingAtPoint(openings = [], x, y, tolCm = 10) {
   for (const op of openings) {
     const along = op.axis === 'h' ? x : y;
     const across = op.axis === 'h' ? y : x;
-    if (along >= op.start - 2 && along <= op.start + op.widthCm + 2 && Math.abs(across - op.line) <= tolCm) return op;
+    if (
+      along >= op.start - 2 &&
+      along <= op.start + op.widthCm + 2 &&
+      Math.abs(across - op.line) <= tolCm
+    )
+      return op;
   }
   return null;
 }
@@ -480,7 +528,8 @@ export function planOpening(edges, openings, { type, x, y, widthCm, tolCm = 10, 
   let start = snapCm(cursor - widthCm / 2);
   start = Math.max(span.lo, Math.min(span.hi - widthCm, start));
   const op = { id: 'ghost', type, axis: span.axis, line: span.line, start, widthCm };
-  if (span.hi - span.lo < widthCm) return { op: { ...op, start: span.lo }, valid: false, reason: 'That wall piece is too short.' };
+  if (span.hi - span.lo < widthCm)
+    return { op: { ...op, start: span.lo }, valid: false, reason: 'That wall piece is too short.' };
   if (openings.some((o) => o.id !== ignoreId && openingsTouch(o, op))) {
     return { op, valid: false, reason: 'There is already a door or window here.' };
   }
@@ -509,7 +558,14 @@ export function wallStretches(edges, isExteriorEdge) {
       let start = list[0];
       let prev = list[0];
       const flush = (a, b) =>
-        out.push({ axis, line: line * CELL, from: a.pos * CELL, to: (b.pos + 1) * CELL, thick: a.ext ? EXTERIOR_THICK_CM : INTERIOR_THICK_CM, exterior: a.ext });
+        out.push({
+          axis,
+          line: line * CELL,
+          from: a.pos * CELL,
+          to: (b.pos + 1) * CELL,
+          thick: a.ext ? EXTERIOR_THICK_CM : INTERIOR_THICK_CM,
+          exterior: a.ext,
+        });
       for (let n = 1; n < list.length; n++) {
         const cur = list[n];
         if (cur.pos !== prev.pos + 1 || cur.ext !== prev.ext) {
@@ -535,13 +591,17 @@ export function wallBoxes(edges, isExteriorEdge, openings = [], { fullHeight = t
   const boxes = [];
   for (const s of wallStretches(edges, isExteriorEdge)) {
     const ops = openings
-      .filter((o) => o.axis === s.axis && o.line === s.line && o.start < s.to && o.start + o.widthCm > s.from)
+      .filter(
+        (o) =>
+          o.axis === s.axis && o.line === s.line && o.start < s.to && o.start + o.widthCm > s.from
+      )
       .map((o) => ({ ...o, a: Math.max(s.from, o.start), b: Math.min(s.to, o.start + o.widthCm) }))
       .sort((p, q) => p.a - q.a);
     const ext = s.thick / 2;
     let cursor = s.from;
     const solid = (a, b, z0, z1) => {
-      if (b - a > 0.5 && z1 - z0 > 0.5) boxes.push({ axis: s.axis, line: s.line, a, b, thick: s.thick, z0, z1, glass: false });
+      if (b - a > 0.5 && z1 - z0 > 0.5)
+        boxes.push({ axis: s.axis, line: s.line, a, b, thick: s.thick, z0, z1, glass: false });
     };
     for (const o of ops) {
       solid(cursor === s.from ? cursor - ext : cursor, o.a, 0, H);
@@ -550,7 +610,16 @@ export function wallBoxes(edges, isExteriorEdge, openings = [], { fullHeight = t
       } else {
         solid(o.a, o.b, 0, Math.min(sill, H));
         if (fullHeight) solid(o.a, o.b, head, H);
-        boxes.push({ axis: s.axis, line: s.line, a: o.a, b: o.b, thick: 4, z0: Math.min(sill, H), z1: head, glass: true });
+        boxes.push({
+          axis: s.axis,
+          line: s.line,
+          a: o.a,
+          b: o.b,
+          thick: 4,
+          z0: Math.min(sill, H),
+          z1: head,
+          glass: true,
+        });
       }
       cursor = o.b;
     }
@@ -613,7 +682,16 @@ export function regionLabelPoint(region) {
 export function defaultSwing(analysis, op) {
   const mid = Math.floor((op.start + op.widthCm / 2) / CELL);
   const line = Math.round(op.line / CELL);
-  const [a, b] = op.axis === 'h' ? [[mid, line - 1], [mid, line]] : [[line - 1, mid], [line, mid]];
+  const [a, b] =
+    op.axis === 'h'
+      ? [
+          [mid, line - 1],
+          [mid, line],
+        ]
+      : [
+          [line - 1, mid],
+          [line, mid],
+        ];
   const outA = analysis.isOutsideCell ? analysis.isOutsideCell(a[0], a[1]) : true;
   const outB = analysis.isOutsideCell ? analysis.isOutsideCell(b[0], b[1]) : true;
   if (outA !== outB) return outA ? 1 : -1;

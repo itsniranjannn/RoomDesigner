@@ -7,7 +7,8 @@ export function outlinePath(loops, widthCm, depthCm) {
   return loops
     .map((loop) => {
       const pts = [];
-      for (let i = 0; i + 1 < loop.length; i += 2) pts.push(`${(loop[i] * widthCm).toFixed(2)} ${(loop[i + 1] * depthCm).toFixed(2)}`);
+      for (let i = 0; i + 1 < loop.length; i += 2)
+        pts.push(`${(loop[i] * widthCm).toFixed(2)} ${(loop[i + 1] * depthCm).toFixed(2)}`);
       return `M ${pts.join(' L ')} Z`;
     })
     .join(' ');
@@ -19,16 +20,60 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
 
   // The catalog card shows the piece itself rather than its footprint
   if (isSwatch && item.thumb) {
-    return <image href={item.thumb} x={-30} y={-30} width={60} height={60} preserveAspectRatio="xMidYMid meet" />;
+    return (
+      <image
+        href={item.thumb}
+        x={-30}
+        y={-30}
+        width={60}
+        height={60}
+        preserveAspectRatio="xMidYMid meet"
+      />
+    );
   }
 
   if (!loops || loops.length === 0) {
     return (
       <g>
-        <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke={OUTLINE} strokeWidth="1.4" />
-        {item.topImage && <image href={item.topImage} x={-hw} y={-hd} width={widthCm} height={depthCm} preserveAspectRatio="none" />}
-        <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill="none" stroke={OUTLINE} strokeWidth="1.4" />
-        <line x1={-hw + 4} y1={hd - 3} x2={hw - 4} y2={hd - 3} stroke="rgba(34,24,14,0.55)" strokeWidth="1.6" strokeDasharray="4 3" />
+        <rect
+          x={-hw}
+          y={-hd}
+          width={widthCm}
+          height={depthCm}
+          rx={3}
+          fill={color}
+          stroke={OUTLINE}
+          strokeWidth="1.4"
+        />
+        {item.topImage && (
+          <image
+            href={item.topImage}
+            x={-hw}
+            y={-hd}
+            width={widthCm}
+            height={depthCm}
+            preserveAspectRatio="none"
+          />
+        )}
+        <rect
+          x={-hw}
+          y={-hd}
+          width={widthCm}
+          height={depthCm}
+          rx={3}
+          fill="none"
+          stroke={OUTLINE}
+          strokeWidth="1.4"
+        />
+        <line
+          x1={-hw + 4}
+          y1={hd - 3}
+          x2={hw - 4}
+          y2={hd - 3}
+          stroke="rgba(34,24,14,0.55)"
+          strokeWidth="1.6"
+          strokeDasharray="4 3"
+        />
       </g>
     );
   }
@@ -39,7 +84,8 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
 
   // Front edge: the lowest points of the footprint, where the piece faces the room
   let front = -Infinity;
-  for (const loop of loops) for (let i = 1; i < loop.length; i += 2) front = Math.max(front, loop[i]);
+  for (const loop of loops)
+    for (let i = 1; i < loop.length; i += 2) front = Math.max(front, loop[i]);
   let left = Infinity;
   let right = -Infinity;
   for (const loop of loops) {
@@ -55,11 +101,30 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
   return (
     <g>
       <path d={d} fill={color} />
-      {item.topImage && <image href={item.topImage} x={-hw} y={-hd} width={widthCm} height={depthCm} preserveAspectRatio="none" />}
-      {recoloured && <path d={d} fill={color} fillOpacity="0.55" style={{ mixBlendMode: 'color' }} />}
+      {item.topImage && (
+        <image
+          href={item.topImage}
+          x={-hw}
+          y={-hd}
+          width={widthCm}
+          height={depthCm}
+          preserveAspectRatio="none"
+        />
+      )}
+      {recoloured && (
+        <path d={d} fill={color} fillOpacity="0.55" style={{ mixBlendMode: 'color' }} />
+      )}
       <path d={d} fill="none" stroke={OUTLINE} strokeWidth="1.4" strokeLinejoin="round" />
       {right - left > 0.1 && (
-        <line x1={left * widthCm + 4} y1={frontY} x2={right * widthCm - 4} y2={frontY} stroke="rgba(34,24,14,0.55)" strokeWidth="1.6" strokeDasharray="4 3" />
+        <line
+          x1={left * widthCm + 4}
+          y1={frontY}
+          x2={right * widthCm - 4}
+          y2={frontY}
+          stroke="rgba(34,24,14,0.55)"
+          strokeWidth="1.6"
+          strokeDasharray="4 3"
+        />
       )}
     </g>
   );

@@ -30,7 +30,14 @@ const VIEW_OPTIONS = [
   { value: '3d', label: '3D', icon: <Box size={15} />, ariaLabel: '3D view' },
 ];
 
-export function TopBar({ onOpenNewRoomModal, catalogOpen, inspectorOpen, onToggleCatalog, onToggleInspector, showInspectorToggle }) {
+export function TopBar({
+  onOpenNewRoomModal,
+  catalogOpen,
+  inspectorOpen,
+  onToggleCatalog,
+  onToggleInspector,
+  showInspectorToggle,
+}) {
   const room = useRoomStore((state) => state.room);
   const allRooms = useRoomStore((state) => state.allRooms);
   const switchRoom = useRoomStore((state) => state.switchRoom);
@@ -78,12 +85,37 @@ export function TopBar({ onOpenNewRoomModal, catalogOpen, inspectorOpen, onToggl
       {({ close }) => (
         <>
           <MenuLabel>{dims}</MenuLabel>
-          <MenuItem icon={<Trash2 size={16} />} danger onClick={() => { close(); setDialog('delete'); }}>Delete room</MenuItem>
+          <MenuItem
+            icon={<Trash2 size={16} />}
+            danger
+            onClick={() => {
+              close();
+              setDialog('delete');
+            }}
+          >
+            Delete room
+          </MenuItem>
           {phone && (
             <>
               <MenuDivider />
-              <MenuItem icon={<Home size={16} />} onClick={() => { close(); goBack(); }}>{backLabel}</MenuItem>
-              <MenuItem icon={<Plus size={16} />} onClick={() => { close(); onOpenNewRoomModal(); }}>New room</MenuItem>
+              <MenuItem
+                icon={<Home size={16} />}
+                onClick={() => {
+                  close();
+                  goBack();
+                }}
+              >
+                {backLabel}
+              </MenuItem>
+              <MenuItem
+                icon={<Plus size={16} />}
+                onClick={() => {
+                  close();
+                  onOpenNewRoomModal();
+                }}
+              >
+                New room
+              </MenuItem>
             </>
           )}
           {!inFlat && allRooms.length > 1 && (
@@ -116,7 +148,12 @@ export function TopBar({ onOpenNewRoomModal, catalogOpen, inspectorOpen, onToggl
         homeLabel={backLabel}
         start={
           <>
-            <EditableTitle value={room.name} onCommit={(name) => renameRoom(room.id, name)} label="Room name" maxLength={40} />
+            <EditableTitle
+              value={room.name}
+              onCommit={(name) => renameRoom(room.id, name)}
+              label="Room name"
+              maxLength={40}
+            />
             {roomMenu}
             <SaveStatus status={saveStatus} />
             <IconButton
@@ -133,11 +170,21 @@ export function TopBar({ onOpenNewRoomModal, catalogOpen, inspectorOpen, onToggl
           <>
             {!phone && (
               <div className={styles.history} role="group" aria-label="History">
-                <IconButton label="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo}><Undo2 size={18} /></IconButton>
-                <IconButton label="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo}><Redo2 size={18} /></IconButton>
+                <IconButton label="Undo (Ctrl+Z)" onClick={undo} disabled={!canUndo}>
+                  <Undo2 size={18} />
+                </IconButton>
+                <IconButton label="Redo (Ctrl+Y)" onClick={redo} disabled={!canRedo}>
+                  <Redo2 size={18} />
+                </IconButton>
               </div>
             )}
-            <Segmented ariaLabel="View" value={viewMode} onChange={setViewMode} options={VIEW_OPTIONS} className={styles.viewSwitch} />
+            <Segmented
+              ariaLabel="View"
+              value={viewMode}
+              onChange={setViewMode}
+              options={VIEW_OPTIONS}
+              className={styles.viewSwitch}
+            />
           </>
         }
         end={
@@ -169,7 +216,7 @@ export function TopBar({ onOpenNewRoomModal, catalogOpen, inspectorOpen, onToggl
                 label={inspectorOpen ? 'Hide details panel' : 'Show details panel'}
                 active={inspectorOpen}
                 quiet
-                  onClick={onToggleInspector}
+                onClick={onToggleInspector}
               >
                 <PanelRight size={18} />
               </IconButton>

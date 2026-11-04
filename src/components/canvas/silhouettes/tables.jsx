@@ -81,14 +81,7 @@ export function TableRoundSilhouette({ hw, hd, color }) {
   const radius = Math.min(hw, hd);
   return (
     <g>
-      <circle
-        cx={0}
-        cy={0}
-        r={radius}
-        fill={color}
-        stroke="#4A3A25"
-        strokeWidth="1.2"
-      />
+      <circle cx={0} cy={0} r={radius} fill={color} stroke="#4A3A25" strokeWidth="1.2" />
       <circle
         cx={0}
         cy={0}
@@ -136,24 +129,8 @@ export function CoffeeTableSilhouette({ widthCm, depthCm, hw, hd, color }) {
         strokeWidth="0.75"
       />
       {/* Stack of Art / Architecture Books */}
-      <rect
-        x={-hw + 10}
-        y={-hd + 8}
-        width={24}
-        height={16}
-        rx={1}
-        fill="#C97B4A"
-        opacity="0.8"
-      />
-      <rect
-        x={-hw + 13}
-        y={-hd + 10}
-        width={22}
-        height={14}
-        rx={1}
-        fill="#4A5D52"
-        opacity="0.9"
-      />
+      <rect x={-hw + 10} y={-hd + 8} width={24} height={16} rx={1} fill="#C97B4A" opacity="0.8" />
+      <rect x={-hw + 13} y={-hd + 10} width={22} height={14} rx={1} fill="#4A5D52" opacity="0.9" />
     </g>
   );
 }
@@ -163,7 +140,14 @@ export function SideTableSilhouette({ hw, hd, color, subColor }) {
   return (
     <g>
       <circle cx={0} cy={0} r={r} fill={color} stroke="#3D2A1C" strokeWidth="1.2" />
-      <circle cx={0} cy={0} r={r * 0.85} fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="0.8" />
+      <circle
+        cx={0}
+        cy={0}
+        r={r * 0.85}
+        fill="none"
+        stroke="rgba(255,255,255,0.4)"
+        strokeWidth="0.8"
+      />
       <circle cx={0} cy={0} r={r * 0.4} fill={subColor} stroke="#6B5134" strokeWidth="0.8" />
     </g>
   );
@@ -190,14 +174,7 @@ export function DeskSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
       />
 
       {/* Right Pedestal Drawer Bank Division */}
-      <line
-        x1={hw - drawerW}
-        y1={-hd}
-        x2={hw - drawerW}
-        y2={hd}
-        stroke="#2B2117"
-        strokeWidth="1"
-      />
+      <line x1={hw - drawerW} y1={-hd} x2={hw - drawerW} y2={hd} stroke="#2B2117" strokeWidth="1" />
       {/* Drawer Pull */}
       <line
         x1={hw - drawerW / 2 - 8}
@@ -213,14 +190,7 @@ export function DeskSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
       <circle cx={-hw + 14} cy={-hd + 12} r={3.5} fill="#242321" />
 
       {/* Central Leather Desk Blotter Pad */}
-      <rect
-        x={-padW / 2 - 8}
-        y={hd - padH - 4}
-        width={padW}
-        height={padH}
-        rx={2}
-        fill={subColor}
-      />
+      <rect x={-padW / 2 - 8} y={hd - padH - 4} width={padW} height={padH} rx={2} fill={subColor} />
 
       {/* Laptop / Notebook Silhouette */}
       <rect
@@ -251,14 +221,7 @@ export function NightstandSilhouette({ widthCm, depthCm, hw, hd, color }) {
         strokeWidth="1.2"
       />
       {/* Front Drawer seam */}
-      <line
-        x1={-hw + 4}
-        y1={hd - 6}
-        x2={hw - 4}
-        y2={hd - 6}
-        stroke="#3D2A1C"
-        strokeWidth="0.8"
-      />
+      <line x1={-hw + 4} y1={hd - 6} x2={hw - 4} y2={hd - 6} stroke="#3D2A1C" strokeWidth="0.8" />
       {/* Brass drawer knob */}
       <circle cx={0} cy={hd - 6} r={1.8} fill="#222222" />
 

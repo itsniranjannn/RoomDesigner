@@ -62,10 +62,14 @@ function signedVolume(mesh) {
   const { positions, indices } = mesh;
   let v = 0;
   for (let t = 0; t < indices.length; t += 3) {
-    const a = indices[t] * 3, b = indices[t + 1] * 3, c = indices[t + 2] * 3;
-    v += (positions[a] * (positions[b + 1] * positions[c + 2] - positions[b + 2] * positions[c + 1])
-      - positions[a + 1] * (positions[b] * positions[c + 2] - positions[b + 2] * positions[c])
-      + positions[a + 2] * (positions[b] * positions[c + 1] - positions[b + 1] * positions[c])) / 6;
+    const a = indices[t] * 3,
+      b = indices[t + 1] * 3,
+      c = indices[t + 2] * 3;
+    v +=
+      (positions[a] * (positions[b + 1] * positions[c + 2] - positions[b + 2] * positions[c + 1]) -
+        positions[a + 1] * (positions[b] * positions[c + 2] - positions[b + 2] * positions[c]) +
+        positions[a + 2] * (positions[b] * positions[c + 1] - positions[b + 1] * positions[c])) /
+      6;
   }
   return v;
 }
@@ -81,16 +85,21 @@ describe('photo segmentation', () => {
 
   it('fills small holes inside the object', () => {
     const rgba = makePhoto(100, 80, [rect(20, 10, 80, 70, [180, 60, 40])]);
-    for (let y = 35; y < 40; y++) for (let x = 45; x < 50; x++) {
-      const i = (y * 100 + x) * 4;
-      rgba[i] = rgba[i + 1] = rgba[i + 2] = 245;
-    }
+    for (let y = 35; y < 40; y++)
+      for (let x = 45; x < 50; x++) {
+        const i = (y * 100 + x) * 4;
+        rgba[i] = rgba[i + 1] = rgba[i + 2] = 245;
+      }
     const mask = segmentObject(rgba, 100, 80);
     expect(mask[37 * 100 + 47]).toBe(1);
   });
 
   it('ignores a smooth lighting gradient across the background', () => {
-    const gradient = (x, y) => [250 - x * 0.5 - y * 0.2, 248 - x * 0.5 - y * 0.2, 240 - x * 0.5 - y * 0.2];
+    const gradient = (x, y) => [
+      250 - x * 0.5 - y * 0.2,
+      248 - x * 0.5 - y * 0.2,
+      240 - x * 0.5 - y * 0.2,
+    ];
     const rgba = makePhoto(160, 120, [rect(50, 30, 110, 90, [60, 90, 150])], gradient);
     const mask = segmentObject(rgba, 160, 120);
     expect(mask[60 * 160 + 80]).toBe(1);
@@ -102,10 +111,13 @@ describe('photo segmentation', () => {
   it('treats a soft shadow under the object as background', () => {
     const rgba = makePhoto(160, 120, [rect(50, 20, 110, 80, [150, 70, 40])]);
     // A pale, same-hued shadow band right under the object
-    for (let y = 80; y < 92; y++) for (let x = 50; x < 125; x++) {
-      const i = (y * 160 + x) * 4;
-      rgba[i] = 215; rgba[i + 1] = 215; rgba[i + 2] = 215;
-    }
+    for (let y = 80; y < 92; y++)
+      for (let x = 50; x < 125; x++) {
+        const i = (y * 160 + x) * 4;
+        rgba[i] = 215;
+        rgba[i + 1] = 215;
+        rgba[i + 2] = 215;
+      }
     const mask = segmentObject(rgba, 160, 120);
     expect(mask[50 * 160 + 80]).toBe(1);
     expect(mask[86 * 160 + 90]).toBe(0);
@@ -115,8 +127,14 @@ describe('photo segmentation', () => {
 
   it('copes with mild sensor noise on the background', () => {
     let seed = 7;
-    const rnd = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
-    const noisy = () => { const d = (rnd() - 0.5) * 36; return [BG[0] + d, BG[1] + d, BG[2] + d]; };
+    const rnd = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    const noisy = () => {
+      const d = (rnd() - 0.5) * 36;
+      return [BG[0] + d, BG[1] + d, BG[2] + d];
+    };
     const rgba = makePhoto(120, 100, [rect(30, 20, 90, 80, [40, 120, 80])], noisy);
     const mask = segmentObject(rgba, 120, 100);
     expect(maskCoverage(mask)).toBeCloseTo((60 * 60) / (120 * 100), 1);
@@ -178,7 +196,11 @@ describe('photo segmentation', () => {
   });
 
   it('fits the background plane and reports noise', () => {
-    const bg = fitBackground(makePhoto(80, 80, [], (x) => [200 + x * 0.2, 200, 200]), 80, 80);
+    const bg = fitBackground(
+      makePhoto(80, 80, [], (x) => [200 + x * 0.2, 200, 200]),
+      80,
+      80
+    );
     const [r] = bg.at(0.5, 0.5);
     expect(r).toBeCloseTo(208, 0);
     expect(bg.noise).toBeLessThan(1);
@@ -188,7 +210,14 @@ describe('photo segmentation', () => {
     const mask = new Uint8Array(10 * 10);
     mask[2 * 10 + 3] = 1;
     mask[6 * 10 + 8] = 1;
-    expect(maskBounds(mask, 10, 10)).toEqual({ minX: 3, minY: 2, maxX: 8, maxY: 6, width: 6, height: 5 });
+    expect(maskBounds(mask, 10, 10)).toEqual({
+      minX: 3,
+      minY: 2,
+      maxX: 8,
+      maxY: 6,
+      width: 6,
+      height: 5,
+    });
     expect(maskBounds(new Uint8Array(100), 10, 10)).toBeNull();
   });
 });
@@ -235,7 +264,9 @@ describe('visual hull', () => {
       for (let u = 0; u < size; u++) mask[row * size + u] = 1;
       return { slot, angle, mask, rgb: new Uint8Array(size * size * 3), size };
     };
-    expect(() => buildModelFromViews([strip('front', 0, 0), strip('right', 90, 15)], 16)).toThrow(/do not agree/);
+    expect(() => buildModelFromViews([strip('front', 0, 0), strip('right', 90, 15)], 16)).toThrow(
+      /do not agree/
+    );
   });
 });
 
@@ -307,11 +338,14 @@ describe('smooth mesh', () => {
 
   it('rounds a cylinder-like object instead of stacking blocks', () => {
     const round = makePhoto(100, 100, [ellipse(50, 50, 40, 40, [150, 100, 60])]);
-    const cyl = buildModelFromViews([
-      view('front', 0, makePhoto(100, 100, [rect(10, 10, 90, 90, [150, 100, 60])]), 100, 100),
-      view('right', 90, makePhoto(100, 100, [rect(10, 10, 90, 90, [150, 100, 60])]), 100, 100),
-      view('top', null, round, 100, 100),
-    ], 32);
+    const cyl = buildModelFromViews(
+      [
+        view('front', 0, makePhoto(100, 100, [rect(10, 10, 90, 90, [150, 100, 60])]), 100, 100),
+        view('right', 90, makePhoto(100, 100, [rect(10, 10, 90, 90, [150, 100, 60])]), 100, 100),
+        view('top', null, round, 100, 100),
+      ],
+      32
+    );
     const volume = signedVolume(cyl);
     expect(volume).toBeGreaterThan(Math.PI * 0.25 * 0.85);
     expect(volume).toBeLessThan(Math.PI * 0.25 * 1.05);
@@ -331,26 +365,80 @@ describe('older block-based meshes', () => {
   // The previous builder emitted six exposed cube faces per boundary voxel at 40 voxels per axis
   function legacyBlockMesh(filled, R = 40) {
     const FACES = [
-      { n: [1, 0, 0], c: [[1, 0, 0], [1, 1, 0], [1, 1, 1], [1, 0, 1]] },
-      { n: [-1, 0, 0], c: [[0, 0, 1], [0, 1, 1], [0, 1, 0], [0, 0, 0]] },
-      { n: [0, 1, 0], c: [[0, 1, 0], [0, 1, 1], [1, 1, 1], [1, 1, 0]] },
-      { n: [0, -1, 0], c: [[0, 0, 1], [0, 0, 0], [1, 0, 0], [1, 0, 1]] },
-      { n: [0, 0, 1], c: [[0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]] },
-      { n: [0, 0, -1], c: [[1, 0, 0], [0, 0, 0], [0, 1, 0], [1, 1, 0]] },
+      {
+        n: [1, 0, 0],
+        c: [
+          [1, 0, 0],
+          [1, 1, 0],
+          [1, 1, 1],
+          [1, 0, 1],
+        ],
+      },
+      {
+        n: [-1, 0, 0],
+        c: [
+          [0, 0, 1],
+          [0, 1, 1],
+          [0, 1, 0],
+          [0, 0, 0],
+        ],
+      },
+      {
+        n: [0, 1, 0],
+        c: [
+          [0, 1, 0],
+          [0, 1, 1],
+          [1, 1, 1],
+          [1, 1, 0],
+        ],
+      },
+      {
+        n: [0, -1, 0],
+        c: [
+          [0, 0, 1],
+          [0, 0, 0],
+          [1, 0, 0],
+          [1, 0, 1],
+        ],
+      },
+      {
+        n: [0, 0, 1],
+        c: [
+          [0, 0, 1],
+          [1, 0, 1],
+          [1, 1, 1],
+          [0, 1, 1],
+        ],
+      },
+      {
+        n: [0, 0, -1],
+        c: [
+          [1, 0, 0],
+          [0, 0, 0],
+          [0, 1, 0],
+          [1, 1, 0],
+        ],
+      },
     ];
     const positions = [];
     const colors = [];
-    for (let k = 0; k < R; k++) for (let j = 0; j < R; j++) for (let i = 0; i < R; i++) {
-      if (!filled(i, j, k)) continue;
-      for (const f of FACES) {
-        if (filled(i + f.n[0], j + f.n[1], k + f.n[2])) continue;
-        const quad = f.c.map((c) => [(i + c[0]) / R - 0.5, (j + c[1]) / R, (k + c[2]) / R - 0.5]);
-        for (const t of [0, 1, 2, 0, 2, 3]) {
-          positions.push(...quad[t]);
-          colors.push(200, 120, 60);
+    for (let k = 0; k < R; k++)
+      for (let j = 0; j < R; j++)
+        for (let i = 0; i < R; i++) {
+          if (!filled(i, j, k)) continue;
+          for (const f of FACES) {
+            if (filled(i + f.n[0], j + f.n[1], k + f.n[2])) continue;
+            const quad = f.c.map((c) => [
+              (i + c[0]) / R - 0.5,
+              (j + c[1]) / R,
+              (k + c[2]) / R - 0.5,
+            ]);
+            for (const t of [0, 1, 2, 0, 2, 3]) {
+              positions.push(...quad[t]);
+              colors.push(200, 120, 60);
+            }
+          }
         }
-      }
-    }
     return { positions: new Float32Array(positions), colors: new Uint8Array(colors) };
   }
 
@@ -363,7 +451,8 @@ describe('older block-based meshes', () => {
     expect(upgraded.colors.length).toBe(upgraded.positions.length);
     expect(signedVolume(upgraded)).toBeGreaterThan(0.1);
     let minY = Infinity;
-    for (let i = 1; i < upgraded.positions.length; i += 3) minY = Math.min(minY, upgraded.positions[i]);
+    for (let i = 1; i < upgraded.positions.length; i += 3)
+      minY = Math.min(minY, upgraded.positions[i]);
     expect(minY).toBeCloseTo(0, 5);
     // Colours survive the upgrade
     expect(upgraded.colors[0]).toBeGreaterThan(150);
@@ -379,7 +468,9 @@ describe('older block-based meshes', () => {
   });
 
   it('gives up on meshes that are not 40-voxel block meshes', () => {
-    expect(upgradeLegacyMesh({ positions: new Float32Array(9), colors: new Uint8Array(9) })).toBeNull();
+    expect(
+      upgradeLegacyMesh({ positions: new Float32Array(9), colors: new Uint8Array(9) })
+    ).toBeNull();
   });
 
   it('renders old meshes in plan view too', () => {
@@ -404,9 +495,27 @@ describe('plan symbol rendering', () => {
 
   it('looks from above with the front edge at the bottom', () => {
     // An L-shaped footprint: the front-left corner is missing
-    const front = view('front', 0, makePhoto(100, 100, [rect(10, 10, 90, 90, [180, 60, 40])]), 100, 100);
-    const side = view('right', 90, makePhoto(100, 100, [rect(10, 10, 90, 90, [180, 60, 40])]), 100, 100);
-    const top = view('top', null, makePhoto(100, 100, [rect(10, 10, 90, 90, [180, 60, 40])].concat([rect(0, 50, 50, 100, BG)])), 100, 100);
+    const front = view(
+      'front',
+      0,
+      makePhoto(100, 100, [rect(10, 10, 90, 90, [180, 60, 40])]),
+      100,
+      100
+    );
+    const side = view(
+      'right',
+      90,
+      makePhoto(100, 100, [rect(10, 10, 90, 90, [180, 60, 40])]),
+      100,
+      100
+    );
+    const top = view(
+      'top',
+      null,
+      makePhoto(100, 100, [rect(10, 10, 90, 90, [180, 60, 40])].concat([rect(0, 50, 50, 100, BG)])),
+      100,
+      100
+    );
     const lMesh = buildModelFromViews([front, side, top], 32);
     const size = 40;
     const pixels = topDownImage(lMesh, size);
@@ -423,7 +532,7 @@ describe('plan symbol rendering', () => {
     expect(opaque).toBeGreaterThan(300);
     for (let x = 0; x < 40; x++) {
       expect(pixels[x * 4 + 3]).toBe(0);
-      expect(pixels[((39 * 40) + x) * 4 + 3]).toBe(0);
+      expect(pixels[(39 * 40 + x) * 4 + 3]).toBe(0);
     }
   });
 
@@ -436,12 +545,16 @@ describe('plan symbol rendering', () => {
 describe('footprint outline', () => {
   const alpha = (size, filled) => {
     const px = new Uint8ClampedArray(size * size * 4);
-    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) if (filled(x, y)) px[(y * size + x) * 4 + 3] = 255;
+    for (let y = 0; y < size; y++)
+      for (let x = 0; x < size; x++) if (filled(x, y)) px[(y * size + x) * 4 + 3] = 255;
     return px;
   };
 
   it('traces a rectangle as four corners in plan coordinates', () => {
-    const loops = footprintOutline(alpha(20, (x, y) => x >= 5 && x < 15 && y >= 4 && y < 16), 20);
+    const loops = footprintOutline(
+      alpha(20, (x, y) => x >= 5 && x < 15 && y >= 4 && y < 16),
+      20
+    );
     expect(loops).toHaveLength(1);
     expect(loops[0]).toHaveLength(8);
     const xs = loops[0].filter((_, i) => i % 2 === 0);
@@ -453,28 +566,59 @@ describe('footprint outline', () => {
   });
 
   it('traces an L shape with six corners', () => {
-    const loops = footprintOutline(alpha(20, (x, y) => (x >= 4 && x < 16 && y >= 4 && y < 10) || (x >= 4 && x < 10 && y >= 10 && y < 16)), 20);
+    const loops = footprintOutline(
+      alpha(
+        20,
+        (x, y) => (x >= 4 && x < 16 && y >= 4 && y < 10) || (x >= 4 && x < 10 && y >= 10 && y < 16)
+      ),
+      20
+    );
     expect(loops).toHaveLength(1);
     expect(loops[0]).toHaveLength(12);
   });
 
   it('returns separate loops for separate parts and for holes', () => {
-    const two = footprintOutline(alpha(24, (x, y) => (x >= 2 && x < 8 && y >= 2 && y < 8) || (x >= 14 && x < 22 && y >= 12 && y < 20)), 24);
+    const two = footprintOutline(
+      alpha(
+        24,
+        (x, y) => (x >= 2 && x < 8 && y >= 2 && y < 8) || (x >= 14 && x < 22 && y >= 12 && y < 20)
+      ),
+      24
+    );
     expect(two).toHaveLength(2);
-    const ring = footprintOutline(alpha(24, (x, y) => x >= 4 && x < 20 && y >= 4 && y < 20 && !(x >= 9 && x < 15 && y >= 9 && y < 15)), 24);
+    const ring = footprintOutline(
+      alpha(
+        24,
+        (x, y) => x >= 4 && x < 20 && y >= 4 && y < 20 && !(x >= 9 && x < 15 && y >= 9 && y < 15)
+      ),
+      24
+    );
     expect(ring).toHaveLength(2);
   });
 
   it('simplifies a round footprint to a modest number of points', () => {
-    const loops = footprintOutline(alpha(64, (x, y) => (x - 32) ** 2 + (y - 32) ** 2 < 28 * 28), 64);
+    const loops = footprintOutline(
+      alpha(64, (x, y) => (x - 32) ** 2 + (y - 32) ** 2 < 28 * 28),
+      64
+    );
     expect(loops).toHaveLength(1);
     expect(loops[0].length / 2).toBeGreaterThan(12);
     expect(loops[0].length / 2).toBeLessThan(90);
   });
 
   it('ignores empty images and tiny specks', () => {
-    expect(footprintOutline(alpha(16, () => false), 16)).toEqual([]);
-    expect(footprintOutline(alpha(16, (x, y) => x === 3 && y === 3), 16)).toEqual([]);
+    expect(
+      footprintOutline(
+        alpha(16, () => false),
+        16
+      )
+    ).toEqual([]);
+    expect(
+      footprintOutline(
+        alpha(16, (x, y) => x === 3 && y === 3),
+        16
+      )
+    ).toEqual([]);
   });
 });
 
@@ -506,7 +650,9 @@ describe('size checks', () => {
   });
 
   it('ignores slots without a photo or without an object', () => {
-    expect(proportionWarnings({ front: { mask: new Uint8Array(100), width: 10, height: 10 } }, dims)).toEqual([]);
+    expect(
+      proportionWarnings({ front: { mask: new Uint8Array(100), width: 10, height: 10 } }, dims)
+    ).toEqual([]);
     expect(proportionWarnings({}, dims)).toEqual([]);
   });
 });

@@ -1,5 +1,13 @@
 import React from 'react';
-import { MousePointer2, PenLine, Eraser, DoorOpen, AppWindow, Footprints, RotateCw } from 'lucide-react';
+import {
+  MousePointer2,
+  PenLine,
+  Eraser,
+  DoorOpen,
+  AppWindow,
+  Footprints,
+  RotateCw,
+} from 'lucide-react';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
 import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
@@ -47,8 +55,20 @@ export function FlatToolbar() {
       </ToolGroup>
       {tool === 'stairs' && (
         <div className={styles.railOptions}>
-          <Segmented options={STAIR_OPTIONS} value={stairType} onChange={setStairType} ariaLabel="Staircase shape" size="small" />
-          <Button variant="secondary" size="small" icon={<RotateCw size={16} aria-hidden="true" />} onClick={rotateStair} title="Rotate 90 degrees (R)">
+          <Segmented
+            options={STAIR_OPTIONS}
+            value={stairType}
+            onChange={setStairType}
+            ariaLabel="Staircase shape"
+            size="small"
+          />
+          <Button
+            variant="secondary"
+            size="small"
+            icon={<RotateCw size={16} aria-hidden="true" />}
+            onClick={rotateStair}
+            title="Rotate 90 degrees (R)"
+          >
             Rotate
           </Button>
         </div>

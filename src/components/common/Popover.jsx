@@ -27,7 +27,15 @@ function useDismiss(rootRef, open, onClose) {
  * Trigger plus floating panel. `renderTrigger` receives props to spread on the trigger button.
  * `children` can be a function that receives { close }.
  */
-export function Popover({ renderTrigger, children, label, role = 'dialog', align = 'start', direction = 'down', className = '' }) {
+export function Popover({
+  renderTrigger,
+  children,
+  label,
+  role = 'dialog',
+  align = 'start',
+  direction = 'down',
+  className = '',
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
   const close = useCallback(() => setOpen(false), []);
@@ -55,7 +63,14 @@ export function Popover({ renderTrigger, children, label, role = 'dialog', align
   );
 }
 
-export function MenuItem({ icon, danger = false, active = false, children, className = '', ...props }) {
+export function MenuItem({
+  icon,
+  danger = false,
+  active = false,
+  children,
+  className = '',
+  ...props
+}) {
   return (
     <button
       type="button"

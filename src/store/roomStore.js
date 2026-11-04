@@ -367,19 +367,15 @@ export const useRoomStore = create((set, get) => ({
     const offsetY = ((count * 2) % 5) * 15 - 30;
 
     const stackBase = catalogDef.stackableOn
-      ?.map((baseId) => (room.placedFurniture || []).find((item) => item.furnitureTypeId === baseId))
+      ?.map((baseId) =>
+        (room.placedFurniture || []).find((item) => item.furnitureTypeId === baseId)
+      )
       .find(Boolean);
     const stackBaseDef = stackBase ? resolveItemDef(stackBase) : null;
-    let targetX = customX !== null
-      ? customX
-      : stackBase
-        ? stackBase.x
-        : Math.round(room.widthCm / 2 + offsetX);
-    let targetY = customY !== null
-      ? customY
-      : stackBase
-        ? stackBase.y
-        : Math.round(room.depthCm / 2 + offsetY);
+    let targetX =
+      customX !== null ? customX : stackBase ? stackBase.x : Math.round(room.widthCm / 2 + offsetX);
+    let targetY =
+      customY !== null ? customY : stackBase ? stackBase.y : Math.round(room.depthCm / 2 + offsetY);
 
     // Strictly clamp within room boundaries
     const clamped = clampInsideRoom(
@@ -405,11 +401,11 @@ export const useRoomStore = create((set, get) => ({
 
     let updatedFurniture = [...(room.placedFurniture || []), newItem];
     if (catalogDef.id === 'media-console') {
-      updatedFurniture = updatedFurniture.map((item) => (
+      updatedFurniture = updatedFurniture.map((item) =>
         item.furnitureTypeId === 'tv-43'
           ? { ...item, x: clamped.x, y: clamped.y, elevationCm: catalogDef.heightCm }
           : item
-      ));
+      );
     }
     get()._commitFurnitureUpdate(updatedFurniture, newItem.id);
   },
@@ -560,16 +556,27 @@ export const useRoomStore = create((set, get) => ({
 
     const updatedList = list.map((item) => {
       if (item.id === id) {
-        const targetWall = updates.wall !== undefined ? updates.wall : (item.wall || (type === 'door' ? 'bottom' : 'top'));
-        const wallLen = (targetWall === 'left' || targetWall === 'right') ? room.depthCm : room.widthCm;
+        const targetWall =
+          updates.wall !== undefined
+            ? updates.wall
+            : item.wall || (type === 'door' ? 'bottom' : 'top');
+        const wallLen =
+          targetWall === 'left' || targetWall === 'right' ? room.depthCm : room.widthCm;
 
         const targetW = updates.widthCm !== undefined ? updates.widthCm : item.widthCm;
         let targetOffset = updates.offsetCm !== undefined ? updates.offsetCm : item.offsetCm;
 
         // If the wall changed and no explicit offset was passed, ensure the opening does not overflow the new wall
-        if (updates.wall !== undefined && updates.wall !== item.wall && updates.offsetCm === undefined) {
+        if (
+          updates.wall !== undefined &&
+          updates.wall !== item.wall &&
+          updates.offsetCm === undefined
+        ) {
           if (targetOffset + targetW > wallLen - 15) {
-            targetOffset = Math.max(15, Math.min(wallLen - targetW - 15, Math.round(wallLen / 2 - targetW / 2)));
+            targetOffset = Math.max(
+              15,
+              Math.min(wallLen - targetW - 15, Math.round(wallLen / 2 - targetW / 2))
+            );
           }
         }
 
@@ -609,7 +616,7 @@ export const useRoomStore = create((set, get) => ({
     const id = `${type}-${Date.now()}`;
 
     const defaultWidth = type === 'door' ? 90 : 120;
-    const wallLength = (wall === 'left' || wall === 'right') ? room.depthCm : room.widthCm;
+    const wallLength = wall === 'left' || wall === 'right' ? room.depthCm : room.widthCm;
 
     // Position comfortably on the wall avoiding overlap if possible
     const existingOnWall = [
@@ -617,7 +624,10 @@ export const useRoomStore = create((set, get) => ({
       ...(room.windows || []).filter((w) => (w.wall || 'top') === wall),
     ];
 
-    let defaultOffset = Math.max(20, Math.min(wallLength - defaultWidth - 20, Math.round(wallLength / 2 - defaultWidth / 2)));
+    let defaultOffset = Math.max(
+      20,
+      Math.min(wallLength - defaultWidth - 20, Math.round(wallLength / 2 - defaultWidth / 2))
+    );
     if (existingOnWall.length > 0) {
       const last = existingOnWall[existingOnWall.length - 1];
       const proposed = last.offsetCm + last.widthCm + 25;
@@ -713,7 +723,10 @@ export const useRoomStore = create((set, get) => ({
     if (!room || selectedItemIds.length === 0) return;
     get()._recordHistory();
     const doomed = new Set(selectedItemIds);
-    get()._commitFurnitureUpdate((room.placedFurniture || []).filter((i) => !doomed.has(i.id)), null);
+    get()._commitFurnitureUpdate(
+      (room.placedFurniture || []).filter((i) => !doomed.has(i.id)),
+      null
+    );
   },
 
   nudgeSelection: (dx, dy) => {
@@ -902,10 +915,21 @@ export const useRoomStore = create((set, get) => ({
       widthCm: clamp(widthCm, 200, 1500),
       depthCm: clamp(depthCm, 200, 1500),
       doors: [
-        { id: `door-${Date.now()}`, wall: 'bottom', offsetCm: 50, widthCm: 90, swingDirection: 'inward-left' },
+        {
+          id: `door-${Date.now()}`,
+          wall: 'bottom',
+          offsetCm: 50,
+          widthCm: 90,
+          swingDirection: 'inward-left',
+        },
       ],
       windows: [
-        { id: `win-${Date.now()}`, wall: 'top', offsetCm: Math.round(widthCm / 2 - 60), widthCm: 120 },
+        {
+          id: `win-${Date.now()}`,
+          wall: 'top',
+          offsetCm: Math.round(widthCm / 2 - 60),
+          widthCm: 120,
+        },
       ],
       placedFurniture: [],
       updatedAt: new Date().toISOString(),
@@ -1103,7 +1127,8 @@ export const useRoomStore = create((set, get) => ({
     const existing = new Set(updatedFurniture.map((i) => i.id));
     let nextIds = get().selectedItemIds.filter((id) => existing.has(id));
     if (activeId === null) nextIds = [];
-    else if (activeId && existing.has(activeId) && !nextIds.includes(activeId)) nextIds = [activeId];
+    else if (activeId && existing.has(activeId) && !nextIds.includes(activeId))
+      nextIds = [activeId];
 
     set({
       room: updatedRoom,

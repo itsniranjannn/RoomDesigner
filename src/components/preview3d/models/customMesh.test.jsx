@@ -37,7 +37,11 @@ describe('photo mesh geometry', () => {
   });
 
   it('accepts plain arrays for positions and indices', () => {
-    const g = buildPhotoGeometry({ positions: Array.from(indexed.positions), colors: indexed.colors, indices: Array.from(indexed.indices) });
+    const g = buildPhotoGeometry({
+      positions: Array.from(indexed.positions),
+      colors: indexed.colors,
+      indices: Array.from(indexed.indices),
+    });
     expect(g.index.count).toBe(3);
   });
 });
@@ -73,12 +77,22 @@ describe('custom mesh model', () => {
   });
 
   it('draws a plain box until a mesh exists', () => {
-    const html = renderToStaticMarkup(<CustomMeshModel def={{}} widthM={0.8} depthM={0.5} heightM={0.8} mainColor="#885533" />);
+    const html = renderToStaticMarkup(
+      <CustomMeshModel def={{}} widthM={0.8} depthM={0.5} heightM={0.8} mainColor="#885533" />
+    );
     expect(html.toLowerCase()).toContain('boxgeometry');
   });
 
   it('draws the mesh scaled to the piece size, casting and receiving shadows', () => {
-    const html = renderToStaticMarkup(<CustomMeshModel def={{ mesh: indexed }} widthM={0.8} depthM={0.5} heightM={0.9} mainColor="#885533" />);
+    const html = renderToStaticMarkup(
+      <CustomMeshModel
+        def={{ mesh: indexed }}
+        widthM={0.8}
+        depthM={0.5}
+        heightM={0.9}
+        mainColor="#885533"
+      />
+    );
     expect(html).toContain('0.8,0.9,0.5');
     expect(html).not.toMatch(/NaN|Infinity/);
   });

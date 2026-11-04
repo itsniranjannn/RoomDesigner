@@ -41,13 +41,23 @@ export function CatalogItem({ item, onSelect, onDelete }) {
         title="Click to add, or drag into the room"
       >
         <div className={styles.preview}>
-          <svg width="100%" height="100%" viewBox="-50 -35 100 70" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="-50 -35 100 70"
+            preserveAspectRatio="xMidYMid meet"
+            aria-hidden="true"
+          >
             <ArchitecturalSilhouette item={item} widthCm={previewW} depthCm={previewD} isSwatch />
           </svg>
-          <span className={styles.plus} aria-hidden="true"><Plus size={14} /></span>
+          <span className={styles.plus} aria-hidden="true">
+            <Plus size={14} />
+          </span>
         </div>
         <span className={styles.name}>{item.name}</span>
-        <span className={styles.size}>{item.widthCm} x {item.depthCm} cm</span>
+        <span className={styles.size}>
+          {item.widthCm} x {item.depthCm} cm
+        </span>
       </div>
       {onDelete && (
         <button

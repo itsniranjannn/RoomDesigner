@@ -28,12 +28,16 @@ function modelProps(item, scale) {
 
 describe('catalog shape registries', () => {
   it('has a dedicated 3D model for every catalog item', () => {
-    const missing = FURNITURE_CATALOG.filter((item) => !MODELS[item.shapeType]).map((item) => `${item.id}:${item.shapeType}`);
+    const missing = FURNITURE_CATALOG.filter((item) => !MODELS[item.shapeType]).map(
+      (item) => `${item.id}:${item.shapeType}`
+    );
     expect(missing).toEqual([]);
   });
 
   it('has a 2D plan symbol for every catalog item', () => {
-    const missing = FURNITURE_CATALOG.filter((item) => !SILHOUETTES[item.shapeType]).map((item) => `${item.id}:${item.shapeType}`);
+    const missing = FURNITURE_CATALOG.filter((item) => !SILHOUETTES[item.shapeType]).map(
+      (item) => `${item.id}:${item.shapeType}`
+    );
     expect(missing).toEqual([]);
   });
 
@@ -68,7 +72,12 @@ describe('3D model markup', () => {
 
 describe('model helpers', () => {
   it('corners returns the four inset footprint corners', () => {
-    expect(corners(1, 0.5, 0.1)).toEqual([[-0.4, -0.15], [0.4, -0.15], [-0.4, 0.15], [0.4, 0.15]]);
+    expect(corners(1, 0.5, 0.1)).toEqual([
+      [-0.4, -0.15],
+      [0.4, -0.15],
+      [-0.4, 0.15],
+      [0.4, 0.15],
+    ]);
   });
 
   it('strutTransform centres a rod between two points and measures its length', () => {

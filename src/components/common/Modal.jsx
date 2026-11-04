@@ -2,7 +2,8 @@ import React, { useEffect, useId, useRef } from 'react';
 import { X } from 'lucide-react';
 import styles from './Modal.module.css';
 
-const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE =
+  'button:not([disabled]), [href], input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Accessible dialog shell with a header, scrolling body and optional footer.
@@ -19,8 +20,14 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md' 
   useEffect(() => {
     const previouslyFocused = document.activeElement;
     const dialog = dialogRef.current;
-    const firstField = dialog?.querySelector('input:not([type="hidden"]):not([type="file"]):not([disabled]), textarea:not([disabled])');
-    (firstField || dialog?.querySelector('button:not([data-modal-close]):not([disabled])') || dialog)?.focus();
+    const firstField = dialog?.querySelector(
+      'input:not([type="hidden"]):not([type="file"]):not([disabled]), textarea:not([disabled])'
+    );
+    (
+      firstField ||
+      dialog?.querySelector('button:not([data-modal-close]):not([disabled])') ||
+      dialog
+    )?.focus();
 
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {
@@ -29,7 +36,9 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md' 
         return;
       }
       if (e.key !== 'Tab' || !dialog) return;
-      const nodes = Array.from(dialog.querySelectorAll(FOCUSABLE)).filter((n) => n.offsetParent !== null);
+      const nodes = Array.from(dialog.querySelectorAll(FOCUSABLE)).filter(
+        (n) => n.offsetParent !== null
+      );
       if (nodes.length === 0) return;
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
@@ -64,10 +73,18 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md' 
       >
         <div className={styles.header}>
           <div className={styles.heading}>
-            <h2 id={titleId} className={styles.title}>{title}</h2>
+            <h2 id={titleId} className={styles.title}>
+              {title}
+            </h2>
             {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
           </div>
-          <button type="button" className={styles.close} onClick={onClose} aria-label="Close dialog" data-modal-close>
+          <button
+            type="button"
+            className={styles.close}
+            onClick={onClose}
+            aria-label="Close dialog"
+            data-modal-close
+          >
             <X size={18} />
           </button>
         </div>

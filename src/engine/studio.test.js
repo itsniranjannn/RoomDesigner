@@ -6,7 +6,11 @@ import { encodeRoomToHash, decodeRoomFromHash, sanitizeImportedRoom } from './sh
 import { getWallDistances, formatCm } from './measure.js';
 import { jpegToPdf } from './pdf.js';
 import { getWalkStart, buildBlockers, isBlocked } from './walk.js';
-import { resolveItemDef, registerCustomFurniture, getFurnitureType } from '../data/furnitureCatalog.js';
+import {
+  resolveItemDef,
+  registerCustomFurniture,
+  getFurnitureType,
+} from '../data/furnitureCatalog.js';
 
 const room = {
   id: 'r1',
@@ -20,27 +24,45 @@ const room = {
 
 describe('overrides and custom furniture', () => {
   it('applies per-item overrides over the catalog definition', () => {
-    const def = resolveItemDef({ furnitureTypeId: 'bed-queen', overrides: { widthCm: 200, color: '#112233' } });
+    const def = resolveItemDef({
+      furnitureTypeId: 'bed-queen',
+      overrides: { widthCm: 200, color: '#112233' },
+    });
     expect(def.widthCm).toBe(200);
     expect(def.color).toBe('#112233');
     expect(def.depthCm).toBeGreaterThan(0);
   });
 
   it('resolves registered custom furniture', () => {
-    registerCustomFurniture({ id: 'custom-x', name: 'X', widthCm: 50, depthCm: 40, heightCm: 60, color: '#999' });
+    registerCustomFurniture({
+      id: 'custom-x',
+      name: 'X',
+      widthCm: 50,
+      depthCm: 40,
+      heightCm: 60,
+      color: '#999',
+    });
     expect(getFurnitureType('custom-x').category).toBe('custom');
   });
 });
 
 describe('clearance', () => {
   it('flags furniture blocking a door swing', () => {
-    const r = { ...room, placedFurniture: [{ id: 'a', furnitureTypeId: 'wardrobe-3door', x: 105, y: 380, rotationDeg: 0 }] };
+    const r = {
+      ...room,
+      placedFurniture: [
+        { id: 'a', furnitureTypeId: 'wardrobe-3door', x: 105, y: 380, rotationDeg: 0 },
+      ],
+    };
     const issues = evaluateClearance(r);
     expect(issues.some((i) => i.itemId === 'a' && i.kind === 'door-swing')).toBe(true);
   });
 
   it('does not flag furniture away from openings', () => {
-    const r = { ...room, placedFurniture: [{ id: 'a', furnitureTypeId: 'bed-queen', x: 400, y: 210, rotationDeg: 0 }] };
+    const r = {
+      ...room,
+      placedFurniture: [{ id: 'a', furnitureTypeId: 'bed-queen', x: 400, y: 210, rotationDeg: 0 }],
+    };
     expect(evaluateClearance(r).filter((i) => i.kind === 'door-swing')).toHaveLength(0);
   });
 
@@ -64,11 +86,18 @@ describe('layout suggestion', () => {
 
 describe('share', () => {
   it('round-trips a room through a link hash', async () => {
-    const r = { ...room, placedFurniture: [{ id: 'a', furnitureTypeId: 'bed-queen', x: 100, y: 120, rotationDeg: 90 }] };
+    const r = {
+      ...room,
+      placedFurniture: [{ id: 'a', furnitureTypeId: 'bed-queen', x: 100, y: 120, rotationDeg: 90 }],
+    };
     const hash = await encodeRoomToHash(r);
     const back = await decodeRoomFromHash('#' + hash);
     expect(back.name).toBe('Test');
-    expect(back.placedFurniture[0]).toMatchObject({ furnitureTypeId: 'bed-queen', x: 100, rotationDeg: 90 });
+    expect(back.placedFurniture[0]).toMatchObject({
+      furnitureTypeId: 'bed-queen',
+      x: 100,
+      rotationDeg: 90,
+    });
   });
 
   it('sanitizes hostile import data', () => {
@@ -91,7 +120,13 @@ describe('share', () => {
       windows: [7],
       placedFurniture: [
         null,
-        { id: 'same', furnitureTypeId: 'bed-queen', x: 10, y: 10, overrides: { widthCm: 9999, colour: 'url(x)', fill: '#ff0000', evil: {} } },
+        {
+          id: 'same',
+          furnitureTypeId: 'bed-queen',
+          x: 10,
+          y: 10,
+          overrides: { widthCm: 9999, colour: 'url(x)', fill: '#ff0000', evil: {} },
+        },
         { id: 'same', furnitureTypeId: 'bed-queen', x: 50, y: 50 },
       ],
     });
@@ -145,7 +180,14 @@ describe('clearance noise control', () => {
   });
 
   it('suggested layouts leave no tight passages in a normal room', () => {
-    const ids = ['bed-queen', 'nightstand', 'nightstand', 'wardrobe-2door', 'chest-drawers', 'rug-living'];
+    const ids = [
+      'bed-queen',
+      'nightstand',
+      'nightstand',
+      'wardrobe-2door',
+      'chest-drawers',
+      'rug-living',
+    ];
     const { placed } = suggestLayout(room, ids);
     const issues = evaluateClearance({ ...room, placedFurniture: placed });
     expect(issues).toEqual([]);

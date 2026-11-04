@@ -48,11 +48,28 @@ export function SizeSection({ item, def }) {
       }
     >
       <div className={styles.grid3}>
-        <NumberField label="Width" value={def.widthCm} {...range('widthCm', 20)} onCommit={(v) => set({ widthCm: v })} />
-        <NumberField label="Depth" value={def.depthCm} {...range('depthCm', 20)} onCommit={(v) => set({ depthCm: v })} />
-        <NumberField label="Height" value={def.heightCm} {...range('heightCm', 1)} onCommit={(v) => set({ heightCm: v })} />
+        <NumberField
+          label="Width"
+          value={def.widthCm}
+          {...range('widthCm', 20)}
+          onCommit={(v) => set({ widthCm: v })}
+        />
+        <NumberField
+          label="Depth"
+          value={def.depthCm}
+          {...range('depthCm', 20)}
+          onCommit={(v) => set({ depthCm: v })}
+        />
+        <NumberField
+          label="Height"
+          value={def.heightCm}
+          {...range('heightCm', 1)}
+          onCommit={(v) => set({ heightCm: v })}
+        />
       </div>
-      <p className={styles.note}>Sizes are in centimetres. A piece can be scaled between 40% and 250% of its original size.</p>
+      <p className={styles.note}>
+        Sizes are in centimetres. A piece can be scaled between 40% and 250% of its original size.
+      </p>
     </Section>
   );
 }
@@ -69,12 +86,16 @@ export function FinishSection({ item, def }) {
   // Dragging in the picker changes the colour live; one undo step is added when it closes
   const beginPick = () => {
     if (pickerStart.current) return;
-    pickerStart.current = { snapshot: useRoomStore.getState().getCurrentSnapshot(), colour: current };
+    pickerStart.current = {
+      snapshot: useRoomStore.getState().getCurrentSnapshot(),
+      colour: current,
+    };
   };
   const endPick = (value) => {
     const start = pickerStart.current;
     pickerStart.current = null;
-    if (start && value.toLowerCase() !== start.colour) useRoomStore.getState().pushExplicitSnapshot(start.snapshot);
+    if (start && value.toLowerCase() !== start.colour)
+      useRoomStore.getState().pushExplicitSnapshot(start.snapshot);
   };
 
   return (
@@ -86,7 +107,9 @@ export function FinishSection({ item, def }) {
             variant="ghost"
             size="small"
             icon={<RotateCcw size={14} />}
-            onClick={() => updateItemOverrides(item.id, { color: null, subColor: null, accentColor: null }, true)}
+            onClick={() =>
+              updateItemOverrides(item.id, { color: null, subColor: null, accentColor: null }, true)
+            }
           >
             Reset colour
           </Button>
@@ -109,7 +132,10 @@ export function FinishSection({ item, def }) {
             </svg>
           </button>
         ))}
-        <label className={`${styles.customColour} ${!isPreset && current ? styles.swatchOn : ''}`} title="Pick any colour">
+        <label
+          className={`${styles.customColour} ${!isPreset && current ? styles.swatchOn : ''}`}
+          title="Pick any colour"
+        >
           <input
             type="color"
             value={customValue}
@@ -124,7 +150,9 @@ export function FinishSection({ item, def }) {
           <span className={styles.customText}>Custom</span>
         </label>
       </div>
-      {base && item.overrides?.color && <p className={styles.note}>Original colour: {base.color}</p>}
+      {base && item.overrides?.color && (
+        <p className={styles.note}>Original colour: {base.color}</p>
+      )}
     </Section>
   );
 }

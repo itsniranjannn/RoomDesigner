@@ -99,7 +99,11 @@ function ModelPreview({ model, dims, color }) {
         shadow-camera-far={reach * 10}
         shadow-normalBias={0.02}
       />
-      <directionalLight position={[-reach * 2, reach * 2, -reach * 2]} intensity={0.7} color="#F5EFE6" />
+      <directionalLight
+        position={[-reach * 2, reach * 2, -reach * 2]}
+        intensity={0.7}
+        color="#F5EFE6"
+      />
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[6, 6]} />
         <meshStandardMaterial color="#E4DACB" roughness={1} />
@@ -156,11 +160,22 @@ export function PhotoModelModal({ onClose }) {
 
   const photoCount = Object.keys(photos).length;
   const modelColor = useMemo(() => (model ? meshAverageHex(model) : '#a0a0a0'), [model]);
-  const proportions = useMemo(() => proportionWarnings(
-    Object.fromEntries(Object.entries(photos).map(([slot, photo]) => [slot, { mask: segmented[slot].mask, width: photo.width, height: photo.height }])),
-    dims
-  ), [segmented, photos, dims]);
-  const weakSlots = Object.entries(segmented).filter(([, s]) => s.coverage < 0.03 || s.coverage > 0.92);
+  const proportions = useMemo(
+    () =>
+      proportionWarnings(
+        Object.fromEntries(
+          Object.entries(photos).map(([slot, photo]) => [
+            slot,
+            { mask: segmented[slot].mask, width: photo.width, height: photo.height },
+          ])
+        ),
+        dims
+      ),
+    [segmented, photos, dims]
+  );
+  const weakSlots = Object.entries(segmented).filter(
+    ([, s]) => s.coverage < 0.03 || s.coverage > 0.92
+  );
 
   const handleBuild = () => {
     setBusy(true);
@@ -170,8 +185,16 @@ export function PhotoModelModal({ onClose }) {
       try {
         const views = VIEW_SLOTS.filter((slot) => photos[slot.id]).map((slot) => {
           const photo = photos[slot.id];
-          const norm = normalizeView(photo.rgba, segmented[slot.id].mask, photo.width, photo.height);
-          if (!norm) throw new Error(`No object found in the ${slot.label.toLowerCase()} photo. Try a plainer background.`);
+          const norm = normalizeView(
+            photo.rgba,
+            segmented[slot.id].mask,
+            photo.width,
+            photo.height
+          );
+          if (!norm)
+            throw new Error(
+              `No object found in the ${slot.label.toLowerCase()} photo. Try a plainer background.`
+            );
           return { slot: slot.id, angle: slot.angle, ...norm };
         });
         setModel(buildModelFromViews(views));
@@ -189,18 +212,18 @@ export function PhotoModelModal({ onClose }) {
     const topPixels = topDownImage(model, PLAN_SIZE);
     try {
       await addCustomFurniture({
-      id: `custom-${Date.now().toString(36)}`,
-      name: name.trim() || 'My furniture',
-      category: 'custom',
-      shapeType: 'custom-mesh',
-      widthCm: dims.widthCm,
-      depthCm: dims.depthCm,
-      heightCm: dims.heightCm,
-      color: modelColor,
-      mesh: { positions: model.positions, colors: model.colors, indices: model.indices },
-      topImage: rgbaToDataUrl(topPixels, PLAN_SIZE),
-      topOutline: footprintOutline(topPixels, PLAN_SIZE),
-      thumb: rgbaToDataUrl(renderMesh(model, { size: PLAN_SIZE }), PLAN_SIZE),
+        id: `custom-${Date.now().toString(36)}`,
+        name: name.trim() || 'My furniture',
+        category: 'custom',
+        shapeType: 'custom-mesh',
+        widthCm: dims.widthCm,
+        depthCm: dims.depthCm,
+        heightCm: dims.heightCm,
+        color: modelColor,
+        mesh: { positions: model.positions, colors: model.colors, indices: model.indices },
+        topImage: rgbaToDataUrl(topPixels, PLAN_SIZE),
+        topOutline: footprintOutline(topPixels, PLAN_SIZE),
+        thumb: rgbaToDataUrl(renderMesh(model, { size: PLAN_SIZE }), PLAN_SIZE),
       });
     } catch {
       setMessage({ kind: 'error', text: 'This piece could not be saved on this device.' });
@@ -219,11 +242,23 @@ export function PhotoModelModal({ onClose }) {
       size="xl"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="secondary" icon={<Sparkles size={16} />} onClick={handleBuild} disabled={photoCount < 2 || busy}>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="secondary"
+            icon={<Sparkles size={16} />}
+            onClick={handleBuild}
+            disabled={photoCount < 2 || busy}
+          >
             {busy ? 'Building...' : model ? 'Rebuild model' : 'Build 3D model'}
           </Button>
-          <Button variant="primary" icon={<Save size={16} />} onClick={handleSave} disabled={!model}>
+          <Button
+            variant="primary"
+            icon={<Save size={16} />}
+            onClick={handleSave}
+            disabled={!model}
+          >
             Save to My furniture
           </Button>
         </>
@@ -231,12 +266,21 @@ export function PhotoModelModal({ onClose }) {
     >
       <div className={local.columns}>
         <div className={local.left}>
-          <TextField label="Name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} />
+          <TextField
+            label="Name"
+            value={name}
+            maxLength={60}
+            onChange={(e) => setName(e.target.value)}
+          />
 
           <div className={local.section}>
             <h3 className={local.sectionTitle}>Real size</h3>
             <div className={local.sizes}>
-              {[['widthCm', 'Width'], ['depthCm', 'Depth'], ['heightCm', 'Height']].map(([key, label]) => (
+              {[
+                ['widthCm', 'Width'],
+                ['depthCm', 'Depth'],
+                ['heightCm', 'Height'],
+              ].map(([key, label]) => (
                 <NumberField
                   key={key}
                   label={label}
@@ -251,11 +295,21 @@ export function PhotoModelModal({ onClose }) {
           </div>
 
           <div className={local.section}>
-            <h3 className={local.sectionTitle}>Photos <span className={local.sectionNote}>{photoCount} of 5, at least 2 needed</span></h3>
+            <h3 className={local.sectionTitle}>
+              Photos <span className={local.sectionNote}>{photoCount} of 5, at least 2 needed</span>
+            </h3>
             <ul className={local.tips}>
-              <li>Use a plain wall or sheet behind the piece and even light, without strong shadows.</li>
-              <li>Hold the camera level at mid-height, the same distance for every photo, with the whole piece in frame.</li>
-              <li>Turn the piece a quarter turn between photos. Front and one side are enough; more photos give a better shape.</li>
+              <li>
+                Use a plain wall or sheet behind the piece and even light, without strong shadows.
+              </li>
+              <li>
+                Hold the camera level at mid-height, the same distance for every photo, with the
+                whole piece in frame.
+              </li>
+              <li>
+                Turn the piece a quarter turn between photos. Front and one side are enough; more
+                photos give a better shape.
+              </li>
             </ul>
             <div className={local.slots}>
               {VIEW_SLOTS.map((slot) => {
@@ -265,7 +319,12 @@ export function PhotoModelModal({ onClose }) {
                     <div className={local.slotHead}>
                       <span>{slot.label}</span>
                       {photo && (
-                        <button type="button" className={local.iconBtn} onClick={() => removePhoto(slot.id)} aria-label={`Remove ${slot.label} photo`}>
+                        <button
+                          type="button"
+                          className={local.iconBtn}
+                          onClick={() => removePhoto(slot.id)}
+                          aria-label={`Remove ${slot.label} photo`}
+                        >
                           <X size={14} />
                         </button>
                       )}
@@ -273,13 +332,19 @@ export function PhotoModelModal({ onClose }) {
                     {photo ? (
                       <CutoutPreview photo={photo} mask={segmented[slot.id].mask} />
                     ) : (
-                      <button type="button" className={local.addPhoto} onClick={() => inputs.current[slot.id]?.click()}>
+                      <button
+                        type="button"
+                        className={local.addPhoto}
+                        onClick={() => inputs.current[slot.id]?.click()}
+                      >
                         <Camera size={18} aria-hidden="true" />
                         <span>Add photo</span>
                       </button>
                     )}
                     <input
-                      ref={(el) => { inputs.current[slot.id] = el; }}
+                      ref={(el) => {
+                        inputs.current[slot.id] = el;
+                      }}
                       type="file"
                       accept="image/png,image/jpeg,image/webp"
                       hidden
@@ -311,28 +376,35 @@ export function PhotoModelModal({ onClose }) {
               <ModelPreview model={model} dims={dims} color={modelColor} />
             ) : (
               <p className={local.placeholder}>
-                {photoCount < 2 ? 'Add a front and a side photo to begin.' : 'Press "Build 3D model" to preview it here.'}
+                {photoCount < 2
+                  ? 'Add a front and a side photo to begin.'
+                  : 'Press "Build 3D model" to preview it here.'}
               </p>
             )}
           </div>
           {model && (
             <p className={local.note}>
-              Shown at its real size; each grid square is 50 cm. Drag to rotate. A model built from silhouettes fills in
-              hollow parts the photos cannot show, such as the space under a table top.
+              Shown at its real size; each grid square is 50 cm. Drag to rotate. A model built from
+              silhouettes fills in hollow parts the photos cannot show, such as the space under a
+              table top.
             </p>
           )}
           <p className={local.note}>
-            Furniture made from photos stays on this device. Shared links and JSON files keep its position but not its model.
+            Furniture made from photos stays on this device. Shared links and JSON files keep its
+            position but not its model.
           </p>
         </div>
       </div>
 
       {proportions.map((text) => (
-        <Notice key={text} kind="warn">{text} Check the size above or retake the photo straight on.</Notice>
+        <Notice key={text} kind="warn">
+          {text} Check the size above or retake the photo straight on.
+        </Notice>
       ))}
       {weakSlots.length > 0 && (
         <Notice kind="warn">
-          The cut-out looks unreliable for: {weakSlots.map(([slot]) => VIEW_SLOTS.find((v) => v.id === slot).label).join(', ')}.
+          The cut-out looks unreliable for:{' '}
+          {weakSlots.map(([slot]) => VIEW_SLOTS.find((v) => v.id === slot).label).join(', ')}.
           Adjust the background removal or retake the photo on a plain background.
         </Notice>
       )}

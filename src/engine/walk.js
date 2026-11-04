@@ -19,10 +19,21 @@ export function getWalkStart(room) {
   if (door) {
     const along = (door.offsetCm + door.widthCm / 2) / 100;
     switch (door.wall || 'bottom') {
-      case 'top': x = along - W / 2; z = -D / 2 + 0.9; break;
-      case 'left': x = -W / 2 + 0.9; z = along - D / 2; break;
-      case 'right': x = W / 2 - 0.9; z = along - D / 2; break;
-      default: x = along - W / 2; z = D / 2 - 0.9;
+      case 'top':
+        x = along - W / 2;
+        z = -D / 2 + 0.9;
+        break;
+      case 'left':
+        x = -W / 2 + 0.9;
+        z = along - D / 2;
+        break;
+      case 'right':
+        x = W / 2 - 0.9;
+        z = along - D / 2;
+        break;
+      default:
+        x = along - W / 2;
+        z = D / 2 - 0.9;
     }
   }
   return { x, z, yaw: Math.atan2(x, z) };
@@ -34,7 +45,11 @@ export function buildBlockers(room) {
     .map((item) => {
       const def = resolveItemDef(item);
       if (!def) return null;
-      const flat = (def.heightCm ?? 50) < 15 || def.shapeType === 'rug' || def.shapeType === 'rug-runner' || def.shapeType === 'nepali-dhaka-rug';
+      const flat =
+        (def.heightCm ?? 50) < 15 ||
+        def.shapeType === 'rug' ||
+        def.shapeType === 'rug-runner' ||
+        def.shapeType === 'nepali-dhaka-rug';
       if (flat) return null;
       return {
         x: (item.x - room.widthCm / 2) / 100,
@@ -56,8 +71,8 @@ export function isBlocked(px, pz, blockers) {
     const s = Math.sin(b.theta);
     const lx = dx * c - dz * s;
     const lz = dx * s + dz * c;
-    if (Math.abs(lx) < b.halfW + PLAYER_RADIUS && Math.abs(lz) < b.halfD + PLAYER_RADIUS) return true;
+    if (Math.abs(lx) < b.halfW + PLAYER_RADIUS && Math.abs(lz) < b.halfD + PLAYER_RADIUS)
+      return true;
   }
   return false;
 }
-

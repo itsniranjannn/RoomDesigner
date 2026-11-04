@@ -25,7 +25,9 @@ describe('furniture catalog', () => {
 
   it('resolves every shapeType to a registered 2D symbol and 3D model', () => {
     for (const item of FURNITURE_CATALOG) {
-      expect(SILHOUETTES[item.shapeType], `2D ${item.id} (${item.shapeType})`).toBeTypeOf('function');
+      expect(SILHOUETTES[item.shapeType], `2D ${item.id} (${item.shapeType})`).toBeTypeOf(
+        'function'
+      );
       expect(MODELS[item.shapeType], `3D ${item.id} (${item.shapeType})`).toBeTypeOf('function');
     }
   });

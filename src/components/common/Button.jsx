@@ -14,7 +14,9 @@ export function Button({
     styles[variant] || styles.secondary,
     size === 'small' ? styles.small : '',
     className,
-  ].filter(Boolean).join(' ');
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
     <button className={classes} {...props}>
@@ -23,4 +25,3 @@ export function Button({
     </button>
   );
 }
-

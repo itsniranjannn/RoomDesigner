@@ -6,7 +6,11 @@ import styles from './ToolButton.module.css';
 /** Floating strip of tools: a small paper card that holds ToolButtons. */
 export function ToolGroup({ children, vertical = true, className = '', ...props }) {
   return (
-    <div className={`${styles.group} ${vertical ? '' : styles.horizontal} ${className}`} role="group" {...props}>
+    <div
+      className={`${styles.group} ${vertical ? '' : styles.horizontal} ${className}`}
+      role="group"
+      {...props}
+    >
       {children}
     </div>
   );
@@ -25,7 +29,12 @@ export function ToolButton({ label, shortcut, active, side = 'right', children, 
   return (
     <Tooltip label={tip} side={side}>
       {/* The tooltip already names the tool, so the browser's own title bubble is skipped */}
-      <IconButton label={shortcut ? `${label} (${shortcut})` : label} active={active} title={undefined} {...props}>
+      <IconButton
+        label={shortcut ? `${label} (${shortcut})` : label}
+        active={active}
+        title={undefined}
+        {...props}
+      >
         {children}
       </IconButton>
     </Tooltip>

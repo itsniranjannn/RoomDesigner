@@ -47,14 +47,29 @@ function Keys({ text }) {
   const parts = text.split(/ ([+/]) /);
   return (
     <span className={styles.keys}>
-      {parts.map((part, i) => (i % 2 === 1 ? <span key={i} aria-hidden="true">{part}</span> : <kbd key={i} className={styles.kbd}>{part}</kbd>))}
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+          <span key={i} aria-hidden="true">
+            {part}
+          </span>
+        ) : (
+          <kbd key={i} className={styles.kbd}>
+            {part}
+          </kbd>
+        )
+      )}
     </span>
   );
 }
 
 export function ShortcutsModal({ onClose }) {
   return (
-    <Modal title="Keyboard shortcuts" subtitle="Plan shortcuts work while the 2D plan is showing." onClose={onClose} size="lg">
+    <Modal
+      title="Keyboard shortcuts"
+      subtitle="Plan shortcuts work while the 2D plan is showing."
+      onClose={onClose}
+      size="lg"
+    >
       <div className={styles.shortcutGrid}>
         {SECTIONS.map((section) => (
           <section key={section.title} className={styles.section}>

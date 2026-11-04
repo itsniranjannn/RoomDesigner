@@ -19,12 +19,23 @@ const COMPANION_SHAPES = new Set(['nightstand', 'side-table', 'lamp', 'plant']);
 const ANCHOR_SHAPES = new Set(['bed', 'sofa', 'armchair']);
 
 function isRug(def) {
-  return def.shapeType === 'rug' || def.shapeType === 'rug-runner' || def.shapeType === 'nepali-dhaka-rug';
+  return (
+    def.shapeType === 'rug' ||
+    def.shapeType === 'rug-runner' ||
+    def.shapeType === 'nepali-dhaka-rug'
+  );
 }
 
 function makeEntry(typeId, def, x, y, rotationDeg, id) {
   return {
-    item: { id, furnitureTypeId: typeId, x: Math.round(x), y: Math.round(y), rotationDeg, elevationCm: 0 },
+    item: {
+      id,
+      furnitureTypeId: typeId,
+      x: Math.round(x),
+      y: Math.round(y),
+      rotationDeg,
+      elevationCm: 0,
+    },
     def,
     corners: getRotatedRectCorners(x, y, def.widthCm, def.depthCm, rotationDeg),
   };
@@ -66,10 +77,12 @@ function wallCandidates(def, room) {
     const halfY = (aabb.maxY - aabb.minY) / 2;
     if (wall === 'top' || wall === 'bottom') {
       const y = wall === 'top' ? halfY + WALL_GAP : room.depthCm - halfY - WALL_GAP;
-      for (let x = halfX + WALL_GAP; x <= room.widthCm - halfX - WALL_GAP; x += STEP) out.push({ x, y, rot, wall });
+      for (let x = halfX + WALL_GAP; x <= room.widthCm - halfX - WALL_GAP; x += STEP)
+        out.push({ x, y, rot, wall });
     } else {
       const x = wall === 'left' ? halfX + WALL_GAP : room.widthCm - halfX - WALL_GAP;
-      for (let y = halfY + WALL_GAP; y <= room.depthCm - halfY - WALL_GAP; y += STEP) out.push({ x, y, rot, wall });
+      for (let y = halfY + WALL_GAP; y <= room.depthCm - halfY - WALL_GAP; y += STEP)
+        out.push({ x, y, rot, wall });
     }
   }
   return out;
@@ -108,9 +121,7 @@ function companionCandidates(def, anchor) {
  */
 export function suggestLayout(room, typeIds) {
   const zones = getClearanceZones(room);
-  const defs = typeIds
-    .map((id) => ({ id, def: getFurnitureType(id) }))
-    .filter((e) => e.def);
+  const defs = typeIds.map((id) => ({ id, def: getFurnitureType(id) })).filter((e) => e.def);
 
   const rank = (e) => {
     if (isRug(e.def)) return -1;
@@ -118,7 +129,9 @@ export function suggestLayout(room, typeIds) {
     if (COMPANION_SHAPES.has(e.def.shapeType)) return 3;
     return 1;
   };
-  defs.sort((a, b) => rank(a) - rank(b) || b.def.widthCm * b.def.depthCm - a.def.widthCm * a.def.depthCm);
+  defs.sort(
+    (a, b) => rank(a) - rank(b) || b.def.widthCm * b.def.depthCm - a.def.widthCm * a.def.depthCm
+  );
 
   // Pieces already in the room act as obstacles; only new pieces are returned
   const placed = (room.placedFurniture || [])
@@ -128,7 +141,13 @@ export function suggestLayout(room, typeIds) {
       return {
         item,
         def,
-        corners: getRotatedRectCorners(item.x, item.y, def.widthCm, def.depthCm, item.rotationDeg || 0),
+        corners: getRotatedRectCorners(
+          item.x,
+          item.y,
+          def.widthCm,
+          def.depthCm,
+          item.rotationDeg || 0
+        ),
       };
     })
     .filter(Boolean);
@@ -154,7 +173,10 @@ export function suggestLayout(room, typeIds) {
     else if (CENTER_SHAPES.has(def.shapeType)) candidates = centerCandidates(room);
     else if (COMPANION_SHAPES.has(def.shapeType)) {
       const anchor = placed.find((p) => ANCHOR_SHAPES.has(p.def.shapeType));
-      candidates = [...(anchor ? companionCandidates(def, anchor) : []), ...wallCandidates(def, room)];
+      candidates = [
+        ...(anchor ? companionCandidates(def, anchor) : []),
+        ...wallCandidates(def, room),
+      ];
     } else candidates = wallCandidates(def, room);
 
     let chosen = null;

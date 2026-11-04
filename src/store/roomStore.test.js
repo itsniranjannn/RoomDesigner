@@ -50,7 +50,9 @@ describe('roomStore', () => {
     state().addFurniture('nightstand', 100, 100);
     state().addFurniture('armchair', 300, 300);
     state().selectAll();
-    const start = Object.fromEntries(state().room.placedFurniture.map((i) => [i.id, { x: i.x, y: i.y }]));
+    const start = Object.fromEntries(
+      state().room.placedFurniture.map((i) => [i.id, { x: i.x, y: i.y }])
+    );
     state().moveSelectionFrom(start, 40, 20);
     for (const item of state().room.placedFurniture) {
       expect(item.x).toBe(start[item.id].x + 40);
@@ -101,9 +103,15 @@ describe('roomStore', () => {
 
   it('applies a suggested layout in replace and add modes', () => {
     state().addFurniture('nightstand', 100, 100);
-    state().applyLayout([{ id: 'x1', furnitureTypeId: 'armchair', x: 200, y: 200, rotationDeg: 0 }], 'add');
+    state().applyLayout(
+      [{ id: 'x1', furnitureTypeId: 'armchair', x: 200, y: 200, rotationDeg: 0 }],
+      'add'
+    );
     expect(state().room.placedFurniture).toHaveLength(2);
-    state().applyLayout([{ id: 'x2', furnitureTypeId: 'armchair', x: 200, y: 200, rotationDeg: 0 }], 'replace');
+    state().applyLayout(
+      [{ id: 'x2', furnitureTypeId: 'armchair', x: 200, y: 200, rotationDeg: 0 }],
+      'replace'
+    );
     expect(state().room.placedFurniture).toHaveLength(1);
   });
 

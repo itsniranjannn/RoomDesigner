@@ -16,7 +16,9 @@ import { FlatStatusBar } from './FlatStatusBar.jsx';
 import { FlatStartCard } from './FlatStartCard.jsx';
 import styles from './FlatDesigner.module.css';
 
-const Flat3DView = React.lazy(() => import('./Flat3DView.jsx').then((m) => ({ default: m.Flat3DView })));
+const Flat3DView = React.lazy(() =>
+  import('./Flat3DView.jsx').then((m) => ({ default: m.Flat3DView }))
+);
 
 const VIEW_OPTIONS = [
   { value: '2d', label: 'Plan', icon: <Layers size={16} aria-hidden="true" />, title: 'Plan view' },
@@ -87,7 +89,12 @@ export function FlatDesigner() {
         return;
       }
       const step = e.shiftKey ? 50 : 10;
-      const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+      const d = {
+        ArrowLeft: [-step, 0],
+        ArrowRight: [step, 0],
+        ArrowUp: [0, -step],
+        ArrowDown: [0, step],
+      }[e.key];
       if (d && st.selected?.type === 'stair') {
         e.preventDefault();
         const stair = st.flat.stairs.find((x) => x.id === st.selected.id);
@@ -100,7 +107,8 @@ export function FlatDesigner() {
   }, []);
 
   if (!flat) return null;
-  const hasContent = flat.levels.some((l) => (flat.walls?.[l.id] || []).length > 0) || flat.stairs.length > 0;
+  const hasContent =
+    flat.levels.some((l) => (flat.walls?.[l.id] || []).length > 0) || flat.stairs.length > 0;
   const showStart = !hasContent && viewMode === '2d' && dismissedFor !== flat.id;
   const levelOptions = flat.levels.map((l) => ({ value: l.id, label: l.name }));
   const plan = viewMode === '2d';
@@ -112,7 +120,12 @@ export function FlatDesigner() {
         homeLabel="Back to your studio"
         start={
           <>
-            <EditableTitle value={flat.name} onCommit={renameFlat} label="Flat name" maxLength={80} />
+            <EditableTitle
+              value={flat.name}
+              onCommit={renameFlat}
+              label="Flat name"
+              maxLength={80}
+            />
             <SaveStatus />
           </>
         }
@@ -126,7 +139,13 @@ export function FlatDesigner() {
                 <Redo2 size={18} aria-hidden="true" />
               </IconButton>
             </div>
-            <Segmented options={VIEW_OPTIONS} value={viewMode} onChange={setViewMode} ariaLabel="View" className={styles.viewSwitch} />
+            <Segmented
+              options={VIEW_OPTIONS}
+              value={viewMode}
+              onChange={setViewMode}
+              ariaLabel="View"
+              className={styles.viewSwitch}
+            />
           </>
         }
       />
@@ -145,7 +164,13 @@ export function FlatDesigner() {
             {plan && <FlatToolbar />}
 
             <div className={styles.floors}>
-              <Segmented options={levelOptions} value={levelId} onChange={setLevel} ariaLabel="Floors" size="small" />
+              <Segmented
+                options={levelOptions}
+                value={levelId}
+                onChange={setLevel}
+                ariaLabel="Floors"
+                size="small"
+              />
               <IconButton label="Add a floor" onClick={addLevel} disabled={flat.levels.length >= 6}>
                 <Plus size={18} aria-hidden="true" />
               </IconButton>

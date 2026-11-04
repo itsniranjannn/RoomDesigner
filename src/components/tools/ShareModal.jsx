@@ -6,7 +6,11 @@ import { TextField } from '../common/Field.jsx';
 import { Notice } from '../common/Notice.jsx';
 import { useRoomStore } from '../../store/roomStore.js';
 import { encodeRoomToHash } from '../../engine/share.js';
-import { exportRoomPlanAsPNG, exportRoomPlanAsPDF, exportRoomAsJSON } from '../../engine/exportPlan.js';
+import {
+  exportRoomPlanAsPNG,
+  exportRoomPlanAsPDF,
+  exportRoomAsJSON,
+} from '../../engine/exportPlan.js';
 import styles from './Tools.module.css';
 
 export function ShareModal({ onClose }) {
@@ -39,7 +43,9 @@ export function ShareModal({ onClose }) {
         await navigator.clipboard.writeText(url);
       } catch {
         setManualLink(url);
-        throw new Error('Your browser would not copy the link automatically. Copy it from the box below.');
+        throw new Error(
+          'Your browser would not copy the link automatically. Copy it from the box below.'
+        );
       }
     }, 'Link copied. Anyone who opens it gets their own copy of this design. Nothing is uploaded.');
 
@@ -48,7 +54,8 @@ export function ShareModal({ onClose }) {
     event.target.value = '';
     if (!file) return;
     run(async () => {
-      if (file.size > 5 * 1024 * 1024) throw new Error('That file is too large to be a room design.');
+      if (file.size > 5 * 1024 * 1024)
+        throw new Error('That file is too large to be a room design.');
       let data;
       try {
         data = JSON.parse(await file.text());
@@ -61,27 +68,57 @@ export function ShareModal({ onClose }) {
   };
 
   return (
-    <Modal title="Share & export" subtitle={room ? room.name : undefined} onClose={onClose} size="md">
+    <Modal
+      title="Share & export"
+      subtitle={room ? room.name : undefined}
+      onClose={onClose}
+      size="md"
+    >
       <ul className={styles.options}>
         <li className={styles.option}>
           <div className={styles.optionText}>
             <h3 className={styles.optionTitle}>Share a link</h3>
-            <p className={styles.optionHelp}>The design is packed into the link itself, so it stays private and nothing is uploaded.</p>
+            <p className={styles.optionHelp}>
+              The design is packed into the link itself, so it stays private and nothing is
+              uploaded.
+            </p>
           </div>
           <div className={styles.optionActions}>
-            <Button icon={<Link2 size={16} />} onClick={copyLink} disabled={busy}>Copy link</Button>
+            <Button icon={<Link2 size={16} />} onClick={copyLink} disabled={busy}>
+              Copy link
+            </Button>
           </div>
         </li>
 
         <li className={styles.option}>
           <div className={styles.optionText}>
             <h3 className={styles.optionTitle}>Download</h3>
-            <p className={styles.optionHelp}>A picture, a printable plan, or a file you can open again later.</p>
+            <p className={styles.optionHelp}>
+              A picture, a printable plan, or a file you can open again later.
+            </p>
           </div>
           <div className={styles.optionActions}>
-            <Button icon={<ImageIcon size={16} />} disabled={busy} onClick={() => run(() => exportRoomPlanAsPNG(room), 'Picture downloaded.')}>PNG</Button>
-            <Button icon={<FileText size={16} />} disabled={busy} onClick={() => run(() => exportRoomPlanAsPDF(room), 'Plan downloaded.')}>PDF</Button>
-            <Button icon={<FileJson size={16} />} disabled={busy} onClick={() => run(async () => exportRoomAsJSON(room), 'Design file downloaded.')}>JSON</Button>
+            <Button
+              icon={<ImageIcon size={16} />}
+              disabled={busy}
+              onClick={() => run(() => exportRoomPlanAsPNG(room), 'Picture downloaded.')}
+            >
+              PNG
+            </Button>
+            <Button
+              icon={<FileText size={16} />}
+              disabled={busy}
+              onClick={() => run(() => exportRoomPlanAsPDF(room), 'Plan downloaded.')}
+            >
+              PDF
+            </Button>
+            <Button
+              icon={<FileJson size={16} />}
+              disabled={busy}
+              onClick={() => run(async () => exportRoomAsJSON(room), 'Design file downloaded.')}
+            >
+              JSON
+            </Button>
           </div>
         </li>
 
@@ -91,15 +128,33 @@ export function ShareModal({ onClose }) {
             <p className={styles.optionHelp}>Opens as a new room. Your current room is kept.</p>
           </div>
           <div className={styles.optionActions}>
-            <Button icon={<Upload size={16} />} onClick={() => fileRef.current?.click()} disabled={busy}>Choose file</Button>
+            <Button
+              icon={<Upload size={16} />}
+              onClick={() => fileRef.current?.click()}
+              disabled={busy}
+            >
+              Choose file
+            </Button>
           </div>
-          <input ref={fileRef} type="file" accept="application/json,.json" hidden onChange={handleImport} aria-label="Design file to open" />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="application/json,.json"
+            hidden
+            onChange={handleImport}
+            aria-label="Design file to open"
+          />
         </li>
       </ul>
 
       {message && <Notice kind={message.kind}>{message.text}</Notice>}
       {manualLink && (
-        <TextField label="Share link" value={manualLink} readOnly onFocus={(e) => e.target.select()} />
+        <TextField
+          label="Share link"
+          value={manualLink}
+          readOnly
+          onFocus={(e) => e.target.select()}
+        />
       )}
     </Modal>
   );

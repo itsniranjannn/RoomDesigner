@@ -58,15 +58,29 @@ export function RoomCanvas() {
       const key = e.key.toLowerCase();
 
       if (ctrl) {
-        if (key === 'a') { e.preventDefault(); state.selectAll(); }
-        else if (key === 'c') { state.copySelection(); }
-        else if (key === 'v') { e.preventDefault(); state.pasteClipboard(); }
-        else if (key === 'd') { e.preventDefault(); state.duplicateSelection(); }
+        if (key === 'a') {
+          e.preventDefault();
+          state.selectAll();
+        } else if (key === 'c') {
+          state.copySelection();
+        } else if (key === 'v') {
+          e.preventDefault();
+          state.pasteClipboard();
+        } else if (key === 'd') {
+          e.preventDefault();
+          state.duplicateSelection();
+        }
         return;
       }
 
-      if (e.key === '?') { state.openModal('shortcuts'); return; }
-      if (key === 'm' && !e.altKey) { state.toggleMeasure(); return; }
+      if (e.key === '?') {
+        state.openModal('shortcuts');
+        return;
+      }
+      if (key === 'm' && !e.altKey) {
+        state.toggleMeasure();
+        return;
+      }
       if (e.key === 'Escape') {
         e.preventDefault();
         if (state.measureActive) state.toggleMeasure();
@@ -79,10 +93,22 @@ export function RoomCanvas() {
       const step = e.shiftKey ? 10 : 1;
 
       switch (e.key) {
-        case 'ArrowLeft': e.preventDefault(); state.nudgeSelection(-step, 0); break;
-        case 'ArrowRight': e.preventDefault(); state.nudgeSelection(step, 0); break;
-        case 'ArrowUp': e.preventDefault(); state.nudgeSelection(0, -step); break;
-        case 'ArrowDown': e.preventDefault(); state.nudgeSelection(0, step); break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          state.nudgeSelection(-step, 0);
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          state.nudgeSelection(step, 0);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          state.nudgeSelection(0, -step);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          state.nudgeSelection(0, step);
+          break;
         case 'r':
         case 'R': {
           e.preventDefault();
@@ -90,7 +116,12 @@ export function RoomCanvas() {
           const items = state.room?.placedFurniture || [];
           ids.forEach((id, index) => {
             const target = items.find((i) => i.id === id);
-            if (target) state.updateFurnitureRotation(id, (target.rotationDeg || 0) + rotateStep, index === 0);
+            if (target)
+              state.updateFurnitureRotation(
+                id,
+                (target.rotationDeg || 0) + rotateStep,
+                index === 0
+              );
           });
           break;
         }
@@ -141,7 +172,9 @@ export function RoomCanvas() {
       setMarquee(null);
       if (!moved) return;
       suppressClick.current = true;
-      setTimeout(() => { suppressClick.current = false; }, 0);
+      setTimeout(() => {
+        suppressClick.current = false;
+      }, 0);
 
       const p = svgPoint(ev) || start;
       const minX = Math.min(start.x, p.x);
@@ -152,7 +185,9 @@ export function RoomCanvas() {
         .filter((item) => {
           const def = resolveItemDef(item);
           if (!def) return false;
-          const box = getAABB(getRotatedRectCorners(item.x, item.y, def.widthCm, def.depthCm, item.rotationDeg || 0));
+          const box = getAABB(
+            getRotatedRectCorners(item.x, item.y, def.widthCm, def.depthCm, item.rotationDeg || 0)
+          );
           return box.maxX >= minX && box.minX <= maxX && box.maxY >= minY && box.minY <= maxY;
         })
         .map((i) => i.id);
@@ -223,7 +258,13 @@ export function RoomCanvas() {
         <defs>
           {/* Subtle resting drop shadow for furniture depth on floor */}
           <filter id="furniture-drop-shadow" x="-30%" y="-30%" width="160%" height="160%">
-            <feDropShadow dx="2" dy="3.5" stdDeviation="3" floodColor="#1C1A17" floodOpacity="0.14" />
+            <feDropShadow
+              dx="2"
+              dy="3.5"
+              stdDeviation="3"
+              floodColor="#1C1A17"
+              floodOpacity="0.14"
+            />
           </filter>
 
           {/* Elevated shadow during drag */}
@@ -298,7 +339,12 @@ export function RoomCanvas() {
             <MeasureLayer
               room={room}
               svgRef={svgRef}
-              bounds={{ x: viewBoxMinX, y: viewBoxMinY, width: viewBoxWidth, height: viewBoxHeight }}
+              bounds={{
+                x: viewBoxMinX,
+                y: viewBoxMinY,
+                width: viewBoxWidth,
+                height: viewBoxHeight,
+              }}
               measurements={measurements}
               setMeasurements={setMeasurements}
             />
@@ -320,7 +366,10 @@ export function RoomCanvas() {
         </div>
       )}
 
-      <p className={`${styles.hint} ${isEmpty && !measureActive ? styles.hintHidden : ''}`} aria-live="polite">
+      <p
+        className={`${styles.hint} ${isEmpty && !measureActive ? styles.hintHidden : ''}`}
+        aria-live="polite"
+      >
         {measureActive
           ? 'Click two points to measure. Press Esc when done.'
           : selectionCount > 1

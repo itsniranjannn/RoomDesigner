@@ -8,7 +8,8 @@ const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 function validateImageFile(file) {
   if (!file) throw new Error('No file selected.');
-  if (!ALLOWED_TYPES.includes(file.type)) throw new Error('Please choose a PNG, JPEG or WebP image.');
+  if (!ALLOWED_TYPES.includes(file.type))
+    throw new Error('Please choose a PNG, JPEG or WebP image.');
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('That image is larger than 12 MB.');
 }
 
@@ -55,4 +56,3 @@ export async function readImage(file, maxDim = 1400, mime = 'image/jpeg', qualit
     rgba: ctx.getImageData(0, 0, width, height).data,
   };
 }
-

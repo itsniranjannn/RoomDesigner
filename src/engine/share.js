@@ -42,7 +42,8 @@ export async function encodeRoomToHash(room) {
   const bytes = new TextEncoder().encode(json);
   const packed = await pipe(bytes, new CompressionStream('deflate'));
   const hash = HASH_KEY + toBase64Url(packed);
-  if (hash.length > MAX_HASH_CHARS) throw new Error('Design is too large for a link. Export JSON instead.');
+  if (hash.length > MAX_HASH_CHARS)
+    throw new Error('Design is too large for a link. Export JSON instead.');
   return hash;
 }
 
@@ -61,13 +62,16 @@ export function sanitizeImportedRoom(data) {
   const stamp = Date.now();
   const isObject = (v) => v && typeof v === 'object';
   const openings = (list, fallbackWall) =>
-    (Array.isArray(list) ? list : []).filter(isObject).slice(0, 40).map((o, i) => ({
-      id: String(o.id || `${fallbackWall}-${i}-${stamp}`),
-      wall: ['top', 'bottom', 'left', 'right'].includes(o.wall) ? o.wall : fallbackWall,
-      offsetCm: num(o.offsetCm, 0, 2000, 20),
-      widthCm: num(o.widthCm, 40, 400, 90),
-      ...(o.swingDirection ? { swingDirection: String(o.swingDirection) } : {}),
-    }));
+    (Array.isArray(list) ? list : [])
+      .filter(isObject)
+      .slice(0, 40)
+      .map((o, i) => ({
+        id: String(o.id || `${fallbackWall}-${i}-${stamp}`),
+        wall: ['top', 'bottom', 'left', 'right'].includes(o.wall) ? o.wall : fallbackWall,
+        offsetCm: num(o.offsetCm, 0, 2000, 20),
+        widthCm: num(o.widthCm, 40, 400, 90),
+        ...(o.swingDirection ? { swingDirection: String(o.swingDirection) } : {}),
+      }));
   const furniture = (Array.isArray(data.placedFurniture) ? data.placedFurniture : [])
     .filter((f) => isObject(f) && typeof f.furnitureTypeId === 'string')
     .slice(0, 500)
@@ -80,7 +84,9 @@ export function sanitizeImportedRoom(data) {
       elevationCm: num(f.elevationCm, 0, 400, 0),
       ...(cleanOverrides(f.overrides) ? { overrides: cleanOverrides(f.overrides) } : {}),
     }))
-    .map((f, i, all) => (all.findIndex((g) => g.id === f.id) === i ? f : { ...f, id: `${f.id}-dup${i}` }));
+    .map((f, i, all) =>
+      all.findIndex((g) => g.id === f.id) === i ? f : { ...f, id: `${f.id}-dup${i}` }
+    );
   return {
     id: `room-${stamp}`,
     name: String(data.name || 'Imported Room').slice(0, 80),

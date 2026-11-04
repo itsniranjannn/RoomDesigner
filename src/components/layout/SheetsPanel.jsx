@@ -51,9 +51,15 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
         <header className={styles.header}>
           <div>
             <h2 className={styles.title}>My designs</h2>
-            <p className={styles.subtitle}>{total === 0 ? 'Nothing saved yet' : `${plural(allRooms.length, 'room')}, ${plural(flats.length, 'flat')}`}</p>
+            <p className={styles.subtitle}>
+              {total === 0
+                ? 'Nothing saved yet'
+                : `${plural(allRooms.length, 'room')}, ${plural(flats.length, 'flat')}`}
+            </p>
           </div>
-          <IconButton label="Close" onClick={onClose}><X size={18} /></IconButton>
+          <IconButton label="Close" onClick={onClose}>
+            <X size={18} />
+          </IconButton>
         </header>
 
         <div className={styles.list}>
@@ -67,7 +73,9 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
                   onClose();
                 }}
               >
-                <span className={styles.icon}><Building2 size={18} aria-hidden="true" /></span>
+                <span className={styles.icon}>
+                  <Building2 size={18} aria-hidden="true" />
+                </span>
                 <span className={styles.text}>
                   <span className={styles.name}>{f.name}</span>
                   <span className={styles.meta}>
@@ -94,11 +102,14 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
                     onClose();
                   }}
                 >
-                  <span className={styles.icon}><DoorClosed size={18} aria-hidden="true" /></span>
+                  <span className={styles.icon}>
+                    <DoorClosed size={18} aria-hidden="true" />
+                  </span>
                   <span className={styles.text}>
                     <span className={styles.name}>{r.name}</span>
                     <span className={styles.meta}>
-                      {(r.widthCm / 100).toFixed(2)} x {(r.depthCm / 100).toFixed(2)} m, {plural(count, 'piece')}
+                      {(r.widthCm / 100).toFixed(2)} x {(r.depthCm / 100).toFixed(2)} m,{' '}
+                      {plural(count, 'piece')}
                     </span>
                   </span>
                 </button>
@@ -109,7 +120,9 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
           {total === 0 && (
             <div className={styles.empty}>
               <p className={styles.emptyTitle}>No designs yet</p>
-              <p className={styles.emptyText}>Start a room or a flat and it will be saved here automatically.</p>
+              <p className={styles.emptyText}>
+                Start a room or a flat and it will be saved here automatically.
+              </p>
             </div>
           )}
         </div>

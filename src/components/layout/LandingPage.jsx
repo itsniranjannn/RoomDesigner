@@ -32,7 +32,9 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
 
       <main className={styles.hero}>
         <div className={styles.copy}>
-          <motion.p className={styles.eyebrow} {...rise(0)}>Room and flat planner</motion.p>
+          <motion.p className={styles.eyebrow} {...rise(0)}>
+            Room and flat planner
+          </motion.p>
           <motion.h1 className={styles.title} {...rise(0.08)}>
             Design your room, then walk through it.
           </motion.h1>
@@ -48,7 +50,9 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
               Design a flat
             </Button>
           </motion.div>
-          <motion.p className={styles.note} {...rise(0.3)}>Your designs are saved in this browser.</motion.p>
+          <motion.p className={styles.note} {...rise(0.3)}>
+            Your designs are saved in this browser.
+          </motion.p>
         </div>
 
         <div className={styles.visual}>

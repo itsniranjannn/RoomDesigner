@@ -25,21 +25,46 @@ export function FlatStartCard({ onDismiss }) {
         <div>
           <h2 className={styles.startTitle}>Start your flat</h2>
           <p className={styles.startText}>
-            Pick a ready-made layout to adjust, or draw your own walls. Rooms appear by themselves once walls close a space.
+            Pick a ready-made layout to adjust, or draw your own walls. Rooms appear by themselves
+            once walls close a space.
           </p>
         </div>
         <div className={styles.presetGrid}>
           {PRESETS.filter((p) => !['blank', 'shell'].includes(p.value)).map((p) => (
-            <Button key={p.value} variant="secondary" className={styles.presetBtn} onClick={() => start(p.value)}>
+            <Button
+              key={p.value}
+              variant="secondary"
+              className={styles.presetBtn}
+              onClick={() => start(p.value)}
+            >
               {p.label}
               <span className={styles.presetNote}>{p.note}</span>
             </Button>
           ))}
         </div>
         <div className={styles.shellRow}>
-          <NumberField label="Outer shell width" suffix="m" value={widthM} min={2} max={24} step={0.5} onCommit={setWidthM} />
-          <NumberField label="Outer shell depth" suffix="m" value={depthM} min={2} max={24} step={0.5} onCommit={setDepthM} />
-          <Button variant="secondary" onClick={() => start('shell', { widthCm: widthM * 100, depthCm: depthM * 100 })}>
+          <NumberField
+            label="Outer shell width"
+            suffix="m"
+            value={widthM}
+            min={2}
+            max={24}
+            step={0.5}
+            onCommit={setWidthM}
+          />
+          <NumberField
+            label="Outer shell depth"
+            suffix="m"
+            value={depthM}
+            min={2}
+            max={24}
+            step={0.5}
+            onCommit={setDepthM}
+          />
+          <Button
+            variant="secondary"
+            onClick={() => start('shell', { widthCm: widthM * 100, depthCm: depthM * 100 })}
+          >
             Add shell
           </Button>
         </div>
@@ -49,7 +74,9 @@ export function FlatStartCard({ onDismiss }) {
             useFlatUi.getState().setTool('wall');
             onDismiss();
           }}
-        >Start with a blank plan</Button>
+        >
+          Start with a blank plan
+        </Button>
       </section>
     </div>
   );

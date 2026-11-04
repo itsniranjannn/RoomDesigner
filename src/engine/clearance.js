@@ -55,7 +55,14 @@ export function getClearanceZones(room) {
     zones.push({
       kind: 'window',
       openingId: win.id,
-      corners: getOpeningZone(wall, win.offsetCm, win.widthCm, WINDOW_DEPTH_CM, room.widthCm, room.depthCm),
+      corners: getOpeningZone(
+        wall,
+        win.offsetCm,
+        win.widthCm,
+        WINDOW_DEPTH_CM,
+        room.widthCm,
+        room.depthCm
+      ),
     });
   }
   return zones;
@@ -98,7 +105,13 @@ export function evaluateClearance(room) {
     .map((item) => {
       const def = resolveItemDef(item);
       if (!def) return null;
-      const corners = getRotatedRectCorners(item.x, item.y, def.widthCm, def.depthCm, item.rotationDeg || 0);
+      const corners = getRotatedRectCorners(
+        item.x,
+        item.y,
+        def.widthCm,
+        def.depthCm,
+        item.rotationDeg || 0
+      );
       return { item, def, corners, aabb: getAABB(corners), bottom: item.elevationCm || 0 };
     })
     .filter(Boolean);
@@ -107,7 +120,11 @@ export function evaluateClearance(room) {
   for (const entry of items) {
     if (isFlat(entry.def)) continue;
     for (const zone of zones) {
-      if (zone.kind === 'window' && (entry.def.heightCm ?? 0) + entry.bottom <= WINDOW_BLOCK_HEIGHT_CM) continue;
+      if (
+        zone.kind === 'window' &&
+        (entry.def.heightCm ?? 0) + entry.bottom <= WINDOW_BLOCK_HEIGHT_CM
+      )
+        continue;
       if (checkPolygonCollision(entry.corners, zone.corners)) {
         issues.push({
           itemId: entry.item.id,
@@ -129,8 +146,18 @@ export function evaluateClearance(room) {
 
       const gap = facingGap(a.aabb, b.aabb);
       if (isTightPassage(gap)) {
-        issues.push({ itemId: a.item.id, otherId: b.item.id, kind: 'tight-passage', gapCm: Math.round(gap) });
-        issues.push({ itemId: b.item.id, otherId: a.item.id, kind: 'tight-passage', gapCm: Math.round(gap) });
+        issues.push({
+          itemId: a.item.id,
+          otherId: b.item.id,
+          kind: 'tight-passage',
+          gapCm: Math.round(gap),
+        });
+        issues.push({
+          itemId: b.item.id,
+          otherId: a.item.id,
+          kind: 'tight-passage',
+          gapCm: Math.round(gap),
+        });
       }
     }
   }

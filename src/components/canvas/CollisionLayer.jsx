@@ -22,15 +22,7 @@ export function CollisionLayer({ placedFurniture, collidingItemIds }) {
           patternTransform="rotate(45 0 0)"
           patternUnits="userSpaceOnUse"
         >
-          <line
-            x1="0"
-            y1="0"
-            x2="0"
-            y2="10"
-            stroke="#B25D34"
-            strokeWidth="1.4"
-            opacity="0.65"
-          />
+          <line x1="0" y1="0" x2="0" y2="10" stroke="#B25D34" strokeWidth="1.4" opacity="0.65" />
         </pattern>
       </defs>
 
@@ -74,16 +66,10 @@ export function CollisionLayer({ placedFurniture, collidingItemIds }) {
         return (
           <g key={`collision-${item.id}`}>
             {/* Base soft clay warning tint */}
-            <polygon
-              points={pathPoints}
-              fill="rgba(178, 93, 52, 0.16)"
-            />
+            <polygon points={pathPoints} fill="rgba(178, 93, 52, 0.16)" />
 
             {/* Architectural diagonal cross-hatching fill */}
-            <polygon
-              points={pathPoints}
-              fill="url(#architecturalCollisionHatch)"
-            />
+            <polygon points={pathPoints} fill="url(#architecturalCollisionHatch)" />
 
             {/* Pulsing dashed deep-maroon warning outline */}
             <polygon

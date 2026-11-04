@@ -18,13 +18,31 @@
   pointer-events: none;
   opacity: 0;
   transform: scale(0.96);
-  transition: opacity var(--transition-fast), transform var(--transition-fast);
+  transition:
+    opacity var(--transition-fast),
+    transform var(--transition-fast);
 }
 
-.right { left: calc(100% + 8px); top: 50%; translate: 0 -50%; }
-.left { right: calc(100% + 8px); top: 50%; translate: 0 -50%; }
-.bottom { top: calc(100% + 8px); left: 50%; translate: -50% 0; }
-.top { bottom: calc(100% + 8px); left: 50%; translate: -50% 0; }
+.right {
+  left: calc(100% + 8px);
+  top: 50%;
+  translate: 0 -50%;
+}
+.left {
+  right: calc(100% + 8px);
+  top: 50%;
+  translate: 0 -50%;
+}
+.bottom {
+  top: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+}
+.top {
+  bottom: calc(100% + 8px);
+  left: 50%;
+  translate: -50% 0;
+}
 
 .wrap:hover > .tip,
 .wrap:focus-within > .tip {
@@ -34,5 +52,7 @@
 }
 
 @media (hover: none) {
-  .tip { display: none; }
+  .tip {
+    display: none;
+  }
 }

@@ -74,15 +74,20 @@ export function Room3DWalls({ room, isFullHeight = false }) {
 
     // Collect all openings on this wall
     const rawOpenings = [
-      ...(windows || []).filter((w) => (w.wall || 'top') === wallName).map((w) => ({ ...w, type: 'window' })),
-      ...(doors || []).filter((d) => (d.wall || 'bottom') === wallName).map((d) => ({ ...d, type: 'door' })),
+      ...(windows || [])
+        .filter((w) => (w.wall || 'top') === wallName)
+        .map((w) => ({ ...w, type: 'window' })),
+      ...(doors || [])
+        .filter((d) => (d.wall || 'bottom') === wallName)
+        .map((d) => ({ ...d, type: 'door' })),
     ];
 
     // Normalize and sort openings by offset along the wall
     const wallOpenings = rawOpenings
       .map((op) => {
         const offsetM = (Number.isFinite(op.offsetCm) ? op.offsetCm : 60) / 100;
-        const widthM = (Number.isFinite(op.widthCm) ? op.widthCm : (op.type === 'door' ? 90 : 120)) / 100;
+        const widthM =
+          (Number.isFinite(op.widthCm) ? op.widthCm : op.type === 'door' ? 90 : 120) / 100;
         return {
           ...op,
           offsetM: Math.max(0.1, Math.min(wallLengthM - 0.2, offsetM)),
@@ -186,8 +191,16 @@ export function Room3DWalls({ room, isFullHeight = false }) {
 
             // Baseboard under sill
             const baseboardUnderSillPos = isHorizontal
-              ? [pt.x, Math.min(baseboardH, winSillH) / 2, pt.z + normalDirZ * (wallThickM / 2 + 0.006)]
-              : [pt.x + normalDirX * (wallThickM / 2 + 0.006), Math.min(baseboardH, winSillH) / 2, pt.z];
+              ? [
+                  pt.x,
+                  Math.min(baseboardH, winSillH) / 2,
+                  pt.z + normalDirZ * (wallThickM / 2 + 0.006),
+                ]
+              : [
+                  pt.x + normalDirX * (wallThickM / 2 + 0.006),
+                  Math.min(baseboardH, winSillH) / 2,
+                  pt.z,
+                ];
             const baseboardUnderSillArgs = isHorizontal
               ? [op.widthM, Math.min(baseboardH, winSillH), 0.012]
               : [0.012, Math.min(baseboardH, winSillH), op.widthM];
@@ -232,17 +245,11 @@ export function Room3DWalls({ room, isFullHeight = false }) {
 
             // Translucent Glass Pane centered in frame
             const glassPos = [pt.x, winSillH + winFrameH / 2, pt.z];
-            const glassArgs = isHorizontal
-              ? [glassW, glassH, 0.015]
-              : [0.015, glassH, glassW];
+            const glassArgs = isHorizontal ? [glassW, glassH, 0.015] : [0.015, glassH, glassW];
 
             // Window Mullions (vertical and horizontal crossbars)
-            const vertMullionArgs = isHorizontal
-              ? [0.025, glassH, 0.028]
-              : [0.028, glassH, 0.025];
-            const horizMullionArgs = isHorizontal
-              ? [glassW, 0.02, 0.028]
-              : [0.028, 0.02, glassW];
+            const vertMullionArgs = isHorizontal ? [0.025, glassH, 0.028] : [0.028, glassH, 0.025];
+            const horizMullionArgs = isHorizontal ? [glassW, 0.02, 0.028] : [0.028, 0.02, glassW];
 
             // Lintel (full-height mode)
             const lintelArgs = isHorizontal
@@ -319,7 +326,10 @@ export function Room3DWalls({ room, isFullHeight = false }) {
                       <boxGeometry args={lintelArgs} />
                       <meshStandardMaterial color={wallColor} roughness={0.85} />
                     </mesh>
-                    <mesh position={[0, (wallHeightM - winHeadH) / 2 + capHeightM / 2, 0]} castShadow>
+                    <mesh
+                      position={[0, (wallHeightM - winHeadH) / 2 + capHeightM / 2, 0]}
+                      castShadow
+                    >
                       <boxGeometry args={capOverWinArgs} />
                       <meshStandardMaterial color={wallCapColor} roughness={0.6} />
                     </mesh>

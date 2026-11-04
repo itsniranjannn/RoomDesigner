@@ -8,7 +8,10 @@ const ICONS = { ok: CheckCircle2, error: AlertCircle, warn: AlertCircle, info: I
 export function Notice({ kind = 'info', children, className = '' }) {
   const Icon = ICONS[kind] || Info;
   return (
-    <p className={`${styles.notice} ${styles[kind] || ''} ${className}`} role={kind === 'error' ? 'alert' : 'status'}>
+    <p
+      className={`${styles.notice} ${styles[kind] || ''} ${className}`}
+      role={kind === 'error' ? 'alert' : 'status'}
+    >
       <Icon size={16} aria-hidden="true" className={styles.icon} />
       <span>{children}</span>
     </p>

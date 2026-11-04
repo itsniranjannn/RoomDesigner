@@ -9,7 +9,13 @@ const HOME_LABEL = 'Room Designer Studio home';
 /** Logo and wordmark. Always the way back to the overview. */
 function Brand({ onHome, label = HOME_LABEL }) {
   return (
-    <button type="button" className={styles.brand} onClick={onHome} aria-label={label} title={label}>
+    <button
+      type="button"
+      className={styles.brand}
+      onClick={onHome}
+      aria-label={label}
+      title={label}
+    >
       <BrandMark size={30} />
       <span className={styles.name}>Room Designer Studio</span>
     </button>
@@ -36,7 +42,9 @@ export function SiteHeader({ onHome, onAbout, aboutActive = false, savedCount, o
         )}
         <Button variant="ghost" icon={<FolderOpen size={16} />} onClick={onOpenSaved}>
           My designs
-          <span className={styles.count} aria-label={`${savedCount} saved`}>{savedCount}</span>
+          <span className={styles.count} aria-label={`${savedCount} saved`}>
+            {savedCount}
+          </span>
         </Button>
       </nav>
     </header>

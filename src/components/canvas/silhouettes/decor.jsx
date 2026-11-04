@@ -31,7 +31,14 @@ export function LampSilhouette({ hw, hd, subColor }) {
   const radius = Math.min(hw, hd) * 0.45;
   return (
     <g>
-      <circle cx={0} cy={hd * 0.4} r={radius * 0.6} fill="#262422" stroke="#111111" strokeWidth="1" />
+      <circle
+        cx={0}
+        cy={hd * 0.4}
+        r={radius * 0.6}
+        fill="#262422"
+        stroke="#111111"
+        strokeWidth="1"
+      />
       <path
         d={`M 0 ${hd * 0.4} Q ${hw * 0.6} ${0} 0 ${-hd * 0.3}`}
         fill="none"
@@ -39,7 +46,14 @@ export function LampSilhouette({ hw, hd, subColor }) {
         strokeWidth="2.5"
         strokeLinecap="round"
       />
-      <circle cx={0} cy={-hd * 0.3} r={radius * 0.85} fill={subColor} stroke="#B3A898" strokeWidth="1" />
+      <circle
+        cx={0}
+        cy={-hd * 0.3}
+        r={radius * 0.85}
+        fill={subColor}
+        stroke="#B3A898"
+        strokeWidth="1"
+      />
       <circle cx={0} cy={-hd * 0.3} r={3} fill="#C97B4A" />
     </g>
   );
@@ -51,7 +65,18 @@ export function LampTripodSilhouette({ hw, hd, color, subColor }) {
     <g>
       {[90, 210, 330].map((angle) => {
         const rad = (angle * Math.PI) / 180;
-        return <line key={angle} x1={0} y1={0} x2={Math.cos(rad) * radius * 0.92} y2={Math.sin(rad) * radius * 0.92} stroke={color} strokeWidth="3" strokeLinecap="round" />;
+        return (
+          <line
+            key={angle}
+            x1={0}
+            y1={0}
+            x2={Math.cos(rad) * radius * 0.92}
+            y2={Math.sin(rad) * radius * 0.92}
+            stroke={color}
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+        );
       })}
       <circle cx={0} cy={0} r={radius * 0.6} fill={subColor} stroke="#B3A898" strokeWidth="1" />
       <circle cx={0} cy={0} r={radius * 0.46} fill="none" stroke="#B3A898" strokeWidth="0.6" />
@@ -74,10 +99,43 @@ export function LampTorchiereSilhouette({ hw, hd, color, subColor }) {
 export function WallMirrorSilhouette({ widthCm, depthCm, hw, hd, color }) {
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} stroke="#4A3B2B" strokeWidth="1.2" />
-      <rect x={-hw + 3} y={-hd + 3} width={widthCm - 6} height={depthCm - 6} fill="#B0D3E2" stroke="#7E9DAA" strokeWidth="0.8" />
-      <line x1={-hw * 0.3} y1={-hd + 5} x2={-hw * 0.1} y2={hd - 5} stroke="rgba(255,255,255,0.7)" strokeWidth="1" strokeLinecap="round" />
-      <line x1={hw * 0.1} y1={-hd + 5} x2={hw * 0.25} y2={hd - 5} stroke="rgba(255,255,255,0.4)" strokeWidth="0.75" strokeLinecap="round" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={2}
+        fill={color}
+        stroke="#4A3B2B"
+        strokeWidth="1.2"
+      />
+      <rect
+        x={-hw + 3}
+        y={-hd + 3}
+        width={widthCm - 6}
+        height={depthCm - 6}
+        fill="#B0D3E2"
+        stroke="#7E9DAA"
+        strokeWidth="0.8"
+      />
+      <line
+        x1={-hw * 0.3}
+        y1={-hd + 5}
+        x2={-hw * 0.1}
+        y2={hd - 5}
+        stroke="rgba(255,255,255,0.7)"
+        strokeWidth="1"
+        strokeLinecap="round"
+      />
+      <line
+        x1={hw * 0.1}
+        y1={-hd + 5}
+        x2={hw * 0.25}
+        y2={hd - 5}
+        stroke="rgba(255,255,255,0.4)"
+        strokeWidth="0.75"
+        strokeLinecap="round"
+      />
     </g>
   );
 }

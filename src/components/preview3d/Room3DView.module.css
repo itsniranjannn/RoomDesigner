@@ -61,7 +61,14 @@
 }
 
 @media (max-width: 760px) {
-  .controlText { display: none; }
-  .controlBtn { min-width: var(--control-h); padding: 0; }
-  .compactSeg span { display: none; }
+  .controlText {
+    display: none;
+  }
+  .controlBtn {
+    min-width: var(--control-h);
+    padding: 0;
+  }
+  .compactSeg span {
+    display: none;
+  }
 }

@@ -46,8 +46,12 @@ function NewRoomForm({ onClose }) {
       size="md"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" type="submit" form="new-room-form">Create room</Button>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" type="submit" form="new-room-form">
+            Create room
+          </Button>
         </>
       }
     >
@@ -62,7 +66,9 @@ function NewRoomForm({ onClose }) {
               onClick={() => applyPreset(preset)}
             >
               <span className={styles.presetName}>{preset.name}</span>
-              <span className={styles.presetSize}>{meters(preset.width)} x {meters(preset.depth)}</span>
+              <span className={styles.presetSize}>
+                {meters(preset.width)} x {meters(preset.depth)}
+              </span>
             </button>
           ))}
         </div>
@@ -84,7 +90,10 @@ function NewRoomForm({ onClose }) {
             step={10}
             value={widthCm}
             hint={`${meters(widthCm)}. Allowed ${MIN_CM} to ${MAX_CM}.`}
-            onCommit={(v) => { setWidthCm(v); setPresetName(null); }}
+            onCommit={(v) => {
+              setWidthCm(v);
+              setPresetName(null);
+            }}
           />
           <NumberField
             label="Depth"
@@ -94,7 +103,10 @@ function NewRoomForm({ onClose }) {
             step={10}
             value={depthCm}
             hint={`${meters(depthCm)}. Allowed ${MIN_CM} to ${MAX_CM}.`}
-            onCommit={(v) => { setDepthCm(v); setPresetName(null); }}
+            onCommit={(v) => {
+              setDepthCm(v);
+              setPresetName(null);
+            }}
           />
         </div>
       </form>

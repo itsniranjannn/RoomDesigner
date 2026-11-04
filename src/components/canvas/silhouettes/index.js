@@ -1,45 +1,101 @@
 /** Maps catalog shapeType to the 2D plan-symbol component that draws it. */
 import { BedSilhouette, BedBunkSilhouette } from './bed.jsx';
-import { SofaSilhouette, ArmchairSilhouette, ChairSilhouette, DeskChairSilhouette, BarStoolSilhouette, OttomanSilhouette } from './seating.jsx';
-import { TableSilhouette, TableRoundSilhouette, CoffeeTableSilhouette, SideTableSilhouette, DeskSilhouette, NightstandSilhouette } from './tables.jsx';
-import { WardrobeSilhouette, BookshelfSilhouette, ChestDrawersSilhouette, SideboardSilhouette, VanityDresserSilhouette, CredenzaSilhouette, PantryCabinetSilhouette, TvSilhouette } from './storage.jsx';
+import {
+  SofaSilhouette,
+  ArmchairSilhouette,
+  ChairSilhouette,
+  DeskChairSilhouette,
+  BarStoolSilhouette,
+  OttomanSilhouette,
+} from './seating.jsx';
+import {
+  TableSilhouette,
+  TableRoundSilhouette,
+  CoffeeTableSilhouette,
+  SideTableSilhouette,
+  DeskSilhouette,
+  NightstandSilhouette,
+} from './tables.jsx';
+import {
+  WardrobeSilhouette,
+  BookshelfSilhouette,
+  ChestDrawersSilhouette,
+  SideboardSilhouette,
+  VanityDresserSilhouette,
+  CredenzaSilhouette,
+  PantryCabinetSilhouette,
+  TvSilhouette,
+} from './storage.jsx';
 import { RugSilhouette, RugRunnerSilhouette, NepaliDhakaRugSilhouette } from './rugs.jsx';
-import { KitchenIslandSilhouette, KitchenCounterSilhouette, KitchenStoveSilhouette, KitchenFridgeSilhouette, DiningNookSilhouette } from './kitchen.jsx';
-import { PlantSilhouette, LampSilhouette, LampTripodSilhouette, LampTorchiereSilhouette, WallMirrorSilhouette } from './decor.jsx';
-import { NepaliChowkiSilhouette, NepaliPatukaChestSilhouette, NepaliBrassDiyaSilhouette, NepaliPirkaSilhouette, NepaliCharpaiSilhouette, NepaliGaddaSilhouette, NepaliDhokaDividerSilhouette, NepaliPujaMandirSilhouette, NepaliLotaDisplaySilhouette } from './nepali.jsx';
-import { FixtureToiletSilhouette, FixtureBasinSilhouette, FixtureShowerSilhouette, FixtureBathtubSilhouette, FixtureWasherSilhouette } from './fixtures.jsx';
+import {
+  KitchenIslandSilhouette,
+  KitchenCounterSilhouette,
+  KitchenStoveSilhouette,
+  KitchenFridgeSilhouette,
+  DiningNookSilhouette,
+} from './kitchen.jsx';
+import {
+  PlantSilhouette,
+  LampSilhouette,
+  LampTripodSilhouette,
+  LampTorchiereSilhouette,
+  WallMirrorSilhouette,
+} from './decor.jsx';
+import {
+  NepaliChowkiSilhouette,
+  NepaliPatukaChestSilhouette,
+  NepaliBrassDiyaSilhouette,
+  NepaliPirkaSilhouette,
+  NepaliCharpaiSilhouette,
+  NepaliGaddaSilhouette,
+  NepaliDhokaDividerSilhouette,
+  NepaliPujaMandirSilhouette,
+  NepaliLotaDisplaySilhouette,
+} from './nepali.jsx';
+import {
+  FixtureToiletSilhouette,
+  FixtureBasinSilhouette,
+  FixtureShowerSilhouette,
+  FixtureBathtubSilhouette,
+  FixtureWasherSilhouette,
+} from './fixtures.jsx';
 import { CustomMeshSilhouette } from './customMesh.jsx';
 import { SofaLSilhouette, BeanBagSilhouette, BenchSilhouette } from './lounge.jsx';
 import { DressingTableSilhouette, CribSilhouette, TrunkSilhouette } from './bedroom.jsx';
 import { DeskLSilhouette, StandingDeskSilhouette, ReceptionCounterSilhouette } from './office.jsx';
 import { SinkUnitSilhouette, ApplianceSilhouette } from './kitchenUnits.jsx';
-import { VanitySilhouette, SquatToiletSilhouette, TankSilhouette, BasketSilhouette } from './bathroom.jsx';
+import {
+  VanitySilhouette,
+  SquatToiletSilhouette,
+  TankSilhouette,
+  BasketSilhouette,
+} from './bathroom.jsx';
 import { PlanterSilhouette, RugRoundSilhouette, ScreenSilhouette } from './accents.jsx';
 
 export const SILHOUETTES = {
-  'bed': BedSilhouette,
+  bed: BedSilhouette,
   'bed-bunk': BedBunkSilhouette,
-  'sofa': SofaSilhouette,
-  'armchair': ArmchairSilhouette,
-  'chair': ChairSilhouette,
+  sofa: SofaSilhouette,
+  armchair: ArmchairSilhouette,
+  chair: ChairSilhouette,
   'desk-chair': DeskChairSilhouette,
   'bar-stool': BarStoolSilhouette,
-  'ottoman': OttomanSilhouette,
-  'table': TableSilhouette,
+  ottoman: OttomanSilhouette,
+  table: TableSilhouette,
   'table-round': TableRoundSilhouette,
   'coffee-table': CoffeeTableSilhouette,
   'side-table': SideTableSilhouette,
-  'desk': DeskSilhouette,
-  'nightstand': NightstandSilhouette,
-  'wardrobe': WardrobeSilhouette,
-  'bookshelf': BookshelfSilhouette,
+  desk: DeskSilhouette,
+  nightstand: NightstandSilhouette,
+  wardrobe: WardrobeSilhouette,
+  bookshelf: BookshelfSilhouette,
   'chest-drawers': ChestDrawersSilhouette,
-  'sideboard': SideboardSilhouette,
+  sideboard: SideboardSilhouette,
   'vanity-dresser': VanityDresserSilhouette,
-  'credenza': CredenzaSilhouette,
+  credenza: CredenzaSilhouette,
   'pantry-cabinet': PantryCabinetSilhouette,
-  'tv': TvSilhouette,
-  'rug': RugSilhouette,
+  tv: TvSilhouette,
+  rug: RugSilhouette,
   'rug-runner': RugRunnerSilhouette,
   'nepali-dhaka-rug': NepaliDhakaRugSilhouette,
   'kitchen-island': KitchenIslandSilhouette,
@@ -47,8 +103,8 @@ export const SILHOUETTES = {
   'kitchen-stove': KitchenStoveSilhouette,
   'kitchen-fridge': KitchenFridgeSilhouette,
   'dining-nook': DiningNookSilhouette,
-  'plant': PlantSilhouette,
-  'lamp': LampSilhouette,
+  plant: PlantSilhouette,
+  lamp: LampSilhouette,
   'lamp-tripod': LampTripodSilhouette,
   'lamp-torchiere': LampTorchiereSilhouette,
   'wall-mirror': WallMirrorSilhouette,
@@ -69,22 +125,22 @@ export const SILHOUETTES = {
   'custom-mesh': CustomMeshSilhouette,
   'sofa-l': SofaLSilhouette,
   'bean-bag': BeanBagSilhouette,
-  'bench': BenchSilhouette,
+  bench: BenchSilhouette,
   'dressing-table': DressingTableSilhouette,
-  'crib': CribSilhouette,
-  'trunk': TrunkSilhouette,
+  crib: CribSilhouette,
+  trunk: TrunkSilhouette,
   'desk-l': DeskLSilhouette,
   'standing-desk': StandingDeskSilhouette,
   'reception-counter': ReceptionCounterSilhouette,
   'sink-unit': SinkUnitSilhouette,
-  'appliance': ApplianceSilhouette,
-  'vanity': VanitySilhouette,
+  appliance: ApplianceSilhouette,
+  vanity: VanitySilhouette,
   'squat-toilet': SquatToiletSilhouette,
-  'tank': TankSilhouette,
-  'basket': BasketSilhouette,
-  'planter': PlanterSilhouette,
+  tank: TankSilhouette,
+  basket: BasketSilhouette,
+  planter: PlanterSilhouette,
   'rug-round': RugRoundSilhouette,
-  'screen': ScreenSilhouette,
+  screen: ScreenSilhouette,
 };
 
 /** Unknown shape types fall back to the credenza-style rectangle. */

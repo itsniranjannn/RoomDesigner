@@ -115,7 +115,9 @@
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    transform var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .swatch:hover {
@@ -129,7 +131,9 @@
 
 .swatchOn,
 .swatchOn:hover {
-  box-shadow: 0 0 0 2px var(--color-paper), 0 0 0 4px var(--color-indigo);
+  box-shadow:
+    0 0 0 2px var(--color-paper),
+    0 0 0 4px var(--color-indigo);
 }
 
 .customColour {

@@ -16,7 +16,18 @@
   margin-top: 2px;
 }
 
-.ok { background: var(--color-pine-subtle); color: var(--color-pine); }
-.error { background: var(--color-maroon-subtle); color: var(--color-maroon); }
-.warn { background: var(--color-caution-bg); color: var(--color-caution); }
-.info { color: var(--color-ink-muted); }
+.ok {
+  background: var(--color-pine-subtle);
+  color: var(--color-pine);
+}
+.error {
+  background: var(--color-maroon-subtle);
+  color: var(--color-maroon);
+}
+.warn {
+  background: var(--color-caution-bg);
+  color: var(--color-caution);
+}
+.info {
+  color: var(--color-ink-muted);
+}
