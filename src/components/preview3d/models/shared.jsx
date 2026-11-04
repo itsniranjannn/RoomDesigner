@@ -395,7 +395,7 @@ export function Doors({
 }) {
   const dw = width / count;
   const hy = handleY ?? y + height * 0.5;
-  const panelColor = shade(color, -0.04);
+  const panelColor = shade(color, 0.035);
   return (
     <group name="doors">
       <Box
@@ -482,7 +482,7 @@ export function Drawers({
 }) {
   const fh = height / rows;
   const fw = width / cols;
-  const panelColor = shade(color, -0.035);
+  const panelColor = shade(color, 0.03);
   return (
     <group name="drawers">
       <Box
@@ -695,16 +695,42 @@ export function GooseneckTap({ position, scale = 1, rise = 0.2, arc = 0.07 }) {
   const s = clamp(scale, 0.75, 1.3);
   return (
     <group name="tap" position={position} scale={s}>
-      <Cyl position={[0, 0.008, 0]} radiusTop={0.03} radiusBottom={0.034} height={0.016} {...CHROME} segments={18} />
-      <Cyl position={[0, rise / 2 + 0.01, 0]} radiusTop={0.0125} radiusBottom={0.016} height={rise} {...CHROME} segments={14} />
+      <Cyl
+        position={[0, 0.008, 0]}
+        radiusTop={0.03}
+        radiusBottom={0.034}
+        height={0.016}
+        {...CHROME}
+        segments={18}
+      />
+      <Cyl
+        position={[0, rise / 2 + 0.01, 0]}
+        radiusTop={0.0125}
+        radiusBottom={0.016}
+        height={rise}
+        {...CHROME}
+        segments={14}
+      />
       <mesh position={[0, rise + 0.01, arc]} rotation={[0, Math.PI / 2, 0]} castShadow>
         <torusGeometry args={[arc, 0.0115, 8, 16, Math.PI]} />
         <meshStandardMaterial {...CHROME} />
       </mesh>
-      <Cyl position={[0, rise + 0.01 - 0.035, arc * 2]} radiusTop={0.0125} radiusBottom={0.015} height={0.07} {...CHROME} segments={12} />
+      <Cyl
+        position={[0, rise + 0.01 - 0.035, arc * 2]}
+        radiusTop={0.0125}
+        radiusBottom={0.015}
+        height={0.07}
+        {...CHROME}
+        segments={12}
+      />
       <group position={[0.045, 0.02, 0]}>
         <Cyl position={[0, 0.02, 0]} radiusTop={0.011} height={0.04} {...CHROME} segments={10} />
-        <Box position={[0.03, 0.04, 0]} size={[0.07, 0.012, 0.018]} rotation={[0, 0, 0.25]} {...CHROME} />
+        <Box
+          position={[0.03, 0.04, 0]}
+          size={[0.07, 0.012, 0.018]}
+          rotation={[0, 0, 0.25]}
+          {...CHROME}
+        />
       </group>
     </group>
   );
@@ -719,18 +745,96 @@ export function SteelBowl({ position, width, depth, bowlDepth = 0.17 }) {
   const mid = bowlDepth / 2;
   return (
     <group name="sink-bowl" position={position}>
-      <Box position={[0, -bowlDepth, 0]} size={[width, t, depth]} {...STEEL} roughness={0.28} castShadow={false} />
-      <Box position={[0, -mid, -depth / 2]} size={[width, bowlDepth, t]} {...STEEL} roughness={0.28} castShadow={false} />
-      <Box position={[0, -mid, depth / 2]} size={[width, bowlDepth, t]} {...STEEL} roughness={0.28} castShadow={false} />
-      <Box position={[-width / 2, -mid, 0]} size={[t, bowlDepth, depth]} {...STEEL} roughness={0.28} castShadow={false} />
-      <Box position={[width / 2, -mid, 0]} size={[t, bowlDepth, depth]} {...STEEL} roughness={0.28} castShadow={false} />
+      <Box
+        position={[0, -bowlDepth, 0]}
+        size={[width, t, depth]}
+        {...STEEL}
+        roughness={0.28}
+        castShadow={false}
+      />
+      <Box
+        position={[0, -mid, -depth / 2]}
+        size={[width, bowlDepth, t]}
+        {...STEEL}
+        roughness={0.28}
+        castShadow={false}
+      />
+      <Box
+        position={[0, -mid, depth / 2]}
+        size={[width, bowlDepth, t]}
+        {...STEEL}
+        roughness={0.28}
+        castShadow={false}
+      />
+      <Box
+        position={[-width / 2, -mid, 0]}
+        size={[t, bowlDepth, depth]}
+        {...STEEL}
+        roughness={0.28}
+        castShadow={false}
+      />
+      <Box
+        position={[width / 2, -mid, 0]}
+        size={[t, bowlDepth, depth]}
+        {...STEEL}
+        roughness={0.28}
+        castShadow={false}
+      />
       <Drain position={[0, -bowlDepth + t, 0]} radius={Math.min(0.04, width * 0.14)} />
       {/* Rim bead */}
       {[-1, 1].map((s) => (
-        <Box key={`z${s}`} position={[0, 0.002, (s * depth) / 2]} size={[width + 0.016, 0.004, 0.014]} {...STEEL} castShadow={false} />
+        <Box
+          key={`z${s}`}
+          position={[0, 0.002, (s * depth) / 2]}
+          size={[width + 0.016, 0.004, 0.014]}
+          {...STEEL}
+          castShadow={false}
+        />
       ))}
       {[-1, 1].map((s) => (
-        <Box key={`x${s}`} position={[(s * width) / 2, 0.002, 0]} size={[0.014, 0.004, depth + 0.016]} {...STEEL} castShadow={false} />
+        <Box
+          key={`x${s}`}
+          position={[(s * width) / 2, 0.002, 0]}
+          size={[0.014, 0.004, depth + 0.016]}
+          {...STEEL}
+          castShadow={false}
+        />
+      ))}
+    </group>
+  );
+}
+
+/**
+ * Cabinet carcass that is hollow under a worktop opening, so a sink bowl hanging below the
+ * worktop stays visible. hole is [x0, x1, z0, z1] in footprint coordinates.
+ */
+export function CutawayCarcass({ width, depth, bodyTop, plinth, bowlDepth, hole, color }) {
+  const [hx0, hx1, hz0, hz1] = hole;
+  const zMin = -depth / 2;
+  const zMax = depth / 2 - 0.04;
+  const lowH = bodyTop - bowlDepth - plinth;
+  const parts = [
+    [-width / 2, hx0, zMin, zMax],
+    [hx1, width / 2, zMin, zMax],
+    [hx0, hx1, hz1, zMax],
+    [hx0, hx1, zMin, hz0],
+  ];
+  return (
+    <group>
+      <Box
+        position={[0, plinth + lowH / 2, (zMin + zMax) / 2]}
+        size={[width, lowH, zMax - zMin]}
+        color={color}
+        roughness={0.75}
+      />
+      {parts.map(([x0, x1, z0, z1], i) => (
+        <Box
+          key={i}
+          position={[(x0 + x1) / 2, bodyTop - bowlDepth / 2, (z0 + z1) / 2]}
+          size={[Math.max(0.01, x1 - x0), bowlDepth, Math.max(0.01, z1 - z0)]}
+          color={color}
+          roughness={0.75}
+        />
       ))}
     </group>
   );
