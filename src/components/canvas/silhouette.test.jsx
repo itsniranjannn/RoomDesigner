@@ -64,3 +64,50 @@ describe('2D silhouettes at catalog swatch size', () => {
     expect(bad).toEqual([]);
   });
 });
+
+// Functional details that must stay visible in the plan symbols (tagged with a name attribute)
+describe('2D silhouette detail marks', () => {
+  const EXPECTED = {
+    'wash-basin': ['tap', 'drain'],
+    'bath-vanity': ['tap', 'drain'],
+    'shower-tray': ['drain', 'knob'],
+    bathtub: ['tap', 'drain'],
+    'kitchen-counter': ['tap', 'drain'],
+    'sink-unit': ['tap', 'drain'],
+    'kitchen-stove': ['knob'],
+    dishwasher: ['knob'],
+    'oven-unit': ['knob'],
+    'water-heater': ['knob'],
+    'filing-cabinet': ['handle'],
+  };
+  const render = (item, k = 1) =>
+    renderToStaticMarkup(
+      <svg>
+        <ArchitecturalSilhouette
+          item={item}
+          widthCm={item.widthCm * k}
+          depthCm={item.depthCm * k}
+        />
+      </svg>
+    );
+  const find = (id) => FURNITURE_CATALOG.find((i) => i.id === id);
+
+  for (const [id, names] of Object.entries(EXPECTED)) {
+    it(`${id} shows ${names.join(', ')} at 0.4x, 1x and 2.5x`, () => {
+      expect(find(id)).toBeTruthy();
+      for (const k of [0.4, 1, 2.5]) {
+        const html = render(find(id), k);
+        for (const n of names) expect(html).toContain(`name="${n}"`);
+        expect(html).not.toMatch(/NaN|Infinity|undefined/);
+      }
+    });
+  }
+
+  it('the stove plan shows exactly four burner knobs', () => {
+    expect(render(find('kitchen-stove')).split('name="knob"').length - 1).toBe(4);
+  });
+
+  it('the oven unit and the dishwasher are drawn differently', () => {
+    expect(render(find('oven-unit'))).not.toEqual(render(find('dishwasher')));
+  });
+});
