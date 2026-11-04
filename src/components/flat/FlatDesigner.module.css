@@ -15,6 +15,20 @@
   gap: 2px;
 }
 
+.exportButton {
+  flex-shrink: 0;
+}
+
+@media (max-width: 899px) {
+  .exportText {
+    display: none;
+  }
+  .exportButton {
+    min-width: var(--control-h);
+    padding: 0;
+  }
+}
+
 .viewSwitch {
   flex-shrink: 0;
 }

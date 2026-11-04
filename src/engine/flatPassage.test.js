@@ -333,7 +333,9 @@ describe('editing and rotating a passage', () => {
     const { flat, rooms, levelId } = withRoom(500, 0, 300, 300);
     const placed = placePassage(flat, rooms, levelId, { x: 0, y: 0, ...dims() });
     const id = passages(placed.flat)[0].id;
-    expect(editPassage(placed.flat, placed.rooms, id, { lengthCm: 800 }).error).toMatch(/overlap another room/);
+    expect(editPassage(placed.flat, placed.rooms, id, { lengthCm: 800 }).error).toMatch(
+      /overlap another room/
+    );
     // stopping at the room's wall is fine
     const ok = editPassage(placed.flat, placed.rooms, id, { lengthCm: 500 });
     expect(ok.error).toBeUndefined();

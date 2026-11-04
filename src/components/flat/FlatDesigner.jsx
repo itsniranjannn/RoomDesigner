@@ -15,6 +15,7 @@ import { FlatToolbar } from './FlatToolbar.jsx';
 import { FlatInspector } from './FlatInspector.jsx';
 import { FlatStatusBar } from './FlatStatusBar.jsx';
 import { FlatStartCard } from './FlatStartCard.jsx';
+import { FlatExportMenu } from './FlatExportMenu.jsx';
 import styles from './FlatDesigner.module.css';
 
 const Flat3DView = React.lazy(() =>
@@ -164,6 +165,7 @@ export function FlatDesigner() {
             />
           </>
         }
+        end={<FlatExportMenu />}
       />
 
       <div className={styles.body}>
