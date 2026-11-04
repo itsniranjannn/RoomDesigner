@@ -371,7 +371,8 @@ export const useFlatStore = create((set, get) => ({
   // ---------- passages ----------
   /**
    * Builds a passage with its top-left corner at (x, y).
-   * @returns {{ ok: true, spaceId, connected } | { error: string }}
+   * @returns {{ ok: true, spaceId, connected, shift } | { error: string }}
+   * `shift` is how far the plan slid when the passage started left of or above it.
    */
   placePassage: (spec) => {
     const { flat, rooms, levelId } = get();
@@ -379,7 +380,7 @@ export const useFlatStore = create((set, get) => ({
     const result = placePassageIn(flat, rooms, levelId, spec);
     if (result.error) return { error: result.error };
     get()._apply(result, { selected: { type: 'space', id: result.spaceId } });
-    return { ok: true, spaceId: result.spaceId, connected: result.connected };
+    return { ok: true, spaceId: result.spaceId, connected: result.connected, shift: result.shift };
   },
 
   /** Changes a passage's length or width, or turns it (`turns` quarter turns clockwise). */

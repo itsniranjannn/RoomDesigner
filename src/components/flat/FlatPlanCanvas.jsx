@@ -459,8 +459,8 @@ export function FlatPlanCanvas() {
     const origin = passageOrigin(p.x, p.y, spec);
     const first = passageRect({ ...origin, ...spec });
     const nudge = snapPassageToWalls(runs, first, Math.max(10, Math.min(40, 18 / view.k)));
-    const x = Math.max(0, origin.x + nudge.dx);
-    const y = Math.max(0, origin.y + nudge.dy);
+    const x = origin.x + nudge.dx;
+    const y = origin.y + nudge.dy;
     return {
       type: 'passage',
       spec: { ...spec, x, y },
@@ -615,6 +615,9 @@ export function FlatPlanCanvas() {
         return;
       }
       useFlatUi.getState().setTool('select');
+      // The plan slid across to make room: slide the view with it so nothing seems to jump
+      if (res.shift)
+        setView((v) => ({ ...v, tx: v.tx - res.shift.dx * v.k, ty: v.ty - res.shift.dy * v.k }));
       if (!res.connected)
         useFlatUi.getState().setNotice('Passage added. Use the Door tool to open it onto a room.');
       setHover(null);

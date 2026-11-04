@@ -63,8 +63,8 @@ export function passageRect({ x, y, lengthCm, widthCm, heading = 0 }) {
 export function passageOrigin(cx, cy, dims) {
   const r = passageRect({ x: 0, y: 0, ...dims });
   return {
-    x: Math.max(0, snapCm(cx - r.widthCm / 2)),
-    y: Math.max(0, snapCm(cy - r.depthCm / 2)),
+    x: snapCm(cx - r.widthCm / 2),
+    y: snapCm(cy - r.depthCm / 2),
   };
 }
 
@@ -132,10 +132,10 @@ const PROBLEMS = {
 };
 
 /** Why a rectangle cannot hold a passage on this wall layout, or null when it can. */
-export function rectProblem(edges, analysis, rect, mode = 'place') {
+export function rectProblem(edges, analysis, rect, mode = 'place', skipLow = false) {
   const right = rect.x + rect.widthCm;
   const bottom = rect.y + rect.depthCm;
-  if (rect.x < 0 || rect.y < 0 || right > MAX_COORD_CM || bottom > MAX_COORD_CM)
+  if ((!skipLow && (rect.x < 0 || rect.y < 0)) || right > MAX_COORD_CM || bottom > MAX_COORD_CM)
     return PROBLEMS.plan[mode];
   if (edges.size === 0) return null;
   const { i0, j0, i1, j1 } = cellsOf(rect);
@@ -238,6 +238,62 @@ export function snapPassageToWalls(runs, rect, tolCm = 16) {
   return { dx: bestX <= tolCm ? dx : 0, dy: bestY <= tolCm ? dy : 0 };
 }
 
+/** Everything in a flat moved by (dx, dy) cm (both multiples of the grid). */
+export function shiftFlat(flat, dx, dy) {
+  if (!dx && !dy) return flat;
+  const di = dx / CELL;
+  const dj = dy / CELL;
+  const walls = {};
+  for (const [id, runs] of Object.entries(flat.walls || {}))
+    walls[id] = runs.map((r) => ({ x1: r.x1 + dx, y1: r.y1 + dy, x2: r.x2 + dx, y2: r.y2 + dy }));
+  const openings = {};
+  for (const [id, list] of Object.entries(flat.openings || {}))
+    openings[id] = list.map((o) =>
+      o.axis === 'h'
+        ? { ...o, line: o.line + dy, start: o.start + dx }
+        : { ...o, line: o.line + dx, start: o.start + dy }
+    );
+  return {
+    ...flat,
+    walls,
+    openings,
+    spaces: flat.spaces.map((s) => ({
+      ...s,
+      x: s.x + dx,
+      y: s.y + dy,
+      ...(s.roomX !== undefined ? { roomX: s.roomX + dx, roomY: s.roomY + dy } : {}),
+      ...(s.runs ? { runs: s.runs.map(([j, i0, i1]) => [j + dj, i0 + di, i1 + di]) } : {}),
+    })),
+    stairs: flat.stairs.map((st) => ({ ...st, x: st.x + dx, y: st.y + dy })),
+  };
+}
+
+/**
+ * Placing may start left of or above the plan. The plan then slides across (every floor
+ * together) so the whole drawing stays on positive coordinates.
+ */
+function placementShift(rect) {
+  return { dx: Math.max(0, -rect.x), dy: Math.max(0, -rect.y) };
+}
+
+function placementProblem(flat, levelId, rect) {
+  const { dx, dy } = placementShift(rect);
+  let maxX = 0;
+  let maxY = 0;
+  for (const runs of Object.values(flat.walls || {}))
+    for (const r of runs) {
+      maxX = Math.max(maxX, r.x2);
+      maxY = Math.max(maxY, r.y2);
+    }
+  for (const st of flat.stairs) {
+    maxX = Math.max(maxX, st.x + 400);
+    maxY = Math.max(maxY, st.y + 400);
+  }
+  if (maxX + dx > MAX_COORD_CM || maxY + dy > MAX_COORD_CM) return PROBLEMS.plan.place;
+  const runs = wallsOf(flat, levelId);
+  return rectProblem(edgesOf(runs), analyzeRuns(runs), rect, 'place', true);
+}
+
 /**
  * What placing a passage would do, for the ghost that follows the cursor.
  * @returns {{ rect, valid: boolean, reason?: string }}
@@ -245,8 +301,7 @@ export function snapPassageToWalls(runs, rect, tolCm = 16) {
 export function previewPassage(flat, levelId, { x, y, lengthCm, widthCm, heading = 0 }) {
   const size = clampPassageSize({ lengthCm, widthCm });
   const rect = passageRect({ x, y, ...size, heading });
-  const runs = wallsOf(flat, levelId);
-  const problem = rectProblem(edgesOf(runs), analyzeRuns(runs), rect);
+  const problem = placementProblem(flat, levelId, rect);
   return problem ? { rect, valid: false, reason: problem } : { rect, valid: true };
 }
 
@@ -289,12 +344,18 @@ function markPassage(result, levelId, rect, { name, heading }) {
 export function placePassage(flat, rooms, levelId, spec) {
   const size = clampPassageSize(spec);
   const heading = quarter(spec.heading);
-  const rect = passageRect({ x: snapCm(spec.x), y: snapCm(spec.y), ...size, heading });
+  const asked = passageRect({ x: snapCm(spec.x), y: snapCm(spec.y), ...size, heading });
+  const problem = placementProblem(flat, levelId, asked);
+  if (problem) return { error: problem };
+
+  // Starting left of or above the plan slides the whole plan across first
+  const shift = placementShift(asked);
+  const rect = { ...asked, x: asked.x + shift.dx, y: asked.y + shift.dy };
+  const original = flat;
+  flat = shiftFlat(flat, shift.dx, shift.dy);
   const runs = wallsOf(flat, levelId);
   const before = edgesOf(runs);
   const analysis = analyzeRuns(runs);
-  const problem = rectProblem(before, analysis, rect);
-  if (problem) return { error: problem };
 
   const edges = new Set(before);
   for (const key of rectBoundaryEdges(rect)) edges.add(key);
@@ -310,8 +371,9 @@ export function placePassage(flat, rooms, levelId, spec) {
   // The detected region took a "Room n" number that the rename leaves unused
   return {
     ...marked,
-    flat: { ...marked.flat, roomCounter: flat.roomCounter || 0 },
+    flat: { ...marked.flat, roomCounter: original.roomCounter || 0 },
     connected: !!door,
+    shift: shift.dx || shift.dy ? shift : null,
   };
 }
 
