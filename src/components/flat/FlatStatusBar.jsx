@@ -27,7 +27,7 @@ export function FlatStatusBar({ viewMode }) {
         {viewMode === '2d' && cursor ? `x ${(cursor.x / 100).toFixed(2)} m   y ${(cursor.y / 100).toFixed(2)} m` : ''}
       </span>
       <span className={styles.statusHint}>
-        {viewMode === '3d' ? 'Drag to look around, scroll to zoom, right-drag to pan.' : HINTS[tool]}
+        {viewMode === '3d' ? 'Drag to orbit, right-drag to pan, scroll to zoom. Floors above the one you are editing are hidden.' : HINTS[tool]}
       </span>
       <span className={styles.statusFacts}>
         <span>{area.toFixed(1)} m² on this floor</span>
