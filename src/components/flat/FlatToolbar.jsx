@@ -2,16 +2,17 @@ import React from 'react';
 import { MousePointer2, PenLine, Eraser, DoorOpen, AppWindow, Footprints, RotateCw } from 'lucide-react';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
+import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
 import { useFlatUi } from '../../store/flatUiStore.js';
 import styles from './FlatDesigner.module.css';
 
-export const TOOL_DEFS = [
-  { id: 'select', label: 'Select', key: 'V', icon: MousePointer2, tip: 'Select and move: click a room, wall, door, window or staircase' },
-  { id: 'wall', label: 'Wall', key: 'W', icon: PenLine, tip: 'Draw walls: drag, or click twice. Walls snap to the grid' },
-  { id: 'eraser', label: 'Erase wall', key: 'E', icon: Eraser, tip: 'Remove a wall piece between two corners to open up a room' },
-  { id: 'door', label: 'Door', key: 'D', icon: DoorOpen, tip: 'Click a wall to add a door, click a door to remove it' },
-  { id: 'window', label: 'Window', key: 'N', icon: AppWindow, tip: 'Click a wall to add a window, click a window to remove it' },
-  { id: 'stairs', label: 'Stairs', key: 'S', icon: Footprints, tip: 'Place a staircase: click the plan, press R to rotate' },
+const TOOL_DEFS = [
+  { id: 'select', label: 'Select', key: 'V', icon: MousePointer2 },
+  { id: 'wall', label: 'Draw wall', key: 'W', icon: PenLine },
+  { id: 'eraser', label: 'Erase wall', key: 'E', icon: Eraser },
+  { id: 'door', label: 'Door', key: 'D', icon: DoorOpen },
+  { id: 'window', label: 'Window', key: 'N', icon: AppWindow },
+  { id: 'stairs', label: 'Stairs', key: 'S', icon: Footprints },
 ];
 
 const STAIR_OPTIONS = [
@@ -20,7 +21,8 @@ const STAIR_OPTIONS = [
   { value: 'U', label: 'U' },
 ];
 
-export function FlatToolbar({ disabled = false }) {
+/** Floating tool rail inside the plan card. */
+export function FlatToolbar() {
   const tool = useFlatUi((s) => s.tool);
   const setTool = useFlatUi((s) => s.setTool);
   const stairType = useFlatUi((s) => s.stairType);
@@ -28,40 +30,29 @@ export function FlatToolbar({ disabled = false }) {
   const rotateStair = useFlatUi((s) => s.rotateStair);
 
   return (
-    <aside className={styles.toolbar} aria-label="Drawing tools">
-      <h2 className={styles.toolbarTitle}>Tools</h2>
-      {TOOL_DEFS.map(({ id, label, key, icon: Icon, tip }) => {
-        const on = tool === id && !disabled;
-        return (
-          <Button
+    <div className={styles.rail}>
+      <ToolGroup aria-label="Drawing tools" aria-orientation="vertical">
+        {TOOL_DEFS.map(({ id, label, key, icon: Icon }) => (
+          <ToolButton
             key={id}
-            variant="secondary"
-            className={`${styles.toolBtn} ${on ? styles.toolOn : ''}`}
-            icon={<Icon size={18} aria-hidden="true" />}
+            label={label}
+            shortcut={key}
+            active={tool === id}
             onClick={() => setTool(id)}
-            disabled={disabled}
-            aria-pressed={on}
             aria-keyshortcuts={key}
-            title={`${tip} (${key})`}
           >
-            <span className={styles.toolLabel}>{label}</span>
-            <kbd className={styles.kbd}>{key}</kbd>
-          </Button>
-        );
-      })}
-      {tool === 'stairs' && !disabled && (
-        <div className={styles.toolOptions}>
-          <Segmented options={STAIR_OPTIONS} value={stairType} onChange={setStairType} ariaLabel="Staircase shape" />
+            <Icon size={18} aria-hidden="true" />
+          </ToolButton>
+        ))}
+      </ToolGroup>
+      {tool === 'stairs' && (
+        <div className={styles.railOptions}>
+          <Segmented options={STAIR_OPTIONS} value={stairType} onChange={setStairType} ariaLabel="Staircase shape" size="small" />
           <Button variant="secondary" size="small" icon={<RotateCw size={16} aria-hidden="true" />} onClick={rotateStair} title="Rotate 90 degrees (R)">
             Rotate
           </Button>
         </div>
       )}
-      {disabled ? (
-        <p className={styles.helpText}>Switch back to the plan to draw.</p>
-      ) : (
-        <p className={styles.helpText}>Hold Space and drag to move around the plan. Scroll to zoom.</p>
-      )}
-    </aside>
+    </div>
   );
 }

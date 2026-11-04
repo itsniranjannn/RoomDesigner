@@ -1,6 +1,6 @@
 import React from 'react';
 import { stairGeometry, stairFootprint, TREAD_CM } from '../../engine/flat.js';
-import styles from './FlatDesigner.module.css';
+import styles from './FlatPlan.module.css';
 
 function Flight({ flight }) {
   const { x, y, widthCm: w, lengthCm: len, dir, treads } = flight;

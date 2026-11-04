@@ -1,0 +1,256 @@
+.canvasWrap {
+  position: absolute;
+  inset: 0;
+}
+
+.svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  user-select: none;
+}
+
+.unfitted {
+  visibility: hidden;
+}
+
+.svg:focus-visible {
+  outline: none;
+  box-shadow: inset var(--focus-ring);
+}
+
+.cursorCross .svg {
+  cursor: crosshair;
+}
+
+.cursorEraser .svg {
+  cursor: not-allowed;
+}
+
+.cursorGrab .svg {
+  cursor: grab;
+}
+
+.gridMinor {
+  stroke: var(--color-taupe-light);
+  stroke-width: 1px;
+  opacity: 0.7;
+}
+
+.gridMajor {
+  stroke: var(--color-taupe);
+  stroke-width: 1px;
+  opacity: 0.55;
+}
+
+.belowWalls line {
+  stroke: var(--color-ink-faint);
+  stroke-width: 8px;
+  stroke-dasharray: 18 14;
+  opacity: 0.35;
+}
+
+.room {
+  stroke: none;
+}
+
+.roomSelected {
+  stroke: none;
+}
+
+.roomTint {
+  fill: var(--color-indigo-subtle);
+}
+
+.furniture {
+  fill-opacity: 0.85;
+  stroke: var(--color-ink);
+  stroke-opacity: 0.4;
+  stroke-width: 1px;
+}
+
+.wall {
+  fill: var(--color-ink);
+}
+
+.wallSelected {
+  fill: var(--color-indigo);
+  opacity: 0.55;
+}
+
+.gap {
+  fill: var(--color-linen);
+}
+
+.gapInvalid {
+  fill: var(--color-warning);
+  stroke: var(--color-maroon);
+  stroke-width: 2px;
+}
+
+.gapHot {
+  fill: var(--color-warning);
+}
+
+.windowGlyph rect {
+  fill: var(--color-on-accent);
+  stroke: var(--color-indigo);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.windowGlyph line {
+  stroke: var(--color-indigo);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.doorGlyph line {
+  stroke: var(--color-walnut);
+  stroke-width: 3px;
+  vector-effect: non-scaling-stroke;
+}
+
+.doorGlyph path {
+  fill: none;
+  stroke: var(--color-walnut);
+  stroke-width: 1.2px;
+  stroke-dasharray: 5 4;
+  vector-effect: non-scaling-stroke;
+}
+
+.selectBox {
+  fill: none;
+  stroke: var(--color-indigo);
+  stroke-width: 3px;
+  stroke-dasharray: 8 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.draftWall {
+  fill: var(--color-indigo);
+  opacity: 0.7;
+}
+
+.snapDot {
+  fill: var(--color-indigo);
+  opacity: 0.7;
+}
+
+.snapVertex {
+  fill: none;
+  stroke: var(--color-maroon);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.guide {
+  stroke: var(--color-indigo);
+  stroke-width: 1px;
+  stroke-dasharray: 5 5;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.7;
+}
+
+.eraseHint {
+  fill: var(--color-maroon);
+  opacity: 0.6;
+}
+
+.roomName {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  fill: var(--color-ink);
+  paint-order: stroke;
+  stroke: var(--color-linen);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+
+.roomMeta {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  fill: var(--color-ink-muted);
+  paint-order: stroke;
+  stroke: var(--color-linen);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.pill {
+  fill: var(--color-ink);
+  opacity: 0.88;
+}
+
+.pillWarn {
+  fill: var(--color-maroon);
+}
+
+.pillText,
+.pillTextWarn {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  fill: var(--color-on-accent);
+}
+
+.stairTread {
+  stroke: var(--color-ink-muted);
+  stroke-width: 1px;
+  vector-effect: non-scaling-stroke;
+}
+
+.stairFlight {
+  fill: var(--color-paper);
+  stroke: var(--color-ink);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.stairLanding {
+  fill: var(--color-linen-surface);
+  stroke: var(--color-ink);
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+
+.stairArrow {
+  stroke: var(--color-maroon);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.stairArrowHead {
+  fill: var(--color-maroon);
+}
+
+.stairOpening {
+  fill: var(--color-indigo-subtle);
+  stroke: var(--color-indigo);
+  stroke-width: 2px;
+  stroke-dasharray: 8 5;
+  vector-effect: non-scaling-stroke;
+}
+
+.stairInvalid .stairFlight,
+.stairInvalid .stairLanding {
+  fill: var(--color-warning);
+  stroke: var(--color-maroon);
+}
+
+.notice {
+  position: absolute;
+  top: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-maroon);
+  color: var(--color-on-accent);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+  box-shadow: var(--shadow-lift);
+}
+

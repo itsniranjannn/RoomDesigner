@@ -1,3 +1,4 @@
+/* The page is linen; header on top, then the workspace of cards separated by one gutter */
 .appContainer {
   display: flex;
   flex-direction: column;
@@ -12,6 +13,7 @@
   display: flex;
   flex: 1;
   min-height: 0;
+  padding: 0 var(--gutter) var(--gutter);
   overflow: hidden;
 }
 
@@ -21,24 +23,59 @@
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  background: var(--color-paper);
+  border: var(--border-soft);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-panel);
 }
 
-.dockLeft,
-.dockRight {
+/* Side panels collapse by sliding their width to zero, so the canvas grows smoothly */
+.dock {
   flex-shrink: 0;
   display: flex;
   min-height: 0;
+  overflow: hidden;
   background: var(--color-paper);
+  border: var(--border-soft);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-panel);
+  transition: width var(--transition-normal), margin var(--transition-normal), opacity var(--transition-normal),
+    visibility 0s linear 0s;
 }
 
 .dockLeft {
   width: var(--catalog-width);
-  border-right: var(--border-soft);
+  margin-right: var(--gutter);
 }
 
 .dockRight {
   width: var(--inspector-width);
-  border-left: var(--border-soft);
+  margin-left: var(--gutter);
+}
+
+.dockClosed {
+  width: 0;
+  margin-left: 0;
+  margin-right: 0;
+  border-width: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: width var(--transition-normal), margin var(--transition-normal), opacity var(--transition-normal),
+    visibility 0s linear var(--transition-normal);
+}
+
+.dockInner {
+  display: flex;
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.dockLeft .dockInner {
+  width: calc(var(--catalog-width) - 2px);
+}
+
+.dockRight .dockInner {
+  width: calc(var(--inspector-width) - 2px);
 }
 
 /* Drawers on narrow screens */
@@ -46,28 +83,30 @@
   position: absolute;
   inset: 0;
   z-index: calc(var(--z-drawer) - 1);
-  background: rgba(28, 26, 23, 0.32);
+  background: var(--color-scrim);
   animation: fade var(--transition-normal);
 }
 
 .drawer {
   position: absolute;
-  top: 0;
-  bottom: 0;
+  top: var(--gutter);
+  bottom: var(--gutter);
   z-index: var(--z-drawer);
   display: flex;
   width: min(var(--catalog-width), 88vw);
+  overflow: hidden;
   background: var(--color-paper);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lift);
 }
 
 .drawerLeft {
-  left: 0;
+  left: var(--gutter);
   animation: slideInLeft var(--transition-normal);
 }
 
 .drawerRight {
-  right: 0;
+  right: var(--gutter);
   width: min(var(--inspector-width), 92vw);
   animation: slideInRight var(--transition-normal);
 }
@@ -87,30 +126,6 @@
   to { transform: none; opacity: 1; }
 }
 
-.loadingScreen {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  background-color: var(--color-linen-subtle);
-}
-
-.loadingDot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--color-maroon);
-  animation: pulse 1.2s infinite ease-in-out;
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(0.8); opacity: 0.6; }
-  50% { transform: scale(1.15); opacity: 1; }
-}
-
-.loadingText {
-  font-size: var(--text-sm);
-  color: var(--color-ink-muted);
+@media (max-width: 640px) {
+  .workspace { padding: 0 var(--space-2) var(--space-2); }
 }

@@ -19,28 +19,9 @@ import { Button } from '../common/Button.jsx';
 import { NumberField, RangeField } from '../common/Field.jsx';
 import { Notice } from '../common/Notice.jsx';
 import { Popover } from '../common/Popover.jsx';
-import { IconButton } from '../common/Section.jsx';
-import { Tooltip } from '../common/Tooltip.jsx';
+import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
 import { useMediaQuery } from '../layout/hooks.js';
 import styles from './CanvasToolbar.module.css';
-
-function Tool({ active, label, side, onClick, disabled, children }) {
-  return (
-    <Tooltip label={label} side={side}>
-      <IconButton
-        label={label}
-        active={active}
-        disabled={disabled}
-        onClick={onClick}
-        // The tooltip already shows the label, so skip the browser's own title bubble
-        title={undefined}
-        aria-pressed={active === undefined ? undefined : !!active}
-      >
-        {children}
-      </IconButton>
-    </Tooltip>
-  );
-}
 
 // Clicks on the overlay must not reach the canvas underneath (it would clear the selection)
 const stop = { onClick: (e) => e.stopPropagation(), onPointerDown: (e) => e.stopPropagation() };
@@ -62,7 +43,7 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
   const canUndo = useRoomStore((s) => s.canUndo);
   const canRedo = useRoomStore((s) => s.canRedo);
 
-  const phone = useMediaQuery('(max-width: 560px)');
+  const phone = useMediaQuery('(max-width: 640px)');
   const fileRef = useRef(null);
   const [error, setError] = useState(null);
 
@@ -91,23 +72,23 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
     <>
       <div className={styles.toolbar} role="toolbar" aria-label="Plan tools" aria-orientation={phone ? 'horizontal' : 'vertical'} {...stop}>
         {phone && (
-          <div className={styles.group}>
-            <Tool label="Undo" side={side} onClick={undo} disabled={!canUndo}><Undo2 size={18} /></Tool>
-            <Tool label="Redo" side={side} onClick={redo} disabled={!canRedo}><Redo2 size={18} /></Tool>
-          </div>
+          <ToolGroup vertical={!phone}>
+            <ToolButton label="Undo" shortcut="Ctrl+Z" side={side} onClick={undo} disabled={!canUndo}><Undo2 size={18} /></ToolButton>
+            <ToolButton label="Redo" shortcut="Ctrl+Y" side={side} onClick={redo} disabled={!canRedo}><Redo2 size={18} /></ToolButton>
+          </ToolGroup>
         )}
-        <div className={styles.group}>
-          <Tool active={measureActive} side={side} onClick={toggleMeasure} label="Measure distance (M)"><Ruler size={18} /></Tool>
-          <Tool active={showDimensions} side={side} onClick={toggleDimensions} label="Show distances to walls"><MoveHorizontal size={18} /></Tool>
-          <Tool active={showClearance} side={side} onClick={toggleClearance} label="Show clearance zones"><ScanLine size={18} /></Tool>
-        </div>
-        <div className={styles.group}>
-          <Tool side={side} onClick={() => fileRef.current?.click()} label="Trace a floor-plan image"><ImagePlus size={18} /></Tool>
-          <Tool side={side} onClick={() => openModal('layout')} label="Suggest a layout"><Wand2 size={18} /></Tool>
-        </div>
-        <div className={styles.group}>
-          <Tool side={side} onClick={() => openModal('shortcuts')} label="Keyboard shortcuts (?)"><Keyboard size={18} /></Tool>
-        </div>
+        <ToolGroup vertical={!phone}>
+          <ToolButton active={measureActive} side={side} onClick={toggleMeasure} label="Measure distance" shortcut="M"><Ruler size={18} /></ToolButton>
+          <ToolButton active={showDimensions} side={side} onClick={toggleDimensions} label="Show distances to walls"><MoveHorizontal size={18} /></ToolButton>
+          <ToolButton active={showClearance} side={side} onClick={toggleClearance} label="Show clearance zones"><ScanLine size={18} /></ToolButton>
+        </ToolGroup>
+        <ToolGroup vertical={!phone}>
+          <ToolButton side={side} onClick={() => fileRef.current?.click()} label="Trace a floor-plan image"><ImagePlus size={18} /></ToolButton>
+          <ToolButton side={side} onClick={() => openModal('layout')} label="Suggest a layout"><Wand2 size={18} /></ToolButton>
+        </ToolGroup>
+        <ToolGroup vertical={!phone}>
+          <ToolButton side={side} onClick={() => openModal('shortcuts')} label="Keyboard shortcuts" shortcut="?"><Keyboard size={18} /></ToolButton>
+        </ToolGroup>
         <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleTraceFile} aria-label="Floor-plan image to trace" />
       </div>
 

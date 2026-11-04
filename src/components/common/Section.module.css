@@ -103,7 +103,7 @@
 .iconBtnOn:hover:not(:disabled) {
   background: var(--color-indigo);
   border-color: var(--color-indigo);
-  color: #fff;
+  color: var(--color-on-accent);
 }
 
 .iconBtnDanger {
@@ -113,4 +113,11 @@
 .iconBtnDanger:hover:not(:disabled) {
   background: var(--color-maroon-subtle);
   border-color: var(--color-maroon);
+}
+
+.iconBtnQuiet,
+.iconBtnQuiet:hover:not(:disabled) {
+  background: var(--color-indigo-subtle);
+  border-color: transparent;
+  color: var(--color-indigo);
 }

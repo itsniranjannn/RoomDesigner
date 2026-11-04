@@ -13,6 +13,7 @@ import { useFlatStore } from '../../store/flatStore.js';
 import { FlatDesigner } from '../flat/FlatDesigner.jsx';
 import { NewFlatModal } from '../flat/NewFlatModal.jsx';
 import { Modal } from '../common/Modal.jsx';
+import { CanvasLoader } from '../common/CanvasLoader.jsx';
 import { Button } from '../common/Button.jsx';
 import { decodeRoomFromHash } from '../../engine/share.js';
 import styles from './AppShell.module.css';
@@ -183,26 +184,30 @@ export function AppShell() {
       />
 
       <main className={styles.workspace}>
-        {docked && catalogOpen && <div className={styles.dockLeft}>{catalogPanel}</div>}
+        {docked && (
+          <div className={`${styles.dock} ${styles.dockLeft} ${catalogOpen ? '' : styles.dockClosed}`} inert={!catalogOpen}>
+            <div className={styles.dockInner}>{catalogPanel}</div>
+          </div>
+        )}
 
         <div className={styles.canvasWrapper}>
           {viewMode === '2d' ? (
             <RoomCanvas />
           ) : (
-            <Suspense
-              fallback={
-                <div className={styles.loadingScreen} role="status">
-                  <span className={styles.loadingDot} aria-hidden="true" />
-                  <span className={styles.loadingText}>Loading 3D view...</span>
-                </div>
-              }
-            >
+            <Suspense fallback={<CanvasLoader label="Loading 3D view" />}>
               <Room3DView />
             </Suspense>
           )}
         </div>
 
-        {docked && showInspector && inspectorOpen && <div className={styles.dockRight}>{inspectorPanel}</div>}
+        {docked && (
+          <div
+            className={`${styles.dock} ${styles.dockRight} ${showInspector && inspectorOpen ? '' : styles.dockClosed}`}
+            inert={!(showInspector && inspectorOpen)}
+          >
+            <div className={styles.dockInner}>{inspectorPanel}</div>
+          </div>
+        )}
 
         {!docked && drawer && (
           <>

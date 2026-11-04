@@ -9,21 +9,6 @@
   gap: var(--space-2);
 }
 
-.group {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px;
-  background: var(--color-paper);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-card);
-}
-
-.group button {
-  width: 36px;
-  height: 36px;
-}
-
 /* Messages and tool options sit at the top, clear of the tool strip */
 .stack {
   position: absolute;
@@ -137,19 +122,15 @@
   box-shadow: var(--shadow-card);
 }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .toolbar {
     flex-direction: row;
     flex-wrap: wrap;
     right: var(--space-3);
   }
 
-  .group {
-    flex-direction: row;
-  }
-
   .stack {
-    top: 60px;
+    top: 56px;
     left: var(--space-3);
   }
 }

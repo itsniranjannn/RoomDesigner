@@ -1,0 +1,29 @@
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--color-paper);
+  border: var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.horizontal {
+  flex-direction: row;
+}
+
+.group button {
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
+}
+
+.kbd {
+  margin-left: var(--space-2);
+  padding: 0 5px;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  color: var(--color-linen-subtle);
+  border: 1px solid rgba(252, 250, 246, 0.35);
+  border-radius: var(--radius-sm);
+}
