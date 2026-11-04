@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createFlat } from './flat.js';
-import { addWall, levelEdges, openingsOf, analyzeLevel } from './flatPlan.js';
+import { createFlat, addLevel } from './flat.js';
+import { addWall, addOpening, levelEdges, openingsOf, analyzeLevel } from './flatPlan.js';
 import {
   placePassage,
   editPassage,
@@ -12,6 +12,7 @@ import {
   clampPassageSize,
   snapPassageToWalls,
   rectBoundaryEdges,
+  shiftFlat,
   PASSAGE_DEFAULTS,
 } from './flatPassage.js';
 import { edgesToRuns, wallBoxes, skirtingBoxes, SKIRTING_HEIGHT_CM } from './flatWalls.js';
@@ -192,8 +193,16 @@ describe('placing a passage', () => {
       widthCm: 80,
     });
     expect(inside.error).toBeTruthy();
-    const left = placePassage(flat, rooms, levelId, { x: -100, y: 0, ...dims() });
-    expect(left.error).toMatch(/leave the plan/);
+    // a passage that overlaps the room is refused even when it starts left of the plan
+    const leftOver = placePassage(flat, rooms, levelId, { x: -100, y: 0, ...dims() });
+    expect(leftOver.error).toMatch(/overlaps a room/);
+    const wide = withRoom(0, 0, 3900, 300);
+    const tooFar = placePassage(wide.flat, wide.rooms, wide.levelId, {
+      x: -300,
+      y: 400,
+      ...dims(),
+    });
+    expect(tooFar.error).toMatch(/leave the plan/);
     const far = placePassage(flat, rooms, levelId, { x: 3900, y: 0, ...dims() });
     expect(far.error).toMatch(/leave the plan/);
     // a stray wall inside the footprint is a clash too
@@ -219,6 +228,70 @@ describe('placing a passage', () => {
     const a = analyzeLevel(res.flat, levelId);
     expect(a.regions).toHaveLength(1);
     expect(a.regions[0]).toMatchObject({ widthCm: 120, depthCm: 300, rect: true });
+  });
+});
+
+describe('placing left of or above the plan', () => {
+  it('slides the whole plan across so everything stays on the grid', () => {
+    const { flat, rooms, levelId } = withRoom(0, 0, 400, 300);
+    const withDoor = addOpening(flat, rooms, levelId, {
+      id: 'o1',
+      type: 'door',
+      axis: 'h',
+      line: 0,
+      start: 100,
+      widthCm: 90,
+    });
+    const res = placePassage(withDoor.flat, withDoor.rooms, levelId, {
+      x: -120,
+      y: 0,
+      lengthCm: 300,
+      widthCm: 120,
+      heading: 90,
+    });
+    expect(res.error).toBeUndefined();
+    expect(res.shift).toEqual({ dx: 120, dy: 0 });
+    const room = res.flat.spaces.find((s) => s.kind !== 'passage');
+    expect(room).toMatchObject({ x: 120, y: 0, widthCm: 400, depthCm: 300 });
+    expect(passages(res.flat)[0]).toMatchObject({ x: 0, y: 0, widthCm: 120, depthCm: 300 });
+    // the door moved with its wall and the passage joined the room by a door of its own
+    const doors = openingsOf(res.flat, levelId);
+    expect(doors.find((d) => d.id === 'o1')).toMatchObject({ line: 0, start: 220 });
+    expect(res.connected).toBe(true);
+    // nothing is left on negative coordinates
+    for (const r of res.flat.walls[levelId]) expect(Math.min(r.x1, r.y1)).toBeGreaterThanOrEqual(0);
+    // the room kept its identity, so its furniture and name survive
+    expect(room.id).toBe(res.flat.spaces.find((s) => s.id === flat.spaces[0].id).id);
+  });
+
+  it('shifts every floor and staircase together', () => {
+    const base = withRoom(0, 0, 400, 300);
+    const two = addLevel(base.flat);
+    const stair = {
+      id: 'st',
+      levelId: base.levelId,
+      type: 'straight',
+      widthCm: 100,
+      rotationDeg: 0,
+      riseCm: 280,
+      x: 20,
+      y: 20,
+    };
+    const res = placePassage({ ...two, stairs: [stair] }, base.rooms, base.levelId, {
+      x: 0,
+      y: -200,
+      ...dims(),
+    });
+    expect(res.shift).toEqual({ dx: 0, dy: 200 });
+    expect(res.flat.stairs[0]).toMatchObject({ x: 20, y: 220 });
+    expect(shiftFlat(two, 0, 0)).toBe(two);
+  });
+
+  it('previews the ghost as valid there', () => {
+    const { flat, levelId } = withRoom(0, 0, 400, 300);
+    expect(previewPassage(flat, levelId, { x: -120, y: 20, ...dims(), heading: 90 }).valid).toBe(
+      true
+    );
   });
 });
 
