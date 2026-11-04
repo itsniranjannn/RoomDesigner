@@ -23,7 +23,7 @@ export const VIEW_SLOTS = [
   { id: 'top', label: 'Top', angle: null },
 ];
 
-export const MESH_RESOLUTION = 64;
+const MESH_RESOLUTION = 64;
 const NORMAL_SIZE = 128;
 const LEGACY_RESOLUTION = 40;
 
@@ -669,7 +669,7 @@ function averageColor(views) {
  * @param {Uint8Array} occupancy R*R*R, 1 = solid
  * @param {(x: number, y: number, z: number, n: number[]) => number[]} colorAt colour for a point in unit space with its outward normal
  */
-export function buildSmoothMesh(occupancy, R, colorAt) {
+function buildSmoothMesh(occupancy, R, colorAt) {
   const { density, N } = blurredDensity(occupancy, R);
   const { verts, tris } = surfaceNets(density, N);
   const vertexCount = verts.length / 3;

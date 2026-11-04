@@ -13,43 +13,6 @@ const STORE_CUSTOM = 'customFurniture';
 const STORE_FLATS = 'flats';
 const ACTIVE_ROOM_KEY = 'active_room_id';
 
-export const DEFAULT_ROOM = {
-  id: 'room-default-studio',
-  name: 'Studio Apartment',
-  widthCm: 520,
-  depthCm: 420,
-  doors: [
-    { id: 'door-1', wall: 'bottom', offsetCm: 60, widthCm: 90, swingDirection: 'inward-left' },
-  ],
-  windows: [
-    { id: 'win-1', wall: 'top', offsetCm: 190, widthCm: 140 },
-  ],
-  placedFurniture: [
-    {
-      id: 'item-bed',
-      furnitureTypeId: 'bed-queen',
-      x: 100,
-      y: 125,
-      rotationDeg: 0,
-    },
-    {
-      id: 'item-nightstand',
-      furnitureTypeId: 'nightstand',
-      x: 205,
-      y: 50,
-      rotationDeg: 0,
-    },
-    {
-      id: 'item-desk',
-      furnitureTypeId: 'desk-executive',
-      x: 435,
-      y: 110,
-      rotationDeg: 90,
-    },
-  ],
-  updatedAt: new Date().toISOString(),
-};
-
 export async function getDB() {
   if (typeof indexedDB === 'undefined') {
     return null;

@@ -13,19 +13,13 @@
   --color-maroon-hover: #751F2C;
   --color-maroon-subtle: rgba(139, 38, 53, 0.1);
   --color-clay: var(--color-maroon);
-  --color-clay-hover: var(--color-maroon-hover);
-  --color-clay-subtle: var(--color-maroon-subtle);
 
   /* Secondary accent: Patan brass */
   --color-brass: #C49746;
-  --color-brass-hover: #B0853B;
-  --color-brass-subtle: rgba(196, 151, 70, 0.14);
 
   /* Selection and focus: Himalayan indigo */
   --color-indigo: #22485E;
-  --color-indigo-hover: #1A3849;
   --color-indigo-subtle: rgba(34, 72, 94, 0.1);
-  --color-selection: var(--color-indigo);
 
   --color-pine: #3B4B42;
   --color-pine-subtle: rgba(59, 75, 66, 0.12);
@@ -38,9 +32,7 @@
   --color-surface-glass: rgba(255, 255, 255, 0.6);
   --color-edge: rgba(28, 26, 23, 0.18);
   --color-walnut: #7A5B37;
-  --color-walnut-dark: #543E24;
   --color-warning: rgba(139, 38, 53, 0.2);
-  --color-warning-border: #8B2635;
   --color-caution: #B26B00;
   --color-caution-bg: #FFF4E0;
   --color-success: #3B6B4F;
@@ -59,7 +51,6 @@
   --text-2xl: 30px;
   --text-3xl: 44px;
   --leading-tight: 1.15;
-  --leading-snug: 1.35;
   --leading-body: 1.5;
 
   /* Spacing */
@@ -75,7 +66,6 @@
   /* Elevation */
   --shadow-card: 0 1px 2px rgba(28, 26, 23, 0.05), 0 2px 6px rgba(28, 26, 23, 0.04);
   --shadow-lift: 0 12px 32px -6px rgba(28, 26, 23, 0.16), 0 4px 10px -2px rgba(28, 26, 23, 0.06);
-  --shadow-pressed: inset 0 1px 3px rgba(28, 26, 23, 0.12);
   --shadow-pop: 0 10px 28px -6px rgba(28, 26, 23, 0.2), 0 2px 6px rgba(28, 26, 23, 0.08);
   --shadow-panel: 0 1px 2px rgba(28, 26, 23, 0.04), 0 6px 20px -8px rgba(28, 26, 23, 0.12);
   --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.25);
@@ -108,5 +98,4 @@
   /* Motion */
   --transition-fast: 150ms cubic-bezier(0.16, 1, 0.3, 1);
   --transition-normal: 240ms cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
 }

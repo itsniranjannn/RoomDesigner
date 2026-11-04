@@ -8,9 +8,9 @@ import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { getRotatedRectCorners, getAABB } from './geometry.js';
 import { checkPolygonCollision } from './collision.js';
 
-export const MIN_PASSAGE_CM = 60;
+const MIN_PASSAGE_CM = 60;
 // Gaps narrower than this are not mistaken for a passage (pieces simply sit side by side)
-export const MIN_WALKABLE_GAP_CM = 25;
+const MIN_WALKABLE_GAP_CM = 25;
 const WINDOW_DEPTH_CM = 30;
 const WINDOW_BLOCK_HEIGHT_CM = 100;
 
@@ -24,7 +24,7 @@ function rectCorners(minX, minY, maxX, maxY) {
 }
 
 /** Interior rectangle of the given depth in front of an opening on a wall. */
-export function getOpeningZone(wall, offsetCm, widthCm, depthCm, roomWidthCm, roomDepthCm) {
+function getOpeningZone(wall, offsetCm, widthCm, depthCm, roomWidthCm, roomDepthCm) {
   switch (wall) {
     case 'top':
       return rectCorners(offsetCm, 0, offsetCm + widthCm, depthCm);

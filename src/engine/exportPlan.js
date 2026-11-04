@@ -9,7 +9,7 @@ import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { jpegToPdf } from './pdf.js';
 import { roomToJson } from './share.js';
 
-export function renderRoomPlanCanvas(room) {
+function renderRoomPlanCanvas(room) {
   if (!room) return null;
 
   const roomWidth = room.widthCm || 500;
@@ -582,7 +582,7 @@ function safeName(room) {
   return (room.name || 'Room').replace(/[^a-zA-Z0-9_-]/g, '_').replace(/_+/g, '_');
 }
 
-export function downloadBlob(blob, filename) {
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.download = filename;

@@ -7,7 +7,7 @@ import styles from './Field.module.css';
  * and toggle in the app uses these so they look and behave the same.
  */
 
-export function Field({ label, hint, error, htmlFor, children, className = '' }) {
+function Field({ label, hint, error, htmlFor, children, className = '' }) {
   return (
     <div className={`${styles.field} ${className}`}>
       {label && (

@@ -12,13 +12,13 @@
  */
 
 export const CELL = 10;
-export const MAX_COORD_CM = 4000;
-export const MIN_REGION_CELLS = 30;
+const MAX_COORD_CM = 4000;
+const MIN_REGION_CELLS = 30;
 
-export const DOOR_HEIGHT_CM = 205;
-export const WINDOW_SILL_CM = 90;
-export const WALL_HEIGHT_CM = 240;
-export const CUTAWAY_HEIGHT_CM = 45;
+const DOOR_HEIGHT_CM = 205;
+const WINDOW_SILL_CM = 90;
+const WALL_HEIGHT_CM = 240;
+const CUTAWAY_HEIGHT_CM = 45;
 export const INTERIOR_THICK_CM = 12;
 export const EXTERIOR_THICK_CM = 20;
 
@@ -33,7 +33,7 @@ export function parseEdge(key) {
 }
 
 /** Endpoints of a unit edge in cm. */
-export function edgeEnds(key) {
+function edgeEnds(key) {
   const { axis, i, j } = parseEdge(key);
   return axis === 'h'
     ? { x1: i * CELL, y1: j * CELL, x2: (i + 1) * CELL, y2: j * CELL }
@@ -153,7 +153,7 @@ function vertexEdges(edges, a, b) {
 }
 
 /** Edge keys at the grid vertex (a,b). */
-export function degreeAt(edges, a, b) {
+function degreeAt(edges, a, b) {
   return vertexEdges(edges, a, b).filter(Boolean).length;
 }
 
@@ -220,7 +220,7 @@ export function hitTestEdge(edges, x, y, tolCm = 8) {
 }
 
 /** Contiguous span (cm) of a straight run of edges that contains `key`, from junction to junction. */
-export function runSpan(edges, key) {
+function runSpan(edges, key) {
   const run = wallRunAt(edges, key);
   const { axis } = parseEdge(key);
   const pos = run.map((k) => (axis === 'h' ? parseEdge(k).i : parseEdge(k).j));
@@ -423,7 +423,7 @@ export function regionRects(region) {
  * An opening is { id, type: 'door' | 'window', axis: 'h' | 'v', line, start, widthCm, swing? } in cm.
  * Horizontal ('h') openings sit on the wall y = line and span x = start .. start + width.
  */
-export function openingEdgeKeys(op) {
+function openingEdgeKeys(op) {
   const keys = [];
   const first = Math.floor(op.start / CELL);
   const last = Math.ceil((op.start + op.widthCm) / CELL) - 1;
@@ -574,20 +574,6 @@ export function wallsCrossRect(edges, rect) {
     }
   }
   return false;
-}
-
-/** Unique vertex coordinates of a level's walls (for alignment guides). */
-export function wallVertices(edges) {
-  const xs = new Set();
-  const ys = new Set();
-  for (const key of edges) {
-    const e = edgeEnds(key);
-    xs.add(e.x1);
-    xs.add(e.x2);
-    ys.add(e.y1);
-    ys.add(e.y2);
-  }
-  return { xs: [...xs], ys: [...ys] };
 }
 
 /** All run end points (grid vertices that start or end a straight wall), in cm. */

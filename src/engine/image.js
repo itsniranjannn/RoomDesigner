@@ -3,10 +3,10 @@
  * Browser helpers for user-supplied photos: validate, downscale and read pixels.
  */
 
-export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
-export function validateImageFile(file) {
+function validateImageFile(file) {
   if (!file) throw new Error('No file selected.');
   if (!ALLOWED_TYPES.includes(file.type)) throw new Error('Please choose a PNG, JPEG or WebP image.');
   if (file.size > MAX_UPLOAD_BYTES) throw new Error('That image is larger than 12 MB.');
@@ -56,12 +56,3 @@ export async function readImage(file, maxDim = 1400, mime = 'image/jpeg', qualit
   };
 }
 
-/** Small preview thumbnail for catalog cards. */
-export function makeThumbnail(canvasSource, size = 96) {
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(canvasSource, 0, 0, size, size);
-  return canvas.toDataURL('image/png');
-}
