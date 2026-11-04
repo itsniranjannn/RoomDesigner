@@ -21,6 +21,22 @@
   box-shadow: var(--focus-ring);
 }
 
+/* The logo turns a quarter-eighth on hover, as in the original top bar. */
+.mark {
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
+}
+
+.brand:hover .mark {
+  transform: rotate(45deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark {
+    transition: none;
+  }
+}
+
 .name {
   overflow: hidden;
   text-overflow: ellipsis;
