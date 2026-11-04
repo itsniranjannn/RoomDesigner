@@ -5,6 +5,7 @@ import {
   Pad,
   Ball,
   Pillow,
+  leaningPillow,
   Strut,
   CHROME,
   BLACK_PLASTIC,
@@ -16,6 +17,36 @@ import {
 } from './shared.jsx';
 
 const FOOT_H = 0.1;
+const BACK_CUSHION_TILT = 0.22;
+
+/** Scatter cushions for a sofa or armchair: leaning on the back cushions, resting on the seat. */
+export function scatterPillows({ widthM, depthM, heightM, armRatio, seats, seatH = 0.44 }) {
+  const armW = widthM * armRatio;
+  const backThick = depthM * 0.26;
+  const innerW = widthM - armW * 2;
+  const backCushionH = heightM - seatH - 0.06;
+  // Never wider than the gap between the arms, however small the piece is resized
+  const w = Math.max(0.12, Math.min(clamp(innerW * 0.34, 0.26, 0.4), innerW - 0.02));
+  const size = [w, w * 0.4, w];
+  // Front face of the loose back cushion, which the scatter cushions lean on
+  const centre = [0, seatH + backCushionH / 2 - 0.02, -depthM / 2 + backThick + 0.06];
+  const normal = [0, Math.sin(BACK_CUSHION_TILT), Math.cos(BACK_CUSHION_TILT)];
+  const planePoint = centre.map((c, i) => c + normal[i] * 0.065);
+  const spots = seats > 1 ? [-1, 1] : [-1];
+  return spots.map((sg) => ({
+    sg,
+    size,
+    ...leaningPillow({
+      size,
+      lean: 1.15 + (sg > 0 ? 0.06 : 0),
+      yaw: sg * 0.14,
+      x: sg * Math.max(0, innerW / 2 - w / 2 - 0.045),
+      seatTop: seatH,
+      planePoint,
+      planeNormal: normal,
+    }),
+  }));
+}
 
 /** Upholstered sofa or armchair: frame, arms, back, seat cushions and loose back cushions. */
 function Upholstered({
@@ -117,7 +148,7 @@ function Upholstered({
             seatH + backCushionH / 2 - 0.02,
             -depthM / 2 + backThick + 0.06,
           ]}
-          rotation={[-0.22, 0, 0]}
+          rotation={[-BACK_CUSHION_TILT, 0, 0]}
         >
           <Pad size={[seatW - 0.03, backCushionH, 0.13]} radius={0.05} color={cushionColor} />
           <Box
@@ -138,24 +169,14 @@ function Upholstered({
           ))}
         </group>
       ))}
-      {/* Arm top welting */}
-      {[-1, 1].map((sg) => (
-        <Box
-          key={sg}
-          position={[sg * (widthM / 2 - armW / 2), armH + 0.001, 0]}
-          size={[armW - 0.09, 0.006, depthM - 0.12]}
-          color={shade(mainColor, -0.04)}
-          castShadow={false}
-        />
-      ))}
       {scatter &&
-        (seats > 1 ? [-1, 1] : [-1]).map((sg) => (
+        scatterPillows({ widthM, depthM, heightM, armRatio, seats, seatH }).map((p) => (
           <Pillow
-            key={sg}
-            position={[sg * (innerW / 2 - 0.2), seatH + 0.17, -depthM / 2 + backThick + 0.15]}
-            size={[0.38, 0.1, 0.38]}
-            color={sg > 0 ? shade(mainColor, 0.18) : '#E9DFCF'}
-            rotation={[-0.5, sg * 0.35, 0]}
+            key={p.sg}
+            position={p.position}
+            size={p.size}
+            color={p.sg > 0 ? shade(mainColor, 0.18) : '#E9DFCF'}
+            rotation={p.rotation}
           />
         ))}
       {recliner && (
@@ -173,16 +194,8 @@ function Upholstered({
             radius={0.04}
             color={cushionColor}
           />
-          {[-1, 1].map((sg) => (
-            <Box
-              key={sg}
-              position={[sg * (widthM / 2 - 0.003), seatH - 0.1, 0.12]}
-              size={[0.012, 0.02, 0.36]}
-              {...CHROME}
-            />
-          ))}
           <Box
-            position={[widthM / 2 + 0.012, seatH - 0.02, 0.18]}
+            position={[widthM / 2 + 0.006, seatH - 0.02, 0.18]}
             size={[0.02, 0.012, 0.1]}
             {...BLACK_PLASTIC}
           />

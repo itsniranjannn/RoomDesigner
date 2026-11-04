@@ -1,4 +1,15 @@
-import { Box, Cyl, Pad, Ball, Pillow, EdgePiping, BRASS, clamp, shade } from './shared.jsx';
+import {
+  Box,
+  Cyl,
+  Pad,
+  Ball,
+  Pillow,
+  leaningPillow,
+  EdgePiping,
+  BRASS,
+  clamp,
+  shade,
+} from './shared.jsx';
 
 /** 3D models: lounge seating. Built from Three.js primitives; origin on the floor, centered on the footprint. */
 export function SofaLModel({ widthM, depthM, heightM, mainColor, cushionColor, legColor }) {
@@ -113,7 +124,7 @@ export function SofaLModel({ widthM, depthM, heightM, mainColor, cushionColor, l
           </group>
         );
       })}
-      {/* Arms and the long arm along the chaise, with top welting */}
+      {/* Arms and the long arm along the chaise*/}
       <Pad
         position={[-widthM / 2 + armW / 2, 0.34, mainZ]}
         size={[armW, 0.42, mainD]}
@@ -128,31 +139,30 @@ export function SofaLModel({ widthM, depthM, heightM, mainColor, cushionColor, l
         color={mainColor}
         roughness={0.85}
       />
-      <Box
-        position={[-widthM / 2 + armW / 2, 0.552, mainZ]}
-        size={[armW - 0.05, 0.005, mainD - 0.1]}
-        color={shade(mainColor, -0.04)}
-        castShadow={false}
-      />
-      <Box
-        position={[widthM / 2 - armW / 2, 0.552, 0]}
-        size={[armW - 0.05, 0.005, depthM - 0.1]}
-        color={shade(mainColor, -0.04)}
-        castShadow={false}
-      />
-      {/* Scatter cushions */}
-      <Pillow
-        position={[-widthM * 0.3, seatY + 0.2, -depthM / 2 + backThick + 0.16]}
-        size={[0.4, 0.1, 0.4]}
-        color={shade(mainColor, 0.2)}
-        rotation={[-0.45, 0.3, 0]}
-      />
-      <Pillow
-        position={[widthM * 0.02, seatY + 0.18, -depthM / 2 + backThick + 0.16]}
-        size={[0.36, 0.1, 0.36]}
-        color="#EADFCB"
-        rotation={[-0.45, -0.25, 0]}
-      />
+      {/* Scatter cushions leaning on the back cushions and resting on the seat */}
+      {[
+        { x: -widthM * 0.3, w: 0.38, yaw: 0.14, lean: 1.15, color: shade(mainColor, 0.2) },
+        { x: widthM * 0.02, w: 0.34, yaw: -0.12, lean: 1.2, color: '#EADFCB' },
+      ].map((c, i) => (
+        <Pillow
+          key={i}
+          size={[c.w, c.w * 0.4, c.w]}
+          color={c.color}
+          {...leaningPillow({
+            size: [c.w, c.w * 0.4, c.w],
+            lean: c.lean,
+            yaw: c.yaw,
+            x: c.x,
+            seatTop: seatY + 0.07,
+            planePoint: [
+              0,
+              seatY + 0.2 + Math.sin(0.2) * 0.06,
+              -depthM / 2 + backThick + 0.05 + Math.cos(0.2) * 0.06,
+            ],
+            planeNormal: [0, Math.sin(0.2), Math.cos(0.2)],
+          })}
+        />
+      ))}
       {/* Tapered legs with brass ferrules */}
       {[
         [-widthM / 2 + 0.07, -depthM / 2 + 0.07],
@@ -186,7 +196,7 @@ export function SofaLModel({ widthM, depthM, heightM, mainColor, cushionColor, l
   );
 }
 
-export function BeanBagModel({ widthM, depthM, heightM, mainColor, cushionColor }) {
+export function BeanBagModel({ widthM, depthM, heightM, mainColor }) {
   const seam = shade(mainColor, -0.14);
   return (
     <group>
@@ -212,24 +222,8 @@ export function BeanBagModel({ widthM, depthM, heightM, mainColor, cushionColor 
           <meshStandardMaterial color={seam} roughness={0.9} />
         </mesh>
       ))}
-      {/* Seat dimple, back lump and a carry handle */}
-      <mesh
-        position={[0, heightM * 0.7, depthM * 0.08]}
-        scale={[widthM * 0.3, heightM * 0.2, depthM * 0.3]}
-        castShadow
-      >
-        <sphereGeometry args={[1, 20, 14]} />
-        <meshStandardMaterial color={cushionColor} roughness={0.95} />
-      </mesh>
-      <mesh
-        position={[0, heightM * 0.62, -depthM * 0.28]}
-        scale={[widthM * 0.34, heightM * 0.36, depthM * 0.2]}
-        castShadow
-      >
-        <sphereGeometry args={[1, 20, 14]} />
-        <meshStandardMaterial color={mainColor} roughness={0.95} />
-      </mesh>
-      <mesh position={[0, heightM * 0.88, -depthM * 0.3]} rotation={[0.3, 0, 0]} castShadow>
+      {/* Carry handle resting on the back of the bag */}
+      <mesh position={[0, heightM * 0.82, -depthM * 0.3]} rotation={[0.45, 0, 0]} castShadow>
         <torusGeometry args={[0.07, 0.014, 6, 14, Math.PI]} />
         <meshStandardMaterial color={seam} roughness={0.85} />
       </mesh>

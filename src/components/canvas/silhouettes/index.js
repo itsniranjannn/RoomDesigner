@@ -71,6 +71,12 @@ import {
   BasketSilhouette,
 } from './bathroom.jsx';
 import { PlanterSilhouette, RugRoundSilhouette, ScreenSilhouette } from './accents.jsx';
+import {
+  TableLampSilhouette,
+  MonitorSilhouette,
+  MicrowaveSilhouette,
+  BookStackSilhouette,
+} from './smalls.jsx';
 
 export const SILHOUETTES = {
   bed: BedSilhouette,
@@ -141,6 +147,10 @@ export const SILHOUETTES = {
   planter: PlanterSilhouette,
   'rug-round': RugRoundSilhouette,
   screen: ScreenSilhouette,
+  'table-lamp': TableLampSilhouette,
+  monitor: MonitorSilhouette,
+  microwave: MicrowaveSilhouette,
+  'book-stack': BookStackSilhouette,
 };
 
 /** Unknown shape types fall back to the credenza-style rectangle. */
