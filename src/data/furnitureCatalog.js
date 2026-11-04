@@ -72,6 +72,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#C4BCAD',
     legColor: '#5C4028',
     shapeType: 'coffee-table',
+    supportsTop: true,
   },
   {
     id: 'side-table',
@@ -84,6 +85,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#B8AF9E',
     legColor: '#4A3728',
     shapeType: 'side-table',
+    supportsTop: true,
   },
   {
     id: 'media-console',
@@ -96,6 +98,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#362414',
     legColor: '#1C1A17',
     shapeType: 'credenza',
+    supportsTop: true,
   },
   {
     id: 'tv-43',
@@ -107,7 +110,8 @@ export const FURNITURE_CATALOG = [
     color: '#17191B',
     subColor: '#303438',
     shapeType: 'tv',
-    stackableOn: ['media-console'],
+    restsOnTop: true,
+    stackableOn: ['media-console', 'tv-unit-low'],
     placement: 'surface',
   },
   {
@@ -121,6 +125,7 @@ export const FURNITURE_CATALOG = [
     cushionColor: '#9C8B7A',
     legColor: '#241F1A',
     shapeType: 'ottoman',
+    supportsTop: true,
   },
 
   // ==========================================
@@ -188,6 +193,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#FAF6EE',
     legColor: '#2B1F13',
     shapeType: 'nightstand',
+    supportsTop: true,
   },
   {
     id: 'wardrobe-3door',
@@ -223,6 +229,7 @@ export const FURNITURE_CATALOG = [
     color: '#8A6848', // Warm Oak
     subColor: '#59412B',
     shapeType: 'chest-drawers',
+    supportsTop: true,
   },
   {
     id: 'vanity-dresser',
@@ -236,6 +243,8 @@ export const FURNITURE_CATALOG = [
     mirrorColor: '#9FC3D2',
     handleColor: '#C4A869',
     shapeType: 'vanity-dresser',
+    supportsTop: true,
+    surfaceHeightCm: 75,
   },
 
   // ==========================================
@@ -252,6 +261,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#9C7E5A',
     legColor: '#1E1D1B',
     shapeType: 'table',
+    supportsTop: true,
   },
   {
     id: 'dining-table-round',
@@ -264,6 +274,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#9C7E5A',
     legColor: '#1E1D1B',
     shapeType: 'table-round',
+    supportsTop: true,
   },
   {
     id: 'dining-chair',
@@ -300,6 +311,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#2B2E31',
     legColor: '#222222',
     shapeType: 'desk',
+    supportsTop: true,
   },
   {
     id: 'desk-chair',
@@ -325,6 +337,7 @@ export const FURNITURE_CATALOG = [
     handleColor: '#C4A869',
     legColor: '#1C1A17',
     shapeType: 'sideboard',
+    supportsTop: true,
   },
 
   // ==========================================
@@ -341,6 +354,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#4E5F55', // Sage Cabinet Base
     legColor: '#3A4840',
     shapeType: 'kitchen-island',
+    supportsTop: true,
   },
   {
     id: 'kitchen-counter',
@@ -353,6 +367,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#38423B', // Deep Pine base
     metalColor: '#A4ADB4', // Stainless sink & tap
     shapeType: 'kitchen-counter',
+    supportsTop: true,
   },
   {
     id: 'kitchen-stove',
@@ -472,6 +487,7 @@ export const FURNITURE_CATALOG = [
     color: '#94734E', // Oak Frame
     subColor: '#6B5134',
     shapeType: 'bookshelf',
+    supportsTop: true,
   },
 
   // ==========================================
@@ -515,6 +531,7 @@ export const FURNITURE_CATALOG = [
     cushionColor: '#22485E', // Indigo Cylindrical Bolsters
     accentColor: '#C49746', // Brass/Gold Piping
     shapeType: 'nepali-gadda',
+    supportsTop: true,
   },
   {
     id: 'nepali-puja-mandir',
@@ -566,6 +583,7 @@ export const FURNITURE_CATALOG = [
     color: '#542E1B',
     accentColor: '#C49746',
     shapeType: 'nepali-chowki',
+    supportsTop: true,
   },
   {
     id: 'nepali-patuka-chest',
@@ -579,6 +597,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#3A2016',
     accentColor: '#C49746',
     shapeType: 'nepali-patuka-chest',
+    supportsTop: true,
   },
 
   // ==========================================
@@ -648,6 +667,7 @@ export const FURNITURE_CATALOG = [
     heightCm: 90,
     color: '#7A5A3C',
     shapeType: 'chest-drawers',
+    supportsTop: true,
   },
 
   // ==========================================
@@ -699,6 +719,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#8F6A42',
     legColor: '#1C1A17',
     shapeType: 'credenza',
+    supportsTop: true,
   },
   {
     id: 'console-table',
@@ -712,6 +733,7 @@ export const FURNITURE_CATALOG = [
     handleColor: '#C49746',
     legColor: '#C49746',
     shapeType: 'sideboard',
+    supportsTop: true,
   },
   {
     id: 'hall-bench',
@@ -724,6 +746,7 @@ export const FURNITURE_CATALOG = [
     cushionColor: '#8A9B93',
     legColor: '#2B1C12',
     shapeType: 'ottoman',
+    supportsTop: true,
   },
   {
     id: 'coffee-table-round',
@@ -736,6 +759,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#B8A684',
     legColor: '#2B2B2B',
     shapeType: 'side-table',
+    supportsTop: true,
   },
 
   // ==========================================
@@ -779,6 +803,8 @@ export const FURNITURE_CATALOG = [
     handleColor: '#C49746',
     legColor: '#8A6F4E',
     shapeType: 'dressing-table',
+    supportsTop: true,
+    surfaceHeightCm: 75,
   },
   {
     id: 'wardrobe-wall',
@@ -815,6 +841,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#6B5134',
     legColor: '#2B1C12',
     shapeType: 'side-table',
+    supportsTop: true,
   },
   {
     id: 'blanket-trunk',
@@ -827,6 +854,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#7D5A40',
     accentColor: '#C49746',
     shapeType: 'trunk',
+    supportsTop: true,
   },
 
   // ==========================================
@@ -843,6 +871,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#9C7E5A',
     legColor: '#1E1D1B',
     shapeType: 'table',
+    supportsTop: true,
   },
   {
     id: 'dining-bench',
@@ -855,6 +884,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#6B5134',
     legColor: '#2B1C12',
     shapeType: 'bench',
+    supportsTop: true,
   },
   {
     id: 'bar-cabinet',
@@ -868,6 +898,7 @@ export const FURNITURE_CATALOG = [
     handleColor: '#C49746',
     legColor: '#C49746',
     shapeType: 'sideboard',
+    supportsTop: true,
   },
   {
     id: 'desk-l-shaped',
@@ -880,6 +911,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#2B2D30',
     legColor: '#2B2B2B',
     shapeType: 'desk-l',
+    supportsTop: true,
   },
   {
     id: 'standing-desk',
@@ -893,6 +925,7 @@ export const FURNITURE_CATALOG = [
     accentColor: '#7FD1B9',
     legColor: '#2B2B2B',
     shapeType: 'standing-desk',
+    supportsTop: true,
   },
   {
     id: 'filing-cabinet',
@@ -905,6 +938,7 @@ export const FURNITURE_CATALOG = [
     legColor: '#3A3F44',
     handleColor: '#B7BCC0',
     shapeType: 'chest-drawers',
+    supportsTop: true,
   },
   {
     id: 'office-sofa',
@@ -929,6 +963,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#1C1F22',
     accentColor: '#C9B08A',
     shapeType: 'reception-counter',
+    supportsTop: true,
   },
   {
     id: 'conference-table',
@@ -941,6 +976,7 @@ export const FURNITURE_CATALOG = [
     subColor: '#3E2D1F',
     legColor: '#1E1D1B',
     shapeType: 'table',
+    supportsTop: true,
   },
 
   // ==========================================
@@ -995,6 +1031,7 @@ export const FURNITURE_CATALOG = [
     handleColor: '#C49746',
     legColor: '#2B2B2B',
     shapeType: 'sideboard',
+    supportsTop: true,
   },
   {
     id: 'kitchen-tall-cabinet',
@@ -1119,6 +1156,7 @@ export const FURNITURE_CATALOG = [
     color: '#4B6B52',
     subColor: '#C8B8A0',
     shapeType: 'planter',
+    restsOnTop: true,
   },
   {
     id: 'planter-medium',
@@ -1203,6 +1241,7 @@ export const FURNITURE_CATALOG = [
     color: '#6B3E26',
     legColor: '#3A2016',
     shapeType: 'coffee-table',
+    supportsTop: true,
   },
   {
     id: 'nepali-doko',
@@ -1240,6 +1279,7 @@ export const FURNITURE_CATALOG = [
     color: '#542E1B',
     accentColor: '#C49746',
     shapeType: 'nepali-chowki',
+    supportsTop: true,
   },
 ];
 

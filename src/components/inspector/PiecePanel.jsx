@@ -1,11 +1,12 @@
 import React, { useRef } from 'react';
 import { ArrowDown, ArrowUp, Copy, Trash2 } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
-import { FURNITURE_CATEGORIES } from '../../data/furnitureCatalog.js';
+import { FURNITURE_CATEGORIES, resolveItemDef } from '../../data/furnitureCatalog.js';
 import { ArchitecturalSilhouette } from '../canvas/ArchitecturalSilhouette.jsx';
 import { Button } from '../common/Button.jsx';
 import { RangeField, Segmented } from '../common/Field.jsx';
 import { Section } from '../common/Section.jsx';
+import { supportOf } from '../../engine/stacking.js';
 import { InspectorShell } from './InspectorShell.jsx';
 import { FinishSection, SizeSection } from './PieceSections.jsx';
 import styles from './Inspector.module.css';
@@ -41,6 +42,9 @@ export function PiecePanel({ item, def, onClose }) {
     if (start && start.value !== rotation)
       useRoomStore.getState().pushExplicitSnapshot(start.snapshot);
   };
+
+  const support = supportOf(item, room.placedFurniture);
+  const supportName = support ? resolveItemDef(support.item)?.name : null;
 
   const previewScale = Math.min(72 / def.widthCm, 44 / def.depthCm);
 
@@ -95,6 +99,14 @@ export function PiecePanel({ item, def, onClose }) {
             <span className={styles.readoutValue}>{Math.round(item.y)} cm</span>
           </div>
         </div>
+        {supportName && (
+          <div className={styles.readout} data-testid="on-top-of">
+            <span className={styles.readoutLabel}>On top of</span>
+            <span className={styles.readoutValue}>
+              {supportName} ({Math.round(item.elevationCm || 0)} cm up)
+            </span>
+          </div>
+        )}
         <RangeField
           label="Rotation"
           min={0}

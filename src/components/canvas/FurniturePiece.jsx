@@ -190,6 +190,7 @@ export function FurniturePiece({
   if (!def) return null;
 
   const rotation = item.rotationDeg || 0;
+  const elevation = item.elevationCm || 0;
   const hw = widthCm / 2;
   const hd = depthCm / 2;
 
@@ -212,6 +213,37 @@ export function FurniturePiece({
         <g filter={isDragging ? 'url(#furniture-lift-shadow)' : 'url(#furniture-drop-shadow)'}>
           <ArchitecturalSilhouette item={def} widthCm={widthCm} depthCm={depthCm} />
         </g>
+
+        {/* Resting on another piece: dashed outline and a small height tag */}
+        {elevation > 0.5 && (
+          <g pointerEvents="none" data-testid="elevation-badge">
+            <rect
+              x={-hw}
+              y={-hd}
+              width={widthCm}
+              height={depthCm}
+              rx={2}
+              fill="none"
+              stroke="#C5A059"
+              strokeWidth="1.4"
+              strokeDasharray="4 3"
+            />
+            <g transform={`translate(0, 0) rotate(${-rotation})`}>
+              <rect x={-17} y={-7} width={34} height={14} rx={7} fill="#1C1A17" opacity="0.88" />
+              <text
+                x={0}
+                y={3.5}
+                textAnchor="middle"
+                fill="#FAF6EE"
+                fontSize="9"
+                fontFamily="var(--font-mono)"
+                fontWeight="600"
+              >
+                +{Math.round(elevation)}
+              </text>
+            </g>
+          </g>
+        )}
 
         {/* Dual-Layer High-Contrast Selection Outline & Precision Crop Brackets */}
         {isSelected && !isColliding && (

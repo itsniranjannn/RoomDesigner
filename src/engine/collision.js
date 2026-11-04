@@ -12,6 +12,7 @@ import {
   intervalsOverlap,
 } from './geometry.js';
 import { resolveItemDef } from '../data/furnitureCatalog.js';
+import { isRestingOn } from './stacking.js';
 
 /**
  * Checks if two convex polygons collide using the Separating Axis Theorem (SAT).
@@ -145,6 +146,8 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
       shapeType: def?.shapeType,
     };
   });
+  // Resting pieces are checked against the originals so catalog flags stay resolvable
+  const byId = new Map(placedFurniture.map((i) => [i.id, i]));
   const n = items.length;
 
   // Pre-calculate corners for each item
@@ -179,6 +182,7 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
       if (isFlatRug(itemB.shapeType)) continue;
       // Items resting on top of one another (e.g. TV on console) do not clash
       if (!overlapsVertically(itemA, itemB)) continue;
+      if (restsOn(itemA, itemB, byId, placedFurniture)) continue;
       const cornersB = cornersMap.get(itemB.id);
 
       if (checkPolygonCollision(cornersA, cornersB)) {
@@ -202,4 +206,14 @@ function overlapsVertically(a, b, epsilon = 0.5) {
   const aBottom = a.elevationCm || 0;
   const bBottom = b.elevationCm || 0;
   return aBottom < bBottom + b.heightCm - epsilon && bBottom < aBottom + a.heightCm - epsilon;
+}
+
+/** A piece standing on top of the other (a lamp on a nightstand) is not a clash with it. */
+function restsOn(a, b, byId, all) {
+  const origA = byId.get(a.id);
+  const origB = byId.get(b.id);
+  return !!(
+    (origA && origB && isRestingOn(origA, origB, all)) ||
+    (origA && origB && isRestingOn(origB, origA, all))
+  );
 }
