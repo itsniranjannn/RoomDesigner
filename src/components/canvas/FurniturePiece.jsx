@@ -14,6 +14,7 @@ export function FurniturePiece({
   isPrimary = true,
   roomWidthCm,
   roomDepthCm,
+  roomOutline = null,
   svgRef,
 }) {
   const selectItem = useRoomStore((state) => state.selectItem);
@@ -89,7 +90,8 @@ export function FurniturePiece({
           rotationDeg: item.rotationDeg || 0,
         },
         roomWidthCm,
-        roomDepthCm
+        roomDepthCm,
+        { outline: roomOutline }
       );
 
       if (isGroup) {

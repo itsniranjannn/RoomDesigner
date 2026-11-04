@@ -130,15 +130,26 @@ export function DimensionLayer({ room, itemId }) {
   const item = (room.placedFurniture || []).find((i) => i.id === itemId);
   const def = resolveItemDef(item);
   if (!item || !def) return null;
-  const d = getWallDistances(item, def.widthCm, def.depthCm, room.widthCm, room.depthCm);
+  const d = getWallDistances(
+    item,
+    def.widthCm,
+    def.depthCm,
+    room.widthCm,
+    room.depthCm,
+    room.outline || null
+  );
   const cx = (d.aabb.minX + d.aabb.maxX) / 2;
   const cy = (d.aabb.minY + d.aabb.maxY) / 2;
+  const L = d.aabb.minX - d.left;
+  const R = d.aabb.maxX + d.right;
+  const T = d.aabb.minY - d.top;
+  const B = d.aabb.maxY + d.bottom;
   return (
     <g pointerEvents="none" aria-hidden="true">
-      <DimLine x1={0} y1={cy} x2={d.aabb.minX} y2={cy} value={d.left} />
-      <DimLine x1={d.aabb.maxX} y1={cy} x2={room.widthCm} y2={cy} value={d.right} />
-      <DimLine x1={cx} y1={0} x2={cx} y2={d.aabb.minY} value={d.top} />
-      <DimLine x1={cx} y1={d.aabb.maxY} x2={cx} y2={room.depthCm} value={d.bottom} />
+      <DimLine x1={L} y1={cy} x2={d.aabb.minX} y2={cy} value={d.left} />
+      <DimLine x1={d.aabb.maxX} y1={cy} x2={R} y2={cy} value={d.right} />
+      <DimLine x1={cx} y1={T} x2={cx} y2={d.aabb.minY} value={d.top} />
+      <DimLine x1={cx} y1={d.aabb.maxY} x2={cx} y2={B} value={d.bottom} />
     </g>
   );
 }

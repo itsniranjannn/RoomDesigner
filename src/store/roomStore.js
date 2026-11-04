@@ -30,7 +30,8 @@ import { evaluateAllCollisions } from '../engine/collision.js';
 import { reconcileStacking, pickDefaultSupport } from '../engine/stacking.js';
 import { clamp, normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
-import { clampOpening } from '../engine/openings.js';
+import { clampOpening, DOOR_WIDTH_CM, defaultOpeningWidth } from '../engine/openings.js';
+import { hasOutline, openingWallLength, longestSolidEdge } from '../engine/roomShape.js';
 
 const SAVE_DEBOUNCE_MS = 350;
 let saveDebounceTimer = null;
@@ -186,7 +187,8 @@ export const useRoomStore = create((set, get) => ({
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       enrichedItems,
       room.widthCm,
-      room.depthCm
+      room.depthCm,
+      room.outline
     );
 
     set({
@@ -234,7 +236,8 @@ export const useRoomStore = create((set, get) => ({
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       enrichedItems,
       room.widthCm,
-      room.depthCm
+      room.depthCm,
+      room.outline
     );
 
     set({
@@ -285,7 +288,8 @@ export const useRoomStore = create((set, get) => ({
         const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
           initialRoom.placedFurniture || [],
           initialRoom.widthCm,
-          initialRoom.depthCm
+          initialRoom.depthCm,
+          initialRoom.outline
         );
 
         set({
@@ -387,7 +391,8 @@ export const useRoomStore = create((set, get) => ({
         rotationDeg: 0,
       },
       room.widthCm,
-      room.depthCm
+      room.depthCm,
+      room.outline
     );
 
     const newItem = {
@@ -430,7 +435,8 @@ export const useRoomStore = create((set, get) => ({
             rotationDeg: item.rotationDeg || 0,
           },
           room.widthCm,
-          room.depthCm
+          room.depthCm,
+          room.outline
         );
         return { ...item, x: clamped.x, y: clamped.y };
       }
@@ -465,7 +471,8 @@ export const useRoomStore = create((set, get) => ({
             rotationDeg: normDeg,
           },
           room.widthCm,
-          room.depthCm
+          room.depthCm,
+          room.outline
         );
         return { ...item, x: clamped.x, y: clamped.y, rotationDeg: normDeg };
       }
@@ -496,7 +503,8 @@ export const useRoomStore = create((set, get) => ({
         rotationDeg: target.rotationDeg || 0,
       },
       room.widthCm,
-      room.depthCm
+      room.depthCm,
+      room.outline
     );
 
     get().updateFurniturePosition(id, clamped.x, clamped.y, false);
@@ -552,24 +560,36 @@ export const useRoomStore = create((set, get) => ({
     const key = type === 'door' ? 'doors' : 'windows';
     const list = room[key] || [];
 
+    const outlined = hasOutline(room);
     const updatedList = list.map((item) => {
       if (item.id === id) {
-        const targetWall =
-          updates.wall !== undefined
+        const defaultWall = type === 'door' ? 'bottom' : 'top';
+        const targetEdge = updates.edge !== undefined ? updates.edge : (item.edge ?? 0);
+        const targetWall = outlined
+          ? `e${targetEdge}`
+          : updates.wall !== undefined
             ? updates.wall
-            : item.wall || (type === 'door' ? 'bottom' : 'top');
-        const wallLen =
-          targetWall === 'left' || targetWall === 'right' ? room.depthCm : room.widthCm;
+            : item.wall || defaultWall;
+        const wallLen = outlined
+          ? openingWallLength(room, { edge: targetEdge })
+          : targetWall === 'left' || targetWall === 'right'
+            ? room.depthCm
+            : room.widthCm;
+        const wallChanged = outlined
+          ? updates.edge !== undefined && updates.edge !== item.edge
+          : updates.wall !== undefined && updates.wall !== item.wall;
 
-        const targetW = updates.widthCm !== undefined ? updates.widthCm : item.widthCm;
+        // Doors keep the standard width; only windows stretch
+        const targetW =
+          type === 'door'
+            ? DOOR_WIDTH_CM
+            : updates.widthCm !== undefined
+              ? updates.widthCm
+              : item.widthCm;
         let targetOffset = updates.offsetCm !== undefined ? updates.offsetCm : item.offsetCm;
 
         // If the wall changed and no explicit offset was passed, ensure the opening does not overflow the new wall
-        if (
-          updates.wall !== undefined &&
-          updates.wall !== item.wall &&
-          updates.offsetCm === undefined
-        ) {
+        if (wallChanged && updates.offsetCm === undefined) {
           if (targetOffset + targetW > wallLen - 15) {
             targetOffset = Math.max(
               15,
@@ -579,11 +599,11 @@ export const useRoomStore = create((set, get) => ({
         }
 
         const clamped = clampOpening(type, targetOffset, targetW, wallLen);
+        const { wall: _wall, edge: _edge, ...rest } = { ...item, ...updates };
 
         return {
-          ...item,
-          ...updates,
-          wall: targetWall,
+          ...rest,
+          ...(outlined ? { edge: targetEdge } : { wall: targetWall }),
           widthCm: clamped.widthCm,
           offsetCm: clamped.offsetCm,
         };
@@ -613,14 +633,22 @@ export const useRoomStore = create((set, get) => ({
     const list = room[key] || [];
     const id = `${type}-${Date.now()}`;
 
-    const defaultWidth = type === 'door' ? 90 : 120;
-    const wallLength = wall === 'left' || wall === 'right' ? room.depthCm : room.widthCm;
+    const defaultWidth = defaultOpeningWidth(type);
+    const outlined = hasOutline(room);
+    const edge = outlined ? longestSolidEdge(room) : null;
+    const wallLength = outlined
+      ? openingWallLength(room, { edge })
+      : wall === 'left' || wall === 'right'
+        ? room.depthCm
+        : room.widthCm;
 
     // Position comfortably on the wall avoiding overlap if possible
-    const existingOnWall = [
-      ...(room.doors || []).filter((d) => (d.wall || 'bottom') === wall),
-      ...(room.windows || []).filter((w) => (w.wall || 'top') === wall),
-    ];
+    const existingOnWall = outlined
+      ? [...(room.doors || []), ...(room.windows || [])].filter((o) => (o.edge ?? 0) === edge)
+      : [
+          ...(room.doors || []).filter((d) => (d.wall || 'bottom') === wall),
+          ...(room.windows || []).filter((w) => (w.wall || 'top') === wall),
+        ];
 
     let defaultOffset = Math.max(
       20,
@@ -641,7 +669,7 @@ export const useRoomStore = create((set, get) => ({
 
     const newOpening = {
       id,
-      wall,
+      ...(outlined ? { edge } : { wall }),
       offsetCm: defaultOffset,
       widthCm: defaultWidth,
     };
@@ -701,7 +729,8 @@ export const useRoomStore = create((set, get) => ({
           rotationDeg: item.rotationDeg || 0,
         },
         room.widthCm,
-        room.depthCm
+        room.depthCm,
+        room.outline
       );
       return { ...item, id: newItemId(), x: clamped.x, y: clamped.y };
     });
@@ -744,7 +773,8 @@ export const useRoomStore = create((set, get) => ({
           rotationDeg: item.rotationDeg || 0,
         },
         room.widthCm,
-        room.depthCm
+        room.depthCm,
+        room.outline
       );
       return { ...item, x: clamped.x, y: clamped.y };
     });
@@ -768,7 +798,8 @@ export const useRoomStore = create((set, get) => ({
           rotationDeg: item.rotationDeg || 0,
         },
         room.widthCm,
-        room.depthCm
+        room.depthCm,
+        room.outline
       );
       return { ...item, x: clamped.x, y: clamped.y };
     });
@@ -807,7 +838,8 @@ export const useRoomStore = create((set, get) => ({
           rotationDeg: next.rotationDeg || 0,
         },
         room.widthCm,
-        room.depthCm
+        room.depthCm,
+        room.outline
       );
       return { ...next, x: clamped.x, y: clamped.y };
     });
@@ -862,7 +894,8 @@ export const useRoomStore = create((set, get) => ({
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       imported.placedFurniture,
       imported.widthCm,
-      imported.depthCm
+      imported.depthCm,
+      imported.outline
     );
     set({
       room: imported,
@@ -962,7 +995,8 @@ export const useRoomStore = create((set, get) => ({
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       loaded.placedFurniture || [],
       loaded.widthCm,
-      loaded.depthCm
+      loaded.depthCm,
+      loaded.outline
     );
 
     set({
@@ -1019,7 +1053,8 @@ export const useRoomStore = create((set, get) => ({
       const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
         nextRoom.placedFurniture || [],
         nextRoom.widthCm,
-        nextRoom.depthCm
+        nextRoom.depthCm,
+        nextRoom.outline
       );
 
       set({
@@ -1117,7 +1152,8 @@ export const useRoomStore = create((set, get) => ({
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       enrichedItems,
       room.widthCm,
-      room.depthCm
+      room.depthCm,
+      room.outline
     );
 
     const updatedRoom = {

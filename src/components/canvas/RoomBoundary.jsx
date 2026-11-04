@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
-import { clampMoveOpening, clampResizeEnd, clampResizeStart } from '../../engine/openings.js';
+import { moveSpan, resizeSpan, OPENING_LIMITS } from '../../engine/openings.js';
+import { hasOutline } from '../../engine/roomShape.js';
+import { OutlineBoundary } from './OutlineBoundary.jsx';
 import cursors from './Cursors.module.css';
 
 /**
@@ -13,12 +15,21 @@ import cursors from './Cursors.module.css';
  * Visual Hierarchy: Wall outline (3.2px) > Furniture (1.5px) > Grid (0.4px).
  */
 export function RoomBoundary({ room, svgRef }) {
+  if (hasOutline(room)) return <OutlineBoundary room={room} svgRef={svgRef} />;
+  return <RectBoundary room={room} svgRef={svgRef} />;
+}
+
+function RectBoundary({ room, svgRef }) {
   const isInitialAnimationDone = useRoomStore((state) => state.isInitialAnimationDone);
   const setInitialAnimationDone = useRoomStore((state) => state.setInitialAnimationDone);
   const updateOpening = useRoomStore((state) => state.updateOpening);
 
   const { widthCm, depthCm, doors = [], windows = [] } = room;
   const wallThickness = 16; // cm
+
+  // Handles keep a usable size on screen at any zoom
+  const screenScale = svgRef?.current?.getScreenCTM?.()?.a || 1;
+  const handleCm = Math.max(6, 11 / screenScale);
 
   const [activeOpeningId, setActiveOpeningId] = useState(null);
   const [hoveredOpeningId, setHoveredOpeningId] = useState(null);
@@ -60,6 +71,20 @@ export function RoomBoundary({ room, svgRef }) {
     return pt.matrixTransform(ctm.inverse());
   };
 
+  // Free stretch of wall for an opening: wall ends minus the corner margin, and its neighbours
+  const bounds = (type, item, wallLength) => {
+    const wallOf = (t, o) => o.wall || (t === 'door' ? 'bottom' : 'top');
+    const wall = wallOf(type, item);
+    const margin = OPENING_LIMITS.cornerMargin;
+    const others = [
+      ...doors.map((o) => ({ t: 'door', o })),
+      ...windows.map((o) => ({ t: 'window', o })),
+    ]
+      .filter(({ t, o }) => o.id !== item.id && wallOf(t, o) === wall)
+      .map(({ o }) => ({ start: o.offsetCm, width: o.widthCm }));
+    return { lo: margin, hi: wallLength - margin, others };
+  };
+
   // Handle dragging an opening along its wall
   const handleStartMove = (e, type, item, wallLength) => {
     e.stopPropagation();
@@ -75,9 +100,13 @@ export function RoomBoundary({ room, svgRef }) {
       const currentPt = getSvgPoint(moveEvt.clientX, moveEvt.clientY);
       const delta = isHorizontal ? currentPt.x - startPt.x : currentPt.y - startPt.y;
 
-      const newOffset = clampMoveOpening(type, startOffset, item.widthCm, delta, wallLength);
+      const newOffset = moveSpan({
+        start: startOffset,
+        width: item.widthCm,
+        delta,
+        ...bounds(type, item, wallLength),
+      });
       updateOpening(type, item.id, { offsetCm: newOffset });
-      updateOpening(type, item.id, { offsetCm: newOffset }, false);
     };
 
     const onPointerUp = () => {
@@ -115,21 +144,15 @@ export function RoomBoundary({ room, svgRef }) {
       const currentPt = getSvgPoint(moveEvt.clientX, moveEvt.clientY);
       const delta = isHorizontal ? currentPt.x - startPt.x : currentPt.y - startPt.y;
 
-      if (handleSide === 'end') {
-        const clampedW = clampResizeEnd(type, startOffset, startWidth + delta, wallLength);
-        updateOpening(type, item.id, { widthCm: clampedW });
-        updateOpening(type, item.id, { widthCm: clampedW }, false);
-      } else {
-        const res = clampResizeStart(
-          type,
-          startOffset,
-          startWidth,
-          startOffset + delta,
-          wallLength
-        );
-        updateOpening(type, item.id, { offsetCm: res.offsetCm, widthCm: res.widthCm });
-        updateOpening(type, item.id, { offsetCm: res.offsetCm, widthCm: res.widthCm }, false);
-      }
+      const target = handleSide === 'end' ? startOffset + startWidth + delta : startOffset + delta;
+      const res = resizeSpan({
+        side: handleSide,
+        start: startOffset,
+        width: startWidth,
+        pointer: target,
+        ...bounds(type, item, wallLength),
+      });
+      updateOpening(type, item.id, { offsetCm: res.start, widthCm: res.width });
     };
 
     const onPointerUp = () => {
@@ -402,10 +425,10 @@ export function RoomBoundary({ room, svgRef }) {
             {/* Left/Start Resize Handle */}
             {(isHovered || isActive) && (
               <rect
-                x={isHorizontal ? wx - 3 : wx}
-                y={isHorizontal ? wy - 1 : wy - 3}
-                width={isHorizontal ? 6 : ww}
-                height={isHorizontal ? wh + 2 : 6}
+                x={isHorizontal ? wx - handleCm / 2 : wx}
+                y={isHorizontal ? wy - 1 : wy - handleCm / 2}
+                width={isHorizontal ? handleCm : ww}
+                height={isHorizontal ? wh + 2 : handleCm}
                 rx={1}
                 fill="var(--color-clay)"
                 stroke="#FFFFFF"
@@ -418,10 +441,10 @@ export function RoomBoundary({ room, svgRef }) {
             {/* Right/End Resize Handle */}
             {(isHovered || isActive) && (
               <rect
-                x={isHorizontal ? wx + ww - 3 : wx}
-                y={isHorizontal ? wy - 1 : wy + wh - 3}
-                width={isHorizontal ? 6 : ww}
-                height={isHorizontal ? wh + 2 : 6}
+                x={isHorizontal ? wx + ww - handleCm / 2 : wx}
+                y={isHorizontal ? wy - 1 : wy + wh - handleCm / 2}
+                width={isHorizontal ? handleCm : ww}
+                height={isHorizontal ? wh + 2 : handleCm}
                 rx={1}
                 fill="var(--color-clay)"
                 stroke="#FFFFFF"
@@ -712,38 +735,6 @@ export function RoomBoundary({ room, svgRef }) {
                 strokeWidth="1.2"
               />
             </g>
-
-            {/* Left/Start Resize Handle */}
-            {(isHovered || isActive) && (
-              <rect
-                x={isHorizontal ? dx - 3 : dx}
-                y={isHorizontal ? dy - 1 : dy - 3}
-                width={isHorizontal ? 6 : dw}
-                height={isHorizontal ? dh + 2 : 6}
-                rx={1}
-                fill="var(--color-clay)"
-                stroke="#FFFFFF"
-                strokeWidth="1"
-                className={isHorizontal ? cursors.ewResize : cursors.nsResize}
-                onPointerDown={(e) => handleStartResize(e, 'door', door, wallLen, 'start')}
-              />
-            )}
-
-            {/* Right/End Resize Handle */}
-            {(isHovered || isActive) && (
-              <rect
-                x={isHorizontal ? dx + dw - 3 : dx}
-                y={isHorizontal ? dy - 1 : dy + dh - 3}
-                width={isHorizontal ? 6 : dw}
-                height={isHorizontal ? dh + 2 : 6}
-                rx={1}
-                fill="var(--color-clay)"
-                stroke="#FFFFFF"
-                strokeWidth="1"
-                className={isHorizontal ? cursors.ewResize : cursors.nsResize}
-                onPointerDown={(e) => handleStartResize(e, 'door', door, wallLen, 'end')}
-              />
-            )}
 
             {/* Dimension Label */}
             {(() => {

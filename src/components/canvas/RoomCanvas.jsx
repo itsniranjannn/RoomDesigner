@@ -315,6 +315,7 @@ export function RoomCanvas() {
               isColliding={collidingItemIds.has(item.id)}
               roomWidthCm={room.widthCm}
               roomDepthCm={room.depthCm}
+              roomOutline={room.outline || null}
               svgRef={svgRef}
             />
           ))}

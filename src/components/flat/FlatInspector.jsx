@@ -18,7 +18,7 @@ import {
   kindOptions,
   isPassageKind,
 } from '../../engine/flat.js';
-import { stairWarnings, wallsOf, openingsOf } from '../../engine/flatPlan.js';
+import { stairWarnings, wallsOf, openingsOf, levelOpenEdges } from '../../engine/flatPlan.js';
 import { PASSAGE_LIMITS, isEditablePassage, passageDims } from '../../engine/flatPassage.js';
 import { edgesOf, wallRunAt, edgesToRuns } from '../../engine/flatWalls.js';
 import styles from './FlatDesigner.module.css';
@@ -158,46 +158,34 @@ function SpaceInspector({ space }) {
           rows={[
             ['Floor area', m2(space.areaCm2)],
             ...(space.rect ? [['Size', `${m(space.widthCm)} × ${m(space.depthCm)}`]] : []),
-            ...(space.furnishable
-              ? [
-                  ['Doors', room?.doors?.length || 0],
-                  ['Windows', room?.windows?.length || 0],
-                  ['Furniture', `${pieces} pieces`],
-                ]
-              : []),
+            ['Doors', room?.doors?.length || 0],
+            ['Windows', room?.windows?.length || 0],
+            ['Furniture', `${pieces} pieces`],
           ]}
         />
       </Section>
       {isEditablePassage(space) && <PassageSection space={space} />}
       <Section title="Furniture" collapsible={false}>
-        {space.furnishable ? (
-          <>
-            <Button
-              variant="primary"
-              icon={<DoorOpen size={16} aria-hidden="true" />}
-              onClick={() => openSpace(space.id)}
-            >
-              Design this room
-            </Button>
-            <Button
-              variant="secondary"
-              icon={<Sparkles size={16} aria-hidden="true" />}
-              onClick={furnish}
-              disabled={isPassageKind(space.kind) || space.kind === 'room'}
-            >
-              Furnish with defaults
-            </Button>
-            <p className={styles.helpText}>
-              Design this room opens the room designer for it; the header takes you back to the
-              flat. Defaults place the usual furniture for a {kind.label.toLowerCase()}.
-            </p>
-          </>
-        ) : (
-          <p className={styles.callout} role="note">
-            Not furnishable until the walls form a rectangle. You can still name this area and see
-            its size. Move or remove a wall to square it off.
-          </p>
-        )}
+        <Button
+          variant="primary"
+          icon={<DoorOpen size={16} aria-hidden="true" />}
+          onClick={() => openSpace(space.id)}
+        >
+          Design this room
+        </Button>
+        <Button
+          variant="secondary"
+          icon={<Sparkles size={16} aria-hidden="true" />}
+          onClick={furnish}
+          disabled={isPassageKind(space.kind) || space.kind === 'room'}
+        >
+          Furnish with defaults
+        </Button>
+        <p className={styles.helpText}>
+          Design this room opens the room designer for it, following its true outline even when it
+          is L-shaped or open on one side; the header takes you back to the flat. Defaults place the
+          usual furniture for a {kind.label.toLowerCase()}.
+        </p>
       </Section>
       {confirming && (
         <ConfirmDialog
@@ -226,14 +214,11 @@ function OpeningInspector({ opening }) {
   return (
     <div className={styles.inspectorBody}>
       <Section title={label} collapsible={false}>
-        <NumberField
-          label="Width"
-          suffix="cm"
-          value={opening.widthCm}
-          min={40}
-          max={300}
-          step={5}
-          onCommit={(v) => change({ widthCm: v })}
+        <Facts
+          rows={[
+            ['Width', `${opening.widthCm} cm`],
+            ...(opening.type === 'door' ? [['Type', 'Single leaf, standard width']] : []),
+          ]}
         />
         {opening.type === 'door' && (
           <Switch
@@ -250,7 +235,9 @@ function OpeningInspector({ opening }) {
           Remove {label.toLowerCase()}
         </Button>
         <p className={styles.helpText}>
-          To move it, remove it and place it again with the {label} tool.
+          {opening.type === 'window'
+            ? 'Drag the window along its wall to move it. Drag the handle at either end to stretch it.'
+            : 'Drag the door along its wall to move it. Doors have one standard width.'}
         </p>
       </Section>
     </div>
@@ -261,7 +248,9 @@ function WallInspector({ wallKey }) {
   const flat = useFlatStore((s) => s.flat);
   const levelId = useFlatStore((s) => s.levelId);
   const eraseWall = useFlatStore((s) => s.eraseWall);
+  const setWallOpen = useFlatStore((s) => s.setWallOpen);
   const edges = edgesOf(wallsOf(flat, levelId));
+  const isOpen = levelOpenEdges(flat, levelId).has(wallKey);
   const run = wallRunAt(edges, wallKey);
   const first = edgesToRuns(new Set(run))[0];
   const length = first ? Math.abs(first.x2 - first.x1) + Math.abs(first.y2 - first.y1) : 0;
@@ -269,6 +258,15 @@ function WallInspector({ wallKey }) {
     <div className={styles.inspectorBody}>
       <Section title="Wall" collapsible={false}>
         <Facts rows={[['Length', m(length)]]} />
+        <Switch
+          label="Open (no wall)"
+          checked={isOpen}
+          onChange={(open) => setWallOpen(wallKey, open)}
+        />
+        <p className={styles.helpText}>
+          An open divider has no wall in 3D and takes no doors, but still marks where one room ends
+          and the next begins, so a big hall can be split into named zones.
+        </p>
         <Button
           variant="danger"
           icon={<Trash2 size={16} aria-hidden="true" />}
@@ -487,11 +485,14 @@ export function FlatInspector() {
     body = <StairInspector key={stair.id} stair={stair} />;
   } else if (opening) {
     title = opening.type === 'door' ? 'Door' : 'Window';
-    subtitle = 'Set its width, or remove it.';
+    subtitle =
+      opening.type === 'window'
+        ? 'Drag it to move it, or drag its ends to stretch it.'
+        : 'Drag it along its wall, or remove it.';
     body = <OpeningInspector key={opening.id} opening={opening} />;
   } else if (wall) {
     title = 'Wall';
-    subtitle = 'Part of the walls you drew.';
+    subtitle = 'Part of the walls you drew. It can be open, with no wall.';
     body = <WallInspector key={wall} wallKey={wall} />;
   }
 

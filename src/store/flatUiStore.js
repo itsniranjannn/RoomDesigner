@@ -11,6 +11,7 @@ const TOOLS = ['select', 'wall', 'eraser', 'door', 'window', 'stairs', 'passage'
 export const useFlatUi = create((set) => ({
   tool: 'select',
   cursor: null, // { x, y } in cm while the pointer is over the plan
+  wallStyle: 'solid', // 'solid' | 'open': what the wall tool draws
   stairType: 'straight',
   stairRotation: 0,
   passage: { lengthCm: 300, widthCm: 120, heading: 0 }, // the passage being placed
@@ -21,6 +22,7 @@ export const useFlatUi = create((set) => ({
 
   setTool: (tool) => set({ tool: TOOLS.includes(tool) ? tool : 'select', notice: null }),
   setCursor: (cursor) => set({ cursor }),
+  setWallStyle: (wallStyle) => set({ wallStyle: wallStyle === 'open' ? 'open' : 'solid' }),
   setStairType: (stairType) => set({ stairType }),
   setPassage: (patch) => set((s) => ({ passage: { ...s.passage, ...patch } })),
   rotatePassage: () =>

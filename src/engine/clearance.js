@@ -7,6 +7,7 @@
 import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { getRotatedRectCorners, getAABB } from './geometry.js';
 import { checkPolygonCollision } from './collision.js';
+import { hasOutline, outlineEdges, outlineOpeningZone } from './roomShape.js';
 
 const MIN_PASSAGE_CM = 60;
 // Gaps narrower than this are not mistaken for a passage (pieces simply sit side by side)
@@ -41,6 +42,21 @@ function getOpeningZone(wall, offsetCm, widthCm, depthCm, roomWidthCm, roomDepth
 /** Zones that should stay free of furniture (door swings, window strips). */
 export function getClearanceZones(room) {
   const zones = [];
+  if (hasOutline(room)) {
+    const solid = new Set(
+      outlineEdges(room)
+        .filter((e) => !e.open)
+        .map((e) => e.i)
+    );
+    const put = (kind, o, depth) => {
+      if (!solid.has(o.edge ?? 0)) return;
+      zones.push({ kind, openingId: o.id, corners: outlineOpeningZone(room, o, depth) });
+    };
+    for (const d of room.doors || [])
+      put('door', d, d.swingDirection === 'outward' ? 60 : d.widthCm);
+    for (const w of room.windows || []) put('window', w, WINDOW_DEPTH_CM);
+    return zones;
+  }
   for (const door of room.doors || []) {
     const wall = door.wall || 'bottom';
     const depth = door.swingDirection === 'outward' ? 60 : door.widthCm;

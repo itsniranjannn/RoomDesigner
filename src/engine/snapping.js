@@ -6,6 +6,7 @@
  */
 
 import { normalizeAngle, getRotatedRectCorners, getAABB } from './geometry.js';
+import { nudgeIntoOutline, distancesToOutline } from './roomShape.js';
 
 /**
  * Snaps a 1D scalar value to nearest grid step if within threshold.
@@ -108,6 +109,34 @@ export function snapToWalls(item, roomWidthCm, roomDepthCm, threshold = 12) {
   return { x, y, snappedX, snappedY };
 }
 
+/** Wall snap for a room with an outline: closes small gaps to the walls on each side. */
+export function snapToOutline(item, outline, threshold = 12) {
+  const aabb = getAABB(
+    getRotatedRectCorners(item.x, item.y, item.widthCm, item.depthCm, item.rotationDeg || 0)
+  );
+  const d = distancesToOutline(aabb, outline);
+  let x = item.x;
+  let y = item.y;
+  let snappedX = false;
+  let snappedY = false;
+  const near = (a, b) => a > 0 && a <= threshold && a <= b;
+  if (near(d.left, d.right)) {
+    x -= d.left;
+    snappedX = true;
+  } else if (near(d.right, d.left)) {
+    x += d.right;
+    snappedX = true;
+  }
+  if (near(d.top, d.bottom)) {
+    y -= d.top;
+    snappedY = true;
+  } else if (near(d.bottom, d.top)) {
+    y += d.bottom;
+    snappedY = true;
+  }
+  return { x, y, snappedX, snappedY };
+}
+
 /**
  * Comprehensive snapping pipeline: attempts wall snap first, then falls back to grid snap.
  *
@@ -118,10 +147,12 @@ export function snapToWalls(item, roomWidthCm, roomDepthCm, threshold = 12) {
  * @returns {{ x: number, y: number, snappedToWall: boolean, snappedToGrid: boolean }}
  */
 export function applySnapping(item, roomWidthCm, roomDepthCm, options = {}) {
-  const { gridStep = 10, gridThreshold = 3.5, wallThreshold = 12 } = options;
+  const { gridStep = 10, gridThreshold = 3.5, wallThreshold = 12, outline = null } = options;
 
   // 1. Wall snap
-  const wallResult = snapToWalls(item, roomWidthCm, roomDepthCm, wallThreshold);
+  const wallResult = outline
+    ? snapToOutline(item, outline, wallThreshold)
+    : snapToWalls(item, roomWidthCm, roomDepthCm, wallThreshold);
   let finalX = wallResult.x;
   let finalY = wallResult.y;
   let snappedToGrid = false;
@@ -149,7 +180,8 @@ export function applySnapping(item, roomWidthCm, roomDepthCm, options = {}) {
       rotationDeg: item.rotationDeg || 0,
     },
     roomWidthCm,
-    roomDepthCm
+    roomDepthCm,
+    outline
   );
 
   return {
@@ -163,7 +195,15 @@ export function applySnapping(item, roomWidthCm, roomDepthCm, options = {}) {
 /**
  * Clamps a piece so its rotated bounding footprint cannot protrude outside room walls.
  */
-export function clampInsideRoom(item, roomWidthCm, roomDepthCm) {
+export function clampInsideRoom(item, roomWidthCm, roomDepthCm, outline = null) {
+  const inBox = clampInsideBox(item, roomWidthCm, roomDepthCm);
+  if (!outline) return inBox;
+  const moved = { ...item, x: inBox.x, y: inBox.y };
+  const fit = nudgeIntoOutline(moved, outline);
+  return { x: fit.x, y: fit.y };
+}
+
+function clampInsideBox(item, roomWidthCm, roomDepthCm) {
   const corners = getRotatedRectCorners(
     item.x,
     item.y,

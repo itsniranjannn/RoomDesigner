@@ -6,6 +6,7 @@
 
 import { cleanOverrides } from './overrides.js';
 import { clamp } from './geometry.js';
+import { sanitizeOutline } from './roomShape.js';
 import { getFurnitureType, registerPlaceholderFurniture } from '../data/furnitureCatalog.js';
 
 const HASH_KEY = 'share=';
@@ -34,7 +35,7 @@ async function pipe(bytes, stream) {
 
 /** Fields that make up a shareable design (images and meshes excluded to keep links short). */
 function toShareableRoom(room) {
-  const { id, name, widthCm, depthCm, doors, windows, placedFurniture } = room;
+  const { id, name, widthCm, depthCm, doors, windows, placedFurniture, outline, openEdges } = room;
   // Photo-made pieces: only name, size and colour travel, so the receiver sees a box of the right size
   const customTypes = [];
   const seen = new Set();
@@ -62,6 +63,7 @@ function toShareableRoom(room) {
     doors,
     windows,
     placedFurniture,
+    ...(outline ? { outline, ...(openEdges?.length ? { openEdges } : {}) } : {}),
     ...(customTypes.length ? { customTypes } : {}),
   };
 }
@@ -97,6 +99,7 @@ export function sanitizeImportedRoom(data) {
       .map((o, i) => ({
         id: String(o.id || `${fallbackWall}-${i}-${stamp}`),
         wall: ['top', 'bottom', 'left', 'right'].includes(o.wall) ? o.wall : fallbackWall,
+        ...(Number.isInteger(o.edge) && o.edge >= 0 && o.edge < 200 ? { edge: o.edge } : {}),
         offsetCm: num(o.offsetCm, 0, 2000, 20),
         widthCm: num(o.widthCm, 40, 400, 90),
         ...(o.swingDirection ? { swingDirection: String(o.swingDirection) } : {}),
@@ -120,13 +123,35 @@ export function sanitizeImportedRoom(data) {
     .filter(isObject)
     .slice(0, 100)
     .forEach((t) => registerPlaceholderFurniture(t));
+  const widthCm = num(data.widthCm, 200, 1500, 400);
+  const depthCm = num(data.depthCm, 200, 1500, 400);
+  // A room that is not a rectangle keeps its outline, pulled inside the room's box
+  const cleaned = sanitizeOutline(data.outline);
+  const outline = cleaned
+    ? cleaned.map(([x, y]) => [Math.min(x, widthCm), Math.min(y, depthCm)])
+    : null;
+  const openEdges = outline
+    ? (Array.isArray(data.openEdges) ? data.openEdges : []).filter(
+        (e) => Number.isInteger(e) && e >= 0 && e < outline.length
+      )
+    : [];
+  const fitOpenings = (list, fallbackWall) =>
+    openings(list, fallbackWall).map((o) => {
+      if (!outline) {
+        const { edge: _edge, ...rest } = o;
+        return rest;
+      }
+      const { wall: _wall, ...rest } = o;
+      return { ...rest, edge: (o.edge ?? 0) % outline.length };
+    });
   return {
     id: `room-${stamp}`,
     name: String(data.name || 'Imported Room').slice(0, 80),
-    widthCm: num(data.widthCm, 200, 1500, 400),
-    depthCm: num(data.depthCm, 200, 1500, 400),
-    doors: openings(data.doors, 'bottom'),
-    windows: openings(data.windows, 'top'),
+    widthCm,
+    depthCm,
+    ...(outline ? { outline, ...(openEdges.length ? { openEdges } : {}) } : {}),
+    doors: fitOpenings(data.doors, 'bottom'),
+    windows: fitOpenings(data.windows, 'top'),
     placedFurniture: furniture,
     updatedAt: new Date().toISOString(),
   };

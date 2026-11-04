@@ -8,11 +8,11 @@
 
 import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { SPACE_KINDS, stairRect, stairGeometry, stairFootprint } from './flat.js';
-import { wallsOf, openingsOf } from './flatPlan.js';
+import { openingsOf, openWallsOf, levelSolidEdges } from './flatPlan.js';
+import { hasOutline, outlineEdges, pointOnEdge, polygonArea } from './roomShape.js';
 import {
   CELL,
   analyzeRuns,
-  edgesOf,
   wallStretches,
   regionLabelPoint,
   defaultSwing,
@@ -157,7 +157,17 @@ function frameSheet({ content, k, title, legend, legendTitle, kinds, measure }) 
 
 // ---------- room ----------
 
-function resolveOpening(item, type) {
+function resolveOpening(item, type, outlined = false) {
+  if (outlined) {
+    return {
+      id: item.id,
+      type,
+      edge: item.edge ?? 0,
+      offsetCm: item.offsetCm,
+      widthCm: Number.isFinite(item.widthCm) ? item.widthCm : type === 'door' ? 90 : 120,
+      outward: item.swingDirection === 'outward',
+    };
+  }
   const wall = item.wall || (type === 'door' ? 'bottom' : 'top');
   return {
     id: item.id,
@@ -180,10 +190,12 @@ export function buildRoomSheet(room, { measure = estimateMeasure, date = new Dat
   const k = clamp(Math.max(W, D) / 420, 1, 4);
   const wall = ROOM_WALL_CM;
 
-  const windows = (room.windows || []).map((w) => resolveOpening(w, 'window'));
-  const doors = (room.doors || []).map((d) => resolveOpening(d, 'door'));
+  const outlined = hasOutline(room);
+  const edges = outlined ? outlineEdges(room) : [];
+  const windows = (room.windows || []).map((w) => resolveOpening(w, 'window', outlined));
+  const doors = (room.doors || []).map((d) => resolveOpening(d, 'door', outlined));
   for (const o of [...windows, ...doors]) {
-    const len = o.horizontal ? W : D;
+    const len = outlined ? (edges[o.edge]?.len ?? 0) : o.horizontal ? W : D;
     if (!Number.isFinite(o.offsetCm)) o.offsetCm = Math.round(len / 2 - o.widthCm / 2);
   }
 
@@ -207,6 +219,18 @@ export function buildRoomSheet(room, { measure = estimateMeasure, date = new Dat
   let box = { x0: -wall / 2, y0: -wall / 2, x1: W + wall / 2, y1: D + wall / 2 };
   for (const d of doors) {
     if (!d.outward) continue;
+    if (outlined) {
+      const e = edges[d.edge];
+      if (!e) continue;
+      for (const pt of [
+        pointOnEdge(e, d.offsetCm, 0),
+        pointOnEdge(e, d.offsetCm + d.widthCm, 0),
+        pointOnEdge(e, d.offsetCm, -d.widthCm - 2),
+        pointOnEdge(e, d.offsetCm + d.widthCm, -d.widthCm - 2),
+      ])
+        box = grow(box, { x0: pt.x, y0: pt.y, x1: pt.x, y1: pt.y });
+      continue;
+    }
     if (d.wall === 'top') box.y0 = Math.min(box.y0, -d.widthCm - 2);
     if (d.wall === 'bottom') box.y1 = Math.max(box.y1, D + d.widthCm + 2);
     if (d.wall === 'left') box.x0 = Math.min(box.x0, -d.widthCm - 2);
@@ -240,7 +264,7 @@ export function buildRoomSheet(room, { measure = estimateMeasure, date = new Dat
       name: room.name,
       widthCm: W,
       depthCm: D,
-      areaCm2: W * D,
+      areaCm2: outlined ? polygonArea(room.outline) : W * D,
       date,
     },
     legend,
@@ -252,6 +276,7 @@ export function buildRoomSheet(room, { measure = estimateMeasure, date = new Dat
     kind: 'room',
     ...frame,
     room: { W, D, wall },
+    outline: outlined ? { points: room.outline, edges } : null,
     windows,
     doors,
     pieces,
@@ -343,8 +368,9 @@ export function buildFlatSheet(
   { measure = estimateMeasure, date = new Date() } = {}
 ) {
   const level = flat.levels.find((l) => l.id === levelId) || flat.levels[0];
-  const runs = wallsOf(flat, level.id);
-  const edges = edgesOf(runs);
+  const runs = flat.walls?.[level.id] || [];
+  const edges = levelSolidEdges(flat, level.id);
+  const openRuns = openWallsOf(flat, level.id);
   const analysis = analyzeRuns(runs);
   const openings = openingsOf(flat, level.id);
   const spaces = flat.spaces.filter((s) => s.levelId === level.id);
@@ -497,6 +523,7 @@ export function buildFlatSheet(
     level: { id: level.id, name: level.name },
     spaces,
     stretches,
+    openRuns,
     openings: openingList,
     stairs: stairs.map((st) => ({
       stair: st,

@@ -32,6 +32,18 @@
   cursor: grab;
 }
 
+.cursorEw .svg {
+  cursor: ew-resize;
+}
+
+.cursorNs .svg {
+  cursor: ns-resize;
+}
+
+.cursorMove .svg {
+  cursor: move;
+}
+
 .gridMinor {
   stroke: var(--color-taupe-light);
   stroke-width: 1px;
@@ -72,6 +84,28 @@
 
 .wall {
   fill: var(--color-ink);
+}
+
+.openWall line {
+  stroke: var(--color-clay);
+  stroke-width: 4px;
+  stroke-dasharray: 14 10;
+  opacity: 0.9;
+}
+
+.draftOpenWall {
+  fill: var(--color-clay);
+  fill-opacity: 0.25;
+  stroke: var(--color-clay);
+  stroke-width: 4px;
+  stroke-dasharray: 14 10;
+}
+
+.openingHandle {
+  fill: var(--color-clay);
+  stroke: #fff;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
 }
 
 .wallSelected {

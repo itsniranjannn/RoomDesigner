@@ -118,3 +118,57 @@ describe('plan sheet drawing', () => {
     expect(svg).toContain('<polygon');
   });
 });
+
+describe('rooms with an outline and open walls', () => {
+  const L = [
+    [0, 0],
+    [300, 0],
+    [300, 100],
+    [100, 100],
+    [100, 300],
+    [0, 300],
+  ];
+
+  it('draws an L-shaped room with openings on its edges and a dashed open side', () => {
+    const model = buildRoomSheet({
+      name: 'Hall',
+      widthCm: 300,
+      depthCm: 300,
+      outline: L,
+      openEdges: [2],
+      doors: [{ id: 'd', edge: 5, offsetCm: 10, widthCm: 90, swingDirection: 'outward' }],
+      windows: [{ id: 'w', edge: 0, offsetCm: 60, widthCm: 120 }],
+      placedFurniture: [],
+    });
+    expect(model.outline.edges).toHaveLength(6);
+    const svg = draw(model);
+    standalone(svg);
+    expect(svg).toContain('stroke-dasharray="10 7"');
+    expect(svg).toContain('clip-path="url(#outline-clip)"');
+  });
+
+  it('puts an L-shaped room area, not its bounding box, in the title block', () => {
+    const model = buildRoomSheet({
+      name: 'Hall',
+      widthCm: 300,
+      depthCm: 300,
+      outline: L,
+      doors: [],
+      windows: [],
+      placedFurniture: [],
+    });
+    expect(model.titleBlock).toBeTruthy();
+    expect(JSON.stringify(model.titleBlock)).toContain('5.0');
+  });
+
+  it('draws open dividers on a flat sheet', () => {
+    const { flat, rooms } = buildPresetFlat('2bhk');
+    const model = buildFlatSheet(
+      { ...flat, openWalls: { [flat.levels[0].id]: [{ x1: 0, y1: 0, x2: 0, y2: 100 }] } },
+      rooms,
+      flat.levels[0].id
+    );
+    expect(model.openRuns).toHaveLength(1);
+    expect(draw(model)).toContain('stroke-dasharray');
+  });
+});
