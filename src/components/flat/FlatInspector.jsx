@@ -177,7 +177,7 @@ function SpaceInspector({ space }) {
               icon={<DoorOpen size={16} aria-hidden="true" />}
               onClick={() => openSpace(space.id)}
             >
-              Furnish room
+              Design this room
             </Button>
             <Button
               variant="secondary"
@@ -188,8 +188,8 @@ function SpaceInspector({ space }) {
               Furnish with defaults
             </Button>
             <p className={styles.helpText}>
-              Furnish room opens the room designer for this room. Defaults place the usual furniture
-              for a {kind.label.toLowerCase()}.
+              Design this room opens the room designer for it; the header takes you back to the
+              flat. Defaults place the usual furniture for a {kind.label.toLowerCase()}.
             </p>
           </>
         ) : (

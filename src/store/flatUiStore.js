@@ -32,3 +32,6 @@ export const useFlatUi = create((set) => ({
   setZoomPercent: (zoomPercent) => set({ zoomPercent }),
   setNotice: (notice) => set({ notice }),
 }));
+
+/** Where the plan was panned and zoomed, kept so returning from a room restores it. */
+export const flatViewMemory = { flatId: null, levelId: null, view: null };
