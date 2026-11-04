@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFlatStore } from '../../store/flatStore.js';
-import { useFlatUi } from '../../store/flatUiStore.js';
+import { useFlatUi, flatViewMemory } from '../../store/flatUiStore.js';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import {
   SPACE_KINDS,
@@ -208,7 +208,8 @@ export function FlatPlanCanvas() {
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
-  const [view, setView] = useState({ tx: 0, ty: 0, k: 0.5 });
+  const restored = flatViewMemory.flatId === flatId ? flatViewMemory.view : null;
+  const [view, setView] = useState(restored || { tx: 0, ty: 0, k: 0.5 });
   const viewRef = useRef(view);
   const sizeRef = useRef(size);
   const [, setDraftState] = useState(null); // re-renders when the wall being drawn changes
@@ -223,8 +224,8 @@ export function FlatPlanCanvas() {
   const [panning, setPanning] = useState(false);
   const [spaceDown, setSpaceDown] = useState(false);
   const gesture = useRef(null);
-  const autoFit = useRef(true);
-  const [fitted, setFitted] = useState(false);
+  const autoFit = useRef(!restored);
+  const [fitted, setFitted] = useState(!!restored);
 
   const setDraft = useCallback((d) => {
     draftRef.current = d;
@@ -233,8 +234,12 @@ export function FlatPlanCanvas() {
 
   useEffect(() => {
     viewRef.current = view;
+    if (flatId) {
+      flatViewMemory.flatId = flatId;
+      flatViewMemory.view = view;
+    }
     useFlatUi.getState().setZoomPercent(Math.round(view.k * 100));
-  }, [view]);
+  }, [view, flatId]);
   useEffect(() => {
     sizeRef.current = size;
   }, [size]);
@@ -318,7 +323,13 @@ export function FlatPlanCanvas() {
   }, []);
 
   // Keep the plan fitted while the stage settles; a manual zoom or pan switches this off
+  // Refit only when the flat or the fit request changes; a plan restored after visiting a
+  // room keeps its pan and zoom
+  const fitKey = useRef(restored ? `${flatId}:${fitNonce}` : null);
   useEffect(() => {
+    const key = `${flatId}:${fitNonce}`;
+    if (fitKey.current === key) return;
+    fitKey.current = key;
     autoFit.current = true;
   }, [flatId, fitNonce]);
   useEffect(() => {
@@ -333,8 +344,11 @@ export function FlatPlanCanvas() {
     });
   }, []);
 
+  // A zoom request left over from before this plan was mounted has already been applied
+  const handledZoom = useRef(zoomRequest?.n ?? 0);
   useEffect(() => {
-    if (!zoomRequest) return;
+    if (!zoomRequest || zoomRequest.n <= handledZoom.current) return;
+    handledZoom.current = zoomRequest.n;
     const { w, h } = sizeRef.current;
     zoomAt(w / 2, h / 2, zoomRequest.factor);
   }, [zoomRequest, zoomAt]);

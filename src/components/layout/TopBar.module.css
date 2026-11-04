@@ -31,3 +31,47 @@
     display: none;
   }
 }
+
+/* "My Flat / Hall": the flat name takes you back to the plan */
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  max-width: 170px;
+}
+
+.crumb {
+  min-width: 0;
+  overflow: hidden;
+  padding: 4px var(--space-2);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-indigo);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.crumb:hover {
+  background: var(--color-indigo-subtle);
+}
+
+.crumb:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.crumbSep {
+  color: var(--color-ink-faint);
+}
+
+@media (max-width: 899px) {
+  .crumbs {
+    display: none;
+  }
+}

@@ -55,6 +55,12 @@ export function TopBar({
   const flatMode = useFlatStore((state) => state.mode);
   const flatName = useFlatStore((state) => state.flat?.name);
   const backToFlat = useFlatStore((state) => state.backToFlat);
+  const flatSpaces = useFlatStore((state) => state.flat?.spaces);
+  const flatLevels = useFlatStore((state) => state.flat?.levels);
+  const activeSpaceId = useFlatStore((state) =>
+    state.selected?.type === 'space' ? state.selected.id : null
+  );
+  const switchSpace = useFlatStore((state) => state.switchSpace);
   const inFlat = flatMode === 'room';
 
   const phone = useMediaQuery('(max-width: 640px)');
@@ -118,6 +124,50 @@ export function TopBar({
               </MenuItem>
             </>
           )}
+          {inFlat && flatSpaces && (
+            <>
+              <MenuDivider />
+              {flatLevels.map((level) => {
+                const here = flatSpaces.filter((sp) => sp.levelId === level.id && sp.furnishable);
+                if (here.length === 0) return null;
+                return (
+                  <React.Fragment key={level.id}>
+                    <MenuLabel>
+                      {flatLevels.length > 1
+                        ? `${flatName}, ${level.name}`
+                        : `Rooms in ${flatName}`}
+                    </MenuLabel>
+                    {here.map((sp) => (
+                      <MenuItem
+                        key={sp.id}
+                        active={sp.id === activeSpaceId}
+                        onClick={() => {
+                          close();
+                          switchSpace(sp.id);
+                        }}
+                      >
+                        {sp.name}
+                      </MenuItem>
+                    ))}
+                  </React.Fragment>
+                );
+              })}
+              {!phone && (
+                <>
+                  <MenuDivider />
+                  <MenuItem
+                    icon={<Home size={16} />}
+                    onClick={() => {
+                      close();
+                      goBack();
+                    }}
+                  >
+                    {backLabel}
+                  </MenuItem>
+                </>
+              )}
+            </>
+          )}
           {!inFlat && allRooms.length > 1 && (
             <>
               <MenuDivider />
@@ -148,6 +198,16 @@ export function TopBar({
         homeLabel={backLabel}
         start={
           <>
+            {inFlat && (
+              <nav className={styles.crumbs} aria-label="Where you are">
+                <button type="button" className={styles.crumb} onClick={goBack} title={backLabel}>
+                  {flatName}
+                </button>
+                <span className={styles.crumbSep} aria-hidden="true">
+                  /
+                </span>
+              </nav>
+            )}
             <EditableTitle
               value={room.name}
               onCommit={(name) => renameRoom(room.id, name)}

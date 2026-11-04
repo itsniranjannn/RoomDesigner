@@ -466,7 +466,7 @@ export const useFlatStore = create((set, get) => ({
     await useRoomStore.getState().switchRoom(space.roomId);
     if (useRoomStore.getState().room?.id !== space.roomId) return;
     useRoomStore.getState().setViewMode('2d');
-    set({ mode: 'room', selected: { type: 'space', id: spaceId } });
+    set({ mode: 'room', levelId: space.levelId, selected: { type: 'space', id: spaceId } });
   },
 
   backToFlat: async () => {
@@ -487,6 +487,16 @@ export const useFlatStore = create((set, get) => ({
     } else {
       set({ rooms: merged, mode: 'flat' });
     }
+  },
+
+  /** Jumps from the room being designed straight to another room of the same flat. */
+  switchSpace: async (spaceId) => {
+    const { mode, selected } = get();
+    if (mode !== 'room') return;
+    if (selected?.type === 'space' && selected.id === spaceId) return;
+    // Saves the current room and folds its doors and windows back into the plan first
+    await get().backToFlat();
+    await get().openSpace(spaceId);
   },
 
   /** Finds the straight run of wall under an edge key, for the inspector. */
