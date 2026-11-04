@@ -6,6 +6,7 @@
 
 import { cleanOverrides } from './overrides.js';
 import { clamp } from './geometry.js';
+import { getFurnitureType, registerPlaceholderFurniture } from '../data/furnitureCatalog.js';
 
 const HASH_KEY = 'share=';
 const MAX_HASH_CHARS = 60000;
@@ -34,7 +35,35 @@ async function pipe(bytes, stream) {
 /** Fields that make up a shareable design (images and meshes excluded to keep links short). */
 function toShareableRoom(room) {
   const { id, name, widthCm, depthCm, doors, windows, placedFurniture } = room;
-  return { v: 1, id, name, widthCm, depthCm, doors, windows, placedFurniture };
+  // Photo-made pieces: only name, size and colour travel, so the receiver sees a box of the right size
+  const customTypes = [];
+  const seen = new Set();
+  for (const f of placedFurniture || []) {
+    const id = f.furnitureTypeId;
+    if (typeof id !== 'string' || !id.startsWith('custom-') || seen.has(id)) continue;
+    seen.add(id);
+    const def = getFurnitureType(id);
+    if (def)
+      customTypes.push({
+        id,
+        name: def.name,
+        widthCm: def.widthCm,
+        depthCm: def.depthCm,
+        heightCm: def.heightCm,
+        color: def.color,
+      });
+  }
+  return {
+    v: 1,
+    id,
+    name,
+    widthCm,
+    depthCm,
+    doors,
+    windows,
+    placedFurniture,
+    ...(customTypes.length ? { customTypes } : {}),
+  };
 }
 
 export async function encodeRoomToHash(room) {
@@ -87,6 +116,10 @@ export function sanitizeImportedRoom(data) {
     .map((f, i, all) =>
       all.findIndex((g) => g.id === f.id) === i ? f : { ...f, id: `${f.id}-dup${i}` }
     );
+  (Array.isArray(data.customTypes) ? data.customTypes : [])
+    .filter(isObject)
+    .slice(0, 100)
+    .forEach((t) => registerPlaceholderFurniture(t));
   return {
     id: `room-${stamp}`,
     name: String(data.name || 'Imported Room').slice(0, 80),

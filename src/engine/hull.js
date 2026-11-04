@@ -1131,6 +1131,42 @@ export function renderMesh(
   return out;
 }
 
+/** Photo slot used for the 2D plan picture: the top photo when given, else the front, else any. */
+export function pickPlanSlot(slotIds) {
+  for (const id of ['top', 'front', 'back', 'right', 'left']) if (slotIds.includes(id)) return id;
+  return slotIds[0] || null;
+}
+
+/**
+ * The user's own photo cut out for the 2D plan: cropped to the object's bounding box, background made
+ * transparent and scaled so the longest edge is at most maxEdge.
+ * @param {Uint8ClampedArray} rgba source photo pixels
+ * @param {Uint8Array} mask 1 where the object is
+ * @returns {{width: number, height: number, rgba: Uint8ClampedArray} | null} null when nothing was found
+ */
+export function cutoutImage(rgba, mask, width, height, maxEdge = 192) {
+  const box = maskBounds(mask, width, height);
+  if (!box) return null;
+  const scale = Math.min(1, maxEdge / Math.max(box.width, box.height));
+  const w = Math.max(1, Math.round(box.width * scale));
+  const h = Math.max(1, Math.round(box.height * scale));
+  const out = new Uint8ClampedArray(w * h * 4);
+  for (let y = 0; y < h; y++) {
+    const sy = Math.min(height - 1, box.minY + Math.floor(((y + 0.5) * box.height) / h));
+    for (let x = 0; x < w; x++) {
+      const sx = Math.min(width - 1, box.minX + Math.floor(((x + 0.5) * box.width) / w));
+      const sp = sy * width + sx;
+      if (!mask[sp]) continue;
+      const o = (y * w + x) * 4;
+      out[o] = rgba[sp * 4];
+      out[o + 1] = rgba[sp * 4 + 1];
+      out[o + 2] = rgba[sp * 4 + 2];
+      out[o + 3] = 255;
+    }
+  }
+  return { width: w, height: h, rgba: out };
+}
+
 /** Plan-view render of the mesh (2D symbol). */
 export function topDownImage(mesh, size = 96) {
   return renderMesh(mesh, { size, top: true });

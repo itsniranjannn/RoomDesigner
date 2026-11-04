@@ -4,6 +4,8 @@ import { OrbitControls, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { useRoomStore } from '../../store/roomStore.js';
 import { Room3DWalls } from './Room3DWalls.jsx';
+import { OutlineWalls } from './OutlineWalls.jsx';
+import { hasOutline } from '../../engine/roomShape.js';
 import { Furniture3DBox } from './Furniture3DBox.jsx';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
@@ -33,10 +35,10 @@ const LIGHTING = {
   },
   evening: {
     background: '#E7D2BE',
-    ambient: [0.55, '#F2D2B0'],
-    hemi: 0.35,
-    sun: [0.8, '#FFB070'],
-    fill: [0.3, 0.2],
+    ambient: [0.4, '#F0BE92'],
+    hemi: 0.25,
+    sun: [0.7, '#FF9A55'],
+    fill: [0.22, 0.14],
     lamp: 1.1,
   },
   night: {
@@ -192,7 +194,11 @@ export function Room3DView() {
         />
 
         {/* Room Floor and Architectural Walls (Cutaway or Full-Height) */}
-        <Room3DWalls room={room} isFullHeight={isFullHeight || walking} />
+        {hasOutline(room) ? (
+          <OutlineWalls room={room} isFullHeight={isFullHeight || walking} />
+        ) : (
+          <Room3DWalls room={room} isFullHeight={isFullHeight || walking} />
+        )}
 
         {/* Detailed Architectural 3D Furniture */}
         {(room.placedFurniture || []).map((item) => (
@@ -231,15 +237,15 @@ export function Room3DView() {
       </p>
 
       <div className={styles.controls} role="toolbar" aria-label="3D view controls">
+        <Segmented
+          ariaLabel="Lighting"
+          options={LIGHT_OPTIONS}
+          value={lighting}
+          onChange={setLighting}
+          className={styles.compactSeg}
+        />
         {!walking && (
           <>
-            <Segmented
-              ariaLabel="Lighting"
-              options={LIGHT_OPTIONS}
-              value={lighting}
-              onChange={setLighting}
-              className={styles.compactSeg}
-            />
             <Segmented
               ariaLabel="Walls"
               options={WALL_OPTIONS}
