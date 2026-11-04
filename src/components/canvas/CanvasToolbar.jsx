@@ -70,26 +70,92 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
 
   return (
     <>
-      <div className={styles.toolbar} role="toolbar" aria-label="Plan tools" aria-orientation={phone ? 'horizontal' : 'vertical'} {...stop}>
+      <div
+        className={styles.toolbar}
+        role="toolbar"
+        aria-label="Plan tools"
+        aria-orientation={phone ? 'horizontal' : 'vertical'}
+        {...stop}
+      >
         {phone && (
           <ToolGroup vertical={!phone}>
-            <ToolButton label="Undo" shortcut="Ctrl+Z" side={side} onClick={undo} disabled={!canUndo}><Undo2 size={18} /></ToolButton>
-            <ToolButton label="Redo" shortcut="Ctrl+Y" side={side} onClick={redo} disabled={!canRedo}><Redo2 size={18} /></ToolButton>
+            <ToolButton
+              label="Undo"
+              shortcut="Ctrl+Z"
+              side={side}
+              onClick={undo}
+              disabled={!canUndo}
+            >
+              <Undo2 size={18} />
+            </ToolButton>
+            <ToolButton
+              label="Redo"
+              shortcut="Ctrl+Y"
+              side={side}
+              onClick={redo}
+              disabled={!canRedo}
+            >
+              <Redo2 size={18} />
+            </ToolButton>
           </ToolGroup>
         )}
         <ToolGroup vertical={!phone}>
-          <ToolButton active={measureActive} side={side} onClick={toggleMeasure} label="Measure distance" shortcut="M"><Ruler size={18} /></ToolButton>
-          <ToolButton active={showDimensions} side={side} onClick={toggleDimensions} label="Show distances to walls"><MoveHorizontal size={18} /></ToolButton>
-          <ToolButton active={showClearance} side={side} onClick={toggleClearance} label="Show clearance zones"><ScanLine size={18} /></ToolButton>
+          <ToolButton
+            active={measureActive}
+            side={side}
+            onClick={toggleMeasure}
+            label="Measure distance"
+            shortcut="M"
+          >
+            <Ruler size={18} />
+          </ToolButton>
+          <ToolButton
+            active={showDimensions}
+            side={side}
+            onClick={toggleDimensions}
+            label="Show distances to walls"
+          >
+            <MoveHorizontal size={18} />
+          </ToolButton>
+          <ToolButton
+            active={showClearance}
+            side={side}
+            onClick={toggleClearance}
+            label="Show clearance zones"
+          >
+            <ScanLine size={18} />
+          </ToolButton>
         </ToolGroup>
         <ToolGroup vertical={!phone}>
-          <ToolButton side={side} onClick={() => fileRef.current?.click()} label="Trace a floor-plan image"><ImagePlus size={18} /></ToolButton>
-          <ToolButton side={side} onClick={() => openModal('layout')} label="Suggest a layout"><Wand2 size={18} /></ToolButton>
+          <ToolButton
+            side={side}
+            onClick={() => fileRef.current?.click()}
+            label="Trace a floor-plan image"
+          >
+            <ImagePlus size={18} />
+          </ToolButton>
+          <ToolButton side={side} onClick={() => openModal('layout')} label="Suggest a layout">
+            <Wand2 size={18} />
+          </ToolButton>
         </ToolGroup>
         <ToolGroup vertical={!phone}>
-          <ToolButton side={side} onClick={() => openModal('shortcuts')} label="Keyboard shortcuts" shortcut="?"><Keyboard size={18} /></ToolButton>
+          <ToolButton
+            side={side}
+            onClick={() => openModal('shortcuts')}
+            label="Keyboard shortcuts"
+            shortcut="?"
+          >
+            <Keyboard size={18} />
+          </ToolButton>
         </ToolGroup>
-        <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleTraceFile} aria-label="Floor-plan image to trace" />
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          hidden
+          onChange={handleTraceFile}
+          aria-label="Floor-plan image to trace"
+        />
       </div>
 
       <div className={styles.stack}>
@@ -132,9 +198,13 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
           <div className={styles.card} role="status" {...stop}>
             <span>Click two points to measure. Hold Shift to lock the angle.</span>
             {measurementCount > 0 && (
-              <Button size="small" variant="ghost" onClick={onClearMeasurements}>Clear {measurementCount}</Button>
+              <Button size="small" variant="ghost" onClick={onClearMeasurements}>
+                Clear {measurementCount}
+              </Button>
             )}
-            <Button size="small" onClick={toggleMeasure}>Done</Button>
+            <Button size="small" onClick={toggleMeasure}>
+              Done
+            </Button>
           </div>
         )}
 
@@ -159,14 +229,23 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
               value={Math.round(trace.widthCm)}
               onCommit={(v) => updateTraceImage({ widthCm: v })}
             />
-            <Button size="small" variant="ghost" icon={<X size={14} />} onClick={() => setTraceImage(null)}>Remove image</Button>
+            <Button
+              size="small"
+              variant="ghost"
+              icon={<X size={14} />}
+              onClick={() => setTraceImage(null)}
+            >
+              Remove image
+            </Button>
           </div>
         )}
 
         {error && (
           <div className={styles.errorWrap} {...stop}>
             <Notice kind="error">{error}</Notice>
-            <Button size="small" variant="ghost" onClick={() => setError(null)}>Dismiss</Button>
+            <Button size="small" variant="ghost" onClick={() => setError(null)}>
+              Dismiss
+            </Button>
           </div>
         )}
       </div>

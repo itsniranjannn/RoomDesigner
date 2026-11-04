@@ -74,11 +74,21 @@ function renderRoomPlanCanvas(room) {
   // Top wall
   ctx.fillRect(-wallThickness / 2, -wallThickness / 2, roomWidth + wallThickness, wallThickness);
   // Bottom wall
-  ctx.fillRect(-wallThickness / 2, roomDepth - wallThickness / 2, roomWidth + wallThickness, wallThickness);
+  ctx.fillRect(
+    -wallThickness / 2,
+    roomDepth - wallThickness / 2,
+    roomWidth + wallThickness,
+    wallThickness
+  );
   // Left wall
   ctx.fillRect(-wallThickness / 2, -wallThickness / 2, wallThickness, roomDepth + wallThickness);
   // Right wall
-  ctx.fillRect(roomWidth - wallThickness / 2, -wallThickness / 2, wallThickness, roomDepth + wallThickness);
+  ctx.fillRect(
+    roomWidth - wallThickness / 2,
+    -wallThickness / 2,
+    wallThickness,
+    roomDepth + wallThickness
+  );
 
   // Inner boundary line
   ctx.strokeStyle = '#1C1A17';
@@ -94,8 +104,16 @@ function renderRoomPlanCanvas(room) {
     const winOffset = Number.isFinite(win.offsetCm) ? win.offsetCm : Math.round(wallLen / 2 - 60);
     const winWidth = Number.isFinite(win.widthCm) ? win.widthCm : 120;
 
-    const wx = isHorizontal ? winOffset : (wall === 'left' ? -wallThickness / 2 : roomWidth - wallThickness / 2);
-    const wy = isHorizontal ? (wall === 'top' ? -wallThickness / 2 : roomDepth - wallThickness / 2) : winOffset;
+    const wx = isHorizontal
+      ? winOffset
+      : wall === 'left'
+        ? -wallThickness / 2
+        : roomWidth - wallThickness / 2;
+    const wy = isHorizontal
+      ? wall === 'top'
+        ? -wallThickness / 2
+        : roomDepth - wallThickness / 2
+      : winOffset;
     const ww = isHorizontal ? winWidth : wallThickness;
     const wh = isHorizontal ? wallThickness : winWidth;
 
@@ -153,11 +171,21 @@ function renderRoomPlanCanvas(room) {
     const wall = door.wall || 'bottom';
     const isHorizontal = wall === 'top' || wall === 'bottom';
     const wallLen = isHorizontal ? roomWidth : roomDepth;
-    const doorOffset = Number.isFinite(door.offsetCm) ? door.offsetCm : Math.round(wallLen / 2 - 45);
+    const doorOffset = Number.isFinite(door.offsetCm)
+      ? door.offsetCm
+      : Math.round(wallLen / 2 - 45);
     const doorWidth = Number.isFinite(door.widthCm) ? door.widthCm : 90;
 
-    const dx = isHorizontal ? doorOffset : (wall === 'left' ? -wallThickness / 2 : roomWidth - wallThickness / 2);
-    const dy = isHorizontal ? (wall === 'top' ? -wallThickness / 2 : roomDepth - wallThickness / 2) : doorOffset;
+    const dx = isHorizontal
+      ? doorOffset
+      : wall === 'left'
+        ? -wallThickness / 2
+        : roomWidth - wallThickness / 2;
+    const dy = isHorizontal
+      ? wall === 'top'
+        ? -wallThickness / 2
+        : roomDepth - wallThickness / 2
+      : doorOffset;
     const dw = isHorizontal ? doorWidth : wallThickness;
     const dh = isHorizontal ? wallThickness : doorWidth;
 
@@ -433,12 +461,12 @@ function renderRoomPlanCanvas(room) {
       // Try 8 directional candidate offsets (Top, Bottom, Right, Left, Diagonals)
       const candidateAngles = [
         -Math.PI / 2, // North
-        Math.PI / 2,  // South
-        0,            // East
-        Math.PI,      // West
+        Math.PI / 2, // South
+        0, // East
+        Math.PI, // West
         -Math.PI / 4, // North-East
         -Math.PI * 0.75, // North-West
-        Math.PI / 4,  // South-East
+        Math.PI / 4, // South-East
         Math.PI * 0.75, // South-West
       ];
 
@@ -618,5 +646,8 @@ export async function exportRoomPlanAsPDF(room) {
 }
 
 export function exportRoomAsJSON(room) {
-  downloadBlob(new Blob([roomToJson(room)], { type: 'application/json' }), `${safeName(room)}.room.json`);
+  downloadBlob(
+    new Blob([roomToJson(room)], { type: 'application/json' }),
+    `${safeName(room)}.room.json`
+  );
 }

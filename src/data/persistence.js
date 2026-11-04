@@ -158,7 +158,6 @@ export async function renameRoomInDB(id, newName) {
   }
 }
 
-
 // ---------- Custom furniture (made from photos) ----------
 
 export async function saveCustomFurnitureToDB(def) {

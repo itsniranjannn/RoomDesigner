@@ -17,12 +17,16 @@ export function clampOpening(type, offsetCm, widthCm, wallLengthCm) {
   const limits = OPENING_LIMITS[type] || OPENING_LIMITS.window;
   const margin = OPENING_LIMITS.cornerMargin;
 
-  const validWallLen = Number.isFinite(wallLengthCm) && wallLengthCm > margin * 2 ? wallLengthCm : 500;
-  const rawW = Number.isFinite(widthCm) ? widthCm : (type === 'door' ? 90 : 120);
+  const validWallLen =
+    Number.isFinite(wallLengthCm) && wallLengthCm > margin * 2 ? wallLengthCm : 500;
+  const rawW = Number.isFinite(widthCm) ? widthCm : type === 'door' ? 90 : 120;
   const rawOffset = Number.isFinite(offsetCm) ? offsetCm : Math.round(validWallLen / 2 - rawW / 2);
 
   const maxPossibleWidth = Math.max(limits.minWidth, validWallLen - margin * 2);
-  const clampedWidth = Math.max(limits.minWidth, Math.min(limits.maxWidth, Math.min(maxPossibleWidth, rawW)));
+  const clampedWidth = Math.max(
+    limits.minWidth,
+    Math.min(limits.maxWidth, Math.min(maxPossibleWidth, rawW))
+  );
 
   const maxOffset = validWallLen - clampedWidth - margin;
   const clampedOffset = Math.max(margin, Math.min(maxOffset, rawOffset));
@@ -65,7 +69,13 @@ export function clampResizeEnd(type, startOffsetCm, rawTargetWidthCm, wallLength
  * Clamps resizing from the start handle (left/top).
  * Right edge remains pinned at startOffsetCm + startWidthCm.
  */
-export function clampResizeStart(type, startOffsetCm, startWidthCm, rawTargetOffsetCm, _wallLengthCm) {
+export function clampResizeStart(
+  type,
+  startOffsetCm,
+  startWidthCm,
+  rawTargetOffsetCm,
+  _wallLengthCm
+) {
   const limits = OPENING_LIMITS[type] || OPENING_LIMITS.window;
   const margin = OPENING_LIMITS.cornerMargin;
   const rightEdge = startOffsetCm + startWidthCm;
@@ -81,4 +91,3 @@ export function clampResizeStart(type, startOffsetCm, startWidthCm, rawTargetOff
     widthCm: Math.round(clampedWidth),
   };
 }
-

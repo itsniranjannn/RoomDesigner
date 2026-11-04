@@ -32,11 +32,19 @@ function OpeningRow({ type, opening, index, canRemove }) {
     <div className={styles.opening}>
       <div className={styles.openingHead}>
         <span className={styles.openingTitle}>
-          {isDoor ? <DoorOpen size={16} aria-hidden="true" /> : <Square size={16} aria-hidden="true" />}
+          {isDoor ? (
+            <DoorOpen size={16} aria-hidden="true" />
+          ) : (
+            <Square size={16} aria-hidden="true" />
+          )}
           {name} {index + 1}
         </span>
         {canRemove && (
-          <IconButton label={`Remove ${name.toLowerCase()} ${index + 1}`} danger onClick={() => removeOpening(type, opening.id)}>
+          <IconButton
+            label={`Remove ${name.toLowerCase()} ${index + 1}`}
+            danger
+            onClick={() => removeOpening(type, opening.id)}
+          >
             <Trash2 size={16} />
           </IconButton>
         )}
@@ -110,12 +118,24 @@ function PieceList({ pieces }) {
               setOverIndex(null);
             }}
           >
-            <span className={styles.grip} title="Drag to change layer order" aria-hidden="true"><GripVertical size={16} /></span>
-            <button type="button" className={styles.pieceSelect} onClick={() => selectItem(piece.id)}>
+            <span className={styles.grip} title="Drag to change layer order" aria-hidden="true">
+              <GripVertical size={16} />
+            </span>
+            <button
+              type="button"
+              className={styles.pieceSelect}
+              onClick={() => selectItem(piece.id)}
+            >
               <span className={styles.pieceRowName}>{def.name}</span>
-              <span className={styles.pieceRowMeta}>{def.widthCm} x {def.depthCm} cm</span>
+              <span className={styles.pieceRowMeta}>
+                {def.widthCm} x {def.depthCm} cm
+              </span>
             </button>
-            <IconButton label={`Remove ${def.name}`} danger onClick={() => removeFurniture(piece.id)}>
+            <IconButton
+              label={`Remove ${def.name}`}
+              danger
+              onClick={() => removeFurniture(piece.id)}
+            >
               <Trash2 size={16} />
             </IconButton>
           </li>
@@ -135,11 +155,18 @@ export function RoomPanel({ onClose }) {
   const area = ((room.widthCm * room.depthCm) / 10000).toFixed(1);
 
   return (
-    <InspectorShell label="Room details" title={room.name} subtitle="Select a piece on the plan to edit it." onClose={onClose}>
+    <InspectorShell
+      label="Room details"
+      title={room.name}
+      subtitle="Select a piece on the plan to edit it."
+      onClose={onClose}
+    >
       <Section title="Room">
         <div className={styles.stats}>
           <div className={styles.stat}>
-            <span className={styles.statValue}>{(room.widthCm / 100).toFixed(2)} x {(room.depthCm / 100).toFixed(2)} m</span>
+            <span className={styles.statValue}>
+              {(room.widthCm / 100).toFixed(2)} x {(room.depthCm / 100).toFixed(2)} m
+            </span>
             <span className={styles.statLabel}>Size</span>
           </div>
           <div className={styles.stat}>
@@ -155,21 +182,49 @@ export function RoomPanel({ onClose }) {
 
       <Section title="Doors & windows">
         {doors.map((door, i) => (
-          <OpeningRow key={door.id} type="door" opening={door} index={i} canRemove={doors.length > 1} />
+          <OpeningRow
+            key={door.id}
+            type="door"
+            opening={door}
+            index={i}
+            canRemove={doors.length > 1}
+          />
         ))}
         {windows.map((win, i) => (
-          <OpeningRow key={win.id} type="window" opening={win} index={i} canRemove={windows.length > 1} />
+          <OpeningRow
+            key={win.id}
+            type="window"
+            opening={win}
+            index={i}
+            canRemove={windows.length > 1}
+          />
         ))}
         <div className={styles.grid2}>
-          <Button size="small" variant="secondary" icon={<Plus size={14} />} onClick={() => addOpening('door', 'bottom')}>Add door</Button>
-          <Button size="small" variant="secondary" icon={<Plus size={14} />} onClick={() => addOpening('window', 'top')}>Add window</Button>
+          <Button
+            size="small"
+            variant="secondary"
+            icon={<Plus size={14} />}
+            onClick={() => addOpening('door', 'bottom')}
+          >
+            Add door
+          </Button>
+          <Button
+            size="small"
+            variant="secondary"
+            icon={<Plus size={14} />}
+            onClick={() => addOpening('window', 'top')}
+          >
+            Add window
+          </Button>
         </div>
         <p className={styles.note}>Drag a door or window along its wall on the plan to move it.</p>
       </Section>
 
       <Section title={`Pieces (${pieces.length})`}>
         {pieces.length === 0 ? (
-          <p className={styles.empty}>Nothing here yet. Choose a piece from the furniture list to add it.</p>
+          <p className={styles.empty}>
+            Nothing here yet. Choose a piece from the furniture list to add it.
+          </p>
         ) : (
           <>
             <PieceList pieces={pieces} />

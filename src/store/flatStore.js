@@ -171,7 +171,10 @@ export const useFlatStore = create((set, get) => ({
       spaces: built.flat.spaces.map((s) => ({ ...s, levelId })),
       roomCounter: built.flat.roomCounter,
     };
-    get()._apply({ flat: next, rooms: { ...oldRooms, ...built.rooms }, removedRoomIds: [] }, { selected: null, levelId });
+    get()._apply(
+      { flat: next, rooms: { ...oldRooms, ...built.rooms }, removedRoomIds: [] },
+      { selected: null, levelId }
+    );
     return true;
   },
 
@@ -222,7 +225,9 @@ export const useFlatStore = create((set, get) => ({
     persistRoomDiff(rooms, prev.rooms);
     persistFlat(prev.flat);
     const nextFuture = [{ flat, rooms }, ...future].slice(0, HISTORY_LIMIT);
-    const levelId = prev.flat.levels.some((l) => l.id === get().levelId) ? get().levelId : prev.flat.levels[0].id;
+    const levelId = prev.flat.levels.some((l) => l.id === get().levelId)
+      ? get().levelId
+      : prev.flat.levels[0].id;
     set({
       flat: prev.flat,
       rooms: prev.rooms,
@@ -242,7 +247,9 @@ export const useFlatStore = create((set, get) => ({
     persistRoomDiff(rooms, next.rooms);
     persistFlat(next.flat);
     const nextPast = [...past, { flat, rooms }].slice(-HISTORY_LIMIT);
-    const levelId = next.flat.levels.some((l) => l.id === get().levelId) ? get().levelId : next.flat.levels[0].id;
+    const levelId = next.flat.levels.some((l) => l.id === get().levelId)
+      ? get().levelId
+      : next.flat.levels[0].id;
     set({
       flat: next.flat,
       rooms: next.rooms,
@@ -262,7 +269,10 @@ export const useFlatStore = create((set, get) => ({
     const { flat, rooms } = get();
     if (!flat || flat.levels.length >= 6) return;
     const next = addLevel(flat);
-    get()._apply({ flat: next, rooms }, { levelId: next.levels[next.levels.length - 1].id, selected: null });
+    get()._apply(
+      { flat: next, rooms },
+      { levelId: next.levels[next.levels.length - 1].id, selected: null }
+    );
   },
 
   renameLevel: (levelId, name) => {
@@ -270,7 +280,15 @@ export const useFlatStore = create((set, get) => ({
     const trimmed = (name || '').trim();
     if (!flat || !trimmed) return;
     get()._apply(
-      { flat: { ...flat, levels: flat.levels.map((l) => (l.id === levelId ? { ...l, name: trimmed.slice(0, 40) } : l)) }, rooms },
+      {
+        flat: {
+          ...flat,
+          levels: flat.levels.map((l) =>
+            l.id === levelId ? { ...l, name: trimmed.slice(0, 40) } : l
+          ),
+        },
+        rooms,
+      },
       {}
     );
   },
@@ -287,7 +305,8 @@ export const useFlatStore = create((set, get) => ({
     const { flat, rooms, levelId } = get();
     if (!flat || !levelId) return false;
     const result = addWall(flat, rooms, levelId, x1, y1, x2, y2);
-    if (JSON.stringify(flat.walls[levelId]) === JSON.stringify(result.flat.walls[levelId])) return false;
+    if (JSON.stringify(flat.walls[levelId]) === JSON.stringify(result.flat.walls[levelId]))
+      return false;
     return get()._apply(result, {});
   },
 
@@ -304,7 +323,10 @@ export const useFlatStore = create((set, get) => ({
   placeOpening: (op) => {
     const { flat, rooms, levelId } = get();
     if (!flat) return null;
-    const opening = { ...op, id: op.id && op.id !== 'ghost' ? op.id : uid(op.type === 'door' ? 'door' : 'win') };
+    const opening = {
+      ...op,
+      id: op.id && op.id !== 'ghost' ? op.id : uid(op.type === 'door' ? 'door' : 'win'),
+    };
     const result = addOpening(flat, rooms, levelId, opening);
     if (!result) return null;
     get()._apply(result, { selected: { type: 'opening', id: opening.id } });
@@ -347,7 +369,10 @@ export const useFlatStore = create((set, get) => ({
     const { flat, rooms, levelId } = get();
     if (!flat || !levelId) return null;
     const draft = createStair(flat, { levelId, type, x: x ?? 100, y: y ?? 100, rotationDeg });
-    get()._apply({ flat: { ...flat, stairs: [...flat.stairs, draft] }, rooms }, { selected: { type: 'stair', id: draft.id } });
+    get()._apply(
+      { flat: { ...flat, stairs: [...flat.stairs, draft] }, rooms },
+      { selected: { type: 'stair', id: draft.id } }
+    );
     return draft;
   },
 
@@ -356,12 +381,14 @@ export const useFlatStore = create((set, get) => ({
     const stair = flat?.stairs.find((s) => s.id === id);
     if (!stair) return false;
     const next = { ...stair };
-    if (patch.type) next.type = ['straight', 'L', 'U'].includes(patch.type) ? patch.type : next.type;
+    if (patch.type)
+      next.type = ['straight', 'L', 'U'].includes(patch.type) ? patch.type : next.type;
     if (patch.widthCm !== undefined) {
       const [lo, hi] = STAIR_LIMITS.widthCm;
       next.widthCm = Math.max(lo, Math.min(hi, Math.round(patch.widthCm)));
     }
-    if (patch.rotationDeg !== undefined) next.rotationDeg = ((Math.round(patch.rotationDeg / 90) * 90) % 360 + 360) % 360;
+    if (patch.rotationDeg !== undefined)
+      next.rotationDeg = (((Math.round(patch.rotationDeg / 90) * 90) % 360) + 360) % 360;
     if (patch.riseCm !== undefined) {
       const [lo, hi] = STAIR_LIMITS.riseCm;
       next.riseCm = Math.max(lo, Math.min(hi, Math.round(patch.riseCm)));
@@ -371,13 +398,19 @@ export const useFlatStore = create((set, get) => ({
     if (JSON.stringify(next) === JSON.stringify(stair)) return true;
     // Footprint is read here so a bad value fails loudly in tests
     stairFootprint(next);
-    return get()._apply({ flat: { ...flat, stairs: flat.stairs.map((s) => (s.id === id ? next : s)) }, rooms }, {});
+    return get()._apply(
+      { flat: { ...flat, stairs: flat.stairs.map((s) => (s.id === id ? next : s)) }, rooms },
+      {}
+    );
   },
 
   removeStair: (id) => {
     const { flat, rooms } = get();
     if (!flat) return;
-    get()._apply({ flat: { ...flat, stairs: flat.stairs.filter((s) => s.id !== id) }, rooms }, { selected: null });
+    get()._apply(
+      { flat: { ...flat, stairs: flat.stairs.filter((s) => s.id !== id) }, rooms },
+      { selected: null }
+    );
   },
 
   /** Deletes whatever is selected (wall run, door or window, staircase). */

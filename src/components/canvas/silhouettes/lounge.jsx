@@ -16,7 +16,14 @@ export function SofaLSilhouette({ widthCm, depthCm, hw, hd, color, cushionColor 
         strokeWidth="1.2"
         strokeLinejoin="round"
       />
-      <rect x={-hw + armW} y={-hd} width={widthCm - armW} height={backH} rx={3} fill={cushionColor} />
+      <rect
+        x={-hw + armW}
+        y={-hd}
+        width={widthCm - armW}
+        height={backH}
+        rx={3}
+        fill={cushionColor}
+      />
       <rect x={-hw} y={-hd} width={armW} height={mainD} rx={4} fill={cushionColor} />
       <rect x={hw - armW} y={-hd} width={armW} height={depthCm} rx={4} fill={cushionColor} />
       {Array.from({ length: seats }).map((_, idx) => (
@@ -51,10 +58,27 @@ export function BeanBagSilhouette({ hw, hd, color, cushionColor }) {
   return (
     <g>
       <ellipse cx={0} cy={0} rx={hw} ry={hd} fill={color} stroke="#2B2B2B" strokeWidth="1.2" />
-      <ellipse cx={0} cy={hd * 0.08} rx={hw * 0.7} ry={hd * 0.66} fill={cushionColor} opacity="0.7" />
+      <ellipse
+        cx={0}
+        cy={hd * 0.08}
+        rx={hw * 0.7}
+        ry={hd * 0.66}
+        fill={cushionColor}
+        opacity="0.7"
+      />
       {/* Slumped crease lines */}
-      <path d={`M ${-hw * 0.5} ${-hd * 0.2} Q 0 ${hd * 0.15} ${hw * 0.5} ${-hd * 0.2}`} fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="1" />
-      <path d={`M ${-hw * 0.35} ${hd * 0.25} Q 0 ${hd * 0.5} ${hw * 0.35} ${hd * 0.25}`} fill="none" stroke="rgba(0,0,0,0.2)" strokeWidth="0.8" />
+      <path
+        d={`M ${-hw * 0.5} ${-hd * 0.2} Q 0 ${hd * 0.15} ${hw * 0.5} ${-hd * 0.2}`}
+        fill="none"
+        stroke="rgba(0,0,0,0.25)"
+        strokeWidth="1"
+      />
+      <path
+        d={`M ${-hw * 0.35} ${hd * 0.25} Q 0 ${hd * 0.5} ${hw * 0.35} ${hd * 0.25}`}
+        fill="none"
+        stroke="rgba(0,0,0,0.2)"
+        strokeWidth="0.8"
+      />
     </g>
   );
 }
@@ -65,7 +89,16 @@ export function BenchSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
   const endW = widthCm * 0.05;
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} stroke="#2B2117" strokeWidth="1.2" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={2}
+        fill={color}
+        stroke="#2B2117"
+        strokeWidth="1.2"
+      />
       {/* Seat slats */}
       {Array.from({ length: slats - 1 }).map((_, idx) => (
         <line
@@ -79,8 +112,22 @@ export function BenchSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
         />
       ))}
       {/* End frames */}
-      <rect x={-hw + 2} y={-hd + 1} width={endW} height={Math.max(0, depthCm - 2)} fill={subColor} opacity="0.7" />
-      <rect x={hw - 2 - endW} y={-hd + 1} width={endW} height={Math.max(0, depthCm - 2)} fill={subColor} opacity="0.7" />
+      <rect
+        x={-hw + 2}
+        y={-hd + 1}
+        width={endW}
+        height={Math.max(0, depthCm - 2)}
+        fill={subColor}
+        opacity="0.7"
+      />
+      <rect
+        x={hw - 2 - endW}
+        y={-hd + 1}
+        width={endW}
+        height={Math.max(0, depthCm - 2)}
+        fill={subColor}
+        opacity="0.7"
+      />
     </g>
   );
 }

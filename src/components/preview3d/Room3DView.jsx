@@ -233,7 +233,13 @@ export function Room3DView() {
       <div className={styles.controls} role="toolbar" aria-label="3D view controls">
         {!walking && (
           <>
-            <Segmented ariaLabel="Lighting" options={LIGHT_OPTIONS} value={lighting} onChange={setLighting} className={styles.compactSeg} />
+            <Segmented
+              ariaLabel="Lighting"
+              options={LIGHT_OPTIONS}
+              value={lighting}
+              onChange={setLighting}
+              className={styles.compactSeg}
+            />
             <Segmented
               ariaLabel="Walls"
               options={WALL_OPTIONS}
@@ -261,7 +267,9 @@ export function Room3DView() {
           aria-label={walking ? 'Leave walkthrough' : 'Walk through the room'}
           title={walking ? 'Leave walkthrough' : 'Walk through the room'}
         >
-          <span className={walking ? undefined : styles.controlText}>{walking ? 'Leave walkthrough' : 'Walk through'}</span>
+          <span className={walking ? undefined : styles.controlText}>
+            {walking ? 'Leave walkthrough' : 'Walk through'}
+          </span>
         </Button>
       </div>
     </div>

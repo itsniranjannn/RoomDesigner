@@ -22,7 +22,14 @@ import {
   removeEdges,
   openingFitsWalls,
 } from './flatWalls.js';
-import { SPACE_KINDS, buildBlankRoom, furnishRoomRecord, uid, FLAT_VERSION, stairRect } from './flat.js';
+import {
+  SPACE_KINDS,
+  buildBlankRoom,
+  furnishRoomRecord,
+  uid,
+  FLAT_VERSION,
+  stairRect,
+} from './flat.js';
 
 const NO_ITEMS = [];
 
@@ -57,7 +64,14 @@ function roomOpeningsFor(openings, rect) {
   const doors = [];
   const windows = [];
   for (const { op, wall, offsetCm } of boundaryOpenings(openings, rect)) {
-    if (op.type === 'door') doors.push({ id: op.id, wall, offsetCm, widthCm: op.widthCm, swingDirection: op.swing || 'inward-left' });
+    if (op.type === 'door')
+      doors.push({
+        id: op.id,
+        wall,
+        offsetCm,
+        widthCm: op.widthCm,
+        swingDirection: op.swing || 'inward-left',
+      });
     else windows.push({ id: op.id, wall, offsetCm, widthCm: op.widthCm });
   }
   return { doors, windows };
@@ -66,11 +80,19 @@ function roomOpeningsFor(openings, rect) {
 function openingFromRoomItem(item, type, rect) {
   const wall = item.wall || (type === 'door' ? 'bottom' : 'top');
   const horizontal = wall === 'top' || wall === 'bottom';
-  const lineOf = { top: rect.y, bottom: rect.y + rect.depthCm, left: rect.x, right: rect.x + rect.widthCm }[wall];
+  const lineOf = {
+    top: rect.y,
+    bottom: rect.y + rect.depthCm,
+    left: rect.x,
+    right: rect.x + rect.widthCm,
+  }[wall];
   const origin = horizontal ? rect.x : rect.y;
   const len = horizontal ? rect.widthCm : rect.depthCm;
   const widthCm = Math.max(30, Math.min(len, Math.round(item.widthCm)));
-  const start = Math.max(origin, Math.min(origin + len - widthCm, origin + Math.round(item.offsetCm)));
+  const start = Math.max(
+    origin,
+    Math.min(origin + len - widthCm, origin + Math.round(item.offsetCm))
+  );
   const op = { id: item.id, type, axis: horizontal ? 'h' : 'v', line: lineOf, start, widthCm };
   if (type === 'door' && item.swingDirection) op.swing = item.swingDirection;
   return op;
@@ -89,7 +111,10 @@ const spaceRuns = (s) => {
   return runs;
 };
 
-const spaceCells = (s) => (s.runs ? s.runs.reduce((n, [, a, b]) => n + (b - a), 0) : Math.round((s.widthCm * s.depthCm) / (CELL * CELL)));
+const spaceCells = (s) =>
+  s.runs
+    ? s.runs.reduce((n, [, a, b]) => n + (b - a), 0)
+    : Math.round((s.widthCm * s.depthCm) / (CELL * CELL));
 
 function refitRoom(room, space, openings, flatId) {
   const rect = { x: space.x, y: space.y, widthCm: space.widthCm, depthCm: space.depthCm };
@@ -195,7 +220,14 @@ export function reconcile(flat, rooms = {}) {
       if (region.rect) {
         let room = space.roomId ? nextRooms[space.roomId] : null;
         if (!room) {
-          room = buildBlankRoom({ kind: space.kind, name: space.name, widthCm: space.widthCm, depthCm: space.depthCm, flatId: flat.id, spaceId: space.id });
+          room = buildBlankRoom({
+            kind: space.kind,
+            name: space.name,
+            widthCm: space.widthCm,
+            depthCm: space.depthCm,
+            flatId: flat.id,
+            spaceId: space.id,
+          });
           space.roomId = room.id;
           space.roomX = space.x;
           space.roomY = space.y;
@@ -249,7 +281,12 @@ export function addOpening(flat, rooms, levelId, op) {
 }
 
 export function removeOpening(flat, rooms, levelId, openingId) {
-  return setLevelOpenings(flat, rooms, levelId, openingsOf(flat, levelId).filter((o) => o.id !== openingId));
+  return setLevelOpenings(
+    flat,
+    rooms,
+    levelId,
+    openingsOf(flat, levelId).filter((o) => o.id !== openingId)
+  );
 }
 
 export function updateOpening(flat, rooms, levelId, openingId, patch) {
@@ -260,10 +297,20 @@ export function updateOpening(flat, rooms, levelId, openingId, patch) {
   const next = { ...old, ...patch };
   if (!openingFitsWalls(edges, next)) return null;
   const clash = list.some(
-    (o) => o.id !== openingId && o.axis === next.axis && o.line === next.line && o.start < next.start + next.widthCm && next.start < o.start + o.widthCm
+    (o) =>
+      o.id !== openingId &&
+      o.axis === next.axis &&
+      o.line === next.line &&
+      o.start < next.start + next.widthCm &&
+      next.start < o.start + o.widthCm
   );
   if (clash) return null;
-  return setLevelOpenings(flat, rooms, levelId, list.map((o) => (o.id === openingId ? next : o)));
+  return setLevelOpenings(
+    flat,
+    rooms,
+    levelId,
+    list.map((o) => (o.id === openingId ? next : o))
+  );
 }
 
 export function setSpaceMeta(flat, rooms, spaceId, { name, kind }) {
@@ -273,7 +320,8 @@ export function setSpaceMeta(flat, rooms, spaceId, { name, kind }) {
   const nextKind = kind && SPACE_KINDS[kind] ? kind : space.kind;
   const updated = { ...space, name: nextName, kind: nextKind };
   const nextRooms = { ...rooms };
-  if (space.roomId && rooms[space.roomId]) nextRooms[space.roomId] = { ...rooms[space.roomId], name: nextName, kind: nextKind };
+  if (space.roomId && rooms[space.roomId])
+    nextRooms[space.roomId] = { ...rooms[space.roomId], name: nextName, kind: nextKind };
   return {
     flat: { ...flat, spaces: flat.spaces.map((s) => (s.id === spaceId ? updated : s)) },
     rooms: nextRooms,
@@ -308,7 +356,13 @@ export function syncRoomToFlat(flat, rooms, spaceId, editedRoom) {
   const kept = openings.filter((o) => !onBoundary.has(o.id));
   const merged = [...kept];
   for (const op of fromRoom) {
-    const clash = merged.some((o) => o.axis === op.axis && o.line === op.line && o.start < op.start + op.widthCm && op.start < o.start + o.widthCm);
+    const clash = merged.some(
+      (o) =>
+        o.axis === op.axis &&
+        o.line === op.line &&
+        o.start < op.start + op.widthCm &&
+        op.start < o.start + o.widthCm
+    );
     if (!clash) merged.push(op);
   }
   const nextRooms = { ...rooms, [editedRoom.id]: { ...rooms[editedRoom.id], ...editedRoom } };
@@ -323,10 +377,15 @@ export function stairWarnings(flat, stair) {
   const rect = stairRect(stair);
   const edges = levelEdges(flat, stair.levelId);
   if (edges.size > 0) {
-    if (wallsCrossRect(edges, rect)) warnings.push('This staircase runs through a wall. Move it or open the wall.');
+    if (wallsCrossRect(edges, rect))
+      warnings.push('This staircase runs through a wall. Move it or open the wall.');
     const analysis = analyzeLevel(flat, stair.levelId);
     const inside = analysis.regions.some(
-      (r) => rect.x < r.x + r.widthCm && r.x < rect.x + rect.widthCm && rect.y < r.y + r.depthCm && r.y < rect.y + rect.depthCm
+      (r) =>
+        rect.x < r.x + r.widthCm &&
+        r.x < rect.x + rect.widthCm &&
+        rect.y < r.y + r.depthCm &&
+        r.y < rect.y + rect.depthCm
     );
     if (!inside) warnings.push('This staircase is outside every room.');
   }
@@ -340,7 +399,8 @@ export function stairWarnings(flat, stair) {
  * walls (shared sides merge) and its room record keeps its doors and windows.
  */
 export function migrateFlat(flat, rooms = {}) {
-  if (flat.walls && flat.version >= FLAT_VERSION) return { flat, rooms, removedRoomIds: [], migrated: false };
+  if (flat.walls && flat.version >= FLAT_VERSION)
+    return { flat, rooms, removedRoomIds: [], migrated: false };
   const snap = (v) => Math.round(v / CELL) * CELL;
   const walls = {};
   const openings = {};
@@ -359,10 +419,19 @@ export function migrateFlat(flat, rooms = {}) {
       const room = rooms[s.roomId];
       if (!room) continue;
       const rect = { x: x0, y: y0, widthCm: x1 - x0, depthCm: y1 - y0 };
-      for (const [list, type] of [[room.doors, 'door'], [room.windows, 'window']]) {
+      for (const [list, type] of [
+        [room.doors, 'door'],
+        [room.windows, 'window'],
+      ]) {
         for (const item of list || []) {
           const op = openingFromRoomItem(item, type, rect);
-          const clash = ops.some((o) => o.axis === op.axis && o.line === op.line && o.start < op.start + op.widthCm && op.start < o.start + o.widthCm);
+          const clash = ops.some(
+            (o) =>
+              o.axis === op.axis &&
+              o.line === op.line &&
+              o.start < op.start + op.widthCm &&
+              op.start < o.start + o.widthCm
+          );
           if (!clash) ops.push(op);
         }
       }

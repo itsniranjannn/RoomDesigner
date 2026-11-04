@@ -30,17 +30,7 @@ export function WardrobeSilhouette({ widthCm, depthCm, hw, hd, color, handleColo
       {/* Door panel divisions */}
       {Array.from({ length: numDoors - 1 }).map((_, idx) => {
         const dx = -hw + (idx + 1) * doorW;
-        return (
-          <line
-            key={idx}
-            x1={dx}
-            y1={-hd}
-            x2={dx}
-            y2={hd}
-            stroke="#2B2620"
-            strokeWidth="1"
-          />
-        );
+        return <line key={idx} x1={dx} y1={-hd} x2={dx} y2={hd} stroke="#2B2620" strokeWidth="1" />;
       })}
 
       {/* Vertical Door Pulls */}
@@ -78,14 +68,7 @@ export function BookshelfSilhouette({ widthCm, depthCm, hw, hd, color }) {
       />
 
       {/* Back panel inset */}
-      <line
-        x1={-hw + 3}
-        y1={-hd + 3}
-        x2={hw - 3}
-        y2={-hd + 3}
-        stroke="#241910"
-        strokeWidth="1.5"
-      />
+      <line x1={-hw + 3} y1={-hd + 3} x2={hw - 3} y2={-hd + 3} stroke="#241910" strokeWidth="1.5" />
 
       {/* Colorful Book Spine Blocks along the shelf */}
       <g transform={`translate(${-hw + 8}, ${-hd + 6})`}>
@@ -120,14 +103,7 @@ export function ChestDrawersSilhouette({ widthCm, depthCm, hw, hd, color, handle
         return (
           <g key={idx}>
             {idx > 0 && (
-              <line
-                x1={-hw}
-                y1={dy}
-                x2={hw}
-                y2={dy}
-                stroke="#2B2117"
-                strokeWidth="0.8"
-              />
+              <line x1={-hw} y1={dy} x2={hw} y2={dy} stroke="#2B2117" strokeWidth="0.8" />
             )}
             <line
               x1={-14}
@@ -150,28 +126,102 @@ export function SideboardSilhouette({ widthCm, depthCm, hw, hd, color, subColor,
   const doorW = widthCm / numDoors;
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke="#2D1C10" strokeWidth="1.2" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={3}
+        fill={color}
+        stroke="#2D1C10"
+        strokeWidth="1.2"
+      />
       {Array.from({ length: numDoors - 1 }).map((_, i) => (
-        <line key={i} x1={-hw + (i + 1) * doorW} y1={-hd} x2={-hw + (i + 1) * doorW} y2={hd} stroke="#3D2817" strokeWidth="1" />
+        <line
+          key={i}
+          x1={-hw + (i + 1) * doorW}
+          y1={-hd}
+          x2={-hw + (i + 1) * doorW}
+          y2={hd}
+          stroke="#3D2817"
+          strokeWidth="1"
+        />
       ))}
       {Array.from({ length: numDoors }).map((_, i) => (
-        <rect key={i} x={-hw + (i + 0.5) * doorW - 6} y={hd - 5} width={12} height={2} rx={0.5} fill={handleColor} />
+        <rect
+          key={i}
+          x={-hw + (i + 0.5) * doorW - 6}
+          y={hd - 5}
+          width={12}
+          height={2}
+          rx={0.5}
+          fill={handleColor}
+        />
       ))}
-      <ellipse cx={0} cy={0} rx={widthCm * 0.25} ry={depthCm * 0.2} fill={subColor} stroke="#A88B68" strokeWidth="0.6" />
+      <ellipse
+        cx={0}
+        cy={0}
+        rx={widthCm * 0.25}
+        ry={depthCm * 0.2}
+        fill={subColor}
+        stroke="#A88B68"
+        strokeWidth="0.6"
+      />
     </g>
   );
 }
 
-export function VanityDresserSilhouette({ widthCm, depthCm, hw, hd, color, subColor, handleColor }) {
+export function VanityDresserSilhouette({
+  widthCm,
+  depthCm,
+  hw,
+  hd,
+  color,
+  subColor,
+  handleColor,
+}) {
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke="#3D2B1C" strokeWidth="1.2" />
-      <line x1={-hw * 0.7} y1={-hd + 3} x2={hw * 0.7} y2={-hd + 3} stroke="#C4A869" strokeWidth="2.5" />
-      <ellipse cx={0} cy={-hd + 5} rx={widthCm * 0.3} ry={4} fill="#B0D3E2" stroke="#759FB0" strokeWidth="0.8" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={3}
+        fill={color}
+        stroke="#3D2B1C"
+        strokeWidth="1.2"
+      />
+      <line
+        x1={-hw * 0.7}
+        y1={-hd + 3}
+        x2={hw * 0.7}
+        y2={-hd + 3}
+        stroke="#C4A869"
+        strokeWidth="2.5"
+      />
+      <ellipse
+        cx={0}
+        cy={-hd + 5}
+        rx={widthCm * 0.3}
+        ry={4}
+        fill="#B0D3E2"
+        stroke="#759FB0"
+        strokeWidth="0.8"
+      />
       <line x1={0} y1={-hd + 8} x2={0} y2={hd - 4} stroke="#4A3728" strokeWidth="1" />
       <rect x={-hw * 0.4 - 6} y={hd - 6} width={12} height={2.5} rx={1} fill={handleColor} />
       <rect x={hw * 0.4 - 6} y={hd - 6} width={12} height={2.5} rx={1} fill={handleColor} />
-      <rect x={-hw * 0.4} y={-hd * 0.2} width={widthCm * 0.35} height={depthCm * 0.4} rx={2} fill={subColor} stroke="#A88B68" strokeWidth="0.6" />
+      <rect
+        x={-hw * 0.4}
+        y={-hd * 0.2}
+        width={widthCm * 0.35}
+        height={depthCm * 0.4}
+        rx={2}
+        fill={subColor}
+        stroke="#A88B68"
+        strokeWidth="0.6"
+      />
     </g>
   );
 }
@@ -222,10 +272,28 @@ export function CredenzaSilhouette({ widthCm, depthCm, hw, hd, color }) {
 export function PantryCabinetSilhouette({ widthCm, depthCm, hw, hd, color, handleColor }) {
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} stroke="#222B24" strokeWidth="1.2" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={2}
+        fill={color}
+        stroke="#222B24"
+        strokeWidth="1.2"
+      />
       <line x1={0} y1={-hd} x2={0} y2={hd} stroke="#222B24" strokeWidth="1.2" />
       {[-hd * 0.5, 0, hd * 0.5].map((sy, i) => (
-        <line key={i} x1={-hw + 4} y1={sy} x2={hw - 4} y2={sy} stroke="rgba(255,255,255,0.25)" strokeWidth="0.8" strokeDasharray="2 3" />
+        <line
+          key={i}
+          x1={-hw + 4}
+          y1={sy}
+          x2={hw - 4}
+          y2={sy}
+          stroke="rgba(255,255,255,0.25)"
+          strokeWidth="0.8"
+          strokeDasharray="2 3"
+        />
       ))}
       <rect x={-4} y={-8} width={2} height={16} rx={0.5} fill={handleColor} />
       <rect x={2} y={-8} width={2} height={16} rx={0.5} fill={handleColor} />
@@ -234,5 +302,29 @@ export function PantryCabinetSilhouette({ widthCm, depthCm, hw, hd, color, handl
 }
 
 export function TvSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
-  return <g><rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} stroke="#080909" strokeWidth="1.2" /><rect x={-hw + 5} y={-hd + 3} width={Math.max(0, widthCm - 10)} height={Math.max(0, depthCm - 7)} fill="#293B4A" stroke={subColor} strokeWidth="1" /><line x1={0} y1={hd} x2={0} y2={hd + 7} stroke="#080909" strokeWidth="2" /><line x1={-12} y1={hd + 7} x2={12} y2={hd + 7} stroke="#080909" strokeWidth="2" /></g>;
+  return (
+    <g>
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={2}
+        fill={color}
+        stroke="#080909"
+        strokeWidth="1.2"
+      />
+      <rect
+        x={-hw + 5}
+        y={-hd + 3}
+        width={Math.max(0, widthCm - 10)}
+        height={Math.max(0, depthCm - 7)}
+        fill="#293B4A"
+        stroke={subColor}
+        strokeWidth="1"
+      />
+      <line x1={0} y1={hd} x2={0} y2={hd + 7} stroke="#080909" strokeWidth="2" />
+      <line x1={-12} y1={hd + 7} x2={12} y2={hd + 7} stroke="#080909" strokeWidth="2" />
+    </g>
+  );
 }

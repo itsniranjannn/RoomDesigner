@@ -11,11 +11,30 @@ import { FURNITURE_CATALOG, getFurnitureType } from '../../data/furnitureCatalog
 import styles from './Tools.module.css';
 
 const PRESETS = {
-  Bedroom: { 'bed-queen': 1, nightstand: 2, 'wardrobe-2door': 1, 'chest-drawers': 1, 'rug-living': 1 },
-  'Living room': { 'sofa-3seat': 1, armchair: 2, 'coffee-table': 1, 'media-console': 1, 'tv-43': 1, 'rug-living': 1, 'floor-plant': 1 },
+  Bedroom: {
+    'bed-queen': 1,
+    nightstand: 2,
+    'wardrobe-2door': 1,
+    'chest-drawers': 1,
+    'rug-living': 1,
+  },
+  'Living room': {
+    'sofa-3seat': 1,
+    armchair: 2,
+    'coffee-table': 1,
+    'media-console': 1,
+    'tv-43': 1,
+    'rug-living': 1,
+    'floor-plant': 1,
+  },
   Dining: { 'dining-table-large': 1, 'dining-chair': 6, 'sideboard-buffet': 1 },
   Study: { 'desk-executive': 1, 'desk-chair': 1, bookshelf: 2, 'floor-lamp': 1 },
-  'Nepali sitting room': { 'nepali-dhaka-rug': 1, 'nepali-pirka': 3, 'nepali-chowki': 1, 'nepali-puja-mandir': 1 },
+  'Nepali sitting room': {
+    'nepali-dhaka-rug': 1,
+    'nepali-pirka': 3,
+    'nepali-chowki': 1,
+    'nepali-puja-mandir': 1,
+  },
 };
 
 const MODE_OPTIONS = [
@@ -69,8 +88,15 @@ export function LayoutModal({ onClose }) {
       size="md"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" icon={<Wand2 size={16} />} onClick={handleApply} disabled={total === 0}>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            variant="primary"
+            icon={<Wand2 size={16} />}
+            onClick={handleApply}
+            disabled={total === 0}
+          >
             Arrange {total} {total === 1 ? 'piece' : 'pieces'}
           </Button>
         </>
@@ -100,7 +126,9 @@ export function LayoutModal({ onClose }) {
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>Pieces ({total})</h3>
         {total === 0 ? (
-          <p className={styles.emptyList}>No pieces yet. Pick a starting set or add a piece below.</p>
+          <p className={styles.emptyList}>
+            No pieces yet. Pick a starting set or add a piece below.
+          </p>
         ) : (
           <ul className={styles.pieceList}>
             {Object.entries(counts).map(([id, n]) => {
@@ -109,9 +137,15 @@ export function LayoutModal({ onClose }) {
                 <li key={id} className={styles.pieceItem}>
                   <span className={styles.pieceName}>{name}</span>
                   <span className={styles.stepper}>
-                    <IconButton label={`Fewer ${name}`} onClick={() => setCount(id, -1)}><Minus size={16} /></IconButton>
-                    <span className={styles.stepCount} aria-live="polite">{n}</span>
-                    <IconButton label={`More ${name}`} onClick={() => setCount(id, 1)}><Plus size={16} /></IconButton>
+                    <IconButton label={`Fewer ${name}`} onClick={() => setCount(id, -1)}>
+                      <Minus size={16} />
+                    </IconButton>
+                    <span className={styles.stepCount} aria-live="polite">
+                      {n}
+                    </span>
+                    <IconButton label={`More ${name}`} onClick={() => setCount(id, 1)}>
+                      <Plus size={16} />
+                    </IconButton>
                   </span>
                 </li>
               );
@@ -128,14 +162,21 @@ export function LayoutModal({ onClose }) {
 
       <div className={styles.section}>
         <h3 className={styles.sectionTitle}>When arranging</h3>
-        <Segmented ariaLabel="When arranging" options={MODE_OPTIONS} value={mode} onChange={setMode} fill />
+        <Segmented
+          ariaLabel="When arranging"
+          options={MODE_OPTIONS}
+          value={mode}
+          onChange={setMode}
+          fill
+        />
         <p>You can undo this with Ctrl+Z.</p>
       </div>
 
       {result && result.unplaced.length > 0 && (
         <Notice kind="warn">
           {result.placed} placed. {result.unplaced.length} did not fit:{' '}
-          {result.unplaced.map((id) => getFurnitureType(id)?.name || id).join(', ')}. Try a larger room or fewer pieces.
+          {result.unplaced.map((id) => getFurnitureType(id)?.name || id).join(', ')}. Try a larger
+          room or fewer pieces.
         </Notice>
       )}
     </Modal>

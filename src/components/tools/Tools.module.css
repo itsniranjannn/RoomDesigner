@@ -26,7 +26,9 @@
   color: var(--color-ink-muted);
   background: var(--color-linen-surface);
   border-radius: 999px;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast);
 }
 
 .chip:hover {
@@ -156,7 +158,9 @@
 }
 
 @media (max-width: 640px) {
-  .shortcutGrid { grid-template-columns: 1fr; }
+  .shortcutGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .keyList {

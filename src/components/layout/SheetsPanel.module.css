@@ -22,8 +22,14 @@
 }
 
 @keyframes slideIn {
-  from { transform: translateX(32px); opacity: 0; }
-  to { transform: none; opacity: 1; }
+  from {
+    transform: translateX(32px);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
 }
 
 .header {
@@ -144,5 +150,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .panel { animation: none; }
+  .panel {
+    animation: none;
+  }
 }

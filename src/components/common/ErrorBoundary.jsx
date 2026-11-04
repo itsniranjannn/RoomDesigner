@@ -32,8 +32,12 @@ export class ErrorBoundary extends React.Component {
           <BrandMark size={36} />
           <p className={styles.eyebrow}>Room Designer Studio</p>
           <h1 className={styles.title}>Something went wrong</h1>
-          <p className={styles.text}>Your saved rooms are safe. Reload the page to carry on designing.</p>
-          <Button variant="primary" onClick={() => window.location.reload()}>Reload page</Button>
+          <p className={styles.text}>
+            Your saved rooms are safe. Reload the page to carry on designing.
+          </p>
+          <Button variant="primary" onClick={() => window.location.reload()}>
+            Reload page
+          </Button>
         </section>
       </div>
     );

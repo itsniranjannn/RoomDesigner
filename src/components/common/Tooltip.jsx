@@ -6,7 +6,9 @@ export function Tooltip({ label, side = 'right', children }) {
   return (
     <span className={styles.wrap}>
       {children}
-      <span className={`${styles.tip} ${styles[side] || styles.right}`} aria-hidden="true">{label}</span>
+      <span className={`${styles.tip} ${styles[side] || styles.right}`} aria-hidden="true">
+        {label}
+      </span>
     </span>
   );
 }

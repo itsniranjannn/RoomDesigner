@@ -117,7 +117,12 @@ export function RugRunnerModel({ def, widthM, depthM, mainColor }) {
             <meshStandardMaterial color={subCol} roughness={0.8} />
           </mesh>
           {/* Ruby Crimson Inner Diamond */}
-          <mesh receiveShadow position={[0, 0.0006, 0]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} rotationOrder="ZXY">
+          <mesh
+            receiveShadow
+            position={[0, 0.0006, 0]}
+            rotation={[-Math.PI / 2, 0, Math.PI / 4]}
+            rotationOrder="ZXY"
+          >
             <planeGeometry args={[widthM * 0.26, widthM * 0.26]} />
             <meshStandardMaterial color={accCol} roughness={0.85} />
           </mesh>
@@ -150,7 +155,16 @@ export function NepaliDhakaRugModel({ widthM, depthM, heightM, mainColor, accent
         <meshStandardMaterial color={mainColor} roughness={0.95} />
       </mesh>
       {Array.from({ length: cols * rows }).map((_, i) => (
-        <mesh key={i} position={[(i % cols + 0.5) * widthM / cols - widthM / 2, heightM + 0.002, (Math.floor(i / cols) + 0.5) * depthM / rows - depthM / 2]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+        <mesh
+          key={i}
+          position={[
+            (((i % cols) + 0.5) * widthM) / cols - widthM / 2,
+            heightM + 0.002,
+            ((Math.floor(i / cols) + 0.5) * depthM) / rows - depthM / 2,
+          ]}
+          rotation={[-Math.PI / 2, 0, Math.PI / 4]}
+          receiveShadow
+        >
           <planeGeometry args={[0.12, 0.12]} />
           <meshStandardMaterial color={i % 2 ? accentColor : subColor} roughness={0.9} />
         </mesh>

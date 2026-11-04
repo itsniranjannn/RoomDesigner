@@ -10,7 +10,11 @@ export function useMediaQuery(query) {
     },
     [query]
   );
-  return useSyncExternalStore(subscribe, () => window.matchMedia(query).matches, () => false);
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => false
+  );
 }
 
 /** Boolean kept in localStorage so panel layout survives reloads. */

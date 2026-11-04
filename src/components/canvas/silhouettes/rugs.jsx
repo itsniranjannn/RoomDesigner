@@ -115,9 +115,26 @@ export function RugRunnerSilhouette({ widthCm, depthCm, hw, hd, color, subColor 
   return (
     <g>
       {/* Indigo Field */}
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color || '#1E2D42'} stroke="#101824" strokeWidth="1" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={2}
+        fill={color || '#1E2D42'}
+        stroke="#101824"
+        strokeWidth="1"
+      />
       {/* Gold Inner Border */}
-      <rect x={-hw + b1} y={-hd + b1} width={widthCm - b1 * 2} height={depthCm - b1 * 2} fill="none" stroke={subColor || '#C49746'} strokeWidth="1.2" />
+      <rect
+        x={-hw + b1}
+        y={-hd + b1}
+        width={widthCm - b1 * 2}
+        height={depthCm - b1 * 2}
+        fill="none"
+        stroke={subColor || '#C49746'}
+        strokeWidth="1.2"
+      />
       {/* Repeating Center Diamonds along runner */}
       {[-hd * 0.6, -hd * 0.2, hd * 0.2, hd * 0.6].map((cy, i) => (
         <g key={i}>
@@ -136,24 +153,65 @@ export function RugRunnerSilhouette({ widthCm, depthCm, hw, hd, color, subColor 
       ))}
       {/* Top and Bottom Fringes */}
       {[-hd, hd].map((fy, i) => (
-        <line key={i} x1={-hw + 2} y1={fy} x2={hw - 2} y2={fy} stroke="#FAF6EE" strokeWidth="1.8" strokeDasharray="2 2" />
+        <line
+          key={i}
+          x1={-hw + 2}
+          y1={fy}
+          x2={hw - 2}
+          y2={fy}
+          stroke="#FAF6EE"
+          strokeWidth="1.8"
+          strokeDasharray="2 2"
+        />
       ))}
     </g>
   );
 }
 
-export function NepaliDhakaRugSilhouette({ widthCm, depthCm, hw, hd, color, accentColor, subColor }) {
+export function NepaliDhakaRugSilhouette({
+  widthCm,
+  depthCm,
+  hw,
+  hd,
+  color,
+  accentColor,
+  subColor,
+}) {
   const cols = Math.max(4, Math.floor(widthCm / 28));
   const rows = Math.max(4, Math.floor(depthCm / 28));
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke={accentColor} strokeWidth="2" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={3}
+        fill={color}
+        stroke={accentColor}
+        strokeWidth="2"
+      />
       {Array.from({ length: cols * rows }).map((_, i) => {
         const x = -hw + ((i % cols) + 0.5) * (widthCm / cols);
         const y = -hd + (Math.floor(i / cols) + 0.5) * (depthCm / rows);
-        return <path key={i} d={`M ${x - 6} ${y} L ${x} ${y - 6} L ${x + 6} ${y} L ${x} ${y + 6} Z`} fill={i % 2 ? subColor : accentColor} opacity="0.9" />;
+        return (
+          <path
+            key={i}
+            d={`M ${x - 6} ${y} L ${x} ${y - 6} L ${x + 6} ${y} L ${x} ${y + 6} Z`}
+            fill={i % 2 ? subColor : accentColor}
+            opacity="0.9"
+          />
+        );
       })}
-      <rect x={-hw + 5} y={-hd + 5} width={widthCm - 10} height={depthCm - 10} fill="none" stroke={subColor} strokeWidth="2" />
+      <rect
+        x={-hw + 5}
+        y={-hd + 5}
+        width={widthCm - 10}
+        height={depthCm - 10}
+        fill="none"
+        stroke={subColor}
+        strokeWidth="2"
+      />
     </g>
   );
 }

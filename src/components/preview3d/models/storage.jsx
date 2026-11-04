@@ -38,11 +38,7 @@ export function WardrobeModel({ widthM, depthM, heightM, mainColor, handleColor 
       {Array.from({ length: numDoors }).map((_, idx) => {
         const hx = -widthM / 2 + idx * doorW + doorW / 2;
         return (
-          <mesh
-            key={`handle-${idx}`}
-            position={[hx, heightM * 0.5, depthM / 2 + 0.02]}
-            castShadow
-          >
+          <mesh key={`handle-${idx}`} position={[hx, heightM * 0.5, depthM / 2 + 0.02]} castShadow>
             <boxGeometry args={[0.012, 0.32, 0.018]} />
             <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.75} />
           </mesh>
@@ -203,8 +199,17 @@ export function VanityDresserModel({ widthM, depthM, heightM, mainColor, legColo
         <boxGeometry args={[widthM, bodyH - legH, depthM]} />
         <meshStandardMaterial color={mainColor} roughness={0.7} />
       </mesh>
-      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([sx, sz], i) => (
-        <mesh key={i} position={[sx * (widthM / 2 - 0.06), legH / 2, sz * (depthM / 2 - 0.06)]} castShadow>
+      {[
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ].map(([sx, sz], i) => (
+        <mesh
+          key={i}
+          position={[sx * (widthM / 2 - 0.06), legH / 2, sz * (depthM / 2 - 0.06)]}
+          castShadow
+        >
           <boxGeometry args={[0.04, legH, 0.04]} />
           <meshStandardMaterial color={legColor} roughness={0.5} />
         </mesh>
@@ -215,14 +220,26 @@ export function VanityDresserModel({ widthM, depthM, heightM, mainColor, legColo
         const fronts = row === 1 ? [0] : [-0.25, 0.25];
         return fronts.map((fx) => (
           <group key={`${row}${fx}`}>
-            <mesh position={[widthM * fx, y, depthM / 2 + 0.002]}><boxGeometry args={[row === 1 ? widthM - 0.05 : widthM * 0.47, rowH - 0.012, 0.006]} /><meshStandardMaterial color={mainColor} roughness={0.55} /></mesh>
-            <mesh position={[widthM * fx, y, depthM / 2 + 0.014]} castShadow><boxGeometry args={[0.1, 0.016, 0.018]} /><meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.8} /></mesh>
+            <mesh position={[widthM * fx, y, depthM / 2 + 0.002]}>
+              <boxGeometry
+                args={[row === 1 ? widthM - 0.05 : widthM * 0.47, rowH - 0.012, 0.006]}
+              />
+              <meshStandardMaterial color={mainColor} roughness={0.55} />
+            </mesh>
+            <mesh position={[widthM * fx, y, depthM / 2 + 0.014]} castShadow>
+              <boxGeometry args={[0.1, 0.016, 0.018]} />
+              <meshStandardMaterial color={handleColor} roughness={0.3} metalness={0.8} />
+            </mesh>
           </group>
         ));
       })}
       {/* Round mirror in a brass bezel, held by two uprights */}
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * mirrorR * 0.5, bodyH + (mirrorY - bodyH) / 2, mirrorZ]} castShadow>
+        <mesh
+          key={s}
+          position={[s * mirrorR * 0.5, bodyH + (mirrorY - bodyH) / 2, mirrorZ]}
+          castShadow
+        >
           <cylinderGeometry args={[0.012, 0.012, mirrorY - bodyH, 10]} />
           <meshStandardMaterial color={handleColor} metalness={0.85} roughness={0.25} />
         </mesh>
@@ -299,12 +316,30 @@ export function TvModel({ widthM, depthM, heightM, mainColor }) {
   return (
     <group>
       {/* Slim bezel panel with the screen set into its front face */}
-      <mesh position={[0, panelY + panelH / 2, panelZ]} castShadow receiveShadow><boxGeometry args={[widthM, panelH, panelT]} /><meshStandardMaterial color={mainColor} roughness={0.3} /></mesh>
-      <mesh position={[0, panelY + panelH / 2, panelZ + panelT / 2 + 0.001]}><boxGeometry args={[widthM * 0.95, panelH * 0.92, 0.002]} /><meshStandardMaterial color="#1B2D3C" roughness={0.12} metalness={0.2} /></mesh>
-      <mesh position={[-widthM * 0.14, panelY + panelH * 0.58, panelZ + panelT / 2 + 0.003]} rotation={[0, 0, -0.5]}><planeGeometry args={[widthM * 0.5, 0.03]} /><meshBasicMaterial color="#FFFFFF" transparent opacity={0.1} /></mesh>
+      <mesh position={[0, panelY + panelH / 2, panelZ]} castShadow receiveShadow>
+        <boxGeometry args={[widthM, panelH, panelT]} />
+        <meshStandardMaterial color={mainColor} roughness={0.3} />
+      </mesh>
+      <mesh position={[0, panelY + panelH / 2, panelZ + panelT / 2 + 0.001]}>
+        <boxGeometry args={[widthM * 0.95, panelH * 0.92, 0.002]} />
+        <meshStandardMaterial color="#1B2D3C" roughness={0.12} metalness={0.2} />
+      </mesh>
+      <mesh
+        position={[-widthM * 0.14, panelY + panelH * 0.58, panelZ + panelT / 2 + 0.003]}
+        rotation={[0, 0, -0.5]}
+      >
+        <planeGeometry args={[widthM * 0.5, 0.03]} />
+        <meshBasicMaterial color="#FFFFFF" transparent opacity={0.1} />
+      </mesh>
       {/* Neck and table-top foot */}
-      <mesh position={[0, panelY / 2 + 0.01, panelZ]} castShadow><boxGeometry args={[widthM * 0.05, panelY, 0.03]} /><meshStandardMaterial color={mainColor} roughness={0.4} /></mesh>
-      <mesh position={[0, footH / 2, 0]} castShadow receiveShadow><boxGeometry args={[widthM * 0.3, footH, depthM]} /><meshStandardMaterial color={mainColor} roughness={0.4} /></mesh>
+      <mesh position={[0, panelY / 2 + 0.01, panelZ]} castShadow>
+        <boxGeometry args={[widthM * 0.05, panelY, 0.03]} />
+        <meshStandardMaterial color={mainColor} roughness={0.4} />
+      </mesh>
+      <mesh position={[0, footH / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[widthM * 0.3, footH, depthM]} />
+        <meshStandardMaterial color={mainColor} roughness={0.4} />
+      </mesh>
     </group>
   );
 }

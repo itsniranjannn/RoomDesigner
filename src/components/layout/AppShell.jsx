@@ -46,8 +46,12 @@ export function AppShell() {
   const inspectorOpen = docked ? inspectorDock : drawer === 'inspector';
   const showInspector = viewMode === '2d';
 
-  const toggleCatalog = () => (docked ? setCatalogDock((v) => !v) : setDrawer((d) => (d === 'catalog' ? null : 'catalog')));
-  const toggleInspector = () => (docked ? setInspectorDock((v) => !v) : setDrawer((d) => (d === 'inspector' ? null : 'inspector')));
+  const toggleCatalog = () =>
+    docked ? setCatalogDock((v) => !v) : setDrawer((d) => (d === 'catalog' ? null : 'catalog'));
+  const toggleInspector = () =>
+    docked
+      ? setInspectorDock((v) => !v)
+      : setDrawer((d) => (d === 'inspector' ? null : 'inspector'));
   const closeDrawer = () => setDrawer(null);
 
   // Escape closes an open drawer
@@ -83,16 +87,25 @@ export function AppShell() {
   const shareDialog = incoming && (
     <Modal
       title={incoming.error ? 'Link could not be opened' : 'Open shared design?'}
-      subtitle={incoming.error || `"${incoming.room.name}" with ${incoming.room.placedFurniture.length} pieces`}
+      subtitle={
+        incoming.error ||
+        `"${incoming.room.name}" with ${incoming.room.placedFurniture.length} pieces`
+      }
       onClose={closeIncoming}
       size="sm"
       footer={
         incoming.error ? (
-          <Button variant="primary" onClick={closeIncoming}>Close</Button>
+          <Button variant="primary" onClick={closeIncoming}>
+            Close
+          </Button>
         ) : (
           <>
-            <Button variant="ghost" onClick={closeIncoming}>Not now</Button>
-            <Button variant="primary" onClick={acceptIncoming}>Open as new room</Button>
+            <Button variant="ghost" onClick={closeIncoming}>
+              Not now
+            </Button>
+            <Button variant="primary" onClick={acceptIncoming}>
+              Open as new room
+            </Button>
           </>
         )
       }
@@ -145,10 +158,7 @@ export function AppShell() {
           onOpenNewFlatModal={() => setIsNewFlatModalOpen(true)}
         />
         {isNewFlatModalOpen && <NewFlatModal onClose={() => setIsNewFlatModalOpen(false)} />}
-        <NewRoomModal
-          isOpen={isNewRoomModalOpen}
-          onClose={() => setIsNewRoomModalOpen(false)}
-        />
+        <NewRoomModal isOpen={isNewRoomModalOpen} onClose={() => setIsNewRoomModalOpen(false)} />
         {shareDialog}
       </>
     );
@@ -163,17 +173,19 @@ export function AppShell() {
           onNavigateAbout={() => setCurrentPage('about')}
         />
         {isNewFlatModalOpen && <NewFlatModal onClose={() => setIsNewFlatModalOpen(false)} />}
-        <NewRoomModal
-          isOpen={isNewRoomModalOpen}
-          onClose={() => setIsNewRoomModalOpen(false)}
-        />
+        <NewRoomModal isOpen={isNewRoomModalOpen} onClose={() => setIsNewRoomModalOpen(false)} />
         <ModalHost />
         {shareDialog}
       </>
     );
   }
 
-  const catalogPanel = <FurnitureCatalog onClose={docked ? toggleCatalog : closeDrawer} onPlaced={docked ? undefined : closeDrawer} />;
+  const catalogPanel = (
+    <FurnitureCatalog
+      onClose={docked ? toggleCatalog : closeDrawer}
+      onPlaced={docked ? undefined : closeDrawer}
+    />
+  );
   const inspectorPanel = <SelectedItemPanel onClose={docked ? toggleInspector : closeDrawer} />;
 
   return (
@@ -189,7 +201,10 @@ export function AppShell() {
 
       <main className={styles.workspace}>
         {docked && (
-          <div className={`${styles.dock} ${styles.dockLeft} ${catalogOpen ? '' : styles.dockClosed}`} inert={!catalogOpen}>
+          <div
+            className={`${styles.dock} ${styles.dockLeft} ${catalogOpen ? '' : styles.dockClosed}`}
+            inert={!catalogOpen}
+          >
             <div className={styles.dockInner}>{catalogPanel}</div>
           </div>
         )}
@@ -216,16 +231,17 @@ export function AppShell() {
         {!docked && drawer && (
           <>
             <div className={styles.scrim} onClick={closeDrawer} aria-hidden="true" />
-            {drawer === 'catalog' && <div className={`${styles.drawer} ${styles.drawerLeft}`}>{catalogPanel}</div>}
-            {drawer === 'inspector' && showInspector && <div className={`${styles.drawer} ${styles.drawerRight}`}>{inspectorPanel}</div>}
+            {drawer === 'catalog' && (
+              <div className={`${styles.drawer} ${styles.drawerLeft}`}>{catalogPanel}</div>
+            )}
+            {drawer === 'inspector' && showInspector && (
+              <div className={`${styles.drawer} ${styles.drawerRight}`}>{inspectorPanel}</div>
+            )}
           </>
         )}
       </main>
 
-      <NewRoomModal
-        isOpen={isNewRoomModalOpen}
-        onClose={() => setIsNewRoomModalOpen(false)}
-      />
+      <NewRoomModal isOpen={isNewRoomModalOpen} onClose={() => setIsNewRoomModalOpen(false)} />
       <ModalHost />
       {shareDialog}
     </div>

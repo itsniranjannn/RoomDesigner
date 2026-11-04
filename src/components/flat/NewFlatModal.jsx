@@ -22,7 +22,10 @@ export function NewFlatModal({ onClose }) {
     e?.preventDefault();
     if (busy) return;
     setBusy(true);
-    await createNewFlat(name.trim() || 'My Flat', preset, { widthCm: widthM * 100, depthCm: depthM * 100 });
+    await createNewFlat(name.trim() || 'My Flat', preset, {
+      widthCm: widthM * 100,
+      depthCm: depthM * 100,
+    });
     useFlatUi.getState().setTool(preset === 'blank' ? 'wall' : 'select');
     useFlatUi.getState().requestFit();
     onClose();
@@ -36,18 +39,53 @@ export function NewFlatModal({ onClose }) {
       size="sm"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={submit} disabled={busy}>Create flat</Button>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="primary" onClick={submit} disabled={busy}>
+            Create flat
+          </Button>
         </>
       }
     >
-      <form className={styles.form} onSubmit={submit} onKeyDown={(e) => e.key === 'Enter' && e.target.tagName === 'INPUT' && submit(e)}>
-        <TextField label="Name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
-        <SelectField label="Start from" options={OPTIONS} value={preset} onChange={setPreset} hint={note} />
+      <form
+        className={styles.form}
+        onSubmit={submit}
+        onKeyDown={(e) => e.key === 'Enter' && e.target.tagName === 'INPUT' && submit(e)}
+      >
+        <TextField
+          label="Name"
+          value={name}
+          maxLength={80}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <SelectField
+          label="Start from"
+          options={OPTIONS}
+          value={preset}
+          onChange={setPreset}
+          hint={note}
+        />
         {preset === 'shell' && (
           <div className={styles.sizeRow}>
-            <NumberField label="Width" suffix="m" value={widthM} min={2} max={24} step={0.5} onCommit={setWidthM} />
-            <NumberField label="Depth" suffix="m" value={depthM} min={2} max={24} step={0.5} onCommit={setDepthM} />
+            <NumberField
+              label="Width"
+              suffix="m"
+              value={widthM}
+              min={2}
+              max={24}
+              step={0.5}
+              onCommit={setWidthM}
+            />
+            <NumberField
+              label="Depth"
+              suffix="m"
+              value={depthM}
+              min={2}
+              max={24}
+              step={0.5}
+              onCommit={setDepthM}
+            />
           </div>
         )}
       </form>

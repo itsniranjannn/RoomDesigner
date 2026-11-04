@@ -17,10 +17,17 @@
 
 /* Icon-only actions on narrower screens */
 @media (max-width: 1099px) {
-  .actionText { display: none; }
-  .action { min-width: var(--control-h); padding: 0; }
+  .actionText {
+    display: none;
+  }
+  .action {
+    min-width: var(--control-h);
+    padding: 0;
+  }
 }
 
 @media (max-width: 640px) {
-  .viewSwitch span { display: none; }
+  .viewSwitch span {
+    display: none;
+  }
 }

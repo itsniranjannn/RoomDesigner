@@ -19,13 +19,23 @@ export function GroupPanel({ count, onClose }) {
       onClose={onClose}
       onBack={deselectItem}
       backLabel="Room overview"
-      footer={<Button variant="danger" icon={<Trash2 size={16} />} onClick={removeSelection}>Delete {count} pieces</Button>}
+      footer={
+        <Button variant="danger" icon={<Trash2 size={16} />} onClick={removeSelection}>
+          Delete {count} pieces
+        </Button>
+      }
     >
       <div className={styles.groupActions}>
-        <Button variant="secondary" icon={<Copy size={16} />} onClick={copySelection}>Copy</Button>
-        <Button variant="secondary" icon={<CopyPlus size={16} />} onClick={duplicateSelection}>Duplicate</Button>
+        <Button variant="secondary" icon={<Copy size={16} />} onClick={copySelection}>
+          Copy
+        </Button>
+        <Button variant="secondary" icon={<CopyPlus size={16} />} onClick={duplicateSelection}>
+          Duplicate
+        </Button>
       </div>
-      <p className={styles.note}>Ctrl+C copies and Ctrl+V pastes. Hold Shift and click to add or remove a piece.</p>
+      <p className={styles.note}>
+        Ctrl+C copies and Ctrl+V pastes. Hold Shift and click to add or remove a piece.
+      </p>
     </InspectorShell>
   );
 }

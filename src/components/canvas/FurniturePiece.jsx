@@ -95,7 +95,11 @@ export function FurniturePiece({
       if (isGroup) {
         useRoomStore
           .getState()
-          .moveSelectionFrom(startPositions, snapped.x - dragStartPos.current.x, snapped.y - dragStartPos.current.y);
+          .moveSelectionFrom(
+            startPositions,
+            snapped.x - dragStartPos.current.x,
+            snapped.y - dragStartPos.current.y
+          );
       } else {
         updateFurniturePosition(item.id, snapped.x, snapped.y, false);
       }
@@ -107,7 +111,9 @@ export function FurniturePiece({
       window.removeEventListener('pointerup', onPointerUp);
 
       // Only record an undo step if the piece actually moved
-      const currentPiece = (useRoomStore.getState().room?.placedFurniture || []).find((i) => i.id === item.id);
+      const currentPiece = (useRoomStore.getState().room?.placedFurniture || []).find(
+        (i) => i.id === item.id
+      );
       if (currentPiece && preDragSnapshot.current) {
         const dx = currentPiece.x - dragStartPos.current.x;
         const dy = currentPiece.y - dragStartPos.current.y;
@@ -166,7 +172,9 @@ export function FurniturePiece({
       window.removeEventListener('pointermove', onRotateMove);
       window.removeEventListener('pointerup', onRotateUp);
 
-      const currentPiece = (useRoomStore.getState().room?.placedFurniture || []).find((i) => i.id === item.id);
+      const currentPiece = (useRoomStore.getState().room?.placedFurniture || []).find(
+        (i) => i.id === item.id
+      );
       if (currentPiece && preRotateSnapshot.current) {
         if (Math.round(currentPiece.rotationDeg || 0) !== Math.round(rotateStartDeg.current)) {
           useRoomStore.getState().pushExplicitSnapshot(preRotateSnapshot.current);
@@ -234,13 +242,25 @@ export function FurniturePiece({
             {/* Precision Architectural L-Bracket Corner Crops */}
             <g stroke="#2C4E80" strokeWidth="2.2" strokeLinecap="square">
               {/* Top-Left Crop */}
-              <path d={`M ${-hw - 7} ${-hd - 2.5} L ${-hw - 2.5} ${-hd - 2.5} L ${-hw - 2.5} ${-hd - 7}`} fill="none" />
+              <path
+                d={`M ${-hw - 7} ${-hd - 2.5} L ${-hw - 2.5} ${-hd - 2.5} L ${-hw - 2.5} ${-hd - 7}`}
+                fill="none"
+              />
               {/* Top-Right Crop */}
-              <path d={`M ${hw + 7} ${-hd - 2.5} L ${hw + 2.5} ${-hd - 2.5} L ${hw + 2.5} ${-hd - 7}`} fill="none" />
+              <path
+                d={`M ${hw + 7} ${-hd - 2.5} L ${hw + 2.5} ${-hd - 2.5} L ${hw + 2.5} ${-hd - 7}`}
+                fill="none"
+              />
               {/* Bottom-Left Crop */}
-              <path d={`M ${-hw - 7} ${hd + 2.5} L ${-hw - 2.5} ${hd + 2.5} L ${-hw - 2.5} ${hd + 7}`} fill="none" />
+              <path
+                d={`M ${-hw - 7} ${hd + 2.5} L ${-hw - 2.5} ${hd + 2.5} L ${-hw - 2.5} ${hd + 7}`}
+                fill="none"
+              />
               {/* Bottom-Right Crop */}
-              <path d={`M ${hw + 7} ${hd + 2.5} L ${hw + 2.5} ${hd + 2.5} L ${hw + 2.5} ${hd + 7}`} fill="none" />
+              <path
+                d={`M ${hw + 7} ${hd + 2.5} L ${hw + 2.5} ${hd + 2.5} L ${hw + 2.5} ${hd + 7}`}
+                fill="none"
+              />
             </g>
           </g>
         )}
@@ -253,14 +273,7 @@ export function FurniturePiece({
             onPointerDown={handleRotatePointerDown}
           >
             {/* White Under-casing for stem */}
-            <line
-              x1={0}
-              y1={24}
-              x2={0}
-              y2={0}
-              stroke="#FFFFFF"
-              strokeWidth="4"
-            />
+            <line x1={0} y1={24} x2={0} y2={0} stroke="#FFFFFF" strokeWidth="4" />
             {/* Technical Cobalt Compass Stem */}
             <line
               x1={0}
@@ -273,39 +286,16 @@ export function FurniturePiece({
             />
 
             {/* Invisible Large Hit Circle (36px wide hit target) */}
-            <circle
-              cx={0}
-              cy={0}
-              r={18}
-              fill="transparent"
-              pointerEvents="all"
-            />
+            <circle cx={0} cy={0} r={18} fill="transparent" pointerEvents="all" />
 
             {/* White under-casing for knob */}
-            <circle
-              cx={0}
-              cy={0}
-              r={9}
-              fill="#FFFFFF"
-            />
+            <circle cx={0} cy={0} r={9} fill="#FFFFFF" />
 
             {/* Outer Indigo Compass Ring */}
-            <circle
-              cx={0}
-              cy={0}
-              r={8}
-              fill="#FAF6EE"
-              stroke="#2C4E80"
-              strokeWidth="2"
-            />
+            <circle cx={0} cy={0} r={8} fill="#FAF6EE" stroke="#2C4E80" strokeWidth="2" />
 
             {/* Patan Brass Precision Core */}
-            <circle
-              cx={0}
-              cy={0}
-              r={3.5}
-              fill="#C5A059"
-            />
+            <circle cx={0} cy={0} r={3.5} fill="#C5A059" />
 
             {/* Live Angle Badge while rotating (counter-rotated to stay upright) */}
             {isRotating && (

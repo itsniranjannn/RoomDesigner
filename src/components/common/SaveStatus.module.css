@@ -25,9 +25,13 @@
 }
 
 @media (max-width: 1000px) {
-  .text { display: none; }
+  .text {
+    display: none;
+  }
 }
 
 @media (max-width: 640px) {
-  .save { display: none; }
+  .save {
+    display: none;
+  }
 }

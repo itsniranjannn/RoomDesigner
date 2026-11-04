@@ -1,45 +1,47 @@
 :root {
   /* Palette: traditional Nepali interior materials (names kept so existing modules still resolve) */
-  --color-ink: #1A1615;                 /* Aged Sal timber */
-  --color-ink-muted: #5C544E;
-  --color-ink-faint: #8A8077;
-  --color-linen: #F6F2EA;               /* Lokta paper: app background */
-  --color-linen-surface: #EDE6D9;
-  --color-linen-subtle: #E2D9C8;
-  --color-paper: #FCFAF6;               /* Panels and cards */
+  --color-ink: #1a1615; /* Aged Sal timber */
+  --color-ink-muted: #5c544e;
+  --color-ink-faint: #8a8077;
+  --color-linen: #f6f2ea; /* Lokta paper: app background */
+  --color-linen-surface: #ede6d9;
+  --color-linen-subtle: #e2d9c8;
+  --color-paper: #fcfaf6; /* Panels and cards */
 
   /* Primary accent: Rato Simrik maroon */
-  --color-maroon: #8B2635;
-  --color-maroon-hover: #751F2C;
+  --color-maroon: #8b2635;
+  --color-maroon-hover: #751f2c;
   --color-maroon-subtle: rgba(139, 38, 53, 0.1);
   --color-clay: var(--color-maroon);
 
   /* Secondary accent: Patan brass */
-  --color-brass: #C49746;
+  --color-brass: #c49746;
 
   /* Selection and focus: Himalayan indigo */
-  --color-indigo: #22485E;
+  --color-indigo: #22485e;
   --color-indigo-subtle: rgba(34, 72, 94, 0.1);
 
-  --color-pine: #3B4B42;
+  --color-pine: #3b4b42;
   --color-pine-subtle: rgba(59, 75, 66, 0.12);
-  --color-taupe: #D5C8B8;
-  --color-taupe-light: #E7DFD3;
+  --color-taupe: #d5c8b8;
+  --color-taupe-light: #e7dfd3;
   --color-grid: rgba(213, 200, 184, 0.45);
   --color-scrim: rgba(28, 26, 23, 0.4);
-  --color-on-accent: #FFFFFF;
-  --color-surface: #FFFFFF;             /* Inputs and tiles sitting on paper */
+  --color-on-accent: #ffffff;
+  --color-surface: #ffffff; /* Inputs and tiles sitting on paper */
   --color-surface-glass: rgba(255, 255, 255, 0.6);
   --color-edge: rgba(28, 26, 23, 0.18);
-  --color-walnut: #7A5B37;
+  --color-walnut: #7a5b37;
   --color-warning: rgba(139, 38, 53, 0.2);
-  --color-caution: #B26B00;
-  --color-caution-bg: #FFF4E0;
-  --color-success: #3B6B4F;
+  --color-caution: #b26b00;
+  --color-caution-bg: #fff4e0;
+  --color-success: #3b6b4f;
 
   /* Typography */
   --font-serif: 'Fraunces Variable', Fraunces, Georgia, 'Times New Roman', serif;
-  --font-sans: 'Space Grotesk Variable', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-sans:
+    'Space Grotesk Variable', 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
   /* Type scale: serif for page and panel titles only, sans for all UI text */

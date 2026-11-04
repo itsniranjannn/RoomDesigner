@@ -33,7 +33,14 @@ import {
   openingsOf,
 } from './flatPlan.js';
 import { buildPresetFlat } from './flatPresets.js';
-import { createFlat, createStair, stairGeometry, stairFootprint, SPACE_KINDS, flatSummary } from './flat.js';
+import {
+  createFlat,
+  createStair,
+  stairGeometry,
+  stairFootprint,
+  SPACE_KINDS,
+  flatSummary,
+} from './flat.js';
 
 const rectEdges = (x, y, w, d) => {
   let e = new Set();
@@ -44,7 +51,14 @@ const rectEdges = (x, y, w, d) => {
   return e;
 };
 const union = (...sets) => new Set(sets.flatMap((s) => [...s]));
-const door = (axis, line, start, widthCm = 90) => ({ id: `d-${axis}${line}-${start}`, type: 'door', axis, line, start, widthCm });
+const door = (axis, line, start, widthCm = 90) => ({
+  id: `d-${axis}${line}-${start}`,
+  type: 'door',
+  axis,
+  line,
+  start,
+  widthCm,
+});
 
 function blank() {
   const flat = createFlat('T');
@@ -93,7 +107,14 @@ describe('region detection', () => {
     const a = analyzeEdges(rectEdges(0, 0, 400, 300));
     expect(a.regions).toHaveLength(1);
     const r = a.regions[0];
-    expect(r).toMatchObject({ x: 0, y: 0, widthCm: 400, depthCm: 300, rect: true, areaCm2: 400 * 300 });
+    expect(r).toMatchObject({
+      x: 0,
+      y: 0,
+      widthCm: 400,
+      depthCm: 300,
+      rect: true,
+      areaCm2: 400 * 300,
+    });
     expect(a.labelAt(5, 5)).toBe(0);
     expect(a.labelAt(-3, 5)).toBe(-1);
   });
@@ -109,7 +130,14 @@ describe('region detection', () => {
   it('detects non-rectangular regions', () => {
     // L-shape
     let e = new Set();
-    for (const [x1, y1, x2, y2] of [[0, 0, 300, 0], [300, 0, 300, 100], [300, 100, 100, 100], [100, 100, 100, 300], [100, 300, 0, 300], [0, 300, 0, 0]]) {
+    for (const [x1, y1, x2, y2] of [
+      [0, 0, 300, 0],
+      [300, 0, 300, 100],
+      [300, 100, 100, 100],
+      [100, 100, 100, 300],
+      [100, 300, 0, 300],
+      [0, 300, 0, 0],
+    ]) {
       e = addSegment(e, x1, y1, x2, y2);
     }
     const a = analyzeEdges(e);
@@ -128,7 +156,9 @@ describe('region detection', () => {
   });
 
   it('classifies exterior edges', () => {
-    const a = analyzeEdges(union(rectEdges(0, 0, 400, 300), addSegment(new Set(), 200, 0, 200, 300)));
+    const a = analyzeEdges(
+      union(rectEdges(0, 0, 400, 300), addSegment(new Set(), 200, 0, 200, 300))
+    );
     expect(a.isExteriorEdge(edgeKey('h', 5, 0))).toBe(true);
     expect(a.isExteriorEdge(edgeKey('v', 20, 10))).toBe(false);
   });
@@ -138,7 +168,10 @@ describe('editing walls', () => {
   it('splits a room when a wall is drawn across it and merges when it is erased', () => {
     const { flat, rooms, levelId } = withWalls(rectEdges(0, 0, 600, 400));
     expect(flat.spaces).toHaveLength(1);
-    const named = setSpaceMeta(flat, rooms, flat.spaces[0].id, { name: 'Big hall', kind: 'living' });
+    const named = setSpaceMeta(flat, rooms, flat.spaces[0].id, {
+      name: 'Big hall',
+      kind: 'living',
+    });
     const split = addWall(named.flat, named.rooms, levelId, 400, 0, 400, 400);
     expect(split.flat.spaces).toHaveLength(2);
     // the larger half keeps the identity
@@ -163,7 +196,11 @@ describe('editing walls', () => {
   });
 
   it('erases only the run between two junctions', () => {
-    const edges = union(rectEdges(0, 0, 600, 400), addSegment(new Set(), 300, 0, 300, 400), addSegment(new Set(), 0, 200, 300, 200));
+    const edges = union(
+      rectEdges(0, 0, 600, 400),
+      addSegment(new Set(), 300, 0, 300, 400),
+      addSegment(new Set(), 0, 200, 300, 200)
+    );
     const { flat, rooms, levelId } = withWalls(edges);
     expect(flat.spaces).toHaveLength(3);
     const out = eraseWallRun(flat, rooms, levelId, edgeKey('h', 10, 20));
@@ -176,7 +213,14 @@ describe('editing walls', () => {
     const edges = union(rectEdges(0, 0, 600, 400), addSegment(new Set(), 300, 0, 300, 400));
     const { flat, rooms, levelId } = withWalls(edges);
     const a = addOpening(flat, rooms, levelId, door('v', 300, 100));
-    const b = addOpening(a.flat, a.rooms, levelId, { id: 'w1', type: 'window', axis: 'h', line: 0, start: 100, widthCm: 120 });
+    const b = addOpening(a.flat, a.rooms, levelId, {
+      id: 'w1',
+      type: 'window',
+      axis: 'h',
+      line: 0,
+      start: 100,
+      widthCm: 120,
+    });
     expect(openingsOf(b.flat, levelId)).toHaveLength(2);
     const c = eraseWallRun(b.flat, b.rooms, levelId, edgeKey('v', 30, 10));
     expect(openingsOf(c.flat, levelId).map((o) => o.id)).toEqual(['w1']);
@@ -191,7 +235,9 @@ describe('editing walls', () => {
     expect(openingsOf(through.flat, levelId)).toHaveLength(0);
     // a wall that only touches the end of the door leaves it alone
     const b = addOpening(flat, rooms, levelId, door('h', 400, 310));
-    expect(openingsOf(addWall(b.flat, b.rooms, levelId, 300, 0, 300, 400).flat, levelId)).toHaveLength(1);
+    expect(
+      openingsOf(addWall(b.flat, b.rooms, levelId, 300, 0, 300, 400).flat, levelId)
+    ).toHaveLength(1);
   });
 
   it('carries identity across a wall that moves a little', () => {
@@ -199,17 +245,32 @@ describe('editing walls', () => {
     const named = setSpaceMeta(flat, rooms, flat.spaces[0].id, { name: 'Study', kind: 'bedroom' });
     // Extend the room east by 100 cm
     const bigger = reconcile(
-      { ...named.flat, walls: { ...named.flat.walls, [levelId]: edgesToRuns(rectEdges(0, 0, 500, 400)) } },
+      {
+        ...named.flat,
+        walls: { ...named.flat.walls, [levelId]: edgesToRuns(rectEdges(0, 0, 500, 400)) },
+      },
       named.rooms
     );
     expect(bigger.flat.spaces).toHaveLength(1);
-    expect(bigger.flat.spaces[0]).toMatchObject({ id: flat.spaces[0].id, name: 'Study', roomId: flat.spaces[0].roomId, widthCm: 500 });
+    expect(bigger.flat.spaces[0]).toMatchObject({
+      id: flat.spaces[0].id,
+      name: 'Study',
+      roomId: flat.spaces[0].roomId,
+      widthCm: 500,
+    });
     expect(bigger.rooms[flat.spaces[0].roomId].widthCm).toBe(500);
   });
 
   it('keeps non-rectangular rooms named but not furnishable, and never crashes', () => {
     const l = new Set();
-    for (const [x1, y1, x2, y2] of [[0, 0, 300, 0], [300, 0, 300, 100], [300, 100, 100, 100], [100, 100, 100, 300], [100, 300, 0, 300], [0, 300, 0, 0]]) {
+    for (const [x1, y1, x2, y2] of [
+      [0, 0, 300, 0],
+      [300, 0, 300, 100],
+      [300, 100, 100, 100],
+      [100, 100, 100, 300],
+      [100, 300, 0, 300],
+      [0, 300, 0, 0],
+    ]) {
       for (const k of addSegment(new Set(), x1, y1, x2, y2)) l.add(k);
     }
     const { flat, rooms } = withWalls(l);
@@ -221,9 +282,18 @@ describe('editing walls', () => {
   it('derives room doors and windows from boundary openings', () => {
     const { flat, rooms, levelId } = withWalls(rectEdges(0, 100, 400, 300));
     const a = addOpening(flat, rooms, levelId, door('h', 400, 50));
-    const b = addOpening(a.flat, a.rooms, levelId, { id: 'w', type: 'window', axis: 'v', line: 400, start: 150, widthCm: 120 });
+    const b = addOpening(a.flat, a.rooms, levelId, {
+      id: 'w',
+      type: 'window',
+      axis: 'v',
+      line: 400,
+      start: 150,
+      widthCm: 120,
+    });
     const room = b.rooms[b.flat.spaces[0].roomId];
-    expect(room.doors).toEqual([{ id: 'd-h400-50', wall: 'bottom', offsetCm: 50, widthCm: 90, swingDirection: 'inward-left' }]);
+    expect(room.doors).toEqual([
+      { id: 'd-h400-50', wall: 'bottom', offsetCm: 50, widthCm: 90, swingDirection: 'inward-left' },
+    ]);
     expect(room.windows).toEqual([{ id: 'w', wall: 'right', offsetCm: 50, widthCm: 120 }]);
   });
 
@@ -241,26 +311,45 @@ describe('editing walls', () => {
 
   it('removes a door by id and plans door placement on a wall', () => {
     const { flat, rooms, levelId } = withWalls(rectEdges(0, 0, 400, 300));
-    const plan = planOpening(levelEdges(flat, levelId), [], { type: 'door', x: 200, y: 3, widthCm: 90 });
+    const plan = planOpening(levelEdges(flat, levelId), [], {
+      type: 'door',
+      x: 200,
+      y: 3,
+      widthCm: 90,
+    });
     expect(plan.valid).toBe(true);
     expect(plan.op).toMatchObject({ axis: 'h', line: 0, start: 160 });
     expect(openingFitsWalls(levelEdges(flat, levelId), plan.op)).toBe(true);
     const placed = addOpening(flat, rooms, levelId, { ...plan.op, id: 'p1' });
-    const second = planOpening(levelEdges(flat, levelId), openingsOf(placed.flat, levelId), { type: 'window', x: 200, y: 0, widthCm: 120 });
+    const second = planOpening(levelEdges(flat, levelId), openingsOf(placed.flat, levelId), {
+      type: 'window',
+      x: 200,
+      y: 0,
+      widthCm: 120,
+    });
     expect(second.valid).toBe(false);
-    expect(openingsOf(removeOpening(placed.flat, placed.rooms, levelId, 'p1').flat, levelId)).toHaveLength(0);
-    expect(planOpening(levelEdges(flat, levelId), [], { type: 'door', x: 200, y: 150, widthCm: 90 })).toBeNull();
+    expect(
+      openingsOf(removeOpening(placed.flat, placed.rooms, levelId, 'p1').flat, levelId)
+    ).toHaveLength(0);
+    expect(
+      planOpening(levelEdges(flat, levelId), [], { type: 'door', x: 200, y: 150, widthCm: 90 })
+    ).toBeNull();
   });
 
   it('cuts door and window gaps in 3D wall boxes', () => {
     const edges = rectEdges(0, 0, 400, 300);
     const a = analyzeEdges(edges);
     const solid = wallBoxes(edges, a.isExteriorEdge, []).filter((b) => !b.glass);
-    const holed = wallBoxes(edges, a.isExteriorEdge, [door('h', 0, 100), { id: 'w', type: 'window', axis: 'h', line: 300, start: 100, widthCm: 120 }]);
+    const holed = wallBoxes(edges, a.isExteriorEdge, [
+      door('h', 0, 100),
+      { id: 'w', type: 'window', axis: 'h', line: 300, start: 100, widthCm: 120 },
+    ]);
     expect(holed.length).toBeGreaterThan(solid.length);
     expect(holed.some((b) => b.glass)).toBe(true);
     // nothing solid fills the door gap below the lintel
-    expect(holed.some((b) => b.axis === 'h' && b.line === 0 && b.a < 150 && b.b > 120 && b.z0 === 0)).toBe(false);
+    expect(
+      holed.some((b) => b.axis === 'h' && b.line === 0 && b.a < 150 && b.b > 120 && b.z0 === 0)
+    ).toBe(false);
   });
 });
 
@@ -275,7 +364,14 @@ describe('door swing and labels', () => {
 
   it('puts a label inside an L-shaped room', () => {
     let e = new Set();
-    for (const [x1, y1, x2, y2] of [[0, 0, 300, 0], [300, 0, 300, 100], [300, 100, 100, 100], [100, 100, 100, 300], [100, 300, 0, 300], [0, 300, 0, 0]]) {
+    for (const [x1, y1, x2, y2] of [
+      [0, 0, 300, 0],
+      [300, 0, 300, 100],
+      [300, 100, 100, 100],
+      [100, 100, 100, 300],
+      [100, 300, 0, 300],
+      [0, 300, 0, 0],
+    ]) {
       e = union(e, addSegment(new Set(), x1, y1, x2, y2));
     }
     const a = analyzeEdges(e);
@@ -293,25 +389,90 @@ describe('migration', () => {
       floorHeightCm: 280,
       levels: [{ id: levelId, name: 'Ground floor' }],
       spaces: [
-        { id: 's1', kind: 'living', levelId, roomId: 'r1', name: 'Lounge', x: 0, y: 0, widthCm: 400, depthCm: 300 },
-        { id: 's2', kind: 'bedroom', levelId, roomId: 'r2', name: 'Sleep', x: 400, y: 0, widthCm: 300, depthCm: 300 },
+        {
+          id: 's1',
+          kind: 'living',
+          levelId,
+          roomId: 'r1',
+          name: 'Lounge',
+          x: 0,
+          y: 0,
+          widthCm: 400,
+          depthCm: 300,
+        },
+        {
+          id: 's2',
+          kind: 'bedroom',
+          levelId,
+          roomId: 'r2',
+          name: 'Sleep',
+          x: 400,
+          y: 0,
+          widthCm: 300,
+          depthCm: 300,
+        },
       ],
-      stairs: [{ id: 'st', levelId, type: 'straight', widthCm: 100, rotationDeg: 0, riseCm: 280, x: 20, y: 20 }],
+      stairs: [
+        {
+          id: 'st',
+          levelId,
+          type: 'straight',
+          widthCm: 100,
+          rotationDeg: 0,
+          riseCm: 280,
+          x: 20,
+          y: 20,
+        },
+      ],
     };
     const rooms = {
-      r1: { id: 'r1', flatId: 'flat-old', spaceId: 's1', name: 'Lounge', kind: 'living', widthCm: 400, depthCm: 300, doors: [{ id: 'dA', wall: 'right', offsetCm: 100, widthCm: 90 }], windows: [], placedFurniture: [{ id: 'f1', furnitureTypeId: 'sofa-3seat', x: 100, y: 100, rotationDeg: 0 }] },
-      r2: { id: 'r2', flatId: 'flat-old', spaceId: 's2', name: 'Sleep', kind: 'bedroom', widthCm: 300, depthCm: 300, doors: [], windows: [{ id: 'wA', wall: 'top', offsetCm: 90, widthCm: 120 }], placedFurniture: [] },
+      r1: {
+        id: 'r1',
+        flatId: 'flat-old',
+        spaceId: 's1',
+        name: 'Lounge',
+        kind: 'living',
+        widthCm: 400,
+        depthCm: 300,
+        doors: [{ id: 'dA', wall: 'right', offsetCm: 100, widthCm: 90 }],
+        windows: [],
+        placedFurniture: [
+          { id: 'f1', furnitureTypeId: 'sofa-3seat', x: 100, y: 100, rotationDeg: 0 },
+        ],
+      },
+      r2: {
+        id: 'r2',
+        flatId: 'flat-old',
+        spaceId: 's2',
+        name: 'Sleep',
+        kind: 'bedroom',
+        widthCm: 300,
+        depthCm: 300,
+        doors: [],
+        windows: [{ id: 'wA', wall: 'top', offsetCm: 90, widthCm: 120 }],
+        placedFurniture: [],
+      },
     };
     const out = migrateFlat(old, rooms);
     expect(out.migrated).toBe(true);
     const f = out.flat;
     expect(f.version).toBe(2);
     expect(f.spaces).toHaveLength(2);
-    expect(f.spaces.find((s) => s.id === 's1')).toMatchObject({ name: 'Lounge', roomId: 'r1', kind: 'living', widthCm: 400, depthCm: 300 });
+    expect(f.spaces.find((s) => s.id === 's1')).toMatchObject({
+      name: 'Lounge',
+      roomId: 'r1',
+      kind: 'living',
+      widthCm: 400,
+      depthCm: 300,
+    });
     expect(f.spaces.find((s) => s.id === 's2')).toMatchObject({ name: 'Sleep', roomId: 'r2' });
     // the shared side is a single wall
     expect(levelEdges(f, levelId).size).toBe(230);
-    expect(openingsOf(f, levelId).map((o) => o.type).sort()).toEqual(['door', 'window']);
+    expect(
+      openingsOf(f, levelId)
+        .map((o) => o.type)
+        .sort()
+    ).toEqual(['door', 'window']);
     expect(out.rooms.r1.doors).toHaveLength(1);
     expect(out.rooms.r1.placedFurniture).toHaveLength(1);
     expect(out.rooms.r2.windows).toHaveLength(1);
@@ -342,7 +503,10 @@ describe('presets', () => {
     for (const op of openingsOf(flat, levelId).filter((o) => o.type === 'door')) {
       const mid = Math.floor((op.start + op.widthCm / 2) / 10);
       const line = op.line / 10;
-      const [a, b] = op.axis === 'h' ? [spaceOf(mid, line - 1), spaceOf(mid, line)] : [spaceOf(line - 1, mid), spaceOf(line, mid)];
+      const [a, b] =
+        op.axis === 'h'
+          ? [spaceOf(mid, line - 1), spaceOf(mid, line)]
+          : [spaceOf(line - 1, mid), spaceOf(line, mid)];
       const A = a ?? 'outside';
       const B = b ?? 'outside';
       link(A, B);
@@ -352,29 +516,38 @@ describe('presets', () => {
     const queue = ['outside'];
     while (queue.length) {
       const cur = queue.shift();
-      for (const n of adj.get(cur) || []) if (!seen.has(n)) { seen.add(n); queue.push(n); }
+      for (const n of adj.get(cur) || [])
+        if (!seen.has(n)) {
+          seen.add(n);
+          queue.push(n);
+        }
     }
     return seen;
   }
 
-  it.each(['studio', '1bhk', '2bhk', '3bhk'])('%s has furnished rooms that are all reachable through doors', (preset) => {
-    const { flat, rooms } = buildPresetFlat(preset);
-    const levelId = flat.levels[0].id;
-    expect(flat.spaces.length).toBeGreaterThanOrEqual(3);
-    expect(flat.spaces.every((s) => s.rect && s.furnishable && rooms[s.roomId])).toBe(true);
-    expect(count(flat, 'living')).toBeGreaterThanOrEqual(1);
-    expect(count(flat, 'kitchen')).toBe(1);
-    expect(count(flat, 'bathroom')).toBeGreaterThanOrEqual(1);
-    const seen = reachable(flat, levelId);
-    for (const s of flat.spaces) expect(seen.has(s.id), `${s.name} reachable`).toBe(true);
-    for (const op of openingsOf(flat, levelId)) expect(openingFitsWalls(levelEdges(flat, levelId), op)).toBe(true);
-    // rooms of furnishable kinds start with furniture, and every room has a door
-    for (const s of flat.spaces) {
-      const room = rooms[s.roomId];
-      expect(room.doors.length, `${s.name} door`).toBeGreaterThanOrEqual(1);
-      if (['bedroom', 'kitchen', 'bathroom', 'living'].includes(s.kind)) expect(room.placedFurniture.length, `${s.name} furniture`).toBeGreaterThan(0);
+  it.each(['studio', '1bhk', '2bhk', '3bhk'])(
+    '%s has furnished rooms that are all reachable through doors',
+    (preset) => {
+      const { flat, rooms } = buildPresetFlat(preset);
+      const levelId = flat.levels[0].id;
+      expect(flat.spaces.length).toBeGreaterThanOrEqual(3);
+      expect(flat.spaces.every((s) => s.rect && s.furnishable && rooms[s.roomId])).toBe(true);
+      expect(count(flat, 'living')).toBeGreaterThanOrEqual(1);
+      expect(count(flat, 'kitchen')).toBe(1);
+      expect(count(flat, 'bathroom')).toBeGreaterThanOrEqual(1);
+      const seen = reachable(flat, levelId);
+      for (const s of flat.spaces) expect(seen.has(s.id), `${s.name} reachable`).toBe(true);
+      for (const op of openingsOf(flat, levelId))
+        expect(openingFitsWalls(levelEdges(flat, levelId), op)).toBe(true);
+      // rooms of furnishable kinds start with furniture, and every room has a door
+      for (const s of flat.spaces) {
+        const room = rooms[s.roomId];
+        expect(room.doors.length, `${s.name} door`).toBeGreaterThanOrEqual(1);
+        if (['bedroom', 'kitchen', 'bathroom', 'living'].includes(s.kind))
+          expect(room.placedFurniture.length, `${s.name} furniture`).toBeGreaterThan(0);
+      }
     }
-  });
+  );
 
   it('2BHK has hall, kitchen, two bedrooms and bathrooms; 3BHK has three bedrooms', () => {
     const two = buildPresetFlat('2bhk').flat;
@@ -409,7 +582,9 @@ describe('stairs', () => {
     const fp = stairFootprint(stair);
     expect(fp.widthCm).toBeGreaterThan(0);
     expect(stairWarnings(flat, { ...stair, x: 560, y: 100 }).length).toBeGreaterThan(0);
-    expect(wallsCrossRect(levelEdges(flat, levelId), { x: 10, y: 10, widthCm: 50, depthCm: 50 })).toBe(false);
+    expect(
+      wallsCrossRect(levelEdges(flat, levelId), { x: 10, y: 10, widthCm: 50, depthCm: 50 })
+    ).toBe(false);
   });
 
   it('analysis is cached per runs array', () => {

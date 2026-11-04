@@ -15,7 +15,7 @@ import { resolveItemDef } from '../data/furnitureCatalog.js';
 
 /**
  * Checks if two convex polygons collide using the Separating Axis Theorem (SAT).
- * 
+ *
  * @param {Array<{x: number, y: number}>} cornersA - 4 vertices of polygon A
  * @param {Array<{x: number, y: number}>} cornersB - 4 vertices of polygon B
  * @param {number} epsilon - Overlap tolerance in cm (prevents false positives on flush contact)
@@ -92,7 +92,7 @@ export function checkFurnitureCollision(itemA, itemB, epsilon = 0.5) {
 
 /**
  * Checks if a furniture item intersects or protrudes outside the room boundaries.
- * 
+ *
  * @param {Object} item - { x, y, widthCm, depthCm, rotationDeg }
  * @param {number} roomWidthCm - Room width in cm
  * @param {number} roomDepthCm - Room depth in cm
@@ -124,7 +124,7 @@ export function checkRoomBoundaryCollision(item, roomWidthCm, roomDepthCm, epsil
 
 /**
  * Evaluates collisions across all placed furniture items and room boundaries.
- * 
+ *
  * @param {Array<Object>} placedFurniture - List of placed items
  * @param {number} roomWidthCm - Room width in cm
  * @param {number} roomDepthCm - Room depth in cm
@@ -152,13 +152,7 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
   for (const item of items) {
     cornersMap.set(
       item.id,
-      getRotatedRectCorners(
-        item.x,
-        item.y,
-        item.widthCm,
-        item.depthCm,
-        item.rotationDeg || 0
-      )
+      getRotatedRectCorners(item.x, item.y, item.widthCm, item.depthCm, item.rotationDeg || 0)
     );
   }
 
@@ -166,12 +160,7 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm)
   for (const item of items) {
     const corners = cornersMap.get(item.id);
     for (const c of corners) {
-      if (
-        c.x < -0.1 ||
-        c.x > roomWidthCm + 0.1 ||
-        c.y < -0.1 ||
-        c.y > roomDepthCm + 0.1
-      ) {
+      if (c.x < -0.1 || c.x > roomWidthCm + 0.1 || c.y < -0.1 || c.y > roomDepthCm + 0.1) {
         boundaryCollidingIds.add(item.id);
         collidingIds.add(item.id);
         break;

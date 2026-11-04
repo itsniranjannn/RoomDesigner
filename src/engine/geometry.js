@@ -1,7 +1,7 @@
 /**
  * geometry.js
  * Pure mathematical utilities for 2D room & furniture transformations.
- * 
+ *
  * Coordinate system:
  * - Origin (0, 0) is top-left of the room interior.
  * - x-axis points rightwards (positive x).
@@ -51,7 +51,7 @@ export function rotatePoint(px, py, cx, cy, angleDeg) {
  * 1: Top-Right    (+hw, -hd)
  * 2: Bottom-Right (+hw, +hd)
  * 3: Bottom-Left  (-hw, +hd)
- * 
+ *
  * @param {number} x - Center X in cm
  * @param {number} y - Center Y in cm
  * @param {number} widthCm - Width in cm (along local x)
@@ -68,9 +68,9 @@ export function getRotatedRectCorners(x, y, widthCm, depthCm, rotationDeg = 0) {
 
   const localCorners = [
     { dx: -hw, dy: -hd }, // Top-Left
-    { dx: hw, dy: -hd },  // Top-Right
-    { dx: hw, dy: hd },   // Bottom-Right
-    { dx: -hw, dy: hd },  // Bottom-Left
+    { dx: hw, dy: -hd }, // Top-Right
+    { dx: hw, dy: hd }, // Bottom-Right
+    { dx: -hw, dy: hd }, // Bottom-Left
   ];
 
   return localCorners.map(({ dx, dy }) => ({
@@ -160,4 +160,3 @@ export function projectPolygonOntoAxis(corners, axis) {
 export function intervalsOverlap(minA, maxA, minB, maxB, epsilon = 0.05) {
   return !(maxA < minB + epsilon || maxB < minA + epsilon);
 }
-

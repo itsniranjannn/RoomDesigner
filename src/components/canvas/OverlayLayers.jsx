@@ -46,18 +46,41 @@ export function ClearanceLayer({ room }) {
           strokeDasharray="4 3"
         />
       ))}
-      {(room.placedFurniture || []).filter((i) => flagged.has(i.id)).map((item) => {
-        const def = resolveItemDef(item);
-        if (!def) return null;
-        const corners = getRotatedRectCorners(item.x, item.y, def.widthCm, def.depthCm, item.rotationDeg || 0);
-        return (
-          <g key={item.id}>
-            <polygon points={toPoints(corners)} fill="none" stroke="#B26B00" strokeWidth="2.2" strokeDasharray="6 3" />
-            <circle cx={item.x} cy={item.y} r="9" fill="#B26B00" />
-            <text x={item.x} y={item.y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#fff">!</text>
-          </g>
-        );
-      })}
+      {(room.placedFurniture || [])
+        .filter((i) => flagged.has(i.id))
+        .map((item) => {
+          const def = resolveItemDef(item);
+          if (!def) return null;
+          const corners = getRotatedRectCorners(
+            item.x,
+            item.y,
+            def.widthCm,
+            def.depthCm,
+            item.rotationDeg || 0
+          );
+          return (
+            <g key={item.id}>
+              <polygon
+                points={toPoints(corners)}
+                fill="none"
+                stroke="#B26B00"
+                strokeWidth="2.2"
+                strokeDasharray="6 3"
+              />
+              <circle cx={item.x} cy={item.y} r="9" fill="#B26B00" />
+              <text
+                x={item.x}
+                y={item.y + 4}
+                textAnchor="middle"
+                fontSize="12"
+                fontWeight="700"
+                fill="#fff"
+              >
+                !
+              </text>
+            </g>
+          );
+        })}
     </g>
   );
 }
@@ -74,7 +97,15 @@ function DimLine({ x1, y1, x2, y2, value }) {
   const my = (y1 + y2) / 2;
   return (
     <g>
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#22485E" strokeWidth="1" strokeDasharray="3 2" />
+      <line
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
+        stroke="#22485E"
+        strokeWidth="1"
+        strokeDasharray="3 2"
+      />
       <circle cx={x1} cy={y1} r="1.6" fill="#22485E" />
       <circle cx={x2} cy={y2} r="1.6" fill="#22485E" />
       <text
@@ -122,7 +153,9 @@ function snapPoint(point, room, snapRadius = 8) {
   for (const item of room.placedFurniture || []) {
     const def = resolveItemDef(item);
     if (!def) continue;
-    candidates.push(...getRotatedRectCorners(item.x, item.y, def.widthCm, def.depthCm, item.rotationDeg || 0));
+    candidates.push(
+      ...getRotatedRectCorners(item.x, item.y, def.widthCm, def.depthCm, item.rotationDeg || 0)
+    );
   }
   let best = null;
   let bestDist = snapRadius;
@@ -135,8 +168,18 @@ function snapPoint(point, room, snapRadius = 8) {
   }
   if (best) return { x: best.x, y: best.y };
   // Snap to room edges
-  const x = Math.abs(point.x) < snapRadius ? 0 : Math.abs(point.x - room.widthCm) < snapRadius ? room.widthCm : point.x;
-  const y = Math.abs(point.y) < snapRadius ? 0 : Math.abs(point.y - room.depthCm) < snapRadius ? room.depthCm : point.y;
+  const x =
+    Math.abs(point.x) < snapRadius
+      ? 0
+      : Math.abs(point.x - room.widthCm) < snapRadius
+        ? room.widthCm
+        : point.x;
+  const y =
+    Math.abs(point.y) < snapRadius
+      ? 0
+      : Math.abs(point.y - room.depthCm) < snapRadius
+        ? room.depthCm
+        : point.y;
   return { x, y };
 }
 
@@ -155,7 +198,8 @@ export function MeasureLayer({ room, svgRef, bounds, measurements, setMeasuremen
     const p = pt.matrixTransform(ctm.inverse());
     let snapped = snapPoint({ x: p.x, y: p.y }, room);
     if (e.shiftKey && start) {
-      if (Math.abs(snapped.x - start.x) > Math.abs(snapped.y - start.y)) snapped = { x: snapped.x, y: start.y };
+      if (Math.abs(snapped.x - start.x) > Math.abs(snapped.y - start.y))
+        snapped = { x: snapped.x, y: start.y };
       else snapped = { x: start.x, y: snapped.y };
     }
     return snapped;
@@ -196,11 +240,25 @@ export function MeasureLayer({ room, svgRef, bounds, measurements, setMeasuremen
           const my = (m.a.y + m.b.y) / 2;
           return (
             <g key={i}>
-              <line x1={m.a.x} y1={m.a.y} x2={m.b.x} y2={m.b.y} stroke="#8B2635" strokeWidth="1.6" />
+              <line
+                x1={m.a.x}
+                y1={m.a.y}
+                x2={m.b.x}
+                y2={m.b.y}
+                stroke="#8B2635"
+                strokeWidth="1.6"
+              />
               <circle cx={m.a.x} cy={m.a.y} r="3" fill="#8B2635" />
               <circle cx={m.b.x} cy={m.b.y} r="3" fill="#8B2635" />
               <rect x={mx - 26} y={my - 20} width="52" height="16" rx="3" fill="#1A1615" />
-              <text x={mx} y={my - 8.5} textAnchor="middle" fontSize="10" fontFamily="var(--font-mono, monospace)" fill="#F6F2EA">
+              <text
+                x={mx}
+                y={my - 8.5}
+                textAnchor="middle"
+                fontSize="10"
+                fontFamily="var(--font-mono, monospace)"
+                fill="#F6F2EA"
+              >
                 {formatCm(len)}
               </text>
             </g>

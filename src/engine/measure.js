@@ -16,7 +16,9 @@ export function formatCm(cm) {
 
 /** Gap from an item's bounding box to each of the four room walls. */
 export function getWallDistances(item, widthCm, depthCm, roomWidthCm, roomDepthCm) {
-  const aabb = getAABB(getRotatedRectCorners(item.x, item.y, widthCm, depthCm, item.rotationDeg || 0));
+  const aabb = getAABB(
+    getRotatedRectCorners(item.x, item.y, widthCm, depthCm, item.rotationDeg || 0)
+  );
   return {
     aabb,
     left: Math.max(0, aabb.minX),

@@ -17,7 +17,9 @@ function Field({ label, hint, error, htmlFor, children, className = '' }) {
       )}
       {children}
       {error ? (
-        <span className={styles.error} role="alert">{error}</span>
+        <span className={styles.error} role="alert">
+          {error}
+        </span>
       ) : (
         hint && <span className={styles.hint}>{hint}</span>
       )}
@@ -35,7 +37,19 @@ export function TextField({ label, hint, error, className, inputClassName = '', 
 }
 
 /** Number box that applies its value on blur or Enter and clamps to min/max. */
-export function NumberField({ label, hint, error, value, min, max, step = 1, suffix, onCommit, className, ...props }) {
+export function NumberField({
+  label,
+  hint,
+  error,
+  value,
+  min,
+  max,
+  step = 1,
+  suffix,
+  onCommit,
+  className,
+  ...props
+}) {
   const id = useId();
   const [draft, setDraft] = useState(value === undefined || value === null ? '' : String(value));
   useEffect(() => setDraft(value === undefined || value === null ? '' : String(value)), [value]);
@@ -83,9 +97,17 @@ export function SelectField({ label, hint, error, options, value, onChange, clas
   return (
     <Field label={label} hint={hint} error={error} htmlFor={id} className={className}>
       <span className={styles.selectWrap}>
-        <select id={id} className={`${styles.control} ${styles.select}`} value={value} onChange={(e) => onChange(e.target.value)} {...props}>
+        <select
+          id={id}
+          className={`${styles.control} ${styles.select}`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          {...props}
+        >
           {options.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
           ))}
         </select>
         <ChevronDown size={16} className={styles.chevron} aria-hidden="true" />
@@ -95,7 +117,13 @@ export function SelectField({ label, hint, error, options, value, onChange, clas
 }
 
 /** Search box with a clear button. `onChange` receives the text, not the event. */
-export function SearchField({ value, onChange, placeholder = 'Search', ariaLabel, className = '' }) {
+export function SearchField({
+  value,
+  onChange,
+  placeholder = 'Search',
+  ariaLabel,
+  className = '',
+}) {
   return (
     <span className={`${styles.searchWrap} ${className}`}>
       <Search size={16} className={styles.searchIcon} aria-hidden="true" />
@@ -114,7 +142,12 @@ export function SearchField({ value, onChange, placeholder = 'Search', ariaLabel
         }}
       />
       {value && (
-        <button type="button" className={styles.searchClear} onClick={() => onChange('')} aria-label="Clear search">
+        <button
+          type="button"
+          className={styles.searchClear}
+          onClick={() => onChange('')}
+          aria-label="Clear search"
+        >
           <X size={14} />
         </button>
       )}
@@ -123,7 +156,18 @@ export function SearchField({ value, onChange, placeholder = 'Search', ariaLabel
 }
 
 /** Slider with a label and a live read-out. Extra props go to the range input. */
-export function RangeField({ label, hint, value, min, max, step = 1, onChange, valueLabel, className, ...props }) {
+export function RangeField({
+  label,
+  hint,
+  value,
+  min,
+  max,
+  step = 1,
+  onChange,
+  valueLabel,
+  className,
+  ...props
+}) {
   const id = useId();
   return (
     <Field label={label} hint={hint} htmlFor={id} className={className}>
@@ -139,16 +183,30 @@ export function RangeField({ label, hint, value, min, max, step = 1, onChange, v
           onChange={(e) => onChange(Number(e.target.value))}
           {...props}
         />
-        <output className={styles.rangeValue} htmlFor={id}>{valueLabel ?? value}</output>
+        <output className={styles.rangeValue} htmlFor={id}>
+          {valueLabel ?? value}
+        </output>
       </span>
     </Field>
   );
 }
 
 /** Pick one of a few options, shown as joined buttons. */
-export function Segmented({ options, value, onChange, ariaLabel, size = 'normal', fill = false, className = '' }) {
+export function Segmented({
+  options,
+  value,
+  onChange,
+  ariaLabel,
+  size = 'normal',
+  fill = false,
+  className = '',
+}) {
   return (
-    <div className={`${styles.segmented} ${size === 'small' ? styles.segSmall : ''} ${fill ? styles.segFill : ''} ${className}`} role="group" aria-label={ariaLabel}>
+    <div
+      className={`${styles.segmented} ${size === 'small' ? styles.segSmall : ''} ${fill ? styles.segFill : ''} ${className}`}
+      role="group"
+      aria-label={ariaLabel}
+    >
       {options.map((o) => (
         <button
           key={o.value}
@@ -171,7 +229,13 @@ export function Switch({ checked, onChange, label }) {
   return (
     <label className={styles.switchRow}>
       <span>{label}</span>
-      <input type="checkbox" role="switch" className={styles.switchInput} checked={checked} onChange={(e) => onChange(e.target.checked)} />
+      <input
+        type="checkbox"
+        role="switch"
+        className={styles.switchInput}
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
       <span className={styles.switchTrack} aria-hidden="true" />
     </label>
   );

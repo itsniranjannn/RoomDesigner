@@ -2,28 +2,98 @@
 export function NepaliChowkiSilhouette({ widthCm, depthCm, hw, hd, color, accentColor }) {
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke="#1A1615" strokeWidth="1.5" />
-      <rect x={-hw + 5} y={-hd + 5} width={widthCm - 10} height={depthCm - 10} fill="none" stroke={accentColor} strokeWidth="1.5" />
-      <path d={`M ${-hw + 8} 0 Q 0 ${-hd + 8} ${hw - 8} 0 Q 0 ${hd - 8} ${-hw + 8} 0`} fill="none" stroke={accentColor} strokeWidth="1" />
-      {[[-hw + 7, -hd + 7], [hw - 7, -hd + 7], [-hw + 7, hd - 7], [hw - 7, hd - 7]].map(([x, y], i) => <circle key={i} cx={x} cy={y} r={3} fill={accentColor} />)}
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={3}
+        fill={color}
+        stroke="#1A1615"
+        strokeWidth="1.5"
+      />
+      <rect
+        x={-hw + 5}
+        y={-hd + 5}
+        width={widthCm - 10}
+        height={depthCm - 10}
+        fill="none"
+        stroke={accentColor}
+        strokeWidth="1.5"
+      />
+      <path
+        d={`M ${-hw + 8} 0 Q 0 ${-hd + 8} ${hw - 8} 0 Q 0 ${hd - 8} ${-hw + 8} 0`}
+        fill="none"
+        stroke={accentColor}
+        strokeWidth="1"
+      />
+      {[
+        [-hw + 7, -hd + 7],
+        [hw - 7, -hd + 7],
+        [-hw + 7, hd - 7],
+        [hw - 7, hd - 7],
+      ].map(([x, y], i) => (
+        <circle key={i} cx={x} cy={y} r={3} fill={accentColor} />
+      ))}
     </g>
   );
 }
 
-export function NepaliPatukaChestSilhouette({ widthCm, depthCm, hw, hd, color, accentColor, subColor }) {
+export function NepaliPatukaChestSilhouette({
+  widthCm,
+  depthCm,
+  hw,
+  hd,
+  color,
+  accentColor,
+  subColor,
+}) {
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} stroke="#1A1615" strokeWidth="1.5" />
-      <rect x={-hw + 5} y={-hd + 5} width={widthCm - 10} height={depthCm - 10} fill={subColor} stroke={accentColor} strokeWidth="1" />
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={3}
+        fill={color}
+        stroke="#1A1615"
+        strokeWidth="1.5"
+      />
+      <rect
+        x={-hw + 5}
+        y={-hd + 5}
+        width={widthCm - 10}
+        height={depthCm - 10}
+        fill={subColor}
+        stroke={accentColor}
+        strokeWidth="1"
+      />
       <line x1={0} y1={-hd + 6} x2={0} y2={hd - 6} stroke={accentColor} strokeWidth="1.5" />
       <circle cx={0} cy={0} r={4} fill={accentColor} />
-      <path d={`M ${-hw + 8} ${-hd + 8} H ${hw - 8} M ${-hw + 8} ${hd - 8} H ${hw - 8}`} stroke={accentColor} strokeWidth="1" />
+      <path
+        d={`M ${-hw + 8} ${-hd + 8} H ${hw - 8} M ${-hw + 8} ${hd - 8} H ${hw - 8}`}
+        stroke={accentColor}
+        strokeWidth="1"
+      />
     </g>
   );
 }
 
 export function NepaliBrassDiyaSilhouette({ hw, hd, color, accentColor }) {
-  return <g><circle cx={0} cy={0} r={hw * 0.8} fill={color} stroke="#806222" strokeWidth="1.4" /><circle cx={0} cy={0} r={hw * 0.45} fill={accentColor} /><path d={`M 0 ${-hd * 0.15} Q ${hw * 0.9} ${-hd * 0.65} ${hw * 0.65} ${-hd * 0.85}`} fill="none" stroke="#806222" strokeWidth="2" /><path d={`M ${hw * 0.55} ${-hd * 0.65} q 5 -8 10 0 q -5 10 -10 0`} fill={accentColor} /></g>;
+  return (
+    <g>
+      <circle cx={0} cy={0} r={hw * 0.8} fill={color} stroke="#806222" strokeWidth="1.4" />
+      <circle cx={0} cy={0} r={hw * 0.45} fill={accentColor} />
+      <path
+        d={`M 0 ${-hd * 0.15} Q ${hw * 0.9} ${-hd * 0.65} ${hw * 0.65} ${-hd * 0.85}`}
+        fill="none"
+        stroke="#806222"
+        strokeWidth="2"
+      />
+      <path d={`M ${hw * 0.55} ${-hd * 0.65} q 5 -8 10 0 q -5 10 -10 0`} fill={accentColor} />
+    </g>
+  );
 }
 
 export function NepaliPirkaSilhouette({ widthCm, depthCm, hw, hd, color }) {
@@ -55,8 +125,24 @@ export function NepaliPirkaSilhouette({ widthCm, depthCm, hw, hd, color }) {
         strokeWidth="0.8"
       />
       {/* Twin Under-Runner Cleats */}
-      <line x1={-hw + 6} y1={-hd + 1} x2={-hw + 6} y2={hd - 1} stroke="#1A1615" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1={hw - 6} y1={-hd + 1} x2={hw - 6} y2={hd - 1} stroke="#1A1615" strokeWidth="2.5" strokeLinecap="round" />
+      <line
+        x1={-hw + 6}
+        y1={-hd + 1}
+        x2={-hw + 6}
+        y2={hd - 1}
+        stroke="#1A1615"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1={hw - 6}
+        y1={-hd + 1}
+        x2={hw - 6}
+        y2={hd - 1}
+        stroke="#1A1615"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
       {/* Center Finger Cutout Slot */}
       <rect
         x={-slotW / 2}
@@ -72,7 +158,15 @@ export function NepaliPirkaSilhouette({ widthCm, depthCm, hw, hd, color }) {
   );
 }
 
-export function NepaliCharpaiSilhouette({ widthCm, depthCm, hw, hd, color, fabricColor, cushionColor }) {
+export function NepaliCharpaiSilhouette({
+  widthCm,
+  depthCm,
+  hw,
+  hd,
+  color,
+  fabricColor,
+  cushionColor,
+}) {
   // Handwoven daybed with turned corner timber posts and woven cord webbing
   const postSize = Math.min(10, widthCm / 4, depthCm / 4); // stays positive on tiny catalog previews
   return (
@@ -99,7 +193,7 @@ export function NepaliCharpaiSilhouette({ widthCm, depthCm, hw, hd, color, fabri
       />
       {/* Cross-Hatch Jute Webbing Pattern */}
       {Array.from({ length: 9 }).map((_, idx) => {
-        const stepX = (-hw + postSize) + ((idx + 1) * (widthCm - postSize * 2)) / 10;
+        const stepX = -hw + postSize + ((idx + 1) * (widthCm - postSize * 2)) / 10;
         return (
           <line
             key={`ch-v-${idx}`}
@@ -114,7 +208,7 @@ export function NepaliCharpaiSilhouette({ widthCm, depthCm, hw, hd, color, fabri
         );
       })}
       {Array.from({ length: 4 }).map((_, idx) => {
-        const stepY = (-hd + postSize) + ((idx + 1) * (depthCm - postSize * 2)) / 5;
+        const stepY = -hd + postSize + ((idx + 1) * (depthCm - postSize * 2)) / 5;
         return (
           <line
             key={`ch-h-${idx}`}
@@ -140,15 +234,51 @@ export function NepaliCharpaiSilhouette({ widthCm, depthCm, hw, hd, color, fabri
         strokeWidth="1.2"
       />
       {/* 4 Turned Corner Posts */}
-      <circle cx={-hw + postSize / 2} cy={-hd + postSize / 2} r={postSize / 2} fill="#382015" stroke="#1A1615" strokeWidth="1" />
-      <circle cx={hw - postSize / 2} cy={-hd + postSize / 2} r={postSize / 2} fill="#382015" stroke="#1A1615" strokeWidth="1" />
-      <circle cx={-hw + postSize / 2} cy={hd - postSize / 2} r={postSize / 2} fill="#382015" stroke="#1A1615" strokeWidth="1" />
-      <circle cx={hw - postSize / 2} cy={hd - postSize / 2} r={postSize / 2} fill="#382015" stroke="#1A1615" strokeWidth="1" />
+      <circle
+        cx={-hw + postSize / 2}
+        cy={-hd + postSize / 2}
+        r={postSize / 2}
+        fill="#382015"
+        stroke="#1A1615"
+        strokeWidth="1"
+      />
+      <circle
+        cx={hw - postSize / 2}
+        cy={-hd + postSize / 2}
+        r={postSize / 2}
+        fill="#382015"
+        stroke="#1A1615"
+        strokeWidth="1"
+      />
+      <circle
+        cx={-hw + postSize / 2}
+        cy={hd - postSize / 2}
+        r={postSize / 2}
+        fill="#382015"
+        stroke="#1A1615"
+        strokeWidth="1"
+      />
+      <circle
+        cx={hw - postSize / 2}
+        cy={hd - postSize / 2}
+        r={postSize / 2}
+        fill="#382015"
+        stroke="#1A1615"
+        strokeWidth="1"
+      />
     </g>
   );
 }
 
-export function NepaliGaddaSilhouette({ widthCm, depthCm, hw, hd, color, accentColor, cushionColor }) {
+export function NepaliGaddaSilhouette({
+  widthCm,
+  depthCm,
+  hw,
+  hd,
+  color,
+  accentColor,
+  cushionColor,
+}) {
   // Traditional floor mattress seating with piping & cylindrical side bolsters (takiya)
   const bolsterW = 20;
   return (
@@ -210,7 +340,15 @@ export function NepaliGaddaSilhouette({ widthCm, depthCm, hw, hd, color, accentC
   );
 }
 
-export function NepaliDhokaDividerSilhouette({ widthCm, depthCm, hw, hd, color, accentColor, subColor }) {
+export function NepaliDhokaDividerSilhouette({
+  widthCm,
+  depthCm,
+  hw,
+  hd,
+  color,
+  accentColor,
+  subColor,
+}) {
   // 3-panel folding screen showing carved Jali lattice panels with brass pivot knuckles
   const panelW = widthCm / 3;
   return (
@@ -270,7 +408,15 @@ export function NepaliDhokaDividerSilhouette({ widthCm, depthCm, hw, hd, color, 
   );
 }
 
-export function NepaliPujaMandirSilhouette({ widthCm, depthCm, hw, hd, color, accentColor, subColor }) {
+export function NepaliPujaMandirSilhouette({
+  widthCm,
+  depthCm,
+  hw,
+  hd,
+  color,
+  accentColor,
+  subColor,
+}) {
   // Traditional tiered household shrine / puja kotha shelf
   return (
     <g>
@@ -323,13 +469,42 @@ export function NepaliLotaDisplaySilhouette({ hw, color, accentColor, subColor }
       {/* Circular Pedestal Top */}
       <circle cx={0} cy={0} r={hw} fill={color} stroke="#1A1615" strokeWidth="1.4" />
       {/* Tripod Leg Radii */}
-      <line x1={0} y1={0} x2={0} y2={-hw + 3} stroke="#1A1615" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1={0} y1={0} x2={hw * 0.86} y2={hw * 0.5} stroke="#1A1615" strokeWidth="2.5" strokeLinecap="round" />
-      <line x1={0} y1={0} x2={-hw * 0.86} y2={hw * 0.5} stroke="#1A1615" strokeWidth="2.5" strokeLinecap="round" />
+      <line
+        x1={0}
+        y1={0}
+        x2={0}
+        y2={-hw + 3}
+        stroke="#1A1615"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1={0}
+        y1={0}
+        x2={hw * 0.86}
+        y2={hw * 0.5}
+        stroke="#1A1615"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
+      <line
+        x1={0}
+        y1={0}
+        x2={-hw * 0.86}
+        y2={hw * 0.5}
+        stroke="#1A1615"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+      />
       {/* Brass Karuwa Vessel Body */}
       <circle cx={0} cy={0} r={hw * 0.46} fill={accentColor} stroke="#806222" strokeWidth="1.2" />
       {/* Spout projection */}
-      <path d={`M 3 -${hw * 0.3} Q 14 -${hw * 0.6} 12 -${hw * 0.8} Q 9 -${hw * 0.6} 0 -${hw * 0.4}`} fill={accentColor} stroke="#806222" strokeWidth="0.8" />
+      <path
+        d={`M 3 -${hw * 0.3} Q 14 -${hw * 0.6} 12 -${hw * 0.8} Q 9 -${hw * 0.6} 0 -${hw * 0.4}`}
+        fill={accentColor}
+        stroke="#806222"
+        strokeWidth="0.8"
+      />
       {/* Spout Tip Opening */}
       <circle cx={12} cy={-hw * 0.8} r={2} fill="#1A1615" />
       {/* Karuwa Neck & Rim */}

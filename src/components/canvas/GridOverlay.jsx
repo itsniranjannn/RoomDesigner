@@ -9,7 +9,14 @@ import React from 'react';
  * - Monospaced architectural coordinate notations
  * - Titleblock plate classification tag
  */
-export function GridOverlay({ roomWidthCm, roomDepthCm, viewBoxMinX = -45, viewBoxMinY = -45, viewBoxWidth, viewBoxHeight }) {
+export function GridOverlay({
+  roomWidthCm,
+  roomDepthCm,
+  viewBoxMinX = -45,
+  viewBoxMinY = -45,
+  viewBoxWidth,
+  viewBoxHeight,
+}) {
   const minorStep = 10;
   const majorStep = 50;
 
@@ -42,8 +49,8 @@ export function GridOverlay({ roomWidthCm, roomDepthCm, viewBoxMinX = -45, viewB
   // Plate framing dimensions
   const plateX = viewBoxMinX + 10;
   const plateY = viewBoxMinY + 10;
-  const plateW = (viewBoxWidth || (roomWidthCm + 90)) - 20;
-  const plateH = (viewBoxHeight || (roomDepthCm + 90)) - 20;
+  const plateW = (viewBoxWidth || roomWidthCm + 90) - 20;
+  const plateH = (viewBoxHeight || roomDepthCm + 90) - 20;
 
   return (
     <g className="grid-overlay" pointerEvents="none">

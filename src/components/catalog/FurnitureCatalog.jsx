@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { Camera, PanelLeftClose, SearchX } from 'lucide-react';
-import { FURNITURE_CATALOG, FURNITURE_CATEGORIES, listCustomFurniture } from '../../data/furnitureCatalog.js';
+import {
+  FURNITURE_CATALOG,
+  FURNITURE_CATEGORIES,
+  listCustomFurniture,
+} from '../../data/furnitureCatalog.js';
 import { useRoomStore } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
 import { ConfirmDialog } from '../common/ConfirmDialog.jsx';
@@ -41,7 +45,10 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
   const groups = [];
   for (const cat of FURNITURE_CATEGORIES) {
     if (category !== 'all' && category !== cat.id) continue;
-    const source = cat.id === 'custom' ? customItems : FURNITURE_CATALOG.filter((item) => item.category === cat.id);
+    const source =
+      cat.id === 'custom'
+        ? customItems
+        : FURNITURE_CATALOG.filter((item) => item.category === cat.id);
     const items = source.filter((item) => matches(item, needle, cat.name));
     // An empty "My furniture" group stays visible so the photo entry is easy to find
     if (items.length > 0 || (cat.id === 'custom' && !needle)) groups.push({ ...cat, items });
@@ -87,7 +94,9 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
       </div>
 
       <div className={styles.scroll}>
-        <p className={styles.srOnly} aria-live="polite">{shownCount} pieces shown</p>
+        <p className={styles.srOnly} aria-live="polite">
+          {shownCount} pieces shown
+        </p>
 
         {groups.map((group) => (
           <section key={group.id} className={styles.group} aria-label={group.name}>
@@ -127,8 +136,18 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
           <div className={styles.empty}>
             <SearchX size={28} aria-hidden="true" />
             <p className={styles.emptyTitle}>No pieces match &ldquo;{query.trim()}&rdquo;</p>
-            <p className={styles.emptyText}>Check the spelling or try a shorter word, like &ldquo;chair&rdquo;.</p>
-            <Button size="small" onClick={() => { setQuery(''); setCategory('all'); }}>Clear search</Button>
+            <p className={styles.emptyText}>
+              Check the spelling or try a shorter word, like &ldquo;chair&rdquo;.
+            </p>
+            <Button
+              size="small"
+              onClick={() => {
+                setQuery('');
+                setCategory('all');
+              }}
+            >
+              Clear search
+            </Button>
           </div>
         )}
       </div>

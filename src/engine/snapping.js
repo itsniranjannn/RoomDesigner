@@ -9,7 +9,7 @@ import { normalizeAngle, getRotatedRectCorners, getAABB } from './geometry.js';
 
 /**
  * Snaps a 1D scalar value to nearest grid step if within threshold.
- * 
+ *
  * @param {number} val - Current coordinate in cm
  * @param {number} step - Grid interval in cm (default 10cm)
  * @param {number} threshold - Distance threshold to snap in cm (default 3.5cm)
@@ -25,7 +25,7 @@ export function snapValueToGrid(val, step = 10, threshold = 3.5) {
 
 /**
  * Checks if a rotation angle is approximately orthogonal (0, 90, 180, 270 deg).
- * 
+ *
  * @param {number} angleDeg - Angle in degrees
  * @param {number} tolerance - Allowed deviation in degrees (default 6°)
  * @returns {{ isOrthogonal: boolean, targetAngle: number }}
@@ -47,7 +47,7 @@ export function getOrthogonalAlignment(angleDeg, tolerance = 6) {
 /**
  * Snaps furniture flush against room walls if positioned close to a wall
  * and orthogonally oriented.
- * 
+ *
  * @param {Object} item - { x, y, widthCm, depthCm, rotationDeg }
  * @param {number} roomWidthCm - Room width in cm
  * @param {number} roomDepthCm - Room depth in cm
@@ -72,14 +72,14 @@ export function snapToWalls(item, roomWidthCm, roomDepthCm, threshold = 12) {
   // Left wall (x = 0)
   const distLeft = aabb.minX;
   if (distLeft >= -threshold && distLeft <= threshold) {
-    x += (0 - aabb.minX);
+    x += 0 - aabb.minX;
     snappedX = true;
   }
   // Right wall (x = roomWidthCm)
   else {
     const distRight = roomWidthCm - aabb.maxX;
     if (distRight >= -threshold && distRight <= threshold) {
-      x += (roomWidthCm - aabb.maxX);
+      x += roomWidthCm - aabb.maxX;
       snappedX = true;
     }
   }
@@ -93,14 +93,14 @@ export function snapToWalls(item, roomWidthCm, roomDepthCm, threshold = 12) {
   // Top wall (y = 0)
   const distTop = currentAABB.minY;
   if (distTop >= -threshold && distTop <= threshold) {
-    y += (0 - currentAABB.minY);
+    y += 0 - currentAABB.minY;
     snappedY = true;
   }
   // Bottom wall (y = roomDepthCm)
   else {
     const distBottom = roomDepthCm - currentAABB.maxY;
     if (distBottom >= -threshold && distBottom <= threshold) {
-      y += (roomDepthCm - currentAABB.maxY);
+      y += roomDepthCm - currentAABB.maxY;
       snappedY = true;
     }
   }
@@ -110,7 +110,7 @@ export function snapToWalls(item, roomWidthCm, roomDepthCm, threshold = 12) {
 
 /**
  * Comprehensive snapping pipeline: attempts wall snap first, then falls back to grid snap.
- * 
+ *
  * @param {Object} item - { x, y, widthCm, depthCm, rotationDeg }
  * @param {number} roomWidthCm - Room width in cm
  * @param {number} roomDepthCm - Room depth in cm
@@ -179,7 +179,7 @@ export function clampInsideRoom(item, roomWidthCm, roomDepthCm) {
   if (aabb.minX < 0) {
     newX += -aabb.minX;
   } else if (aabb.maxX > roomWidthCm) {
-    newX -= (aabb.maxX - roomWidthCm);
+    newX -= aabb.maxX - roomWidthCm;
   }
 
   const cornersAfterX = getRotatedRectCorners(
@@ -194,7 +194,7 @@ export function clampInsideRoom(item, roomWidthCm, roomDepthCm) {
   if (aabbAfterX.minY < 0) {
     newY += -aabbAfterX.minY;
   } else if (aabbAfterX.maxY > roomDepthCm) {
-    newY -= (aabbAfterX.maxY - roomDepthCm);
+    newY -= aabbAfterX.maxY - roomDepthCm;
   }
 
   return {
@@ -202,4 +202,3 @@ export function clampInsideRoom(item, roomWidthCm, roomDepthCm) {
     y: Math.round(newY * 10) / 10,
   };
 }
-

@@ -3,22 +3,61 @@
 export function NepaliChowkiModel({ widthM, depthM, heightM, mainColor, accentColor }) {
   return (
     <group>
-      <mesh position={[0, heightM - 0.05, 0]} castShadow receiveShadow><boxGeometry args={[widthM, 0.1, depthM]} /><meshStandardMaterial color={mainColor} roughness={0.65} /></mesh>
-      {[[-1, -1], [1, -1], [-1, 1], [1, 1]].map(([x, z], i) => <mesh key={i} position={[x * (widthM / 2 - 0.07), (heightM - 0.1) / 2, z * (depthM / 2 - 0.07)]} castShadow><boxGeometry args={[0.07, heightM - 0.1, 0.07]} /><meshStandardMaterial color={mainColor} roughness={0.7} /></mesh>)}
-      <mesh position={[0, heightM + 0.003, 0]} receiveShadow><boxGeometry args={[widthM * 0.72, 0.015, depthM * 0.58]} /><meshStandardMaterial color={accentColor} roughness={0.55} /></mesh>
+      <mesh position={[0, heightM - 0.05, 0]} castShadow receiveShadow>
+        <boxGeometry args={[widthM, 0.1, depthM]} />
+        <meshStandardMaterial color={mainColor} roughness={0.65} />
+      </mesh>
+      {[
+        [-1, -1],
+        [1, -1],
+        [-1, 1],
+        [1, 1],
+      ].map(([x, z], i) => (
+        <mesh
+          key={i}
+          position={[x * (widthM / 2 - 0.07), (heightM - 0.1) / 2, z * (depthM / 2 - 0.07)]}
+          castShadow
+        >
+          <boxGeometry args={[0.07, heightM - 0.1, 0.07]} />
+          <meshStandardMaterial color={mainColor} roughness={0.7} />
+        </mesh>
+      ))}
+      <mesh position={[0, heightM + 0.003, 0]} receiveShadow>
+        <boxGeometry args={[widthM * 0.72, 0.015, depthM * 0.58]} />
+        <meshStandardMaterial color={accentColor} roughness={0.55} />
+      </mesh>
     </group>
   );
 }
 
-export function NepaliPatukaChestModel({ widthM, depthM, heightM, mainColor, accentColor, subColor }) {
+export function NepaliPatukaChestModel({
+  widthM,
+  depthM,
+  heightM,
+  mainColor,
+  accentColor,
+  subColor,
+}) {
   const lidH = 0.04;
   const bodyH = heightM - lidH;
   return (
     <group>
-      <mesh position={[0, bodyH / 2, 0]} castShadow receiveShadow><boxGeometry args={[widthM, bodyH, depthM]} /><meshStandardMaterial color={mainColor} roughness={0.7} /></mesh>
-      <mesh position={[0, bodyH + lidH / 2, 0]} castShadow><boxGeometry args={[widthM, lidH, depthM]} /><meshStandardMaterial color={subColor} roughness={0.65} /></mesh>
-      <mesh position={[0, bodyH * 0.55, depthM / 2 + 0.003]} castShadow><boxGeometry args={[0.025, bodyH * 0.5, 0.008]} /><meshStandardMaterial color={accentColor} metalness={0.6} roughness={0.35} /></mesh>
-      <mesh position={[0, bodyH * 0.53, depthM / 2 + 0.008]} castShadow><sphereGeometry args={[0.03, 12, 8]} /><meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.3} /></mesh>
+      <mesh position={[0, bodyH / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[widthM, bodyH, depthM]} />
+        <meshStandardMaterial color={mainColor} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, bodyH + lidH / 2, 0]} castShadow>
+        <boxGeometry args={[widthM, lidH, depthM]} />
+        <meshStandardMaterial color={subColor} roughness={0.65} />
+      </mesh>
+      <mesh position={[0, bodyH * 0.55, depthM / 2 + 0.003]} castShadow>
+        <boxGeometry args={[0.025, bodyH * 0.5, 0.008]} />
+        <meshStandardMaterial color={accentColor} metalness={0.6} roughness={0.35} />
+      </mesh>
+      <mesh position={[0, bodyH * 0.53, depthM / 2 + 0.008]} castShadow>
+        <sphereGeometry args={[0.03, 12, 8]} />
+        <meshStandardMaterial color={accentColor} metalness={0.65} roughness={0.3} />
+      </mesh>
     </group>
   );
 }
@@ -26,10 +65,22 @@ export function NepaliPatukaChestModel({ widthM, depthM, heightM, mainColor, acc
 export function NepaliBrassDiyaModel({ widthM, heightM, mainColor, accentColor }) {
   return (
     <group>
-      <mesh position={[0, 0.035, 0]} castShadow><cylinderGeometry args={[widthM * 0.42, widthM * 0.5, 0.07, 24]} /><meshStandardMaterial color={mainColor} metalness={0.8} roughness={0.28} /></mesh>
-      <mesh position={[0, 0.1, 0]} castShadow><cylinderGeometry args={[widthM * 0.12, widthM * 0.18, heightM * 0.45, 16]} /><meshStandardMaterial color={mainColor} metalness={0.8} roughness={0.28} /></mesh>
-      <mesh position={[0, heightM * 0.35, 0]} castShadow><sphereGeometry args={[widthM * 0.2, 16, 8]} /><meshStandardMaterial color={mainColor} metalness={0.85} roughness={0.25} /></mesh>
-      <mesh position={[0.02, heightM * 0.62, 0]} castShadow><coneGeometry args={[0.05, 0.12, 12]} /><meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={0.4} /></mesh>
+      <mesh position={[0, 0.035, 0]} castShadow>
+        <cylinderGeometry args={[widthM * 0.42, widthM * 0.5, 0.07, 24]} />
+        <meshStandardMaterial color={mainColor} metalness={0.8} roughness={0.28} />
+      </mesh>
+      <mesh position={[0, 0.1, 0]} castShadow>
+        <cylinderGeometry args={[widthM * 0.12, widthM * 0.18, heightM * 0.45, 16]} />
+        <meshStandardMaterial color={mainColor} metalness={0.8} roughness={0.28} />
+      </mesh>
+      <mesh position={[0, heightM * 0.35, 0]} castShadow>
+        <sphereGeometry args={[widthM * 0.2, 16, 8]} />
+        <meshStandardMaterial color={mainColor} metalness={0.85} roughness={0.25} />
+      </mesh>
+      <mesh position={[0.02, heightM * 0.62, 0]} castShadow>
+        <coneGeometry args={[0.05, 0.12, 12]} />
+        <meshStandardMaterial color={accentColor} emissive={accentColor} emissiveIntensity={0.4} />
+      </mesh>
     </group>
   );
 }
@@ -59,7 +110,14 @@ export function NepaliPirkaModel({ widthM, depthM, heightM, mainColor }) {
   );
 }
 
-export function NepaliCharpaiModel({ widthM, depthM, heightM, mainColor, fabricColor, cushionColor }) {
+export function NepaliCharpaiModel({
+  widthM,
+  depthM,
+  heightM,
+  mainColor,
+  fabricColor,
+  cushionColor,
+}) {
   // Handwoven Khat / Charpai daybed with turned wooden corner posts & woven rope webbing
   const legR = 0.04;
   const frameTop = heightM - 0.04;
@@ -98,7 +156,11 @@ export function NepaliCharpaiModel({ widthM, depthM, heightM, mainColor, fabricC
         <meshStandardMaterial color={fabricColor} roughness={0.9} />
       </mesh>
       {/* Cylindrical bolster at the headrest */}
-      <mesh position={[-widthM / 2 + 0.2, frameTop - 0.01 + bolsterR, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+      <mesh
+        position={[-widthM / 2 + 0.2, frameTop - 0.01 + bolsterR, 0]}
+        rotation={[Math.PI / 2, 0, 0]}
+        castShadow
+      >
         <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.16, 16]} />
         <meshStandardMaterial color={cushionColor} roughness={0.8} />
       </mesh>
@@ -117,7 +179,12 @@ export function NepaliGaddaModel({ widthM, depthM, heightM, mainColor, cushionCo
         <meshStandardMaterial color={mainColor} roughness={0.85} />
       </mesh>
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (widthM / 2 - bolsterR - 0.04), matH + bolsterR, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <mesh
+          key={s}
+          position={[s * (widthM / 2 - bolsterR - 0.04), matH + bolsterR, 0]}
+          rotation={[Math.PI / 2, 0, 0]}
+          castShadow
+        >
           <cylinderGeometry args={[bolsterR, bolsterR, depthM - 0.1, 16]} />
           <meshStandardMaterial color={cushionColor} roughness={0.8} />
         </mesh>
@@ -184,12 +251,13 @@ export function NepaliDhokaDividerModel({ def, widthM, heightM, mainColor, accen
             ))}
 
             {/* Brass Hinges on Adjacent Edges */}
-            {idx < 2 && [0.35, 0.85, 1.45].map((hy, hi) => (
-              <mesh key={`hinge-${hi}`} position={[panelW / 2, hy, 0]} castShadow>
-                <cylinderGeometry args={[0.012, 0.012, 0.04, 12]} />
-                <meshStandardMaterial color={accentColor} metalness={0.85} roughness={0.25} />
-              </mesh>
-            ))}
+            {idx < 2 &&
+              [0.35, 0.85, 1.45].map((hy, hi) => (
+                <mesh key={`hinge-${hi}`} position={[panelW / 2, hy, 0]} castShadow>
+                  <cylinderGeometry args={[0.012, 0.012, 0.04, 12]} />
+                  <meshStandardMaterial color={accentColor} metalness={0.85} roughness={0.25} />
+                </mesh>
+              ))}
           </group>
         );
       })}
@@ -216,11 +284,19 @@ export function NepaliPujaMandirModel({ def, widthM, depthM, heightM, mainColor,
         <meshStandardMaterial color="#422213" roughness={0.6} />
       </mesh>
       {/* Twin Brass Drawer Knobs */}
-      <mesh position={[-widthM * 0.2, baseH / 2, depthM / 2 + 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+      <mesh
+        position={[-widthM * 0.2, baseH / 2, depthM / 2 + 0.02]}
+        rotation={[Math.PI / 2, 0, 0]}
+        castShadow
+      >
         <cylinderGeometry args={[0.012, 0.012, 0.018, 12]} />
         <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
       </mesh>
-      <mesh position={[widthM * 0.2, baseH / 2, depthM / 2 + 0.02]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+      <mesh
+        position={[widthM * 0.2, baseH / 2, depthM / 2 + 0.02]}
+        rotation={[Math.PI / 2, 0, 0]}
+        castShadow
+      >
         <cylinderGeometry args={[0.012, 0.012, 0.018, 12]} />
         <meshStandardMaterial color={accentColor} metalness={0.9} roughness={0.2} />
       </mesh>
@@ -321,7 +397,12 @@ export function NepaliLotaDisplayModel({ widthM, heightM, mainColor, accentColor
         const lx = (widthM / 2 - 0.05) * Math.cos(rad);
         const lz = (widthM / 2 - 0.05) * Math.sin(rad);
         return (
-          <mesh key={idx} position={[lx, standH / 2, lz]} rotation={[0.08 * Math.sin(rad), 0, -0.08 * Math.cos(rad)]} castShadow>
+          <mesh
+            key={idx}
+            position={[lx, standH / 2, lz]}
+            rotation={[0.08 * Math.sin(rad), 0, -0.08 * Math.cos(rad)]}
+            castShadow
+          >
             <cylinderGeometry args={[0.02, 0.025, standH, 12]} />
             <meshStandardMaterial color={mainColor} roughness={0.7} />
           </mesh>

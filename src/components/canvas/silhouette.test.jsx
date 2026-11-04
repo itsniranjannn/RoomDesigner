@@ -51,7 +51,12 @@ describe('2D silhouettes at catalog swatch size', () => {
       const scale = scaleOf(item);
       const html = renderToStaticMarkup(
         <svg>
-          <ArchitecturalSilhouette item={item} widthCm={item.widthCm * scale} depthCm={item.depthCm * scale} isSwatch />
+          <ArchitecturalSilhouette
+            item={item}
+            widthCm={item.widthCm * scale}
+            depthCm={item.depthCm * scale}
+            isSwatch
+          />
         </svg>
       );
       if (/\s(width|height|rx|ry|r)="-/.test(html) || html.includes('NaN')) bad.push(item.id);

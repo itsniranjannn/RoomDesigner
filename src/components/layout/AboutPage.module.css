@@ -112,11 +112,20 @@
     padding: var(--space-4) var(--space-6);
   }
 
-  .copy { max-width: none; }
-  .visual { order: -1; max-height: 260px; }
+  .copy {
+    max-width: none;
+  }
+  .visual {
+    order: -1;
+    max-height: 260px;
+  }
 }
 
 @media (max-width: 480px) {
-  .main { padding: var(--space-2) var(--space-4) var(--space-4); }
-  .actions > * { flex: 1 1 100%; }
+  .main {
+    padding: var(--space-2) var(--space-4) var(--space-4);
+  }
+  .actions > * {
+    flex: 1 1 100%;
+  }
 }

@@ -23,7 +23,8 @@ export const useFlatUi = create((set) => ({
   setStairType: (stairType) => set({ stairType }),
   rotateStair: () => set((s) => ({ stairRotation: (s.stairRotation + 90) % 360 })),
   requestFit: () => set((s) => ({ fitNonce: s.fitNonce + 1 })),
-  requestZoom: (factor) => set((s) => ({ zoomRequest: { factor, n: (s.zoomRequest?.n || 0) + 1 } })),
+  requestZoom: (factor) =>
+    set((s) => ({ zoomRequest: { factor, n: (s.zoomRequest?.n || 0) + 1 } })),
   setZoomPercent: (zoomPercent) => set({ zoomPercent }),
   setNotice: (notice) => set({ notice }),
 }));

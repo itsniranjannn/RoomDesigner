@@ -2,7 +2,14 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFlatStore } from '../../store/flatStore.js';
 import { useFlatUi } from '../../store/flatUiStore.js';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
-import { SPACE_KINDS, stairFootprint, stairRect, levelIndex, snapToGrid, createStair } from '../../engine/flat.js';
+import {
+  SPACE_KINDS,
+  stairFootprint,
+  stairRect,
+  levelIndex,
+  snapToGrid,
+  createStair,
+} from '../../engine/flat.js';
 import { wallsOf, openingsOf, stairWarnings } from '../../engine/flatPlan.js';
 import {
   CELL,
@@ -54,27 +61,48 @@ function Opening({ op, thick, swing = 1, selected, hot, ghost, invalid }) {
   const s = swing * (op.flip ? -1 : 1);
   const w = op.widthCm;
   const h = op.axis === 'h';
-  const gap = { x: h ? op.start : op.line - thick / 2 - 1, y: h ? op.line - thick / 2 - 1 : op.start, width: h ? w : thick + 2, height: h ? thick + 2 : w };
-  const cls = [styles.gap, invalid ? styles.gapInvalid : '', hot ? styles.gapHot : ''].filter(Boolean).join(' ');
+  const gap = {
+    x: h ? op.start : op.line - thick / 2 - 1,
+    y: h ? op.line - thick / 2 - 1 : op.start,
+    width: h ? w : thick + 2,
+    height: h ? thick + 2 : w,
+  };
+  const cls = [styles.gap, invalid ? styles.gapInvalid : '', hot ? styles.gapHot : '']
+    .filter(Boolean)
+    .join(' ');
   return (
     <g pointerEvents="none" opacity={ghost ? 0.85 : 1}>
       <rect {...gap} className={cls} />
       {op.type === 'window' ? (
         <g className={styles.windowGlyph}>
-          <rect x={h ? op.start : op.line - 3} y={h ? op.line - 3 : op.start} width={h ? w : 6} height={h ? 6 : w} />
-          <line x1={h ? op.start : op.line} y1={h ? op.line : op.start} x2={h ? op.start + w : op.line} y2={h ? op.line : op.start + w} />
+          <rect
+            x={h ? op.start : op.line - 3}
+            y={h ? op.line - 3 : op.start}
+            width={h ? w : 6}
+            height={h ? 6 : w}
+          />
+          <line
+            x1={h ? op.start : op.line}
+            y1={h ? op.line : op.start}
+            x2={h ? op.start + w : op.line}
+            y2={h ? op.line : op.start + w}
+          />
         </g>
       ) : (
         <g className={styles.doorGlyph}>
           {h ? (
             <>
               <line x1={op.start} y1={op.line} x2={op.start} y2={op.line + s * w} />
-              <path d={`M ${op.start + w} ${op.line} A ${w} ${w} 0 0 ${s > 0 ? 1 : 0} ${op.start} ${op.line + s * w}`} />
+              <path
+                d={`M ${op.start + w} ${op.line} A ${w} ${w} 0 0 ${s > 0 ? 1 : 0} ${op.start} ${op.line + s * w}`}
+              />
             </>
           ) : (
             <>
               <line x1={op.line} y1={op.start} x2={op.line + s * w} y2={op.start} />
-              <path d={`M ${op.line} ${op.start + w} A ${w} ${w} 0 0 ${s > 0 ? 0 : 1} ${op.line + s * w} ${op.start}`} />
+              <path
+                d={`M ${op.line} ${op.start + w} A ${w} ${w} 0 0 ${s > 0 ? 0 : 1} ${op.line + s * w} ${op.start}`}
+              />
             </>
           )}
         </g>
@@ -180,11 +208,23 @@ export function FlatPlanCanvas() {
   const analysis = useMemo(() => analyzeRuns(runs), [runs]);
   const openings = useMemo(() => (flat ? openingsOf(flat, levelId) : EMPTY), [flat, levelId]);
   const stretches = useMemo(() => wallStretches(edges, analysis.isExteriorEdge), [edges, analysis]);
-  const spaces = useMemo(() => (flat ? flat.spaces.filter((s) => s.levelId === levelId) : []), [flat, levelId]);
-  const stairs = useMemo(() => (flat ? flat.stairs.filter((s) => s.levelId === levelId) : []), [flat, levelId]);
+  const spaces = useMemo(
+    () => (flat ? flat.spaces.filter((s) => s.levelId === levelId) : []),
+    [flat, levelId]
+  );
+  const stairs = useMemo(
+    () => (flat ? flat.stairs.filter((s) => s.levelId === levelId) : []),
+    [flat, levelId]
+  );
   const belowId = flat && idx > 0 ? flat.levels[idx - 1].id : null;
-  const belowRuns = useMemo(() => (flat && belowId ? wallsOf(flat, belowId) : EMPTY), [flat, belowId]);
-  const openingStairs = useMemo(() => (flat && belowId ? flat.stairs.filter((s) => s.levelId === belowId) : []), [flat, belowId]);
+  const belowRuns = useMemo(
+    () => (flat && belowId ? wallsOf(flat, belowId) : EMPTY),
+    [flat, belowId]
+  );
+  const openingStairs = useMemo(
+    () => (flat && belowId ? flat.stairs.filter((s) => s.levelId === belowId) : []),
+    [flat, belowId]
+  );
   const endpoints = useMemo(() => runEndpoints(runs), [runs]);
 
   // ---------- view helpers ----------
@@ -204,9 +244,22 @@ export function FlatPlanCanvas() {
       maxX = Math.max(maxX, x);
       maxY = Math.max(maxY, y);
     };
-    for (const lvl of fl.levels) for (const r of wallsOf(fl, lvl.id)) { take(r.x1, r.y1); take(r.x2, r.y2); }
-    for (const sx of fl.stairs) { const r = stairRect(sx); take(r.x, r.y); take(r.x + r.widthCm, r.y + r.depthCm); }
-    if (!Number.isFinite(minX)) { minX = 0; minY = 0; maxX = 900; maxY = 650; }
+    for (const lvl of fl.levels)
+      for (const r of wallsOf(fl, lvl.id)) {
+        take(r.x1, r.y1);
+        take(r.x2, r.y2);
+      }
+    for (const sx of fl.stairs) {
+      const r = stairRect(sx);
+      take(r.x, r.y);
+      take(r.x + r.widthCm, r.y + r.depthCm);
+    }
+    if (!Number.isFinite(minX)) {
+      minX = 0;
+      minY = 0;
+      maxX = 900;
+      maxY = 650;
+    }
     const pad = 72;
     const bw = Math.max(200, maxX - minX);
     const bh = Math.max(200, maxY - minY);
@@ -263,7 +316,12 @@ export function FlatPlanCanvas() {
   const toWorld = useCallback((e) => {
     const rect = svgRef.current.getBoundingClientRect();
     const v = viewRef.current;
-    return { x: (e.clientX - rect.left - v.tx) / v.k, y: (e.clientY - rect.top - v.ty) / v.k, sx: e.clientX - rect.left, sy: e.clientY - rect.top };
+    return {
+      x: (e.clientX - rect.left - v.tx) / v.k,
+      y: (e.clientY - rect.top - v.ty) / v.k,
+      sx: e.clientX - rect.left,
+      sy: e.clientY - rect.top,
+    };
   }, []);
 
   // ---------- keyboard: space to pan, Escape to back out ----------
@@ -318,8 +376,10 @@ export function FlatPlanCanvas() {
     let gx = null;
     let gy = null;
     for (const v of endpoints) {
-      if (v.x === pt.x && v.y !== pt.y && (!gx || Math.abs(v.y - pt.y) < Math.abs(gx.y - pt.y))) gx = v;
-      if (v.y === pt.y && v.x !== pt.x && (!gy || Math.abs(v.x - pt.x) < Math.abs(gy.x - pt.x))) gy = v;
+      if (v.x === pt.x && v.y !== pt.y && (!gx || Math.abs(v.y - pt.y) < Math.abs(gx.y - pt.y)))
+        gx = v;
+      if (v.y === pt.y && v.x !== pt.x && (!gy || Math.abs(v.x - pt.x) < Math.abs(gy.x - pt.x)))
+        gy = v;
     }
     return { gx, gy, onVertex: endpoints.some((v) => v.x === pt.x && v.y === pt.y) };
   };
@@ -331,9 +391,17 @@ export function FlatPlanCanvas() {
     const guides = [];
     for (const r of runs) {
       if (r.y1 === r.y2) {
-        for (const c of [r.y1, r.y1 - fp.depthCm]) if (Math.abs(c - y) <= T) { ny = c; guides.push({ axis: 'h', at: r.y1 }); }
+        for (const c of [r.y1, r.y1 - fp.depthCm])
+          if (Math.abs(c - y) <= T) {
+            ny = c;
+            guides.push({ axis: 'h', at: r.y1 });
+          }
       } else {
-        for (const c of [r.x1, r.x1 - fp.widthCm]) if (Math.abs(c - x) <= T) { nx = c; guides.push({ axis: 'v', at: r.x1 }); }
+        for (const c of [r.x1, r.x1 - fp.widthCm])
+          if (Math.abs(c - x) <= T) {
+            nx = c;
+            guides.push({ axis: 'v', at: r.x1 });
+          }
       }
     }
     return { x: Math.max(0, nx), y: Math.max(0, ny), guides };
@@ -364,7 +432,13 @@ export function FlatPlanCanvas() {
     if (tool === 'door' || tool === 'window') {
       const existing = openingAtPoint(openings, p.x, p.y, hitTol + 4);
       if (existing && existing.type === tool) return { type: 'remove-opening', op: existing };
-      const plan = planOpening(edges, openings, { type: tool, x: p.x, y: p.y, widthCm: tool === 'door' ? DOOR_W : WINDOW_W, tolCm: hitTol });
+      const plan = planOpening(edges, openings, {
+        type: tool,
+        x: p.x,
+        y: p.y,
+        widthCm: tool === 'door' ? DOOR_W : WINDOW_W,
+        tolCm: hitTol,
+      });
       return plan ? { type: 'opening', plan } : null;
     }
     if (tool === 'stairs' && stairDraft) {
@@ -399,13 +473,19 @@ export function FlatPlanCanvas() {
     }
     if (g?.type === 'wall-drag') {
       const d = draftRef.current;
-      if (d) setDraft({ ...d, ex: orthoEnd(d.sx, d.sy, p.x, p.y).x, ey: orthoEnd(d.sx, d.sy, p.x, p.y).y });
+      if (d)
+        setDraft({
+          ...d,
+          ex: orthoEnd(d.sx, d.sy, p.x, p.y).x,
+          ey: orthoEnd(d.sx, d.sy, p.x, p.y).y,
+        });
     }
     setHover(computeHover(p));
   };
 
   const finishWall = (d) => {
-    if (d && (d.ex !== d.sx || d.ey !== d.sy)) useFlatStore.getState().addWall(d.sx, d.sy, d.ex, d.ey);
+    if (d && (d.ex !== d.sx || d.ey !== d.sy))
+      useFlatStore.getState().addWall(d.sx, d.sy, d.ex, d.ey);
     setHover(null);
   };
 
@@ -501,13 +581,21 @@ export function FlatPlanCanvas() {
       select({ type: 'space', id: spaces[region.index].id });
       return;
     }
-    gesture.current = { type: 'pan', sx: p.sx, sy: p.sy, view: viewRef.current, moved: false, background: true };
+    gesture.current = {
+      type: 'pan',
+      sx: p.sx,
+      sy: p.sy,
+      view: viewRef.current,
+      moved: false,
+      background: true,
+    };
   };
 
   const onPointerUp = (e) => {
     const g = gesture.current;
     gesture.current = null;
-    if (svgRef.current?.hasPointerCapture?.(e.pointerId)) svgRef.current.releasePointerCapture(e.pointerId);
+    if (svgRef.current?.hasPointerCapture?.(e.pointerId))
+      svgRef.current.releasePointerCapture(e.pointerId);
     setPanning(false);
     if (!g) return;
     if (g.type === 'pan' && g.background && !g.moved) select(null);
@@ -553,10 +641,14 @@ export function FlatPlanCanvas() {
       <>
         {belowRuns.length > 0 && (
           <g className={styles.belowWalls} pointerEvents="none">
-            {edgesToRuns(edgesOf(belowRuns)).map((r, i) => <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} />)}
+            {edgesToRuns(edgesOf(belowRuns)).map((r, i) => (
+              <line key={i} x1={r.x1} y1={r.y1} x2={r.x2} y2={r.y2} />
+            ))}
           </g>
         )}
-        {openingStairs.map((s) => <StairGlyph key={`o-${s.id}`} stair={s} ghost />)}
+        {openingStairs.map((s) => (
+          <StairGlyph key={`o-${s.id}`} stair={s} ghost />
+        ))}
         {spaces.map((space) => (
           <g key={space.id}>
             {regionRects(space).map((r, i) => (
@@ -570,28 +662,70 @@ export function FlatPlanCanvas() {
                 className={space.id === selSpaceId ? styles.roomSelected : styles.room}
               />
             ))}
-            {space.id === selSpaceId && regionRects(space).map((r, i) => (
-              <rect key={`t${i}`} x={r.x} y={r.y} width={r.widthCm} height={r.depthCm} className={styles.roomTint} pointerEvents="none" />
-            ))}
+            {space.id === selSpaceId &&
+              regionRects(space).map((r, i) => (
+                <rect
+                  key={`t${i}`}
+                  x={r.x}
+                  y={r.y}
+                  width={r.widthCm}
+                  height={r.depthCm}
+                  className={styles.roomTint}
+                  pointerEvents="none"
+                />
+              ))}
             <FurnitureGlyphs space={space} room={rooms[space.roomId]} />
           </g>
         ))}
         <g className={styles.wall}>
           {stretches.map((s, i) =>
             s.axis === 'h' ? (
-              <rect key={i} x={s.from - s.thick / 2} y={s.line - s.thick / 2} width={s.to - s.from + s.thick} height={s.thick} />
+              <rect
+                key={i}
+                x={s.from - s.thick / 2}
+                y={s.line - s.thick / 2}
+                width={s.to - s.from + s.thick}
+                height={s.thick}
+              />
             ) : (
-              <rect key={i} x={s.line - s.thick / 2} y={s.from - s.thick / 2} width={s.thick} height={s.to - s.from + s.thick} />
+              <rect
+                key={i}
+                x={s.line - s.thick / 2}
+                y={s.from - s.thick / 2}
+                width={s.thick}
+                height={s.to - s.from + s.thick}
+              />
             )
           )}
         </g>
-        {selWall.length > 0 && <g className={styles.wallSelected} pointerEvents="none">{runRects(selWall, INTERIOR_THICK_CM + 8)}</g>}
+        {selWall.length > 0 && (
+          <g className={styles.wallSelected} pointerEvents="none">
+            {runRects(selWall, INTERIOR_THICK_CM + 8)}
+          </g>
+        )}
         {openings.map((op) => (
-          <Opening key={op.id} op={op} thick={thicknessAt(op, analysis)} swing={defaultSwing(analysis, op)} selected={selected?.type === 'opening' && selected.id === op.id} />
+          <Opening
+            key={op.id}
+            op={op}
+            thick={thicknessAt(op, analysis)}
+            swing={defaultSwing(analysis, op)}
+            selected={selected?.type === 'opening' && selected.id === op.id}
+          />
         ))}
       </>
     );
-  }, [flat, selected, edges, analysis, belowRuns, openingStairs, spaces, rooms, stretches, openings]);
+  }, [
+    flat,
+    selected,
+    edges,
+    analysis,
+    belowRuns,
+    openingStairs,
+    spaces,
+    rooms,
+    stretches,
+    openings,
+  ]);
 
   if (!flat) return null;
 
@@ -613,56 +747,203 @@ export function FlatPlanCanvas() {
       />
     );
     const len = Math.abs(hv.ex - hv.sx) + Math.abs(hv.ey - hv.sy);
-    if (len > 0) labels.push({ key: 'len', x: (hv.sx + hv.ex) / 2, y: (hv.sy + hv.ey) / 2, text: fmtM(len), pill: true, dy: -14 });
+    if (len > 0)
+      labels.push({
+        key: 'len',
+        x: (hv.sx + hv.ex) / 2,
+        y: (hv.sy + hv.ey) / 2,
+        text: fmtM(len),
+        pill: true,
+        dy: -14,
+      });
   }
   const guides = hv?.type === 'wall' || hv?.type === 'point' ? hv.guides : null;
   if (guides) {
     const end = hv.type === 'wall' ? { x: hv.ex, y: hv.ey } : { x: hv.x, y: hv.y };
-    overlay.push(<circle key="snap" cx={end.x} cy={end.y} r={(guides?.onVertex ? 7 : 4.5) * px} className={guides?.onVertex ? styles.snapVertex : styles.snapDot} />);
-    if (guides?.gx) overlay.push(<line key="gx" x1={guides.gx.x} y1={guides.gx.y} x2={end.x} y2={end.y} className={styles.guide} />);
-    if (guides?.gy) overlay.push(<line key="gy" x1={guides.gy.x} y1={guides.gy.y} x2={end.x} y2={end.y} className={styles.guide} />);
+    overlay.push(
+      <circle
+        key="snap"
+        cx={end.x}
+        cy={end.y}
+        r={(guides?.onVertex ? 7 : 4.5) * px}
+        className={guides?.onVertex ? styles.snapVertex : styles.snapDot}
+      />
+    );
+    if (guides?.gx)
+      overlay.push(
+        <line
+          key="gx"
+          x1={guides.gx.x}
+          y1={guides.gx.y}
+          x2={end.x}
+          y2={end.y}
+          className={styles.guide}
+        />
+      );
+    if (guides?.gy)
+      overlay.push(
+        <line
+          key="gy"
+          x1={guides.gy.x}
+          y1={guides.gy.y}
+          x2={end.x}
+          y2={end.y}
+          className={styles.guide}
+        />
+      );
   }
   if (hv?.type === 'erase') {
-    overlay.push(<g key="erase" className={styles.eraseHint} pointerEvents="none">{runRects(hv.keys, INTERIOR_THICK_CM + 6)}</g>);
+    overlay.push(
+      <g key="erase" className={styles.eraseHint} pointerEvents="none">
+        {runRects(hv.keys, INTERIOR_THICK_CM + 6)}
+      </g>
+    );
     const rs = edgesToRuns(new Set(hv.keys))[0];
-    if (rs) labels.push({ key: 'erase', x: (rs.x1 + rs.x2) / 2, y: (rs.y1 + rs.y2) / 2, text: `Remove ${fmtM(Math.abs(rs.x2 - rs.x1) + Math.abs(rs.y2 - rs.y1))}`, pill: true, dy: -16 });
+    if (rs)
+      labels.push({
+        key: 'erase',
+        x: (rs.x1 + rs.x2) / 2,
+        y: (rs.y1 + rs.y2) / 2,
+        text: `Remove ${fmtM(Math.abs(rs.x2 - rs.x1) + Math.abs(rs.y2 - rs.y1))}`,
+        pill: true,
+        dy: -16,
+      });
   }
   if (hv?.type === 'opening') {
-    overlay.push(<Opening key="ghost" op={hv.plan.op} thick={INTERIOR_THICK_CM} swing={defaultSwing(analysis, hv.plan.op)} ghost invalid={!hv.plan.valid} />);
-    labels.push({ key: 'op', x: hv.plan.op.axis === 'h' ? hv.plan.op.start + hv.plan.op.widthCm / 2 : hv.plan.op.line, y: hv.plan.op.axis === 'h' ? hv.plan.op.line : hv.plan.op.start + hv.plan.op.widthCm / 2, text: hv.plan.valid ? `${tool === 'door' ? 'Door' : 'Window'} ${hv.plan.op.widthCm} cm` : hv.plan.reason, pill: true, dy: -22 });
+    overlay.push(
+      <Opening
+        key="ghost"
+        op={hv.plan.op}
+        thick={INTERIOR_THICK_CM}
+        swing={defaultSwing(analysis, hv.plan.op)}
+        ghost
+        invalid={!hv.plan.valid}
+      />
+    );
+    labels.push({
+      key: 'op',
+      x: hv.plan.op.axis === 'h' ? hv.plan.op.start + hv.plan.op.widthCm / 2 : hv.plan.op.line,
+      y: hv.plan.op.axis === 'h' ? hv.plan.op.line : hv.plan.op.start + hv.plan.op.widthCm / 2,
+      text: hv.plan.valid
+        ? `${tool === 'door' ? 'Door' : 'Window'} ${hv.plan.op.widthCm} cm`
+        : hv.plan.reason,
+      pill: true,
+      dy: -22,
+    });
   }
   if (hv?.type === 'remove-opening') {
-    overlay.push(<Opening key="rm" op={hv.op} thick={INTERIOR_THICK_CM} swing={defaultSwing(analysis, hv.op)} hot />);
-    labels.push({ key: 'rm', x: hv.op.axis === 'h' ? hv.op.start + hv.op.widthCm / 2 : hv.op.line, y: hv.op.axis === 'h' ? hv.op.line : hv.op.start + hv.op.widthCm / 2, text: `Remove this ${hv.op.type}`, pill: true, dy: -22 });
+    overlay.push(
+      <Opening
+        key="rm"
+        op={hv.op}
+        thick={INTERIOR_THICK_CM}
+        swing={defaultSwing(analysis, hv.op)}
+        hot
+      />
+    );
+    labels.push({
+      key: 'rm',
+      x: hv.op.axis === 'h' ? hv.op.start + hv.op.widthCm / 2 : hv.op.line,
+      y: hv.op.axis === 'h' ? hv.op.line : hv.op.start + hv.op.widthCm / 2,
+      text: `Remove this ${hv.op.type}`,
+      pill: true,
+      dy: -22,
+    });
   }
   if (hv?.type === 'stair') {
     overlay.push(<StairGlyph key="sg" stair={hv.stair} preview invalid={hv.warnings.length > 0} />);
     for (const gd of hv.guides || []) {
-      overlay.push(gd.axis === 'h'
-        ? <line key={`g${gd.axis}${gd.at}`} x1={hv.stair.x - 80} x2={hv.stair.x + 400} y1={gd.at} y2={gd.at} className={styles.guide} />
-        : <line key={`g${gd.axis}${gd.at}`} y1={hv.stair.y - 80} y2={hv.stair.y + 400} x1={gd.at} x2={gd.at} className={styles.guide} />);
+      overlay.push(
+        gd.axis === 'h' ? (
+          <line
+            key={`g${gd.axis}${gd.at}`}
+            x1={hv.stair.x - 80}
+            x2={hv.stair.x + 400}
+            y1={gd.at}
+            y2={gd.at}
+            className={styles.guide}
+          />
+        ) : (
+          <line
+            key={`g${gd.axis}${gd.at}`}
+            y1={hv.stair.y - 80}
+            y2={hv.stair.y + 400}
+            x1={gd.at}
+            x2={gd.at}
+            className={styles.guide}
+          />
+        )
+      );
     }
-    if (hv.warnings.length) labels.push({ key: 'sw', x: hv.stair.x + 20, y: hv.stair.y, text: hv.warnings[0], pill: true, dy: -14, warn: true });
+    if (hv.warnings.length)
+      labels.push({
+        key: 'sw',
+        x: hv.stair.x + 20,
+        y: hv.stair.y,
+        text: hv.warnings[0],
+        pill: true,
+        dy: -14,
+        warn: true,
+      });
   }
 
   const wallSel = selected?.type === 'wall' ? wallRunAt(edges, selected.id) : [];
   if (wallSel.length > 0 && tool === 'select') {
     const rs = edgesToRuns(new Set(wallSel))[0];
     const { axis } = parseEdge(selected.id);
-    labels.push({ key: 'wsel', x: (rs.x1 + rs.x2) / 2, y: (rs.y1 + rs.y2) / 2, text: fmtM(Math.abs(rs.x2 - rs.x1) + Math.abs(rs.y2 - rs.y1)), pill: true, dy: axis === 'h' ? -18 : 0, dx: axis === 'v' ? 24 : 0 });
+    labels.push({
+      key: 'wsel',
+      x: (rs.x1 + rs.x2) / 2,
+      y: (rs.y1 + rs.y2) / 2,
+      text: fmtM(Math.abs(rs.x2 - rs.x1) + Math.abs(rs.y2 - rs.y1)),
+      pill: true,
+      dy: axis === 'h' ? -18 : 0,
+      dx: axis === 'v' ? 24 : 0,
+    });
   }
 
-  const visibleStairs = stairs.map((st) => (dragStair && dragStair.id === st.id ? { ...st, x: dragStair.x, y: dragStair.y } : st));
+  const visibleStairs = stairs.map((st) =>
+    dragStair && dragStair.id === st.id ? { ...st, x: dragStair.x, y: dragStair.y } : st
+  );
   const gridStep = k < 0.18 ? 500 : k < 0.45 ? 100 : 50;
   const wx0 = -view.tx / k;
   const wy0 = -view.ty / k;
   const wx1 = (size.w - view.tx) / k;
   const wy1 = (size.h - view.ty) / k;
   const gridLines = [];
-  for (let x = Math.floor(wx0 / gridStep) * gridStep; x <= wx1; x += gridStep) gridLines.push(<line key={`x${x}`} x1={x} y1={wy0} x2={x} y2={wy1} className={x % 100 === 0 ? styles.gridMajor : styles.gridMinor} />);
-  for (let y = Math.floor(wy0 / gridStep) * gridStep; y <= wy1; y += gridStep) gridLines.push(<line key={`y${y}`} x1={wx0} y1={y} x2={wx1} y2={y} className={y % 100 === 0 ? styles.gridMajor : styles.gridMinor} />);
+  for (let x = Math.floor(wx0 / gridStep) * gridStep; x <= wx1; x += gridStep)
+    gridLines.push(
+      <line
+        key={`x${x}`}
+        x1={x}
+        y1={wy0}
+        x2={x}
+        y2={wy1}
+        className={x % 100 === 0 ? styles.gridMajor : styles.gridMinor}
+      />
+    );
+  for (let y = Math.floor(wy0 / gridStep) * gridStep; y <= wy1; y += gridStep)
+    gridLines.push(
+      <line
+        key={`y${y}`}
+        x1={wx0}
+        y1={y}
+        x2={wx1}
+        y2={y}
+        className={y % 100 === 0 ? styles.gridMajor : styles.gridMinor}
+      />
+    );
 
-  const cursorClass = panning || spaceDown ? styles.cursorGrab : { wall: styles.cursorCross, eraser: styles.cursorEraser, door: styles.cursorCross, window: styles.cursorCross, stairs: styles.cursorCross }[tool] || '';
+  const cursorClass =
+    panning || spaceDown
+      ? styles.cursorGrab
+      : {
+          wall: styles.cursorCross,
+          eraser: styles.cursorEraser,
+          door: styles.cursorCross,
+          window: styles.cursorCross,
+          stairs: styles.cursorCross,
+        }[tool] || '';
 
   return (
     <div ref={wrapRef} className={`${styles.canvasWrap} ${cursorClass}`}>
@@ -686,7 +967,10 @@ export function FlatPlanCanvas() {
           {planLayer}
           {visibleStairs.map((stair) => (
             <g key={stair.id} opacity={dragStair?.id === stair.id ? 0.8 : 1}>
-              <StairGlyph stair={stair} selected={selected?.type === 'stair' && selected.id === stair.id} />
+              <StairGlyph
+                stair={stair}
+                selected={selected?.type === 'stair' && selected.id === stair.id}
+              />
             </g>
           ))}
           {overlay}
@@ -700,29 +984,57 @@ export function FlatPlanCanvas() {
             if (wide < 36) return null;
             return (
               <g key={space.id} transform={`translate(${sx} ${sy})`}>
-                <text className={styles.roomName} textAnchor="middle" y={small ? 4 : -4}>{fitText(space.name, wide - 10, 7.6)}</text>
-                {!small && <text className={styles.roomMeta} textAnchor="middle" y={14}>{(space.areaCm2 / 10000).toFixed(1)} m²{space.furnishable ? '' : ' · not a rectangle'}</text>}
+                <text className={styles.roomName} textAnchor="middle" y={small ? 4 : -4}>
+                  {fitText(space.name, wide - 10, 7.6)}
+                </text>
+                {!small && (
+                  <text className={styles.roomMeta} textAnchor="middle" y={14}>
+                    {(space.areaCm2 / 10000).toFixed(1)} m²
+                    {space.furnishable ? '' : ' · not a rectangle'}
+                  </text>
+                )}
               </g>
             );
           })}
           {stairs.map((st) => {
             const r = stairRect(st);
             const [sx, sy] = toScreen(r.x + r.widthCm / 2, r.y);
-            return <text key={st.id} x={sx} y={sy - 8} textAnchor="middle" className={styles.roomMeta}>Up to {flat.levels[idx + 1]?.name || 'next floor'}</text>;
+            return (
+              <text key={st.id} x={sx} y={sy - 8} textAnchor="middle" className={styles.roomMeta}>
+                Up to {flat.levels[idx + 1]?.name || 'next floor'}
+              </text>
+            );
           })}
           {labels.map((l) => {
             const [sx, sy] = toScreen(l.x, l.y);
             const w = l.text.length * 7 + 16;
             return (
               <g key={l.key} transform={`translate(${sx + (l.dx || 0)} ${sy + (l.dy || 0)})`}>
-                <rect x={-w / 2} y={-12} width={w} height={22} rx="6" className={l.warn ? styles.pillWarn : styles.pill} />
-                <text textAnchor="middle" y={3} className={l.warn ? styles.pillTextWarn : styles.pillText}>{l.text}</text>
+                <rect
+                  x={-w / 2}
+                  y={-12}
+                  width={w}
+                  height={22}
+                  rx="6"
+                  className={l.warn ? styles.pillWarn : styles.pill}
+                />
+                <text
+                  textAnchor="middle"
+                  y={3}
+                  className={l.warn ? styles.pillTextWarn : styles.pillText}
+                >
+                  {l.text}
+                </text>
               </g>
             );
           })}
         </g>
       </svg>
-      {notice && <div className={styles.notice} role="alert">{notice}</div>}
+      {notice && (
+        <div className={styles.notice} role="alert">
+          {notice}
+        </div>
+      )}
     </div>
   );
 }

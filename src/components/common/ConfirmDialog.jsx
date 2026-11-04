@@ -3,7 +3,15 @@ import { Modal } from './Modal.jsx';
 import { Button } from './Button.jsx';
 
 /** Yes/no dialog for actions that cannot be undone. */
-export function ConfirmDialog({ title, message, confirmLabel = 'Delete', cancelLabel = 'Cancel', danger = true, onConfirm, onClose }) {
+export function ConfirmDialog({
+  title,
+  message,
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
+  danger = true,
+  onConfirm,
+  onClose,
+}) {
   return (
     <Modal
       title={title}
@@ -11,8 +19,12 @@ export function ConfirmDialog({ title, message, confirmLabel = 'Delete', cancelL
       size="sm"
       footer={
         <>
-          <Button variant="ghost" onClick={onClose}>{cancelLabel}</Button>
-          <Button variant={danger ? 'dangerSolid' : 'primary'} onClick={onConfirm}>{confirmLabel}</Button>
+          <Button variant="ghost" onClick={onClose}>
+            {cancelLabel}
+          </Button>
+          <Button variant={danger ? 'dangerSolid' : 'primary'} onClick={onConfirm}>
+            {confirmLabel}
+          </Button>
         </>
       }
     >

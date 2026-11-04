@@ -29,5 +29,7 @@
 }
 
 @keyframes march {
-  to { stroke-dashoffset: -24; }
+  to {
+    stroke-dashoffset: -24;
+  }
 }

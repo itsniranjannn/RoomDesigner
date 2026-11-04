@@ -62,15 +62,29 @@ export function fitBackground(rgba, width, height) {
     samples.push({ x: x / width, y: y / height, c: [rgba[i], rgba[i + 1], rgba[i + 2]] });
   };
   for (let x = 0; x < width; x += stepX) {
-    for (let d = 0; d < band; d++) { take(x, d); take(x, height - 1 - d); }
+    for (let d = 0; d < band; d++) {
+      take(x, d);
+      take(x, height - 1 - d);
+    }
   }
   for (let y = 0; y < height; y += stepY) {
-    for (let d = 0; d < band; d++) { take(d, y); take(width - 1 - d, y); }
+    for (let d = 0; d < band; d++) {
+      take(d, y);
+      take(width - 1 - d, y);
+    }
   }
 
   const fit = (list) => {
-    const m = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
-    const rhs = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+    const m = [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ];
+    const rhs = [
+      [0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0],
+    ];
     for (const s of list) {
       const row = [1, s.x, s.y];
       for (let i = 0; i < 3; i++) {
@@ -88,9 +102,12 @@ export function fitBackground(rgba, width, height) {
   };
 
   // Start from the median border colour so an object touching the border cannot drag the fit away
-  const median = (ch) => samples.map((s) => s.c[ch]).sort((a, b) => a - b)[Math.floor(samples.length / 2)];
+  const median = (ch) =>
+    samples.map((s) => s.c[ch]).sort((a, b) => a - b)[Math.floor(samples.length / 2)];
   const base = [median(0), median(1), median(2)];
-  let kept = samples.filter((s) => Math.hypot(s.c[0] - base[0], s.c[1] - base[1], s.c[2] - base[2]) <= 45);
+  let kept = samples.filter(
+    (s) => Math.hypot(s.c[0] - base[0], s.c[1] - base[1], s.c[2] - base[2]) <= 45
+  );
   if (kept.length < 12) kept = samples;
   let coef = fit(kept);
   for (let pass = 0; pass < 2 && coef; pass++) {
@@ -171,10 +188,22 @@ function keepLargestComponent(mask, width, height) {
       size++;
       const x = p % width;
       const y = (p - x) / width;
-      if (x > 0 && mask[p - 1] && !labels[p - 1]) { labels[p - 1] = label; stack.push(p - 1); }
-      if (x < width - 1 && mask[p + 1] && !labels[p + 1]) { labels[p + 1] = label; stack.push(p + 1); }
-      if (y > 0 && mask[p - width] && !labels[p - width]) { labels[p - width] = label; stack.push(p - width); }
-      if (y < height - 1 && mask[p + width] && !labels[p + width]) { labels[p + width] = label; stack.push(p + width); }
+      if (x > 0 && mask[p - 1] && !labels[p - 1]) {
+        labels[p - 1] = label;
+        stack.push(p - 1);
+      }
+      if (x < width - 1 && mask[p + 1] && !labels[p + 1]) {
+        labels[p + 1] = label;
+        stack.push(p + 1);
+      }
+      if (y > 0 && mask[p - width] && !labels[p - width]) {
+        labels[p - width] = label;
+        stack.push(p - width);
+      }
+      if (y < height - 1 && mask[p + width] && !labels[p + width]) {
+        labels[p + width] = label;
+        stack.push(p + width);
+      }
     }
     if (size > bestSize) {
       bestSize = size;
@@ -200,8 +229,14 @@ function fillHoles(mask, width, height) {
       stack.push(p);
     }
   };
-  for (let x = 0; x < width; x++) { push(x); push((height - 1) * width + x); }
-  for (let y = 0; y < height; y++) { push(y * width); push(y * width + width - 1); }
+  for (let x = 0; x < width; x++) {
+    push(x);
+    push((height - 1) * width + x);
+  }
+  for (let y = 0; y < height; y++) {
+    push(y * width);
+    push(y * width + width - 1);
+  }
   while (stack.length) {
     const p = stack.pop();
     const x = p % width;
@@ -226,7 +261,10 @@ function fillHoles(mask, width, height) {
       const x = p % width;
       const y = (p - x) / width;
       const visit = (q) => {
-        if (!mask[q] && !outside[q] && !visited[q]) { visited[q] = 1; cells.push(q); }
+        if (!mask[q] && !outside[q] && !visited[q]) {
+          visited[q] = 1;
+          cells.push(q);
+        }
       };
       if (x > 0) visit(p - 1);
       if (x < width - 1) visit(p + 1);
@@ -273,7 +311,13 @@ export function segmentObject(rgba, width, height, tolerance = 60) {
     }
   }
   const radius = Math.max(1, Math.round(Math.min(width, height) / 400));
-  const opened = boxFilter(boxFilter(raw, width, height, radius, 'min'), width, height, radius, 'max');
+  const opened = boxFilter(
+    boxFilter(raw, width, height, radius, 'min'),
+    width,
+    height,
+    radius,
+    'max'
+  );
   const mask = fillHoles(keepLargestComponent(opened, width, height), width, height);
   return majority(mask, width, height);
 }
@@ -286,7 +330,10 @@ export function maskCoverage(mask) {
 
 /** Bounding box of the object in a mask, or null when it is empty. */
 export function maskBounds(mask, width, height) {
-  let minX = width, minY = height, maxX = -1, maxY = -1;
+  let minX = width,
+    minY = height,
+    maxX = -1,
+    maxY = -1;
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
       if (mask[y * width + x]) {
@@ -297,7 +344,9 @@ export function maskBounds(mask, width, height) {
       }
     }
   }
-  return maxX < 0 ? null : { minX, minY, maxX, maxY, width: maxX - minX + 1, height: maxY - minY + 1 };
+  return maxX < 0
+    ? null
+    : { minX, minY, maxX, maxY, width: maxX - minX + 1, height: maxY - minY + 1 };
 }
 
 const PROPORTION_LIMIT = 1.45;
@@ -329,7 +378,9 @@ export function proportionWarnings(cutouts, dims) {
     if (ratio > PROPORTION_LIMIT || ratio < 1 / PROPORTION_LIMIT) {
       const times = (ratio > 1 ? ratio : 1 / ratio).toFixed(1);
       const [more, less] = ratio > 1 ? [rule.wide, rule.tall] : [rule.tall, rule.wide];
-      out.push(`The ${slot.label.toLowerCase()} photo shows the piece ${times} times more ${more} than ${less} compared with the size you entered.`);
+      out.push(
+        `The ${slot.label.toLowerCase()} photo shows the piece ${times} times more ${more} than ${less} compared with the size you entered.`
+      );
     }
   }
   return out;
@@ -350,7 +401,10 @@ function bleedEdgeColors(mask, rgb, size) {
         for (let dx = -2; dx <= 2; dx++) {
           const sx = x + dx;
           const sy = y + dy;
-          if (sx < 0 || sy < 0 || sx >= size || sy >= size || !mask[sy * size + sx]) { edge = true; break; }
+          if (sx < 0 || sy < 0 || sx >= size || sy >= size || !mask[sy * size + sx]) {
+            edge = true;
+            break;
+          }
         }
       }
       interior[p] = edge ? 0 : 1;
@@ -361,7 +415,10 @@ function bleedEdgeColors(mask, rgb, size) {
     for (let x = 0; x < size; x++) {
       const p = y * size + x;
       if (!mask[p] || interior[p]) continue;
-      let r = 0, g = 0, b = 0, n = 0;
+      let r = 0,
+        g = 0,
+        b = 0,
+        n = 0;
       for (let dy = -4; dy <= 4; dy++) {
         for (let dx = -4; dx <= 4; dx++) {
           const sx = x + dx;
@@ -369,7 +426,10 @@ function bleedEdgeColors(mask, rgb, size) {
           if (sx < 0 || sy < 0 || sx >= size || sy >= size) continue;
           const q = sy * size + sx;
           if (!interior[q]) continue;
-          r += rgb[q * 3]; g += rgb[q * 3 + 1]; b += rgb[q * 3 + 2]; n++;
+          r += rgb[q * 3];
+          g += rgb[q * 3 + 1];
+          b += rgb[q * 3 + 2];
+          n++;
         }
       }
       if (n) {
@@ -396,7 +456,12 @@ function extendColors(mask, rgb, size) {
     for (const p of frontier) {
       const x = p % size;
       const y = (p - x) / size;
-      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      for (const [dx, dy] of [
+        [1, 0],
+        [-1, 0],
+        [0, 1],
+        [0, -1],
+      ]) {
         const sx = x + dx;
         const sy = y + dy;
         if (sx < 0 || sy < 0 || sx >= size || sy >= size) continue;
@@ -438,7 +503,11 @@ export function normalizeView(rgba, mask, width, height, size = NORMAL_SIZE) {
       outRgb[op * 3 + 2] = rgba[sp * 4 + 2];
     }
   }
-  return { mask: outMask, rgb: extendColors(outMask, bleedEdgeColors(outMask, outRgb, size), size), size };
+  return {
+    mask: outMask,
+    rgb: extendColors(outMask, bleedEdgeColors(outMask, outRgb, size), size),
+    size,
+  };
 }
 
 // ---------- carving ----------
@@ -537,7 +606,8 @@ function blurredDensity(occupancy, R) {
   let a = new Float32Array(N * N * N);
   for (let k = 0; k < R; k++) {
     for (let j = 0; j < R; j++) {
-      for (let i = 0; i < R; i++) a[((k + 1) * N + (j + 1)) * N + (i + 1)] = occupancy[(k * R + j) * R + i];
+      for (let i = 0; i < R; i++)
+        a[((k + 1) * N + (j + 1)) * N + (i + 1)] = occupancy[(k * R + j) * R + i];
     }
   }
   const strides = [1, N, N * N];
@@ -599,7 +669,9 @@ function surfaceNets(density, N) {
             else acc[j] += a ? 1 : 0;
           }
         }
-        xyz[0] = x; xyz[1] = y; xyz[2] = z;
+        xyz[0] = x;
+        xyz[1] = y;
+        xyz[2] = z;
         const s = 1 / count;
         const cellIndex = x + y * cells + z * cells * cells;
         cellVertex[cellIndex] = verts.length / 3;
@@ -633,18 +705,27 @@ function viewDirection(view) {
 
 /** Colour for a surface point, blended from the photos that face it (mirroring the best one if none does). */
 function blendViewColor(views, n, x, y, z, fallback) {
-  let r = 0, g = 0, b = 0, total = 0;
+  let r = 0,
+    g = 0,
+    b = 0,
+    total = 0;
   let best = null;
   let bestScore = -Infinity;
   for (const view of views) {
     const d = viewDirection(view);
     const score = n[0] * d[0] + n[1] * d[1] + n[2] * d[2];
-    if (score > bestScore) { bestScore = score; best = view; }
+    if (score > bestScore) {
+      bestScore = score;
+      best = view;
+    }
     if (score <= 0.05) continue;
     const { u, v } = projectToView(view, x, y, z);
     const c = sampleRgb(view, u, v);
     const w = score ** 3;
-    r += c[0] * w; g += c[1] * w; b += c[2] * w; total += w;
+    r += c[0] * w;
+    g += c[1] * w;
+    b += c[2] * w;
+    total += w;
   }
   if (total > 0) return [r / total, g / total, b / total];
   if (!best) return fallback;
@@ -653,11 +734,17 @@ function blendViewColor(views, n, x, y, z, fallback) {
 }
 
 function averageColor(views) {
-  let r = 0, g = 0, b = 0, n = 0;
+  let r = 0,
+    g = 0,
+    b = 0,
+    n = 0;
   for (const view of views) {
     for (let p = 0; p < view.mask.length; p += 7) {
       if (view.mask[p]) {
-        r += view.rgb[p * 3]; g += view.rgb[p * 3 + 1]; b += view.rgb[p * 3 + 2]; n++;
+        r += view.rgb[p * 3];
+        g += view.rgb[p * 3 + 1];
+        b += view.rgb[p * 3 + 2];
+        n++;
       }
     }
   }
@@ -682,11 +769,23 @@ function buildSmoothMesh(occupancy, R, colorAt) {
   // Outward vertex normals from the (area-weighted) triangle normals
   const normals = new Float32Array(unit.length);
   for (let t = 0; t < tris.length; t += 3) {
-    const ia = tris[t] * 3, ib = tris[t + 1] * 3, ic = tris[t + 2] * 3;
-    const ux = unit[ib] - unit[ia], uy = unit[ib + 1] - unit[ia + 1], uz = unit[ib + 2] - unit[ia + 2];
-    const vx = unit[ic] - unit[ia], vy = unit[ic + 1] - unit[ia + 1], vz = unit[ic + 2] - unit[ia + 2];
-    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-    for (const i of [ia, ib, ic]) { normals[i] += nx; normals[i + 1] += ny; normals[i + 2] += nz; }
+    const ia = tris[t] * 3,
+      ib = tris[t + 1] * 3,
+      ic = tris[t + 2] * 3;
+    const ux = unit[ib] - unit[ia],
+      uy = unit[ib + 1] - unit[ia + 1],
+      uz = unit[ib + 2] - unit[ia + 2];
+    const vx = unit[ic] - unit[ia],
+      vy = unit[ic + 1] - unit[ia + 1],
+      vz = unit[ic + 2] - unit[ia + 2];
+    const nx = uy * vz - uz * vy,
+      ny = uz * vx - ux * vz,
+      nz = ux * vy - uy * vx;
+    for (const i of [ia, ib, ic]) {
+      normals[i] += nx;
+      normals[i + 1] += ny;
+      normals[i + 2] += nz;
+    }
   }
 
   const colors = new Uint8Array(unit.length);
@@ -696,7 +795,12 @@ function buildSmoothMesh(occupancy, R, colorAt) {
     const len = Math.hypot(normals[i], normals[i + 1], normals[i + 2]) || 1;
     const n = [normals[i] / len, normals[i + 1] / len, normals[i + 2] / len];
     // Look just inside the surface so the sample point stays within each silhouette
-    const c = colorAt(unit[i] - n[0] * inset, unit[i + 1] - n[1] * inset, unit[i + 2] - n[2] * inset, n);
+    const c = colorAt(
+      unit[i] - n[0] * inset,
+      unit[i + 1] - n[1] * inset,
+      unit[i + 2] - n[2] * inset,
+      n
+    );
     colors[i] = Math.round(Math.min(255, Math.max(0, c[0])));
     colors[i + 1] = Math.round(Math.min(255, Math.max(0, c[1])));
     colors[i + 2] = Math.round(Math.min(255, Math.max(0, c[2])));
@@ -736,11 +840,18 @@ export function buildModelFromViews(views, resolution = MESH_RESOLUTION) {
   let solid = 0;
   for (let i = 0; i < occupancy.length; i++) solid += occupancy[i];
   if (solid < 20) {
-    throw new Error('The photos do not agree on a shape. Use a plain background and the same object in every photo.');
+    throw new Error(
+      'The photos do not agree on a shape. Use a plain background and the same object in every photo.'
+    );
   }
   const fallback = averageColor(views);
-  const mesh = buildSmoothMesh(occupancy, R, (x, y, z, n) => blendViewColor(views, n, x, y, z, fallback));
-  if (!mesh) throw new Error('The photos do not agree on a shape. Use a plain background and the same object in every photo.');
+  const mesh = buildSmoothMesh(occupancy, R, (x, y, z, n) =>
+    blendViewColor(views, n, x, y, z, fallback)
+  );
+  if (!mesh)
+    throw new Error(
+      'The photos do not agree on a shape. Use a plain background and the same object in every photo.'
+    );
   return mesh;
 }
 
@@ -768,17 +879,35 @@ function rebuildFromBlocks(mesh) {
   const surface = new Uint8Array(R * R * R);
   const faceColor = new Uint8Array(R * R * R * 3);
   for (let q = 0; q < positions.length; q += 18) {
-    let cx = 0, cy = 0, cz = 0;
-    for (let v = 0; v < 6; v++) { cx += positions[q + v * 3]; cy += positions[q + v * 3 + 1]; cz += positions[q + v * 3 + 2]; }
-    cx /= 6; cy /= 6; cz /= 6;
-    const ux = positions[q + 3] - positions[q], uy = positions[q + 4] - positions[q + 1], uz = positions[q + 5] - positions[q + 2];
-    const vx = positions[q + 6] - positions[q], vy = positions[q + 7] - positions[q + 1], vz = positions[q + 8] - positions[q + 2];
-    let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    let cx = 0,
+      cy = 0,
+      cz = 0;
+    for (let v = 0; v < 6; v++) {
+      cx += positions[q + v * 3];
+      cy += positions[q + v * 3 + 1];
+      cz += positions[q + v * 3 + 2];
+    }
+    cx /= 6;
+    cy /= 6;
+    cz /= 6;
+    const ux = positions[q + 3] - positions[q],
+      uy = positions[q + 4] - positions[q + 1],
+      uz = positions[q + 5] - positions[q + 2];
+    const vx = positions[q + 6] - positions[q],
+      vy = positions[q + 7] - positions[q + 1],
+      vz = positions[q + 8] - positions[q + 2];
+    let nx = uy * vz - uz * vy,
+      ny = uz * vx - ux * vz,
+      nz = ux * vy - uy * vx;
     const len = Math.hypot(nx, ny, nz);
     if (len < 1e-9) return null;
-    nx /= len; ny /= len; nz /= len;
+    nx /= len;
+    ny /= len;
+    nz /= len;
     // The solid voxel lies behind the face
-    const px = cx - nx * 0.5 / R, py = cy - ny * 0.5 / R, pz = cz - nz * 0.5 / R;
+    const px = cx - (nx * 0.5) / R,
+      py = cy - (ny * 0.5) / R,
+      pz = cz - (nz * 0.5) / R;
     const i = Math.floor((px + 0.5) * R);
     const j = Math.floor(py * R);
     const k = Math.floor(pz * R + 0.5 * R);
@@ -799,12 +928,25 @@ function rebuildFromBlocks(mesh) {
     outside[idx] = 1;
     stack.push(i, j, k);
   };
-  for (let a = 0; a < R; a++) for (let b = 0; b < R; b++) {
-    push(a, b, 0); push(a, b, R - 1); push(a, 0, b); push(a, R - 1, b); push(0, a, b); push(R - 1, a, b);
-  }
+  for (let a = 0; a < R; a++)
+    for (let b = 0; b < R; b++) {
+      push(a, b, 0);
+      push(a, b, R - 1);
+      push(a, 0, b);
+      push(a, R - 1, b);
+      push(0, a, b);
+      push(R - 1, a, b);
+    }
   while (stack.length) {
-    const k = stack.pop(), j = stack.pop(), i = stack.pop();
-    push(i + 1, j, k); push(i - 1, j, k); push(i, j + 1, k); push(i, j - 1, k); push(i, j, k + 1); push(i, j, k - 1);
+    const k = stack.pop(),
+      j = stack.pop(),
+      i = stack.pop();
+    push(i + 1, j, k);
+    push(i - 1, j, k);
+    push(i, j + 1, k);
+    push(i, j - 1, k);
+    push(i, j, k + 1);
+    push(i, j, k - 1);
   }
   const occupancy = new Uint8Array(R * R * R);
   for (let p = 0; p < occupancy.length; p++) occupancy[p] = outside[p] ? 0 : 1;
@@ -814,12 +956,17 @@ function rebuildFromBlocks(mesh) {
     const cj = Math.min(R - 1, Math.max(0, Math.floor(y * R)));
     const ck = Math.min(R - 1, Math.max(0, Math.floor(z * R)));
     for (let radius = 0; radius <= 3; radius++) {
-      for (let dk = -radius; dk <= radius; dk++) for (let dj = -radius; dj <= radius; dj++) for (let di = -radius; di <= radius; di++) {
-        const i = ci + di, j = cj + dj, k = ck + dk;
-        if (i < 0 || j < 0 || k < 0 || i >= R || j >= R || k >= R) continue;
-        const idx = (k * R + j) * R + i;
-        if (surface[idx]) return [faceColor[idx * 3], faceColor[idx * 3 + 1], faceColor[idx * 3 + 2]];
-      }
+      for (let dk = -radius; dk <= radius; dk++)
+        for (let dj = -radius; dj <= radius; dj++)
+          for (let di = -radius; di <= radius; di++) {
+            const i = ci + di,
+              j = cj + dj,
+              k = ck + dk;
+            if (i < 0 || j < 0 || k < 0 || i >= R || j >= R || k >= R) continue;
+            const idx = (k * R + j) * R + i;
+            if (surface[idx])
+              return [faceColor[idx * 3], faceColor[idx * 3 + 1], faceColor[idx * 3 + 2]];
+          }
     }
     return [160, 160, 160];
   };
@@ -842,24 +989,38 @@ function meshTriangles(mesh) {
  * otherwise the camera orbits by yaw/pitch (degrees) and the model is fitted into the image.
  * @returns {Uint8ClampedArray} RGBA pixels, size x size, transparent where empty
  */
-export function renderMesh(mesh, { size = 96, top = false, yaw = 35, pitch = 28, padding = 0.06, supersample = 2 } = {}) {
+export function renderMesh(
+  mesh,
+  { size = 96, top = false, yaw = 35, pitch = 28, padding = 0.06, supersample = 2 } = {}
+) {
   const S = size * supersample;
   const { positions, colors } = mesh;
   const tri = meshTriangles(mesh);
   const yawR = (yaw * Math.PI) / 180;
   const pitchR = ((top ? 90 : pitch) * Math.PI) / 180;
-  const cosY = Math.cos(top ? 0 : yawR), sinY = Math.sin(top ? 0 : yawR);
-  const cosP = Math.cos(pitchR), sinP = Math.sin(pitchR);
+  const cosY = Math.cos(top ? 0 : yawR),
+    sinY = Math.sin(top ? 0 : yawR);
+  const cosP = Math.cos(pitchR),
+    sinP = Math.sin(pitchR);
   const count = positions.length / 3;
-  const sx = new Float32Array(count), sy = new Float32Array(count), depth = new Float32Array(count);
-  let minU = Infinity, maxU = -Infinity, minV = Infinity, maxV = -Infinity;
+  const sx = new Float32Array(count),
+    sy = new Float32Array(count),
+    depth = new Float32Array(count);
+  let minU = Infinity,
+    maxU = -Infinity,
+    minV = Infinity,
+    maxV = -Infinity;
   for (let i = 0; i < count; i++) {
-    const x = positions[i * 3], y = positions[i * 3 + 1] - 0.5, z = positions[i * 3 + 2];
+    const x = positions[i * 3],
+      y = positions[i * 3 + 1] - 0.5,
+      z = positions[i * 3 + 2];
     const x1 = x * cosY + z * sinY;
     const z1 = -x * sinY + z * cosY;
     const y2 = y * cosP - z1 * sinP;
     const z2 = y * sinP + z1 * cosP;
-    sx[i] = x1; sy[i] = -y2; depth[i] = z2;
+    sx[i] = x1;
+    sy[i] = -y2;
+    depth[i] = z2;
     if (x1 < minU) minU = x1;
     if (x1 > maxU) maxU = x1;
     if (-y2 < minV) minV = -y2;
@@ -867,13 +1028,18 @@ export function renderMesh(mesh, { size = 96, top = false, yaw = 35, pitch = 28,
   }
   let scale, offU, offV;
   if (top) {
-    scale = S; offU = 0.5 * S; offV = 0.5 * S;
+    scale = S;
+    offU = 0.5 * S;
+    offV = 0.5 * S;
   } else {
     scale = (S * (1 - padding * 2)) / Math.max(maxU - minU, maxV - minV, 1e-6);
     offU = S / 2 - ((minU + maxU) / 2) * scale;
     offV = S / 2 - ((minV + maxV) / 2) * scale;
   }
-  for (let i = 0; i < count; i++) { sx[i] = sx[i] * scale + offU; sy[i] = sy[i] * scale + offV; }
+  for (let i = 0; i < count; i++) {
+    sx[i] = sx[i] * scale + offU;
+    sy[i] = sy[i] * scale + offV;
+  }
 
   const light = [-0.35, 0.85, 0.4];
   const lightLen = Math.hypot(...light);
@@ -881,16 +1047,34 @@ export function renderMesh(mesh, { size = 96, top = false, yaw = 35, pitch = 28,
   const buf = new Float32Array(S * S * 3);
   const filled = new Uint8Array(S * S);
   for (let t = 0; t + 2 < tri.length; t += 3) {
-    const a = tri[t], b = tri[t + 1], c = tri[t + 2];
-    const ax = positions[a * 3], ay = positions[a * 3 + 1], az = positions[a * 3 + 2];
-    const e1x = positions[b * 3] - ax, e1y = positions[b * 3 + 1] - ay, e1z = positions[b * 3 + 2] - az;
-    const e2x = positions[c * 3] - ax, e2y = positions[c * 3 + 1] - ay, e2z = positions[c * 3 + 2] - az;
-    let nx = e1y * e2z - e1z * e2y, ny = e1z * e2x - e1x * e2z, nz = e1x * e2y - e1y * e2x;
+    const a = tri[t],
+      b = tri[t + 1],
+      c = tri[t + 2];
+    const ax = positions[a * 3],
+      ay = positions[a * 3 + 1],
+      az = positions[a * 3 + 2];
+    const e1x = positions[b * 3] - ax,
+      e1y = positions[b * 3 + 1] - ay,
+      e1z = positions[b * 3 + 2] - az;
+    const e2x = positions[c * 3] - ax,
+      e2y = positions[c * 3 + 1] - ay,
+      e2z = positions[c * 3 + 2] - az;
+    let nx = e1y * e2z - e1z * e2y,
+      ny = e1z * e2x - e1x * e2z,
+      nz = e1x * e2y - e1y * e2x;
     const nl = Math.hypot(nx, ny, nz);
     if (nl < 1e-12) continue;
-    nx /= nl; ny /= nl; nz /= nl;
-    const shade = 0.58 + 0.42 * Math.max(0, (nx * light[0] + ny * light[1] + nz * light[2]) / lightLen);
-    const x0 = sx[a], y0 = sy[a], x1 = sx[b], y1 = sy[b], x2 = sx[c], y2 = sy[c];
+    nx /= nl;
+    ny /= nl;
+    nz /= nl;
+    const shade =
+      0.58 + 0.42 * Math.max(0, (nx * light[0] + ny * light[1] + nz * light[2]) / lightLen);
+    const x0 = sx[a],
+      y0 = sy[a],
+      x1 = sx[b],
+      y1 = sy[b],
+      x2 = sx[c],
+      y2 = sy[c];
     const area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0);
     if (Math.abs(area) < 1e-9) continue;
     const minX = Math.max(0, Math.floor(Math.min(x0, x1, x2) - 0.5));
@@ -899,7 +1083,8 @@ export function renderMesh(mesh, { size = 96, top = false, yaw = 35, pitch = 28,
     const maxY = Math.min(S - 1, Math.ceil(Math.max(y0, y1, y2) + 0.5));
     for (let py = minY; py <= maxY; py++) {
       for (let px = minX; px <= maxX; px++) {
-        const qx = px + 0.5, qy = py + 0.5;
+        const qx = px + 0.5,
+          qy = py + 0.5;
         const w0 = ((x1 - qx) * (y2 - qy) - (x2 - qx) * (y1 - qy)) / area;
         const w1 = ((x2 - qx) * (y0 - qy) - (x0 - qx) * (y2 - qy)) / area;
         const w2 = 1 - w0 - w1;
@@ -910,7 +1095,8 @@ export function renderMesh(mesh, { size = 96, top = false, yaw = 35, pitch = 28,
         z[p] = d;
         filled[p] = 1;
         for (let ch = 0; ch < 3; ch++) {
-          buf[p * 3 + ch] = (w0 * colors[a * 3 + ch] + w1 * colors[b * 3 + ch] + w2 * colors[c * 3 + ch]) * shade;
+          buf[p * 3 + ch] =
+            (w0 * colors[a * 3 + ch] + w1 * colors[b * 3 + ch] + w2 * colors[c * 3 + ch]) * shade;
         }
       }
     }
@@ -920,12 +1106,18 @@ export function renderMesh(mesh, { size = 96, top = false, yaw = 35, pitch = 28,
   const n2 = supersample * supersample;
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
-      let r = 0, g = 0, b = 0, hits = 0;
+      let r = 0,
+        g = 0,
+        b = 0,
+        hits = 0;
       for (let dy = 0; dy < supersample; dy++) {
         for (let dx = 0; dx < supersample; dx++) {
           const p = (y * supersample + dy) * S + x * supersample + dx;
           if (!filled[p]) continue;
-          r += buf[p * 3]; g += buf[p * 3 + 1]; b += buf[p * 3 + 2]; hits++;
+          r += buf[p * 3];
+          g += buf[p * 3 + 1];
+          b += buf[p * 3 + 2];
+          hits++;
         }
       }
       if (!hits) continue;
@@ -953,7 +1145,10 @@ function simplifyLoop(points, epsilon) {
   let farDist = -1;
   for (let i = 1; i < points.length; i++) {
     const d = Math.hypot(points[i][0] - points[0][0], points[i][1] - points[0][1]);
-    if (d > farDist) { farDist = d; far = i; }
+    if (d > farDist) {
+      farDist = d;
+      far = i;
+    }
   }
   const dp = (pts) => {
     if (pts.length < 3) return pts;
@@ -964,7 +1159,10 @@ function simplifyLoop(points, epsilon) {
     let idx = 0;
     for (let i = 1; i < pts.length - 1; i++) {
       const d = Math.abs((bx - ax) * (ay - pts[i][1]) - (ax - pts[i][0]) * (by - ay)) / len;
-      if (d > maxD) { maxD = d; idx = i; }
+      if (d > maxD) {
+        maxD = d;
+        idx = i;
+      }
     }
     if (maxD <= epsilon) return [pts[0], pts[pts.length - 1]];
     const left = dp(pts.slice(0, idx + 1));
@@ -981,7 +1179,8 @@ function simplifyLoop(points, epsilon) {
  * @returns {number[][]} loops of flat [x, z, x, z, ...] in plan coordinates, x and z in [-0.5, 0.5]
  */
 export function footprintOutline(rgba, size) {
-  const filled = (x, y) => x >= 0 && y >= 0 && x < size && y < size && rgba[(y * size + x) * 4 + 3] > 127;
+  const filled = (x, y) =>
+    x >= 0 && y >= 0 && x < size && y < size && rgba[(y * size + x) * 4 + 3] > 127;
   // Directed edges with the filled side on the right, keyed by start corner
   const edges = new Map();
   const add = (x0, y0, x1, y1) => {
@@ -1017,12 +1216,16 @@ export function footprintOutline(rgba, size) {
           let bestTurn = -Infinity;
           outs.forEach((o, i) => {
             const turn = dir[0] * (o[1] - cy) - dir[1] * (o[0] - cx);
-            if (turn > bestTurn) { bestTurn = turn; pick = i; }
+            if (turn > bestTurn) {
+              bestTurn = turn;
+              pick = i;
+            }
           });
         }
         const [nx, ny] = outs.splice(pick, 1)[0];
         dir = [nx - cx, ny - cy];
-        cx = nx; cy = ny;
+        cx = nx;
+        cy = ny;
       }
       if (loop.length >= 4) loops.push(loop);
     }
@@ -1039,16 +1242,36 @@ export function footprintOutline(rgba, size) {
   return loops
     .filter((l) => area(l) >= 6)
     .map((l) => simplifyLoop(l, 0.7))
-    .map((l) => l.flatMap(([x, y]) => [Math.round((x / size - 0.5) * 1000) / 1000, Math.round((y / size - 0.5) * 1000) / 1000]));
+    .map((l) =>
+      l.flatMap(([x, y]) => [
+        Math.round((x / size - 0.5) * 1000) / 1000,
+        Math.round((y / size - 0.5) * 1000) / 1000,
+      ])
+    );
 }
 
 /** Mean colour of a mesh as a CSS hex string. */
 export function meshAverageHex(mesh) {
   const { colors } = mesh;
-  let r = 0, g = 0, b = 0, n = 0;
+  let r = 0,
+    g = 0,
+    b = 0,
+    n = 0;
   for (let i = 0; i + 2 < colors.length; i += 3 * 5) {
-    r += colors[i]; g += colors[i + 1]; b += colors[i + 2]; n++;
+    r += colors[i];
+    g += colors[i + 1];
+    b += colors[i + 2];
+    n++;
   }
   if (!n) return '#a0a0a0';
-  return '#' + [r, g, b].map((v) => Math.round(v / n).toString(16).padStart(2, '0')).join('');
+  return (
+    '#' +
+    [r, g, b]
+      .map((v) =>
+        Math.round(v / n)
+          .toString(16)
+          .padStart(2, '0')
+      )
+      .join('')
+  );
 }

@@ -7,7 +7,7 @@ export function KitchenIslandModel({ def, widthM, depthM, mainColor }) {
         <boxGeometry args={[widthM * 0.94, 0.88, depthM * 0.78]} />
         <meshStandardMaterial color={def.subColor || '#4E5F55'} roughness={0.8} />
       </mesh>
-      <mesh position={[0, 0.90, 0]} castShadow receiveShadow>
+      <mesh position={[0, 0.9, 0]} castShadow receiveShadow>
         <boxGeometry args={[widthM, 0.05, depthM]} />
         <meshStandardMaterial color={mainColor} roughness={0.4} metalness={0.1} />
       </mesh>

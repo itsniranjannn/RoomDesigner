@@ -4,7 +4,11 @@ import styles from './SaveStatus.module.css';
 const STATES = {
   saved: { label: 'Saved', title: 'All changes saved on this device', dot: '' },
   saving: { label: 'Saving', title: 'Saving your changes', dot: styles.busy },
-  error: { label: 'Not saved', title: 'Changes could not be saved on this device', dot: styles.failed },
+  error: {
+    label: 'Not saved',
+    title: 'Changes could not be saved on this device',
+    dot: styles.failed,
+  },
 };
 
 /** Quiet "Saved" note beside the title. */

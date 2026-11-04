@@ -15,7 +15,10 @@
   background: transparent;
   border: 1px solid transparent;
   border-radius: var(--radius-md);
-  transition: background-color var(--transition-fast), border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
 }
 
 .title:hover {
@@ -32,5 +35,8 @@
 }
 
 @media (max-width: 640px) {
-  .title { min-width: 48px; padding: 0 var(--space-1); }
+  .title {
+    min-width: 48px;
+    padding: 0 var(--space-1);
+  }
 }
