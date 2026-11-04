@@ -69,7 +69,7 @@
   gap: var(--space-1);
   padding: var(--space-2);
   font-size: var(--text-xs);
-  background: #fff;
+  background: var(--color-surface);
   border: var(--border-soft);
   border-radius: var(--radius-md);
 }

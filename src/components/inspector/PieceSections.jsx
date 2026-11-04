@@ -99,12 +99,15 @@ export function FinishSection({ item, def }) {
             key={c.hex}
             type="button"
             className={`${styles.swatch} ${current === c.hex.toLowerCase() ? styles.swatchOn : ''}`}
-            style={{ background: c.hex }}
             onClick={() => updateItemOverrides(item.id, { color: c.hex }, true)}
             aria-label={c.name}
             aria-pressed={current === c.hex.toLowerCase()}
             title={c.name}
-          />
+          >
+            <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true">
+              <circle cx="14" cy="14" r="13.5" fill={c.hex} stroke="var(--color-edge)" />
+            </svg>
+          </button>
         ))}
         <label className={`${styles.customColour} ${!isPreset && current ? styles.swatchOn : ''}`} title="Pick any colour">
           <input

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './Popover.module.css';
 
 /** Closes a popover on outside press or Escape and hands focus back to its trigger. */
-export function useDismiss(rootRef, open, onClose) {
+function useDismiss(rootRef, open, onClose) {
   useEffect(() => {
     if (!open) return undefined;
     const onPointer = (e) => {

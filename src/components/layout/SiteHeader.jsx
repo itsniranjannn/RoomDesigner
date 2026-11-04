@@ -7,7 +7,7 @@ import styles from './SiteHeader.module.css';
 const HOME_LABEL = 'Room Designer Studio home';
 
 /** Logo and wordmark. Always the way back to the overview. */
-export function Brand({ onHome, label = HOME_LABEL }) {
+function Brand({ onHome, label = HOME_LABEL }) {
   return (
     <button type="button" className={styles.brand} onClick={onHome} aria-label={label} title={label}>
       <BrandMark size={30} />

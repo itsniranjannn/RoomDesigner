@@ -1,0 +1,5 @@
+.grab { cursor: grab; }
+.grabbing { cursor: grabbing; }
+.crosshair { cursor: crosshair; }
+.ewResize { cursor: ew-resize; }
+.nsResize { cursor: ns-resize; }

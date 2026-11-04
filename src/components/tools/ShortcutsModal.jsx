@@ -54,7 +54,7 @@ function Keys({ text }) {
 
 export function ShortcutsModal({ onClose }) {
   return (
-    <Modal title="Keyboard shortcuts" subtitle="Plan shortcuts work while the 2D plan is showing." onClose={onClose} width={680}>
+    <Modal title="Keyboard shortcuts" subtitle="Plan shortcuts work while the 2D plan is showing." onClose={onClose} size="lg">
       <div className={styles.shortcutGrid}>
         {SECTIONS.map((section) => (
           <section key={section.title} className={styles.section}>

@@ -193,7 +193,7 @@
   font-size: var(--text-xs);
   font-weight: 600;
   color: var(--color-ink);
-  background: #fff;
+  background: var(--color-surface);
   border: var(--border);
   border-bottom-width: 2px;
   border-radius: var(--radius-sm);

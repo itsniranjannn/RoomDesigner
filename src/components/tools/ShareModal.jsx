@@ -56,7 +56,7 @@ export function ShareModal({ onClose }) {
   };
 
   return (
-    <Modal title="Share & export" subtitle={room ? room.name : undefined} onClose={onClose} width={560}>
+    <Modal title="Share & export" subtitle={room ? room.name : undefined} onClose={onClose} size="md">
       <ul className={styles.options}>
         <li className={styles.option}>
           <div className={styles.optionText}>

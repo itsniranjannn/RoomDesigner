@@ -29,7 +29,7 @@
 
 .primary {
   background-color: var(--color-maroon);
-  color: #fff;
+  color: var(--color-on-accent);
   border-color: var(--color-maroon);
 }
 
@@ -86,7 +86,7 @@
 
 .dangerSolid {
   background-color: var(--color-maroon);
-  color: #fff;
+  color: var(--color-on-accent);
   border-color: var(--color-maroon);
 }
 

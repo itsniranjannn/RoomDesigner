@@ -3,6 +3,7 @@ import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { getRotatedRectCorners } from '../../engine/geometry.js';
 import { getClearanceZones, evaluateClearance, describeIssue } from '../../engine/clearance.js';
 import { getWallDistances, distanceCm, formatCm } from '../../engine/measure.js';
+import cursors from './Cursors.module.css';
 
 const toPoints = (corners) => corners.map((c) => `${c.x},${c.y}`).join(' ');
 
@@ -183,7 +184,7 @@ export function MeasureLayer({ room, svgRef, bounds, measurements, setMeasuremen
         width={bounds.width}
         height={bounds.height}
         fill="transparent"
-        style={{ cursor: 'crosshair' }}
+        className={cursors.crosshair}
         onPointerMove={(e) => setHover(toRoomPoint(e))}
         onClick={handleClick}
         data-testid="measure-surface"

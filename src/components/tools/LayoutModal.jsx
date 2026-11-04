@@ -66,7 +66,7 @@ export function LayoutModal({ onClose }) {
       title="Suggest a layout"
       subtitle="Choose what the room needs. Pieces are placed along the walls and kept clear of doors and windows."
       onClose={onClose}
-      width={560}
+      size="md"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>

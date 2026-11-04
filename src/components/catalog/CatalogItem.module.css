@@ -12,7 +12,7 @@
   height: 100%;
   padding: var(--space-2);
   cursor: grab;
-  background: #fff;
+  background: var(--color-surface);
   border: var(--border-soft);
   border-radius: var(--radius-md);
   transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
@@ -51,7 +51,7 @@
   justify-content: center;
   width: 22px;
   height: 22px;
-  color: #fff;
+  color: var(--color-on-accent);
   background: var(--color-maroon);
   border-radius: 50%;
   opacity: 0;

@@ -81,7 +81,7 @@ export function AppShell() {
       title={incoming.error ? 'Link could not be opened' : 'Open shared design?'}
       subtitle={incoming.error || `"${incoming.room.name}" with ${incoming.room.placedFurniture.length} pieces`}
       onClose={closeIncoming}
-      width={440}
+      size="sm"
       footer={
         incoming.error ? (
           <Button variant="primary" onClick={closeIncoming}>Close</Button>

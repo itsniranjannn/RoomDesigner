@@ -87,6 +87,10 @@
   .bar .name { display: none; }
 }
 
+@media (max-width: 899px) {
+  .bar { grid-template-columns: minmax(0, 1fr) auto auto; }
+}
+
 @media (max-width: 640px) {
   .header { padding: var(--space-3) var(--space-4); }
   .name { display: none; }

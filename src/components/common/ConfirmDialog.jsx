@@ -8,7 +8,7 @@ export function ConfirmDialog({ title, message, confirmLabel = 'Delete', cancelL
     <Modal
       title={title}
       onClose={onClose}
-      width={420}
+      size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>{cancelLabel}</Button>

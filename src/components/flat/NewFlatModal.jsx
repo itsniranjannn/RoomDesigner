@@ -5,6 +5,7 @@ import { TextField, SelectField, NumberField } from '../common/Field.jsx';
 import { PRESETS } from '../../engine/flatPresets.js';
 import { useFlatStore } from '../../store/flatStore.js';
 import { useFlatUi } from '../../store/flatUiStore.js';
+import styles from './NewFlatModal.module.css';
 
 const OPTIONS = PRESETS.map((p) => ({ value: p.value, label: p.label }));
 
@@ -32,7 +33,7 @@ export function NewFlatModal({ onClose }) {
       title="Design a flat"
       subtitle="Draw walls to make rooms, then add doors, windows and stairs."
       onClose={onClose}
-      width={460}
+      size="sm"
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
@@ -40,11 +41,11 @@ export function NewFlatModal({ onClose }) {
         </>
       }
     >
-      <form onSubmit={submit} onKeyDown={(e) => e.key === 'Enter' && e.target.tagName === 'INPUT' && submit(e)} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+      <form className={styles.form} onSubmit={submit} onKeyDown={(e) => e.key === 'Enter' && e.target.tagName === 'INPUT' && submit(e)}>
         <TextField label="Name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} />
         <SelectField label="Start from" options={OPTIONS} value={preset} onChange={setPreset} hint={note} />
         {preset === 'shell' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+          <div className={styles.sizeRow}>
             <NumberField label="Width" suffix="m" value={widthM} min={2} max={24} step={0.5} onCommit={setWidthM} />
             <NumberField label="Depth" suffix="m" value={depthM} min={2} max={24} step={0.5} onCommit={setDepthM} />
           </div>
