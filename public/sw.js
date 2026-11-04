@@ -1,7 +1,8 @@
 /* Room Designer Studio service worker: makes the app usable offline.
  * - Navigations: network first, falling back to the cached app shell.
  * - Same-origin assets (hashed build files, icons): stale-while-revalidate.
- * Cross-origin requests (fonts) are left to the browser. Bump CACHE to drop old files. */
+ * Fonts are self-hosted, so they are cached with the other same-origin assets and work offline.
+ * Cross-origin requests are left to the browser. Bump CACHE to drop old files. */
 const CACHE = 'room-studio-v1';
 
 self.addEventListener('install', (event) => {

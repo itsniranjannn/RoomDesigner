@@ -11,9 +11,12 @@
 .panel {
   display: flex;
   flex-direction: column;
-  width: min(400px, 100vw);
-  height: 100%;
+  width: min(400px, calc(100vw - 2 * var(--gutter)));
+  height: calc(100% - 2 * var(--gutter));
+  margin: var(--gutter);
+  overflow: hidden;
   background: var(--color-paper);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lift);
   animation: slideIn var(--transition-normal);
 }

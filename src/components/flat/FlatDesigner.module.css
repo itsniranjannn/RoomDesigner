@@ -331,25 +331,6 @@
   z-index: var(--z-chrome);
 }
 
-.view3dHint {
-  position: absolute;
-  bottom: var(--space-3);
-  left: var(--space-3);
-  z-index: var(--z-chrome);
-  max-width: calc(100% - 220px);
-  padding: 6px 14px;
-  overflow: hidden;
-  font-size: var(--text-xs);
-  line-height: 1.4;
-  color: var(--color-ink-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: var(--color-paper);
-  border: var(--border-soft);
-  border-radius: 999px;
-  box-shadow: var(--shadow-card);
-}
-
 .dot {
   flex-shrink: 0;
 }
@@ -382,7 +363,6 @@
   .presetGrid { grid-template-columns: 1fr; }
   .shellRow { grid-template-columns: 1fr 1fr; }
   .floors { max-width: calc(100% - 72px); left: auto; right: var(--space-3); transform: none; }
-  .view3dHint { display: none; }
   .statusCursor { display: none; }
 }
 

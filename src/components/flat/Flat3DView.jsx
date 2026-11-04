@@ -198,7 +198,6 @@ export function Flat3DView() {
           {fullHeight ? 'Low walls' : 'Full-height walls'}
         </Button>
       </div>
-      <div className={styles.view3dHint}>Drag to orbit, right-drag to pan, scroll to zoom. Floors above the one you are editing are hidden.</div>
     </div>
   );
 }
