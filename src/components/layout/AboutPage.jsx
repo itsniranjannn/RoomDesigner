@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { LegacyBrandMark as BrandMark } from '../common/LegacyBrandMark.jsx';
+import { BrandMark } from '../common/BrandMark.jsx';
 import { Info, Layers3 } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { SheetsPanel } from './SheetsPanel.jsx';

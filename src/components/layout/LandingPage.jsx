@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
 import { Info, Layers3, Plus, Building2 } from 'lucide-react';
-import { LegacyBrandMark as BrandMark } from '../common/LegacyBrandMark.jsx';
+import { BrandMark } from '../common/BrandMark.jsx';
 import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './LandingPage.module.css';
 
