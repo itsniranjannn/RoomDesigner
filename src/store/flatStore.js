@@ -20,6 +20,8 @@ import {
   addLevel,
   removeLevel,
   stairFootprint,
+  normalizeStair,
+  stairStepCount,
   snapToGrid,
   STAIR_LIMITS,
   uid,
@@ -38,6 +40,7 @@ import {
   reconcile,
   levelEdges,
   openingsOf,
+  setEntrance as setEntranceIn,
 } from '../engine/flatPlan.js';
 import { buildPresetFlat } from '../engine/flatPresets.js';
 import {
@@ -360,7 +363,12 @@ export const useFlatStore = create((set, get) => ({
   removeOpening: (id) => {
     const { flat, rooms, levelId } = get();
     if (!flat || !openingsOf(flat, levelId).some((o) => o.id === id)) return false;
-    return get()._apply(removeOpening(flat, rooms, levelId, id), { selected: null });
+    const result = removeOpening(flat, rooms, levelId, id);
+    if (result.flat.entranceId === id) {
+      const { entranceId: _gone, ...rest } = result.flat;
+      result.flat = rest;
+    }
+    return get()._apply(result, { selected: null });
   },
 
   updateOpening: (id, patch) => {
@@ -369,6 +377,16 @@ export const useFlatStore = create((set, get) => ({
     const result = updateOpening(flat, rooms, levelId, id, patch);
     if (!result) return false;
     return get()._apply(result, {});
+  },
+
+  /** Makes a door the main entrance of the flat, or clears it with null. */
+  setEntrance: (openingId) => {
+    const { flat, rooms } = get();
+    if (!flat) return { error: 'Open a flat first.' };
+    const res = setEntranceIn(flat, openingId);
+    if (res.error) return { error: res.error };
+    if (res.flat !== flat) get()._apply({ flat: res.flat, rooms }, {});
+    return { ok: true };
   },
 
   // ---------- rooms ----------
@@ -415,10 +433,17 @@ export const useFlatStore = create((set, get) => ({
   },
 
   // ---------- stairs ----------
-  addStair: (type = 'straight', x, y, rotationDeg = 0) => {
+  addStair: (type = 'straight', x, y, rotationDeg = 0, extra = {}) => {
     const { flat, rooms, levelId } = get();
     if (!flat || !levelId) return null;
-    const draft = createStair(flat, { levelId, type, x: x ?? 100, y: y ?? 100, rotationDeg });
+    const draft = createStair(flat, {
+      ...extra,
+      levelId,
+      type,
+      x: x ?? 100,
+      y: y ?? 100,
+      rotationDeg,
+    });
     get()._apply(
       { flat: { ...flat, stairs: [...flat.stairs, draft] }, rooms },
       { selected: { type: 'stair', id: draft.id } }
@@ -445,11 +470,28 @@ export const useFlatStore = create((set, get) => ({
     }
     if (patch.x !== undefined) next.x = Math.max(0, snapToGrid(patch.x));
     if (patch.y !== undefined) next.y = Math.max(0, snapToGrid(patch.y));
-    if (JSON.stringify(next) === JSON.stringify(stair)) return true;
+    if (patch.toLevelId !== undefined) {
+      const from = flat.levels.findIndex((l) => l.id === stair.levelId);
+      const to = flat.levels.findIndex((l) => l.id === patch.toLevelId);
+      if (to > from) next.toLevelId = patch.toLevelId;
+      else delete next.toLevelId;
+    }
+    // The rise follows the floors the stair joins, and steps are kept in a comfortable range
+    let fixed = normalizeStair(flat, next);
+    if (patch.steps !== undefined) {
+      if (patch.steps === null) {
+        fixed = { ...fixed };
+        delete fixed.steps;
+      } else {
+        fixed = { ...fixed, steps: patch.steps };
+        fixed.steps = stairStepCount(fixed);
+      }
+    }
+    if (JSON.stringify(fixed) === JSON.stringify(stair)) return true;
     // Footprint is read here so a bad value fails loudly in tests
-    stairFootprint(next);
+    stairFootprint(fixed);
     return get()._apply(
-      { flat: { ...flat, stairs: flat.stairs.map((s) => (s.id === id ? next : s)) }, rooms },
+      { flat: { ...flat, stairs: flat.stairs.map((s) => (s.id === id ? fixed : s)) }, rooms },
       {}
     );
   },

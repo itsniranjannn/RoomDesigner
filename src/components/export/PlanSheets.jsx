@@ -835,6 +835,9 @@ function FlatStair({ entry, sk }) {
         } else if (f.dir === 'down') {
           a = [f.x + f.widthCm / 2, f.y + 8];
           b = [f.x + f.widthCm / 2, f.y + f.lengthCm - 8];
+        } else if (f.dir === 'left') {
+          a = [f.x + f.lengthCm - 8, f.y + f.widthCm / 2];
+          b = [f.x + 8, f.y + f.widthCm / 2];
         } else {
           a = [f.x + 8, f.y + f.widthCm / 2];
           b = [f.x + f.lengthCm - 8, f.y + f.widthCm / 2];
@@ -929,6 +932,12 @@ function FlatDrawing({ model }) {
       {model.stairs.map((entry) => (
         <FlatStair key={entry.stair.id} entry={entry} sk={sk} />
       ))}
+      {model.entrance && (
+        <g fill={MAROON} stroke={MAROON} strokeWidth={1.4 * sk}>
+          <line {...model.entrance.shaft} />
+          <polygon points={model.entrance.head} stroke="none" />
+        </g>
+      )}
       <g fontFamily={SANS} textAnchor="middle">
         {model.roomLabels.map((l) => (
           <g key={l.id}>
@@ -958,6 +967,18 @@ function FlatDrawing({ model }) {
             )}
           </g>
         ))}
+        {model.entrance && (
+          <text
+            x={model.entrance.x}
+            y={model.entrance.y}
+            fontSize={model.entrance.font}
+            fontWeight="700"
+            fill={MAROON}
+            {...HALO(model.entrance.font * 0.3)}
+          >
+            {model.entrance.text}
+          </text>
+        )}
         {model.stairLabels.map((l) => (
           <text
             key={l.id}

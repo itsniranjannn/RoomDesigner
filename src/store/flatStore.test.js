@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useFlatStore } from './flatStore.js';
 import { edgeKey } from '../engine/flatWalls.js';
-import { levelEdges, openingsOf } from '../engine/flatPlan.js';
+import { levelEdges, openingsOf, exteriorDoors } from '../engine/flatPlan.js';
 
 const st = () => useFlatStore.getState();
 
@@ -98,7 +98,7 @@ describe('flatStore', () => {
     st().updateStair(stair.id, { widthCm: 5 });
     expect(st().flat.stairs[0].widthCm).toBe(70);
     st().updateStair(stair.id, { riseCm: 9999 });
-    expect(st().flat.stairs[0].riseCm).toBe(450);
+    expect(st().flat.stairs[0].riseCm).toBe(1200);
     st().updateStair(stair.id, { x: 233, y: 41 });
     expect(st().flat.stairs[0]).toMatchObject({ x: 230, y: 40 });
     st().removeStair(stair.id);
@@ -184,5 +184,67 @@ describe('flatStore', () => {
     const res = st().placePassage({ x: 100, y: 100, lengthCm: 300, widthCm: 120, heading: 0 });
     expect(res.error).toMatch(/overlaps/);
     expect(st().past.length).toBe(depth);
+  });
+});
+
+describe('main entrance and staircases of the user choice', () => {
+  beforeEach(async () => {
+    await st().createNewFlat('Test flat');
+  });
+
+  it('sets, replaces and clears the main entrance, refusing inner doors', () => {
+    st().applyPreset('2bhk');
+    const levelId = st().levelId;
+    const doors = openingsOf(st().flat, levelId).filter((o) => o.type === 'door');
+    const outer = exteriorDoors(st().flat);
+    expect(outer.length).toBeGreaterThan(0);
+    const inner = doors.find((d) => !outer.some((o) => o.opening.id === d.id));
+    expect(st().setEntrance(inner.id).error).toMatch(/outer wall/);
+    expect(st().flat.entranceId).toBeUndefined();
+    expect(st().setEntrance(outer[0].opening.id)).toEqual({ ok: true });
+    expect(st().flat.entranceId).toBe(outer[0].opening.id);
+    expect(st().canUndo).toBe(true);
+    st().undo();
+    expect(st().flat.entranceId).toBeUndefined();
+    st().redo();
+    expect(st().setEntrance(null)).toEqual({ ok: true });
+    expect(st().flat.entranceId).toBeUndefined();
+  });
+
+  it('forgets the entrance when its door is removed', () => {
+    st().applyPreset('shell', { widthCm: 400, depthCm: 300 });
+    const door = openingsOf(st().flat, st().levelId).find((o) => o.type === 'door');
+    st().setEntrance(door.id);
+    expect(st().flat.entranceId).toBe(door.id);
+    st().removeOpening(door.id);
+    expect(st().flat.entranceId).toBeUndefined();
+  });
+
+  it('places a staircase between chosen floors and edits steps and destination', () => {
+    st().applyPreset('shell', { widthCm: 600, depthCm: 400 });
+    const ground = st().levelId;
+    st().addLevel();
+    st().addLevel();
+    const [, f1, f2] = st().flat.levels.map((l) => l.id);
+    st().setLevel(ground);
+    const stair = st().addStair('L', 100, 100, 90, { widthCm: 90, toLevelId: f2, steps: 30 });
+    expect(stair).toMatchObject({ widthCm: 90, toLevelId: f2, riseCm: 560, rotationDeg: 90 });
+    expect(st().flat.stairs[0].steps).toBe(30);
+    st().updateStair(stair.id, { toLevelId: f1 });
+    expect(st().flat.stairs[0]).toMatchObject({ toLevelId: f1, riseCm: 280 });
+    st().updateStair(stair.id, { steps: 3 });
+    expect(st().flat.stairs[0].steps).toBeGreaterThanOrEqual(2);
+    st().updateStair(stair.id, { steps: null });
+    expect(st().flat.stairs[0].steps).toBeUndefined();
+    // a floor that is not above cannot be the destination: it falls back to the floor above
+    st().updateStair(stair.id, { toLevelId: ground });
+    expect(st().flat.stairs[0]).toMatchObject({ toLevelId: f1, riseCm: 280 });
+    st().undo();
+    st().undo();
+    expect(st().flat.stairs).toHaveLength(1);
+    st().deleteSelected();
+    st().select({ type: 'stair', id: stair.id });
+    expect(st().deleteSelected()).toBe(true);
+    expect(st().flat.stairs).toHaveLength(0);
   });
 });

@@ -62,12 +62,23 @@ export function AppShell() {
     return () => window.removeEventListener('keydown', onKey);
   }, [drawer]);
 
-  // Open designs shared as a link (#share=...) after confirmation
+  // Open designs shared as a link (#share=...) after confirmation, both when the app loads
+  // with the link and when a link is pasted while it is already open
   useEffect(() => {
-    if (!window.location.hash.startsWith('#share=')) return;
-    decodeRoomFromHash(window.location.hash)
-      .then((shared) => setIncoming({ room: shared }))
-      .catch(() => setIncoming({ error: 'This share link is damaged or incomplete.' }));
+    let alive = true;
+    const openShared = () => {
+      const hash = window.location.hash;
+      if (!hash.startsWith('#share=')) return;
+      decodeRoomFromHash(hash)
+        .then((shared) => alive && setIncoming({ room: shared }))
+        .catch(() => alive && setIncoming({ error: 'This share link is damaged or incomplete.' }));
+    };
+    openShared();
+    window.addEventListener('hashchange', openShared);
+    return () => {
+      alive = false;
+      window.removeEventListener('hashchange', openShared);
+    };
   }, []);
 
   const closeIncoming = () => {
@@ -145,7 +156,12 @@ export function AppShell() {
 
   // Flat designer (multi-room plan)
   if (flatMode === 'flat') {
-    return <FlatDesigner />;
+    return (
+      <>
+        <FlatDesigner />
+        {shareDialog}
+      </>
+    );
   }
 
   // Dedicated full-page About view
