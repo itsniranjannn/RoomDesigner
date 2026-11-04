@@ -35,3 +35,10 @@ screenshots/
 temp/
 tmp/
 
+
+# Local tooling and scratch
+.claude/
+*.tsbuildinfo
+.env
+.env.*
+!.env.example
