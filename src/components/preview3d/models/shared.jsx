@@ -541,28 +541,151 @@ export function Drawers({
   );
 }
 
-/** Pillow with a flange border and a soft crease across the top. */
+const PILLOW_U = 36;
+const PILLOW_V = 22;
+const signedPow = (value, exp) => Math.sign(value) * Math.abs(value) ** exp;
+
+/**
+ * Plump square cushion: a superellipsoid, squarish with rounded corners when seen from above
+ * and domed on both faces. Lies flat with its thickness along Y; w x d is the outline.
+ */
+export function pillowGeometry(w, h, d) {
+  const a = w / 2;
+  const b = h / 2;
+  const c = d / 2;
+  const roundV = 0.9; // < 1 gives a slightly pinched seam, > 1 a pill
+  const squareU = 0.5; // 0.5 = squircle outline
+  const positions = [];
+  for (let i = 0; i <= PILLOW_V; i++) {
+    const v = -Math.PI / 2 + (Math.PI * i) / PILLOW_V;
+    const cv = signedPow(Math.cos(v), roundV);
+    const sv = signedPow(Math.sin(v), roundV);
+    for (let j = 0; j <= PILLOW_U; j++) {
+      const u = -Math.PI + (2 * Math.PI * j) / PILLOW_U;
+      positions.push(
+        a * cv * signedPow(Math.cos(u), squareU),
+        b * sv,
+        c * cv * signedPow(Math.sin(u), squareU)
+      );
+    }
+  }
+  const index = [];
+  const row = PILLOW_U + 1;
+  for (let i = 0; i < PILLOW_V; i++) {
+    for (let j = 0; j < PILLOW_U; j++) {
+      const p = i * row + j;
+      index.push(p, p + row, p + 1, p + 1, p + row, p + row + 1);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(index);
+  geometry.computeVertexNormals();
+  // Duplicate seam and pole vertices get one shared normal so the shading has no crease
+  const n = geometry.attributes.normal;
+  for (let i = 0; i <= PILLOW_V; i++) {
+    const first = i * row;
+    const last = first + PILLOW_U;
+    const nx = n.getX(first) + n.getX(last);
+    const ny = n.getY(first) + n.getY(last);
+    const nz = n.getZ(first) + n.getZ(last);
+    const len = Math.hypot(nx, ny, nz) || 1;
+    n.setXYZ(first, nx / len, ny / len, nz / len);
+    n.setXYZ(last, nx / len, ny / len, nz / len);
+  }
+  for (const [i, sign] of [
+    [0, -1],
+    [PILLOW_V, 1],
+  ]) {
+    for (let j = 0; j <= PILLOW_U; j++) n.setXYZ(i * row + j, 0, sign, 0);
+  }
+  n.needsUpdate = true;
+  return geometry;
+}
+
+/** World-space vertices of a pillow after the given Euler rotation (R3F default order). */
+export function pillowVertices(size, rotation = [0, 0, 0]) {
+  const geo = pillowGeometry(...size);
+  const m = new THREE.Matrix4().makeRotationFromEuler(new THREE.Euler(...rotation));
+  const pos = geo.attributes.position;
+  const out = [];
+  for (let i = 0; i < pos.count; i++) {
+    out.push(new THREE.Vector3(pos.getX(i), pos.getY(i), pos.getZ(i)).applyMatrix4(m));
+  }
+  geo.dispose();
+  return out;
+}
+
+/** Axis-aligned bounds of a pillow at `position` with `rotation`. */
+export function pillowBounds(size, rotation, position = [0, 0, 0]) {
+  const box = new THREE.Box3();
+  for (const v of pillowVertices(size, rotation))
+    box.expandByPoint(v.add(new THREE.Vector3(...position)));
+  return box;
+}
+
+/**
+ * Position for a cushion leaning on a backrest. It tilts back by `lean` radians from upright,
+ * sinks `sink` into the seat (soft upholstery), and slides forward until no part of it passes
+ * through the backrest's front plane (point `planePoint`, unit normal `planeNormal`).
+ */
+export function leaningPillow({
+  size,
+  lean,
+  yaw = 0,
+  x,
+  seatTop,
+  planePoint,
+  planeNormal,
+  sink = 0.012,
+}) {
+  // Lying flat the face normal is +Y; tipping it by (90deg - lean) about X stands it up
+  const rotation = [Math.PI / 2 - lean, yaw, 0];
+  const verts = pillowVertices(size, rotation);
+  const minY = Math.min(...verts.map((v) => v.y));
+  const y = seatTop - sink - minY;
+  const n = new THREE.Vector3(...planeNormal);
+  const p0 = new THREE.Vector3(...planePoint);
+  // Need n . (v + t - p0) >= 0 for every vertex, t = (x, y, z)
+  let z = -Infinity;
+  for (const v of verts) {
+    const need =
+      -n.dot(
+        v
+          .clone()
+          .add(new THREE.Vector3(x, y, 0))
+          .sub(p0)
+      ) / n.z;
+    z = Math.max(z, need);
+  }
+  return { position: [x, y, z], rotation };
+}
+
+/**
+ * Height for a pillow lying (or propped, tilted by `rotation`) on a surface so its lowest point
+ * sinks `sink` into it. Returns the y to use as the pillow's position.
+ */
+export function pillowRestY(size, rotation, surfaceY, sink = 0.01) {
+  const minY = Math.min(...pillowVertices(size, rotation).map((v) => v.y));
+  return surfaceY - sink - minY;
+}
+
+/** Colour a little lighter on dark bases and darker on light ones, so it never goes black. */
+export function tonal(color, amount) {
+  const hsl = {};
+  new THREE.Color(color).getHSL(hsl);
+  return shade(color, hsl.l > 0.45 ? -amount : amount);
+}
+
+/** Soft cushion; size is [width, thickness, depth] while lying flat. */
 export function Pillow({ position, size, color, rotation }) {
   const [w, h, d] = size;
-  const line = shade(color, -0.06);
+  const geometry = React.useMemo(() => pillowGeometry(w, h, d), [w, h, d]);
   return (
     <group name="pillow" position={position} rotation={rotation}>
-      <Pad size={size} radius={h * 0.45} color={color} roughness={FABRIC_ROUGHNESS} />
-      <Box
-        position={[0, h / 2 + 0.0005, 0]}
-        size={[w * 0.6, 0.004, 0.008]}
-        color={line}
-        castShadow={false}
-      />
-      {[-1, 1].map((s) => (
-        <Box
-          key={s}
-          position={[0, h * 0.32, s * (d / 2 - 0.012)]}
-          size={[w * 0.92, 0.004, 0.004]}
-          color={line}
-          castShadow={false}
-        />
-      ))}
+      <mesh geometry={geometry} castShadow receiveShadow>
+        <meshStandardMaterial color={color} roughness={FABRIC_ROUGHNESS} />
+      </mesh>
     </group>
   );
 }

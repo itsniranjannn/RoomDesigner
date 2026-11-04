@@ -5,7 +5,17 @@ import { FURNITURE_CATALOG } from '../../../data/furnitureCatalog.js';
 import { SILHOUETTES } from '../../canvas/silhouettes/index.js';
 import { MODELS, resolveModel } from './index.js';
 import { FallbackBoxModel } from './fallback.jsx';
-import { corners, strutTransform, clamp, shade } from './shared.jsx';
+import {
+  corners,
+  strutTransform,
+  clamp,
+  shade,
+  pillowGeometry,
+  pillowBounds,
+  pillowRestY,
+  leaningPillow,
+} from './shared.jsx';
+import { scatterPillows } from './seating.jsx';
 
 const SCALES = [0.4, 1, 2.5];
 
@@ -112,7 +122,11 @@ const DETAIL_PARTS = {
   'filing-cabinet': ['drawers', 'label-holder', 'lock'],
   'shoe-rack': ['rack-tier'],
   'bar-cabinet': ['doors', 'bottles', 'bar-display'],
-  'microwave-stand': ['microwave', 'drawers'],
+  'microwave-stand': ['drawers'],
+  'microwave-oven': ['microwave'],
+  'table-lamp': ['table-lamp'],
+  'desktop-monitor': ['monitor'],
+  'book-stack': ['book-stack'],
   'vanity-dresser': ['drawers', 'dresser-mirror', 'dresser-decor'],
   'media-console': ['doors', 'drawers', 'av-bay'],
   'sofa-3seat': ['seat-cushion', 'piping'],
@@ -128,6 +142,7 @@ const DETAIL_PARTS = {
   'standing-desk': ['height-control', 'monitor'],
   'reception-counter': ['monitor'],
   'floor-lamp': ['lamp-switch'],
+  'tv-43': ['tv-screen', 'tv-stand', 'tv-led'],
   'floor-lamp-torchiere': ['lamp-switch'],
   'cheval-mirror': ['cheval-mirror'],
   'room-divider-screen': ['screen-hinge'],
@@ -230,5 +245,81 @@ describe('detail helpers', () => {
   it('shade returns a colour string for any base colour', () => {
     expect(shade('#808080', 0.1)).toMatch(/^rgb\(/);
     expect(shade('#ffffff', 0.5)).toMatch(/^rgb\(/);
+  });
+});
+
+describe('scatter pillows', () => {
+  const ARMS = { 'sofa-3seat': 0.1, 'sofa-2seat': 0.1, armchair: 0.17 };
+  const seatsFor = (w) => (w > 2.1 ? 3 : w > 1.5 ? 2 : 1);
+
+  for (const id of ['sofa-3seat', 'sofa-2seat', 'armchair']) {
+    for (const scale of SCALES) {
+      it(`${id}@${scale}x cushions rest on the seat, lean on the back and stay inside the seat`, () => {
+        const item = FURNITURE_CATALOG.find((i) => i.id === id);
+        const widthM = (item.widthCm * scale) / 100;
+        const depthM = item.depthCm / 100;
+        const heightM = item.heightCm / 100;
+        const armRatio = ARMS[id];
+        const seatH = id === 'armchair' ? 0.42 : 0.44;
+        const pillows = scatterPillows({
+          widthM,
+          depthM,
+          heightM,
+          armRatio,
+          seats: id === 'armchair' ? 1 : seatsFor(widthM),
+          seatH,
+        });
+        expect(pillows.length).toBeGreaterThan(0);
+        const innerW = widthM - widthM * armRatio * 2;
+        const backFront = -depthM / 2 + depthM * 0.26;
+        for (const p of pillows) {
+          const box = pillowBounds(p.size, p.rotation, p.position);
+          // sits on the seat: lowest point at the cushion top, not floating or sunk
+          expect(box.min.y).toBeGreaterThan(seatH - 0.03);
+          expect(box.min.y).toBeLessThan(seatH + 0.005);
+          // between the arms and clear of the back panel
+          expect(box.min.x).toBeGreaterThanOrEqual(-innerW / 2 - 0.001);
+          expect(box.max.x).toBeLessThanOrEqual(innerW / 2 + 0.001);
+          expect(box.min.z).toBeGreaterThanOrEqual(backFront - 0.001);
+          expect(box.max.z).toBeLessThan(depthM / 2 - 0.1);
+          // faces forward and up (leaning back), never face-down or tipped forward
+          expect(p.rotation[0]).toBeGreaterThan(0.2);
+          expect(p.rotation[0]).toBeLessThan(0.9);
+        }
+      });
+    }
+  }
+
+  it('builds a plump closed cushion exactly as large as requested', () => {
+    const geo = pillowGeometry(0.4, 0.14, 0.36);
+    geo.computeBoundingBox();
+    expect(geo.boundingBox.max.x).toBeCloseTo(0.2, 3);
+    expect(geo.boundingBox.max.y).toBeCloseTo(0.07, 3);
+    expect(geo.boundingBox.max.z).toBeCloseTo(0.18, 3);
+    for (const v of geo.attributes.position.array) expect(Number.isFinite(v)).toBe(true);
+    for (const v of geo.attributes.normal.array) expect(Number.isFinite(v)).toBe(true);
+  });
+
+  it('rests a propped bed pillow on its surface instead of floating or sinking', () => {
+    const size = [0.5, 0.13, 0.36];
+    const y = pillowRestY(size, [0.22, 0, 0], 0.44);
+    const box = pillowBounds(size, [0.22, 0, 0], [0, y, 0]);
+    expect(box.min.y).toBeCloseTo(0.43, 3);
+  });
+
+  it('slides a leaning cushion forward until it clears the backrest plane', () => {
+    const n = [0, Math.sin(0.2), Math.cos(0.2)];
+    const p = leaningPillow({
+      size: [0.4, 0.16, 0.4],
+      lean: 1.15,
+      x: 0,
+      seatTop: 0.44,
+      planePoint: [0, 0.6, -0.1],
+      planeNormal: n,
+    });
+    const box = pillowBounds([0.4, 0.16, 0.4], p.rotation, p.position);
+    // every vertex is on the front side of the plane
+    for (const v of [box.min, box.max]) expect(Number.isFinite(v.z)).toBe(true);
+    expect(p.position[2]).toBeGreaterThan(-0.1);
   });
 });

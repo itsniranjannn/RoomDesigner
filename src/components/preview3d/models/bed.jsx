@@ -1,5 +1,18 @@
 /** 3D models: bed. Built from Three.js primitives; origin on the floor, centered on the footprint. */
-import { Box, Cyl, Pad, Ball, Pillow, Drawers, BRASS, corners, shade, clamp } from './shared.jsx';
+import {
+  Box,
+  Cyl,
+  Pad,
+  Ball,
+  Pillow,
+  pillowRestY,
+  tonal,
+  Drawers,
+  BRASS,
+  corners,
+  shade,
+  clamp,
+} from './shared.jsx';
 
 const LINEN = '#FBF9F4';
 
@@ -137,7 +150,7 @@ function Duvet({ widthM, mattressTop, z0, z1, accentColor, fabricColor, throwBla
           position={[0, mattressTop + 0.073, z1 - 0.2]}
           size={[w - 0.1, 0.02, 0.3]}
           radius={0.008}
-          color={shade(accentColor, -0.18)}
+          color={tonal(accentColor, 0.16)}
           roughness={0.98}
         />
       )}
@@ -167,7 +180,6 @@ export function BedModel({
   const mattressD = depthM - hb - 0.02;
   const mattressZ = hb / 2 + 0.01;
   const front = depthM / 2;
-  const pillowY = mattressTop + 0.065;
   const pillowZ = -depthM / 2 + hb + 0.2;
   const duvetZ0 = mattressZ - mattressD / 2 + mattressD * 0.38;
   const duvetZ1 = mattressZ + mattressD / 2 - 0.005;
@@ -175,6 +187,46 @@ export function BedModel({
   const chanN = clamp(Math.round(widthM / 0.24), 3, 10);
   const trim = shade(mainColor, -0.1);
   const pillowW = isSingle ? widthM * 0.6 : widthM * (big ? 0.28 : 0.38);
+  const prop = (key, x, z, size, color, tilt, yaw = 0) => {
+    const rotation = [tilt, yaw, 0];
+    return {
+      id: key,
+      size,
+      color,
+      rotation,
+      position: [x, pillowRestY(size, rotation, mattressTop), z],
+    };
+  };
+  const sleep = [pillowW, 0.13, 0.36];
+  const bedPillows = isSingle
+    ? [prop('p', 0, pillowZ, sleep, LINEN, 0.22)]
+    : [
+        ...[-1, 1].map((s) =>
+          prop(`p${s}`, s * widthM * (big ? 0.26 : 0.23), pillowZ, sleep, LINEN, 0.22)
+        ),
+        ...(big
+          ? [-1, 1].map((s) =>
+              prop(
+                `e${s}`,
+                s * widthM * 0.12,
+                pillowZ + 0.2,
+                [pillowW * 0.82, 0.12, 0.3],
+                shade(accentColor, 0.12),
+                0.3,
+                s * 0.1
+              )
+            )
+          : [
+              prop(
+                'e',
+                0,
+                pillowZ + 0.22,
+                [widthM * 0.3, 0.1, 0.24],
+                shade(accentColor, 0.12),
+                0.3
+              ),
+            ]),
+      ];
   return (
     <group>
       {/* Base: plinth rail with trim, short turned feet (or a drawer base for the storage bed) */}
@@ -354,43 +406,16 @@ export function BedModel({
         throwBlanket={!isSingle}
       />
 
-      {/* Pillows with flange borders and creased tops */}
-      {isSingle ? (
+      {/* Pillows propped against the headboard, back edge raised */}
+      {bedPillows.map((p) => (
         <Pillow
-          position={[0, pillowY, pillowZ]}
-          size={[pillowW, 0.13, 0.36]}
-          color={LINEN}
-          rotation={[-0.3, 0, 0]}
+          key={p.id}
+          position={p.position}
+          size={p.size}
+          color={p.color}
+          rotation={p.rotation}
         />
-      ) : (
-        [-1, 1].map((s) => (
-          <Pillow
-            key={s}
-            position={[s * widthM * (big ? 0.26 : 0.23), pillowY, pillowZ]}
-            size={[pillowW, 0.13, 0.36]}
-            color={LINEN}
-            rotation={[-0.3, 0, 0]}
-          />
-        ))
-      )}
-      {big &&
-        [-1, 1].map((s) => (
-          <Pillow
-            key={`e${s}`}
-            position={[s * widthM * 0.12, pillowY + 0.03, pillowZ + 0.2]}
-            size={[pillowW * 0.82, 0.12, 0.3]}
-            color={shade(accentColor, 0.12)}
-            rotation={[-0.16, s * 0.1, 0]}
-          />
-        ))}
-      {!isSingle && !big && (
-        <Pillow
-          position={[0, pillowY + 0.04, pillowZ + 0.22]}
-          size={[widthM * 0.3, 0.1, 0.24]}
-          color={shade(accentColor, 0.12)}
-          rotation={[-0.2, 0, 0]}
-        />
-      )}
+      ))}
     </group>
   );
 }
@@ -445,10 +470,14 @@ export function BedBunkModel({ widthM, depthM, heightM, mainColor, fabricColor, 
         roughness={0.95}
       />
       <Pillow
-        position={[0, y + 0.16, -depthM / 2 + 0.3]}
+        position={[
+          0,
+          pillowRestY([widthM * 0.55, 0.1, 0.3], [0.2, 0, 0], y + 0.14),
+          -depthM / 2 + 0.3,
+        ]}
         size={[widthM * 0.55, 0.1, 0.3]}
         color={LINEN}
-        rotation={[-0.15, 0, 0]}
+        rotation={[0.2, 0, 0]}
       />
     </group>
   );

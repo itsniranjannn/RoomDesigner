@@ -1,4 +1,6 @@
 /** 3D models: storage. Built from Three.js primitives; origin on the floor, centered on the footprint. */
+import React from 'react';
+import * as THREE from 'three';
 import {
   Box,
   Cyl,
@@ -76,7 +78,7 @@ export function WardrobeModel({ widthM, depthM, heightM, mainColor, handleColor 
   const mirrored = widthM > 1.5;
   const mirrorIdx = Math.floor(numDoors / 2);
   const dw = (widthM - 0.04) / numDoors;
-  const trim = shade(mainColor, -0.08);
+  const trim = shade(mainColor, 0.02);
   return (
     <group>
       {/* Recessed plinth, carcass and a crown moulding */}
@@ -93,7 +95,7 @@ export function WardrobeModel({ widthM, depthM, heightM, mainColor, handleColor 
         roughness={0.7}
       />
       <Box
-        position={[0, heightM - 0.02, 0.005]}
+        position={[0, heightM - 0.017, 0.005]}
         size={[widthM + 0.025, 0.04, depthM + 0.02]}
         color={trim}
         roughness={0.6}
@@ -178,7 +180,7 @@ export function BookshelfModel({ widthM, depthM, heightM, mainColor }) {
       ))}
       <Box
         position={[0, heightM / 2, -depthM / 2 + 0.008]}
-        size={[shelfW, heightM, 0.012]}
+        size={[shelfW, heightM - 0.004, 0.012]}
         color={back}
         roughness={0.85}
       />
@@ -491,7 +493,7 @@ function BottleRow({ x0, x1, y, z, count }) {
               radiusTop={0.012}
               height={0.015}
               color="#C9A24A"
-              metalness={0.5}
+              metalness={0.15}
               roughness={0.4}
               segments={8}
             />
@@ -510,6 +512,8 @@ export function SideboardModel({ def, widthM, depthM, heightM, mainColor, legCol
   const legH = console_ ? 0.3 : bar ? 0.14 : 0.16;
   const topT = 0.03;
   const bodyH = heightM - legH;
+  // A console table's legs carry the top all the way up, its apron hangs below the slab
+  const legsH = console_ ? heightM - topT : legH;
   const frontZ = depthM / 2;
   const sub = def?.subColor || shade(mainColor, -0.08);
   const legsAt = [
@@ -524,13 +528,13 @@ export function SideboardModel({ def, widthM, depthM, heightM, mainColor, legCol
       {legsAt.map(([lx, lz], idx) => (
         <Cyl
           key={idx}
-          position={[lx, legH / 2, lz]}
+          position={[lx, legsH / 2, lz]}
           radiusTop={0.02}
           radiusBottom={0.012}
-          height={legH}
+          height={legsH}
           color={legColor}
           roughness={0.35}
-          metalness={0.5}
+          metalness={0.15}
           segments={10}
         />
       ))}
@@ -577,7 +581,7 @@ export function SideboardModel({ def, widthM, depthM, heightM, mainColor, legCol
               metalness={0.2}
             />
             <Box
-              position={[0, heightM - legH - 0.63 - 0.015, 0]}
+              position={[0, heightM - legH - 0.63 - 0.013, 0]}
               size={[widthM, 0.03, depthM * 0.9]}
               color={shade(mainColor, 0.06)}
               roughness={0.5}
@@ -647,49 +651,6 @@ export function SideboardModel({ def, widthM, depthM, heightM, mainColor, legCol
             color={shade(mainColor, 0.05)}
             roughness={0.4}
           />
-          <group name="microwave" position={[0, heightM + 0.14, 0]}>
-            <Box
-              size={[widthM * 0.72, 0.28, depthM * 0.85]}
-              color="#D5D8DB"
-              roughness={0.35}
-              metalness={0.2}
-            />
-            <Box
-              position={[-widthM * 0.08, 0, depthM * 0.43]}
-              size={[widthM * 0.46, 0.2, 0.006]}
-              color="#0F1316"
-              roughness={0.1}
-              castShadow={false}
-            />
-            <Box
-              position={[widthM * 0.24, 0.02, depthM * 0.43]}
-              size={[widthM * 0.14, 0.2, 0.006]}
-              color="#B9BDC1"
-              castShadow={false}
-            />
-            <Box
-              position={[widthM * 0.24, 0.1, depthM * 0.435]}
-              size={[0.07, 0.025, 0.004]}
-              color="#0A0D10"
-              castShadow={false}
-            />
-            <Cyl
-              position={[widthM * 0.24, -0.04, depthM * 0.44]}
-              radiusTop={0.02}
-              height={0.02}
-              rotation={[Math.PI / 2, 0, 0]}
-              {...STEEL}
-              segments={12}
-            />
-            <Pull
-              position={[-widthM * 0.33, 0, depthM * 0.43]}
-              length={0.2}
-              color={CHROME.color}
-              roughness={CHROME.roughness}
-              metalness={CHROME.metalness}
-              stand={0.02}
-            />
-          </group>
         </>
       ) : console_ ? (
         <>
@@ -712,7 +673,7 @@ export function SideboardModel({ def, widthM, depthM, heightM, mainColor, legCol
             handle="knob"
           />
           <Box
-            position={[0, legH * 0.35, 0]}
+            position={[0, 0.2, 0]}
             size={[widthM - 0.1, 0.02, depthM - 0.08]}
             color={sub}
             roughness={0.6}
@@ -1019,7 +980,7 @@ export function CredenzaModel({
       />
       <group name="av-bay">
         <Box
-          position={[0, legH + 0.015 + doorH * 0.34, depthM / 2 - 0.005]}
+          position={[0, legH + 0.015 + doorH * 0.34, depthM / 2 - 0.004]}
           size={[gapX * 1.7, doorH * 0.64, 0.01]}
           color={DARK_GAP}
           roughness={0.9}
@@ -1100,9 +1061,9 @@ export function PantryCabinetModel({ def, widthM, depthM, heightM, mainColor, ha
         />
       )}
       <Box
-        position={[0, heightM - 0.012, 0]}
+        position={[0, heightM - 0.009, 0]}
         size={[widthM + 0.015, 0.024, depthM + 0.015]}
-        color={shade(mainColor, -0.05)}
+        color={shade(mainColor, 0.02)}
         roughness={0.55}
       />
       {towel ? (
@@ -1186,80 +1147,98 @@ export function PantryCabinetModel({ def, widthM, depthM, heightM, mainColor, ha
   );
 }
 
-export function TvModel({ widthM, depthM, heightM, mainColor, subColor }) {
-  const footH = 0.025;
-  const panelT = Math.min(0.035, depthM * 0.6);
-  const panelY = 0.085;
-  const panelH = heightM - panelY;
-  const panelZ = -depthM / 2 + panelT / 2 + 0.01;
-  const front = panelZ + panelT / 2;
-  const bezel = clamp(widthM * 0.012, 0.008, 0.02);
-  const chin = bezel * 2.4;
+/** Faint diagonal sheen on the glass: strongest at the top-left corner, gone by the middle. */
+function ScreenSheen({ width, height, z }) {
+  const geometry = React.useMemo(() => {
+    const g = new THREE.PlaneGeometry(width, height, 8, 8);
+    const pos = g.attributes.position;
+    const colors = new Float32Array(pos.count * 4);
+    for (let i = 0; i < pos.count; i++) {
+      // t runs 0 at the top-left corner to 1 at the bottom-right
+      const t = (pos.getX(i) / width + 0.5 + (0.5 - pos.getY(i) / height)) / 2;
+      const a = 0.22 * Math.pow(Math.max(0, 1 - t * 1.9), 2);
+      colors.set([1, 1, 1, a], i * 4);
+    }
+    g.setAttribute('color', new THREE.BufferAttribute(colors, 4));
+    return g;
+  }, [width, height]);
   return (
-    <group>
-      {/* Slim bezel panel with the glass screen set into its front face */}
+    <mesh position={[0, 0, z]} geometry={geometry}>
+      <meshBasicMaterial vertexColors transparent depthWrite={false} />
+    </mesh>
+  );
+}
+
+/** Flat-panel TV: thin bezel, glossy glass screen, slim back body, neck and base plate. */
+export function TvModel({ widthM, depthM, heightM, mainColor }) {
+  const baseT = 0.012;
+  const neckH = 0.05;
+  const bodyBottom = baseT + neckH;
+  const bodyH = heightM - bodyBottom;
+  const bodyT = Math.min(0.026, depthM * 0.3);
+  const bodyZ = -depthM * 0.08;
+  const front = bodyZ + bodyT / 2;
+  const bezel = clamp(widthM * 0.009, 0.006, 0.014);
+  const chin = bezel * 1.8;
+  const screenW = widthM - bezel * 2;
+  const screenH = bodyH - bezel - chin;
+  const screenY = bodyBottom + chin + screenH / 2;
+  return (
+    <group name="tv">
+      {/* Bezel body with a shallower rear housing behind it */}
       <Box
-        position={[0, panelY + panelH / 2, panelZ]}
-        size={[widthM, panelH, panelT]}
+        position={[0, bodyBottom + bodyH / 2, bodyZ]}
+        size={[widthM, bodyH, bodyT]}
         color={mainColor}
-        roughness={0.3}
+        roughness={0.35}
+        metalness={0.2}
       />
       <Box
-        position={[0, panelY + panelH / 2, panelZ - panelT * 0.1]}
-        size={[widthM * 0.5, panelH * 0.6, panelT * 1.6]}
-        color={subColor || '#303438'}
+        position={[0, bodyBottom + bodyH * 0.55, bodyZ - bodyT / 2 - 0.009]}
+        size={[widthM * 0.62, bodyH * 0.55, 0.018]}
+        color={shade(mainColor, 0.03)}
         roughness={0.5}
-      />
-      <Box
-        position={[0, panelY + panelH / 2 + chin / 2 - bezel / 2, front + 0.001]}
-        size={[widthM - bezel * 2, panelH - bezel - chin, 0.002]}
-        color="#142536"
-        roughness={0.08}
-        metalness={0.25}
         castShadow={false}
       />
+      {/* Glass: its face stands 2 mm proud of the bezel so the two never share a plane */}
+      <group name="tv-screen">
+        <Box
+          position={[0, screenY, front + 0.0005]}
+          size={[screenW, screenH, 0.003]}
+          color="#111a25"
+          roughness={0.08}
+          metalness={0.15}
+          castShadow={false}
+        />
+        <group position={[0, screenY, front + 0.0021]}>
+          <ScreenSheen width={screenW} height={screenH} z={0.0004} />
+        </group>
+      </group>
+      {/* Standby light on the chin */}
       <mesh
-        position={[-widthM * 0.14, panelY + panelH * 0.58, front + 0.003]}
-        rotation={[0, 0, -0.5]}
+        name="tv-led"
+        position={[widthM / 2 - bezel - 0.012, bodyBottom + chin * 0.5, front + 0.0012]}
       >
-        <planeGeometry args={[widthM * 0.5, 0.03]} />
-        <meshBasicMaterial color="#FFFFFF" transparent opacity={0.1} />
-      </mesh>
-      <mesh position={[0, panelY + panelH * 0.04 + 0.002, front + 0.0035]}>
-        <planeGeometry args={[widthM * 0.9, 0.003]} />
-        <meshBasicMaterial color="#3E5C79" />
-      </mesh>
-      {/* Logo and standby light on the chin */}
-      <Box
-        position={[0, panelY + chin / 2, front + 0.001]}
-        size={[widthM * 0.05, 0.005, 0.002]}
-        {...STEEL}
-        castShadow={false}
-      />
-      <mesh position={[widthM * 0.4, panelY + chin / 2, front + 0.002]}>
-        <sphereGeometry args={[0.003, 6, 4]} />
+        <sphereGeometry args={[0.0028, 8, 6]} />
         <meshBasicMaterial color="#FF3B30" />
       </mesh>
-      {/* Neck, angled feet bar and table-top base */}
-      <Box
-        position={[0, panelY / 2 + 0.01, panelZ]}
-        size={[widthM * 0.05, panelY, 0.03]}
-        color={mainColor}
-        roughness={0.4}
-      />
-      <Box
-        position={[0, footH / 2, 0]}
-        size={[widthM * 0.3, footH, depthM]}
-        color={mainColor}
-        roughness={0.4}
-      />
-      <Box
-        position={[0, footH + 0.002, 0]}
-        size={[widthM * 0.28, 0.004, depthM * 0.9]}
-        color={shade(mainColor, 0.06)}
-        roughness={0.3}
-        castShadow={false}
-      />
+      {/* Neck behind the panel and a flat base plate */}
+      <group name="tv-stand">
+        <Box
+          position={[0, baseT + neckH / 2, bodyZ - 0.004]}
+          size={[widthM * 0.06, neckH + 0.004, 0.02]}
+          color={mainColor}
+          roughness={0.4}
+          metalness={0.2}
+        />
+        <Pad
+          position={[0, baseT / 2, 0]}
+          size={[widthM * 0.3, baseT, depthM * 0.92]}
+          radius={0.004}
+          color={shade(mainColor, 0.04)}
+          roughness={0.35}
+        />
+      </group>
     </group>
   );
 }

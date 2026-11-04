@@ -7,7 +7,9 @@ export function PlanterModel({ widthM, depthM, heightM, mainColor, subColor }) {
   const foliageH = heightM - potH;
   const leafCount = Math.round(clamp(14 + heightM * 10, 14, 28));
   const leafL = clamp(foliageH * 0.5, 0.14, 0.5);
-  const darker = shade(mainColor, -0.08);
+  // Leaves vary towards lighter greens: darker shades of a deep green read as black blobs
+  const darker = shade(mainColor, 0.1);
+  const leafGreen = shade(mainColor, 0.03);
   return (
     <group>
       {/* Saucer, tapered pot with a rolled rim and a band, soil and mulch stones */}
@@ -89,7 +91,7 @@ export function PlanterModel({ widthM, depthM, heightM, mainColor, subColor }) {
               castShadow
             >
               <sphereGeometry args={[1, 10, 6]} />
-              <meshStandardMaterial color={i % 3 === 0 ? darker : mainColor} roughness={0.7} />
+              <meshStandardMaterial color={i % 3 === 0 ? darker : leafGreen} roughness={0.7} />
             </mesh>
           </group>
         );
