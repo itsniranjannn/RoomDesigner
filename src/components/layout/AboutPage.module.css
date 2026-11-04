@@ -1,131 +1,516 @@
-.page {
+.aboutContainer {
   display: flex;
   flex-direction: column;
-  width: 100%;
   height: 100dvh;
-  overflow-x: hidden;
-  overflow-y: auto;
-  background: var(--color-linen);
+  min-height: 100dvh;
+  width: 100vw;
+  background-color: var(--color-linen);
+  color: var(--color-ink);
+  overflow: hidden;
 }
 
-.main {
-  display: grid;
-  flex: 1;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+/* ═══════════ HEADER (Identical to Landing Page) ═══════════ */
+.aboutHeader {
+  height: var(--topbar-height);
+  border-bottom: 1px solid var(--color-taupe);
+  display: flex;
   align-items: center;
-  gap: var(--space-10);
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: var(--space-6) var(--space-8);
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  background-color: var(--color-linen);
+  flex-shrink: 0;
+  z-index: 10;
 }
 
-.copy {
+.brandLogo {
   display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-  max-width: 600px;
-}
-
-.title {
-  margin: 0;
-  font-family: var(--font-serif);
-  font-size: var(--text-2xl);
-  font-weight: 500;
-  line-height: 1.15;
-  letter-spacing: -0.02em;
-}
-
-.lead {
-  margin: 0;
-  font-size: var(--text-base);
-  line-height: 1.6;
-  color: var(--color-ink-muted);
-}
-
-.features {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.feature {
-  display: flex;
+  align-items: center;
   gap: var(--space-3);
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  text-decoration: none;
+  color: inherit;
 }
 
-.featureIcon {
+.brandLogo:hover .brandTitle {
+  color: var(--color-maroon);
+}
+
+.brandMarkIcon {
+  flex-shrink: 0;
+  animation: brandOrbit 14s linear infinite;
+  filter: drop-shadow(0 2px 5px rgba(139, 38, 53, 0.16));
+}
+
+.mastheadLockup {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+}
+
+.brandTitle {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--color-ink);
+  line-height: 1.1;
+  transition: color var(--transition-fast);
+}
+
+.brandSubTitle {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  color: var(--color-clay);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.headerMetaBlock {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px;
+  border: 1px solid var(--color-taupe);
+  border-radius: 999px;
+  background: rgba(237, 230, 217, 0.52);
+}
+
+.headerNavBtn {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-ink-muted);
+  letter-spacing: 0.12em;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 6px 9px;
+  border-radius: 999px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
+  gap: 6px;
+  transition:
+    color var(--transition-fast),
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
+}
+
+.headerNavBtn:hover {
   color: var(--color-maroon);
-  background: var(--color-maroon-subtle);
-  border-radius: var(--radius-md);
+  background-color: var(--color-linen);
+  border-color: var(--color-taupe);
+  transform: translateY(-1px);
 }
 
-.featureTitle {
-  margin: 0;
-  font-size: var(--text-base);
+.headerNavBtn:focus-visible {
+  outline: 2px solid var(--color-clay);
+  outline-offset: 2px;
+}
+
+.headerNavBtnActive {
+  color: var(--color-maroon);
+  background-color: rgba(139, 38, 53, 0.12);
+  border-color: rgba(139, 38, 53, 0.4);
+  box-shadow: 0 1px 4px rgba(139, 38, 53, 0.1);
+  font-weight: 800;
+}
+
+.headerNavBtnActive:hover {
+  background-color: rgba(139, 38, 53, 0.16);
+  border-color: var(--color-maroon);
+}
+
+.headerSheetsBtn {
+  color: var(--color-linen);
+  background: var(--color-maroon);
+  border-color: var(--color-maroon);
+}
+
+.headerSheetsBtn:hover {
+  color: var(--color-linen);
+  background: var(--color-maroon-hover);
+  border-color: var(--color-maroon-hover);
+}
+
+.headerSheetsLabel {
+  letter-spacing: 0.14em;
+}
+
+.headerSheetsCount {
+  min-width: 20px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  color: var(--color-maroon);
+  background: var(--color-linen);
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
+.headerMetaDivider {
+  width: 1px;
+  height: 18px;
+  background: var(--color-taupe);
+}
+
+/* ═══════════ MAIN TWO-COLUMN SPLIT (Matches Landing Page) ═══════════ */
+.aboutMain {
+  display: grid;
+  grid-template-columns: 46% 54%;
+  flex: 1;
+  height: calc(100vh - var(--topbar-height) - 45px);
+  min-height: 0;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* ═══════════ LEFT: CONTENT COLUMN ═══════════ */
+.aboutCopyColumn {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-8) var(--space-6) var(--space-10);
+  border-right: 1px solid var(--color-taupe);
+  background-color: var(--color-linen);
+  height: 100%;
+  overflow-y: auto;
+  position: relative;
+}
+
+.aboutCopyContent {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  margin: auto 0;
+  max-width: 540px;
+}
+
+.classificationTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--color-maroon);
+  padding: 4px 10px;
+  border: 1px solid rgba(139, 38, 53, 0.35);
+  background-color: rgba(139, 38, 53, 0.04);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-self: flex-start;
 }
 
-.featureText {
-  margin: 2px 0 0;
-  font-size: var(--text-sm);
-  line-height: 1.5;
-  color: var(--color-ink-muted);
-}
-
-.note {
+.aboutHeading {
+  font-family: var(--font-serif);
+  font-size: clamp(2.4rem, 4.2vw, 3.8rem);
+  font-weight: 650;
+  line-height: 1.02;
+  color: var(--color-ink);
+  letter-spacing: -0.025em;
   margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-ink-faint);
 }
 
-.actions {
+.aboutSecondaryTitle {
+  font-family: var(--font-serif);
+  font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+  font-weight: 400;
+  font-style: italic;
+  color: var(--color-ink-muted);
+  line-height: 1.35;
+  margin: 0;
+  padding-left: 14px;
+  border-left: 2px solid var(--color-brass);
+}
+
+.articleBody {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 4px 0 0 0;
+}
+
+.articleBody p {
+  margin: 0;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  line-height: 1.62;
+  letter-spacing: 0.01em;
+}
+
+.materialPillRow {
   display: flex;
   flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.materialPill {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--color-clay);
+  background: rgba(237, 230, 217, 0.7);
+  border: 1px solid var(--color-taupe);
+  border-radius: 999px;
+  padding: 3px 9px;
+}
+
+.creditParagraph {
+  font-family: var(--font-serif) !important;
+  font-style: italic;
+  color: var(--color-ink-muted) !important;
+  font-size: 13px !important;
+  padding-top: 10px;
+  border-top: 1px dashed var(--color-taupe);
+  margin-top: 4px !important;
+}
+
+.backExploreBtn {
+  display: flex;
+  align-items: center;
   gap: var(--space-3);
+  padding: var(--space-2) 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  flex-shrink: 0;
+  transition: transform var(--transition-fast);
 }
 
-.visual {
-  min-width: 0;
+.backExploreBtn::before {
+  content: '';
+  width: 24px;
+  height: 1px;
+  background-color: var(--color-taupe);
+  transition:
+    width var(--transition-fast),
+    background-color var(--transition-fast);
 }
 
-.footer {
-  padding: var(--space-4) var(--space-8) var(--space-6);
-  font-size: var(--text-xs);
-  color: var(--color-ink-faint);
-  text-align: center;
+.backExploreBtn:hover::before {
+  width: 32px;
+  background-color: var(--color-maroon);
 }
 
-@media (max-width: 900px) {
-  .main {
+.backIndicatorText {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  color: var(--color-ink-muted);
+  transition: color var(--transition-fast);
+}
+
+.backExploreBtn:hover .backIndicatorText {
+  color: var(--color-maroon);
+}
+
+/* ═══════════ RIGHT: ANIMATED ARCHITECTURAL WORKBENCH ═══════════ */
+.aboutVisualColumn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: var(--color-linen);
+  height: 100%;
+  padding: 24px 28px;
+}
+
+.draftingSurface {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.svgDraftingBoard {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+}
+
+.animatedDraftingGrid {
+  animation: gridDrift 28s linear infinite;
+}
+
+/* Mandala animations */
+.mandalaSystem {
+  transform-origin: center center;
+}
+
+.mandalaHalo {
+  fill: rgba(139, 38, 53, 0.03);
+  stroke: rgba(184, 134, 11, 0.22);
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+  animation: mandalaPulse 6.5s ease-in-out infinite;
+}
+
+.mandalaSpin {
+  transform-origin: 0 0;
+  animation: mandalaRotate 48s linear infinite;
+}
+
+.mandalaSpinReverse {
+  transform-origin: 0 0;
+  animation: mandalaRotateReverse 36s linear infinite;
+}
+
+.mandalaCore {
+  animation: corePulse 3.8s ease-in-out infinite;
+}
+
+/* Corner framing plate */
+.blueprintFrame {
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgba(200, 185, 166, 0.35);
+  pointer-events: none;
+}
+
+/* ═══════════ COLOPHON (Matching Landing Page) ═══════════ */
+.colophon {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0 14px 0;
+  background-color: var(--color-linen);
+}
+
+.colophonRule {
+  width: 100%;
+  height: 1px;
+  background-color: var(--color-taupe);
+  margin-bottom: 8px;
+}
+
+.colophonMark {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  color: var(--color-brass);
+}
+
+/* ═══════════ KEYFRAMES ═══════════ */
+@keyframes brandOrbit {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.05);
+  }
+}
+
+@keyframes gridDrift {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(20px, 20px);
+  }
+}
+
+@keyframes mandalaRotate {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mandalaRotateReverse {
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+@keyframes mandalaPulse {
+  0%,
+  100% {
+    opacity: 0.38;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.03);
+  }
+}
+
+@keyframes corePulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+/* ═══════════ RESPONSIVE ═══════════ */
+@media (max-width: 1024px) {
+  .aboutMain {
+    grid-template-columns: 48% 52%;
+  }
+
+  .aboutCopyColumn {
+    padding: var(--space-6) var(--space-6);
+  }
+
+  .aboutCopyContent {
+    gap: 12px;
+  }
+}
+
+@media (max-width: 820px) {
+  .aboutContainer {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+  }
+
+  .aboutMain {
     grid-template-columns: 1fr;
-    gap: var(--space-6);
-    padding: var(--space-4) var(--space-6);
+    height: auto;
   }
 
-  .copy {
-    max-width: none;
+  .aboutCopyColumn {
+    padding: var(--space-8) var(--space-5);
+    border-right: none;
+    border-bottom: 1px solid var(--color-taupe);
+    overflow-y: visible;
   }
-  .visual {
-    order: -1;
-    max-height: 260px;
+
+  .aboutVisualColumn {
+    height: 52vh;
+    min-height: 380px;
+    padding: var(--space-4);
   }
 }
 
-@media (max-width: 480px) {
-  .main {
-    padding: var(--space-2) var(--space-4) var(--space-4);
-  }
-  .actions > * {
-    flex: 1 1 100%;
+@media (prefers-reduced-motion: reduce) {
+  .brandMarkIcon,
+  .animatedDraftingGrid,
+  .mandalaHalo,
+  .mandalaSpin,
+  .mandalaSpinReverse,
+  .mandalaCore {
+    animation: none;
   }
 }
