@@ -28,6 +28,7 @@ import { normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
 import { clampOpening } from '../engine/openings.js';
 
+const SAVE_DEBOUNCE_MS = 350;
 let saveDebounceTimer = null;
 
 async function listStandaloneRooms() {
@@ -73,19 +74,32 @@ function clampToBase(overrides, base) {
 
 const newItemId = () => `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
-function persistDebounced(updatedRoom, set) {
+/** The latest unsaved room, written after a short pause or as soon as the open room changes. */
+let pendingSave = null;
+
+async function writePending(set) {
   if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
-  saveDebounceTimer = setTimeout(async () => {
-    try {
-      await saveRoomToDB(updatedRoom);
-      set({ saveStatus: 'saved' });
-    } catch (err) {
-      if (import.meta.env?.DEV) {
-        console.error('Error saving to IndexedDB:', err);
-      }
-    }
-  }, 350);
+  saveDebounceTimer = null;
+  const room = pendingSave;
+  pendingSave = null;
+  if (!room) return;
+  try {
+    await saveRoomToDB(room);
+    if (!pendingSave) set({ saveStatus: 'saved' });
+  } catch (err) {
+    set({ saveStatus: 'error' });
+    if (import.meta.env?.DEV) console.error('Error saving to IndexedDB:', err);
+  }
 }
+
+function persistDebounced(updatedRoom, set) {
+  pendingSave = updatedRoom;
+  if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+  saveDebounceTimer = setTimeout(() => writePending(set), SAVE_DEBOUNCE_MS);
+}
+
+/** Writes any unsaved edit now. Call before the open room is switched, closed, renamed or deleted. */
+const flushPendingSave = (set) => writePending(set);
 
 export const useRoomStore = create((set, get) => ({
   room: null,
@@ -205,17 +219,7 @@ export const useRoomStore = create((set, get) => ({
       saveStatus: 'saving',
     });
 
-    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
-    saveDebounceTimer = setTimeout(async () => {
-      try {
-        await saveRoomToDB(updatedRoom);
-        set({ saveStatus: 'saved' });
-      } catch (err) {
-        if (import.meta.env?.DEV) {
-          console.error('Error saving undo state to IndexedDB:', err);
-        }
-      }
-    }, 350);
+    persistDebounced(updatedRoom, set);
   },
 
   // Redo step
@@ -263,17 +267,7 @@ export const useRoomStore = create((set, get) => ({
       saveStatus: 'saving',
     });
 
-    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
-    saveDebounceTimer = setTimeout(async () => {
-      try {
-        await saveRoomToDB(updatedRoom);
-        set({ saveStatus: 'saved' });
-      } catch (err) {
-        if (import.meta.env?.DEV) {
-          console.error('Error saving redo state to IndexedDB:', err);
-        }
-      }
-    }, 350);
+    persistDebounced(updatedRoom, set);
   },
 
   // Close active room and return to Studio Overview landing page
@@ -615,17 +609,7 @@ export const useRoomStore = create((set, get) => ({
 
     set({ room: updatedRoom, saveStatus: 'saving' });
 
-    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
-    saveDebounceTimer = setTimeout(async () => {
-      try {
-        await saveRoomToDB(updatedRoom);
-        set({ saveStatus: 'saved' });
-      } catch (err) {
-        if (import.meta.env?.DEV) {
-          console.error('Error saving opening to IndexedDB:', err);
-        }
-      }
-    }, 350);
+    persistDebounced(updatedRoom, set);
   },
 
   // Add a new door or window
@@ -1136,16 +1120,6 @@ export const useRoomStore = create((set, get) => ({
     });
 
     // Debounced persist to IndexedDB
-    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
-    saveDebounceTimer = setTimeout(async () => {
-      try {
-        await saveRoomToDB(updatedRoom);
-        set({ saveStatus: 'saved' });
-      } catch (err) {
-        if (import.meta.env?.DEV) {
-          console.error('Error saving to IndexedDB:', err);
-        }
-      }
-    }, 350);
+    persistDebounced(updatedRoom, set);
   },
 }));
