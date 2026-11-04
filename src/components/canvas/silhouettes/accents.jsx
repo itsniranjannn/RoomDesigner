@@ -1,27 +1,52 @@
 /** 2D plan symbols: planters, round rugs and screens. Coordinates are centered at (0, 0), widthCm x depthCm. */
+import { HAIR, METAL } from './parts.jsx';
+
 export function PlanterSilhouette({ hw, hd, color, subColor }) {
   const r = Math.min(hw, hd);
   return (
     <g>
-      <circle cx={0} cy={0} r={r} fill={subColor} stroke="#8A7F70" strokeWidth="1.2" />
-      <circle cx={0} cy={0} r={r * 0.82} fill="#4E3B2B" />
-      {/* Foliage clusters */}
-      {[0, 60, 120, 180, 240, 300].map((angle, idx) => {
-        const rad = (angle * Math.PI) / 180;
+      {/* Saucer, pot rim and band, soil with mulch stones */}
+      <circle cx={0} cy={0} r={r} fill="none" stroke={HAIR} strokeWidth="0.8" />
+      <circle cx={0} cy={0} r={r * 0.92} fill={subColor} stroke="#8A7F70" strokeWidth="1.2" />
+      <circle cx={0} cy={0} r={r * 0.82} fill="none" stroke="rgba(0,0,0,0.25)" strokeWidth="0.8" />
+      <circle cx={0} cy={0} r={r * 0.74} fill="#4E3B2B" />
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <circle
+          key={i}
+          cx={Math.cos(i * 2.1) * r * 0.5}
+          cy={Math.sin(i * 2.1) * r * 0.5}
+          r={1.4}
+          fill={i % 2 ? '#B8AFA2' : '#8E877C'}
+        />
+      ))}
+      {/* Leaves of different sizes fanning from the centre, with midribs */}
+      {Array.from({ length: 12 }).map((_, i) => {
+        const angle = i * 30 + (i % 2) * 8;
+        const len = r * (0.52 + (0.28 * ((i * 5) % 3)) / 2);
         return (
-          <circle
-            key={idx}
-            cx={Math.sin(rad) * r * 0.42}
-            cy={-Math.cos(rad) * r * 0.42}
-            r={r * 0.34}
-            fill={color}
-            stroke="#2B3D33"
-            strokeWidth="0.6"
-            opacity="0.92"
-          />
+          <g key={i} transform={`rotate(${angle})`}>
+            <ellipse
+              cx={0}
+              cy={-len * 0.55}
+              rx={r * 0.13}
+              ry={len * 0.5}
+              fill={color}
+              stroke="#2B3D33"
+              strokeWidth="0.6"
+              opacity="0.95"
+            />
+            <line
+              x1={0}
+              y1={-len * 0.1}
+              x2={0}
+              y2={-len * 1.0}
+              stroke="#2B3D33"
+              strokeWidth="0.4"
+            />
+          </g>
         );
       })}
-      <circle cx={0} cy={0} r={r * 0.3} fill={color} stroke="#2B3D33" strokeWidth="0.6" />
+      <circle cx={0} cy={0} r={r * 0.1} fill="#4A3A28" />
     </g>
   );
 }
@@ -42,9 +67,21 @@ export function RugRoundSilhouette({ hw, hd, color, subColor, accentColor }) {
         strokeWidth="1.2"
         strokeDasharray="4 3"
       />
-      {/* Central medallion */}
+      {/* Petal motif ring, central medallion and binding edge */}
+      {Array.from({ length: 16 }).map((_, i) => (
+        <rect
+          key={i}
+          x={r * 0.74}
+          y={-1.4}
+          width={r * 0.12}
+          height={2.8}
+          fill={i % 2 ? subColor : accentColor}
+          transform={`rotate(${i * 22.5})`}
+        />
+      ))}
       <circle cx={0} cy={0} r={r * 0.26} fill={accentColor} />
       <circle cx={0} cy={0} r={r * 0.14} fill={subColor} />
+      <circle cx={0} cy={0} r={r * 0.97} fill="none" stroke="rgba(0,0,0,0.3)" strokeWidth="0.6" />
     </g>
   );
 }
@@ -81,6 +118,30 @@ export function ScreenSilhouette({ widthCm, hw, hd, color, accentColor }) {
         strokeWidth="0.8"
         strokeDasharray="3 3"
       />
+      {/* Hinge barrels at each fold, feet beneath each panel */}
+      {Array.from({ length: panels + 1 }).map((_, idx) => (
+        <circle
+          key={idx}
+          cx={-hw + idx * step}
+          cy={idx % 2 === 0 ? -hd : hd}
+          r={2.2}
+          fill={METAL}
+          stroke="#2B2117"
+          strokeWidth="0.6"
+        />
+      ))}
+      {Array.from({ length: panels }).map((_, idx) => (
+        <circle
+          key={idx}
+          cx={-hw + (idx + 0.5) * step}
+          cy={0}
+          r={1.4}
+          fill="none"
+          stroke={HAIR}
+          strokeWidth="0.5"
+          strokeDasharray="1.5 1.5"
+        />
+      ))}
     </g>
   );
 }

@@ -1,52 +1,99 @@
-import { Box, Cyl } from './shared.jsx';
+import { Box, Cyl, Ball, CHROME, clamp, shade } from './shared.jsx';
 
 /** 3D models: planters, round rugs and screens. Built from Three.js primitives; origin on the floor, centered on the footprint. */
 export function PlanterModel({ widthM, depthM, heightM, mainColor, subColor }) {
   const r = Math.min(widthM, depthM) / 2;
   const potH = heightM * 0.4;
   const foliageH = heightM - potH;
-  const blobs = [
-    { x: 0, z: 0, y: 0.5, s: 1, tone: mainColor },
-    { x: 0.45, z: 0.1, y: 0.35, s: 0.55, tone: '#4B6B52' },
-    { x: -0.4, z: -0.2, y: 0.4, s: 0.55, tone: '#4B6B52' },
-    { x: 0.05, z: -0.45, y: 0.55, s: 0.5, tone: mainColor },
-    { x: -0.1, z: 0.45, y: 0.3, s: 0.5, tone: mainColor },
-  ];
+  const leafCount = Math.round(clamp(14 + heightM * 10, 14, 28));
+  const leafL = clamp(foliageH * 0.5, 0.14, 0.5);
+  const darker = shade(mainColor, -0.08);
   return (
     <group>
+      {/* Saucer, tapered pot with a rolled rim and a band, soil and mulch stones */}
       <Cyl
-        position={[0, potH / 2, 0]}
+        position={[0, 0.01, 0]}
+        radiusTop={r * 0.7}
+        radiusBottom={r * 0.76}
+        height={0.02}
+        color={shade(subColor, -0.1)}
+        roughness={0.6}
+        segments={24}
+      />
+      <Cyl
+        position={[0, 0.02 + (potH - 0.02) / 2, 0]}
         radiusTop={r * 0.9}
         radiusBottom={r * 0.68}
-        height={potH}
+        height={potH - 0.02}
         color={subColor}
         roughness={0.55}
       />
+      <mesh position={[0, potH - 0.008, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <torusGeometry args={[r * 0.9, 0.014, 8, 28]} />
+        <meshStandardMaterial color={shade(subColor, 0.04)} roughness={0.5} />
+      </mesh>
       <Cyl
-        position={[0, potH - 0.01, 0]}
+        position={[0, potH * 0.55, 0]}
+        radiusTop={r * 0.83}
+        radiusBottom={r * 0.8}
+        height={0.015}
+        color={shade(subColor, -0.14)}
+        roughness={0.6}
+        segments={24}
+        castShadow={false}
+      />
+      <Cyl
+        position={[0, potH - 0.03, 0]}
         radiusTop={r * 0.82}
-        height={0.02}
+        height={0.03}
         color="#2E1C12"
         roughness={0.95}
         castShadow={false}
       />
-      {/* Bushy foliage built from overlapping ellipsoids */}
-      {blobs.map((b, idx) => (
-        <mesh
-          key={idx}
-          position={[b.x * r * 0.7, potH + foliageH * b.y, b.z * r * 0.7]}
-          scale={[
-            r * 0.8 * b.s + r * 0.15,
-            foliageH * 0.45 * b.s + foliageH * 0.1,
-            r * 0.8 * b.s + r * 0.15,
-          ]}
-          castShadow
-          receiveShadow
-        >
-          <sphereGeometry args={[1, 18, 14]} />
-          <meshStandardMaterial color={b.tone} roughness={0.85} />
-        </mesh>
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <Ball
+          key={`st${i}`}
+          position={[Math.cos(i * 2.1) * r * 0.5, potH - 0.012, Math.sin(i * 2.1) * r * 0.5]}
+          radius={0.01 + (i % 3) * 0.004}
+          scale={[1, 0.6, 1]}
+          color={i % 2 ? '#B8AFA2' : '#8E877C'}
+          segments={6}
+          castShadow={false}
+        />
       ))}
+      {/* Central stems and leaves of several sizes fanning out and up */}
+      {[0, 1, 2].map((i) => (
+        <Cyl
+          key={`s${i}`}
+          position={[Math.cos(i * 2.1) * 0.02, potH + foliageH * 0.3, Math.sin(i * 2.1) * 0.02]}
+          radiusTop={0.008}
+          radiusBottom={0.012}
+          height={foliageH * 0.6}
+          color="#4A3A28"
+          roughness={0.9}
+          segments={6}
+          castShadow={false}
+        />
+      ))}
+      {Array.from({ length: leafCount }).map((_, i) => {
+        const t = i / (leafCount - 1);
+        const y = potH + foliageH * (0.18 + 0.72 * t);
+        const L = leafL * (1.0 - 0.45 * t) * (0.8 + (0.4 * ((i * 5) % 4)) / 3);
+        const tilt = 0.25 + 1.0 * t;
+        return (
+          <group key={i} position={[0, y, 0]} rotation={[0, i * 2.4, 0]}>
+            <mesh
+              position={[(L / 2) * Math.cos(tilt) + r * 0.1, (L / 2) * Math.sin(tilt), 0]}
+              rotation={[0, 0, tilt]}
+              scale={[L / 2, 0.01, L * 0.2]}
+              castShadow
+            >
+              <sphereGeometry args={[1, 10, 6]} />
+              <meshStandardMaterial color={i % 3 === 0 ? darker : mainColor} roughness={0.7} />
+            </mesh>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -72,6 +119,25 @@ export function RugRoundModel({ widthM, depthM, heightM, mainColor, subColor, ac
         segments={48}
         castShadow={false}
       />
+      <mesh position={[0, heightM / 2, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[r, heightM / 2, 6, 48]} />
+        <meshStandardMaterial color={shade(mainColor, -0.1)} roughness={0.95} />
+      </mesh>
+      {Array.from({ length: 16 }).map((_, i) => (
+        <Box
+          key={`m${i}`}
+          position={[
+            Math.cos((i * Math.PI) / 8) * r * 0.78,
+            heightM + 0.0014,
+            Math.sin((i * Math.PI) / 8) * r * 0.78,
+          ]}
+          rotation={[0, -(i * Math.PI) / 8, 0]}
+          size={[r * 0.1, 0.0008, r * 0.035]}
+          color={i % 2 ? subColor : accentColor}
+          roughness={0.95}
+          castShadow={false}
+        />
+      ))}
       {rings.map(([f, color], idx) => (
         <Cyl
           key={idx}
@@ -101,6 +167,12 @@ export function ScreenModel({ widthM, depthM, heightM, mainColor, accentColor })
         const cx = -widthM / 2 + step * (idx + 0.5);
         return (
           <group key={idx} position={[cx, 0, (z0 + z1) / 2]} rotation={[0, angle, 0]}>
+            {idx > 0 &&
+              [0.12, 0.5, 0.88].map((hf) => (
+                <group key={hf} name="screen-hinge" position={[-chord / 2, heightM * hf, 0]}>
+                  <Cyl radiusTop={0.01} height={0.06} {...CHROME} segments={8} />
+                </group>
+              ))}
             <Box
               position={[0, heightM / 2, 0]}
               size={[chord, heightM, 0.025]}
@@ -114,10 +186,38 @@ export function ScreenModel({ widthM, depthM, heightM, mainColor, accentColor })
               color={accentColor}
               roughness={0.9}
             />
+            {[-0.3, -0.1, 0.1, 0.3].map((f) => (
+              <Box
+                key={f}
+                position={[chord * f, heightM / 2, 0.019]}
+                size={[0.008, heightM * 0.84, 0.004]}
+                color={mainColor}
+                castShadow={false}
+              />
+            ))}
             <Box
               position={[0, heightM / 2, 0.018]}
               size={[chord * 0.82, 0.012, 0.004]}
               color={mainColor}
+              castShadow={false}
+            />
+            <Box
+              position={[0, heightM - 0.01, 0]}
+              size={[chord + 0.004, 0.025, 0.035]}
+              color={mainColor}
+              roughness={0.6}
+            />
+            <Box
+              position={[0, 0.02, 0]}
+              size={[chord, 0.04, 0.03]}
+              color={shade(mainColor, -0.1)}
+              roughness={0.7}
+            />
+            <Box
+              position={[0, 0.006, 0]}
+              size={[chord * 0.9, 0.012, 0.07]}
+              color={shade(mainColor, -0.18)}
+              roughness={0.8}
               castShadow={false}
             />
             <Box
