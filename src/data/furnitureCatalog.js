@@ -1266,7 +1266,7 @@ export function getFurnitureType(id) {
 }
 
 /** Fields a user may override per placed item (size and finish). */
-export const OVERRIDABLE_FIELDS = [
+const OVERRIDABLE_FIELDS = [
   'widthCm',
   'depthCm',
   'heightCm',

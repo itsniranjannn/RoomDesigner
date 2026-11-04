@@ -6,7 +6,7 @@
 
 import { create } from 'zustand';
 
-export const TOOLS = ['select', 'wall', 'eraser', 'door', 'window', 'stairs'];
+const TOOLS = ['select', 'wall', 'eraser', 'door', 'window', 'stairs'];
 
 export const useFlatUi = create((set) => ({
   tool: 'select',

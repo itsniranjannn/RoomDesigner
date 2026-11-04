@@ -29,7 +29,7 @@ async function pipe(bytes, stream) {
 }
 
 /** Fields that make up a shareable design (images and meshes excluded to keep links short). */
-export function toShareableRoom(room) {
+function toShareableRoom(room) {
   const { id, name, widthCm, depthCm, doors, windows, placedFurniture } = room;
   return { v: 1, id, name, widthCm, depthCm, doors, windows, placedFurniture };
 }

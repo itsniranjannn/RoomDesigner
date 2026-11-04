@@ -12,7 +12,7 @@ import { resolveModel } from './models/index.js';
  * Thin dispatcher: each shapeType is built by a module under ./models.
  */
 /** Slightly lighter shade of a colour, so cushions follow a recoloured body without matching it exactly. */
-export function lighten(color, amount = 0.05) {
+function lighten(color, amount = 0.05) {
   return new THREE.Color(color).offsetHSL(0, 0, amount).getStyle();
 }
 

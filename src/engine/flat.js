@@ -12,10 +12,10 @@
 
 import { suggestLayout } from './layout.js';
 
-export const GRID_CM = 10;
-export const DEFAULT_FLOOR_HEIGHT_CM = 280;
+const GRID_CM = 10;
+const DEFAULT_FLOOR_HEIGHT_CM = 280;
 export const TREAD_CM = 27;
-export const MAX_RISER_CM = 17.5;
+const MAX_RISER_CM = 17.5;
 export const FLAT_VERSION = 2;
 
 export const SPACE_KINDS = {
@@ -87,14 +87,8 @@ export function snapToGrid(v, step = GRID_CM) {
 
 // ---------- starter rooms ----------
 
-const OPPOSITE_WALL = { top: 'bottom', bottom: 'top', left: 'right', right: 'left' };
-
-function wallLength(wall, widthCm, depthCm) {
-  return wall === 'left' || wall === 'right' ? depthCm : widthCm;
-}
-
 /** Furniture ids a room of this kind starts with, chosen for the room's size. */
-export function starterFurnitureIds(kind, widthCm, depthCm) {
+function starterFurnitureIds(kind, widthCm, depthCm) {
   const areaM2 = (widthCm * depthCm) / 10000;
   switch (kind) {
     case 'bathroom':
@@ -147,39 +141,6 @@ export function furnishRoomRecord(room, kind = room.kind) {
   return { ...room, kind, placedFurniture: [...(room.placedFurniture || []), ...placed] };
 }
 
-/**
- * Builds a self-contained furnished room record for a space kind (one door, one window).
- * The flat designer itself derives doors and windows from walls instead.
- */
-export function buildStarterRoom({ kind, name, widthCm, depthCm, flatId, spaceId, doorWall = 'bottom' }) {
-  const stamp = Date.now();
-  const room = buildBlankRoom({ kind, name, widthCm, depthCm, flatId, spaceId });
-  if (kind === 'corridor') {
-    const vertical = depthCm >= widthCm;
-    const doorW = Math.min(90, (vertical ? widthCm : depthCm) - 40);
-    const off = Math.round(((vertical ? widthCm : depthCm) - doorW) / 2);
-    room.doors = vertical
-      ? [
-          { id: `door-${stamp}-a`, wall: 'top', offsetCm: off, widthCm: doorW, swingDirection: 'inward-left' },
-          { id: `door-${stamp}-b`, wall: 'bottom', offsetCm: off, widthCm: doorW, swingDirection: 'inward-left' },
-        ]
-      : [
-          { id: `door-${stamp}-a`, wall: 'left', offsetCm: off, widthCm: doorW, swingDirection: 'inward-left' },
-          { id: `door-${stamp}-b`, wall: 'right', offsetCm: off, widthCm: doorW, swingDirection: 'inward-left' },
-        ];
-    return room;
-  }
-  const doorW = kind === 'bathroom' ? 75 : 90;
-  room.doors = [{ id: `door-${stamp}`, wall: doorWall, offsetCm: 30, widthCm: doorW, swingDirection: 'inward-left' }];
-  const windowWall = OPPOSITE_WALL[doorWall] || 'top';
-  const winLen = wallLength(windowWall, widthCm, depthCm);
-  if (kind !== 'bathroom' || winLen >= 160) {
-    const winW = kind === 'bathroom' ? 60 : 120;
-    room.windows = [{ id: `win-${stamp}`, wall: windowWall, offsetCm: Math.round(winLen / 2 - winW / 2), widthCm: winW }];
-  }
-  return furnishRoomRecord(room, kind);
-}
-
 // ---------- stairs ----------
 
 export const STAIR_TYPES = {
@@ -190,7 +151,7 @@ export const STAIR_TYPES = {
 
 export const STAIR_LIMITS = { widthCm: [70, 200], riseCm: [200, 450] };
 
-export function stairStepCount(riseCm) {
+function stairStepCount(riseCm) {
   return Math.max(2, Math.ceil(riseCm / MAX_RISER_CM));
 }
 

@@ -13,10 +13,6 @@ export function degToRad(deg) {
   return (deg * Math.PI) / 180;
 }
 
-export function radToDeg(rad) {
-  return (rad * 180) / Math.PI;
-}
-
 /**
  * Normalizes an angle in degrees to the [0, 360) range.
  */
@@ -158,35 +154,5 @@ export function projectPolygonOntoAxis(corners, axis) {
  */
 export function intervalsOverlap(minA, maxA, minB, maxB, epsilon = 0.05) {
   return !(maxA < minB + epsilon || maxB < minA + epsilon);
-}
-
-/**
- * Computes zoom scale and centering offset to fit a room (cm) inside a canvas viewport (px).
- */
-export function calculateFitScale(roomWidthCm, roomDepthCm, viewportWidthPx, viewportHeightPx, paddingPx = 48) {
-  const availableW = Math.max(100, viewportWidthPx - paddingPx * 2);
-  const availableH = Math.max(100, viewportHeightPx - paddingPx * 2);
-
-  const scaleX = availableW / roomWidthCm;
-  const scaleY = availableH / roomDepthCm;
-  const scale = Math.min(scaleX, scaleY);
-
-  const canvasWidth = roomWidthCm * scale;
-  const canvasHeight = roomDepthCm * scale;
-
-  const offsetX = (viewportWidthPx - canvasWidth) / 2;
-  const offsetY = (viewportHeightPx - canvasHeight) / 2;
-
-  return {
-    scale,
-    offsetX,
-    offsetY,
-    canvasWidth,
-    canvasHeight,
-  };
-}
-
-export function clamp(val, min, max) {
-  return Math.max(min, Math.min(max, val));
 }
 

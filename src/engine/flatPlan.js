@@ -34,7 +34,7 @@ export const levelEdges = (flat, levelId) => edgesOf(wallsOf(flat, levelId));
 // ---------- openings <-> room record doors and windows ----------
 
 /** Openings that sit on the four sides of a rectangle, as room-record wall + offset. */
-export function boundaryOpenings(openings, rect) {
+function boundaryOpenings(openings, rect) {
   const x1 = rect.x + rect.widthCm;
   const y1 = rect.y + rect.depthCm;
   const out = [];
@@ -53,7 +53,7 @@ export function boundaryOpenings(openings, rect) {
   return out;
 }
 
-export function roomOpeningsFor(openings, rect) {
+function roomOpeningsFor(openings, rect) {
   const doors = [];
   const windows = [];
   for (const { op, wall, offsetCm } of boundaryOpenings(openings, rect)) {
@@ -222,7 +222,7 @@ function withLevelEdges(flat, levelId, edges) {
 }
 
 /** Replaces a level's walls (openings that lose their wall are removed). */
-export function setLevelWalls(flat, rooms, levelId, edges) {
+function setLevelWalls(flat, rooms, levelId, edges) {
   return reconcile(withLevelEdges(flat, levelId, edges), rooms);
 }
 
@@ -238,7 +238,7 @@ export function eraseWallRun(flat, rooms, levelId, key) {
   return setLevelWalls(flat, rooms, levelId, removeEdges(edges, run));
 }
 
-export function setLevelOpenings(flat, rooms, levelId, openings) {
+function setLevelOpenings(flat, rooms, levelId, openings) {
   return reconcile({ ...flat, openings: { ...flat.openings, [levelId]: openings } }, rooms);
 }
 

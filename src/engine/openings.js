@@ -34,35 +34,6 @@ export function clampOpening(type, offsetCm, widthCm, wallLengthCm) {
 }
 
 /**
- * Returns canonical physical coordinates and dimensions for any opening.
- * Ensures 1:1 mathematical alignment between 2D drafting and 3D Studio.
- */
-export function getOpeningGeometry(wall, offsetCm, widthCm, roomWidthCm, roomDepthCm) {
-  const normWall = wall || 'top';
-  const isHorizontal = normWall === 'top' || normWall === 'bottom';
-  const wallLen = isHorizontal ? roomWidthCm : roomDepthCm;
-  const safeOffset = Number.isFinite(offsetCm) ? offsetCm : 20;
-  const safeWidth = Number.isFinite(widthCm) ? widthCm : 90;
-
-  // 3D coordinates in meters relative to room center
-  let centerM = 0;
-  if (isHorizontal) {
-    centerM = (safeOffset + safeWidth / 2 - roomWidthCm / 2) / 100;
-  } else {
-    centerM = (safeOffset + safeWidth / 2 - roomDepthCm / 2) / 100;
-  }
-
-  return {
-    wall: normWall,
-    isHorizontal,
-    wallLengthCm: wallLen,
-    offsetCm: safeOffset,
-    widthCm: safeWidth,
-    centerM,
-  };
-}
-
-/**
  * Clamps a reposition drag delta along a wall segment.
  */
 export function clampMoveOpening(type, startOffsetCm, widthCm, deltaCm, wallLengthCm) {
