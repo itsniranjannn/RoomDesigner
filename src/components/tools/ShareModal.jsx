@@ -49,7 +49,12 @@ export function ShareModal({ onClose }) {
     if (!file) return;
     run(async () => {
       if (file.size > 5 * 1024 * 1024) throw new Error('That file is too large to be a room design.');
-      const data = JSON.parse(await file.text());
+      let data;
+      try {
+        data = JSON.parse(await file.text());
+      } catch {
+        throw new Error('That file is not a Room Designer design.');
+      }
       await importRoomData(data);
       onClose();
     }, 'Design imported.');

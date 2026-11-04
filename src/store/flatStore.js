@@ -409,8 +409,8 @@ export const useFlatStore = create((set, get) => ({
   backToFlat: async () => {
     const { flat, rooms, selected } = get();
     if (!flat) return;
-    // The room designer saves with a delay; wait for it to settle
-    await new Promise((resolve) => setTimeout(resolve, 450));
+    // The room designer saves with a delay; make sure its latest edit is written first
+    await useRoomStore.getState().flushSave();
     const spaceId = selected?.type === 'space' ? selected.id : null;
     useRoomStore.getState().closeRoom();
     const loaded = await loadFlatRooms(flat.id);

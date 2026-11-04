@@ -58,7 +58,6 @@ export function TopBar({ onOpenNewRoomModal, catalogOpen, inspectorOpen, onToggl
   const goBack = () => (inFlat ? backToFlat() : closeRoom());
   const backLabel = inFlat ? `Back to ${flatName}` : 'Back to all rooms';
   const dims = `${(room.widthCm / 100).toFixed(2)} x ${(room.depthCm / 100).toFixed(2)} m`;
-  const saving = saveStatus === 'saving';
 
   const confirmDelete = async () => {
     setDialog(null);
@@ -119,7 +118,7 @@ export function TopBar({ onOpenNewRoomModal, catalogOpen, inspectorOpen, onToggl
           <>
             <EditableTitle value={room.name} onCommit={(name) => renameRoom(room.id, name)} label="Room name" maxLength={40} />
             {roomMenu}
-            <SaveStatus saving={saving} />
+            <SaveStatus status={saveStatus} />
             <IconButton
               label={catalogOpen ? 'Hide furniture list' : 'Show furniture list'}
               active={catalogOpen}

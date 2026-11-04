@@ -6,7 +6,8 @@ import App from './App.jsx';
 import { ErrorBoundary } from './components/common/ErrorBoundary.jsx';
 import { useRoomStore } from './store/roomStore.js';
 
-if (typeof window !== 'undefined') {
+// Handy for poking at state from the browser console during development only
+if (import.meta.env.DEV) {
   window.useRoomStore = useRoomStore;
 }
 

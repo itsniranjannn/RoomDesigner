@@ -187,7 +187,8 @@ export function PhotoModelModal({ onClose }) {
   const handleSave = async () => {
     if (!model) return;
     const topPixels = topDownImage(model, PLAN_SIZE);
-    await addCustomFurniture({
+    try {
+      await addCustomFurniture({
       id: `custom-${Date.now().toString(36)}`,
       name: name.trim() || 'My furniture',
       category: 'custom',
@@ -200,7 +201,11 @@ export function PhotoModelModal({ onClose }) {
       topImage: rgbaToDataUrl(topPixels, PLAN_SIZE),
       topOutline: footprintOutline(topPixels, PLAN_SIZE),
       thumb: rgbaToDataUrl(renderMesh(model, { size: PLAN_SIZE }), PLAN_SIZE),
-    });
+      });
+    } catch {
+      setMessage({ kind: 'error', text: 'This piece could not be saved on this device.' });
+      return;
+    }
     onClose();
   };
 
