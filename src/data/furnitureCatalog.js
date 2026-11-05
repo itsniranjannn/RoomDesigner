@@ -11,6 +11,7 @@
  */
 
 import { tintedCompanions } from '../engine/tint.js';
+import { sanitizeDesign } from '../engine/design.js';
 
 export const FURNITURE_CATEGORIES = [
   { id: 'living', name: 'Living Room' },
@@ -1886,6 +1887,7 @@ function placeholderDef(id, meta = {}) {
     heightCm: dim(meta.heightCm, 80),
     color: /^#[0-9a-fA-F]{6}$/.test(meta.color) ? meta.color : '#a8a29a',
     placeholder: true,
+    ...(sanitizeDesign(meta.design) ? { design: sanitizeDesign(meta.design) } : {}),
   };
 }
 

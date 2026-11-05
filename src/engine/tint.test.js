@@ -71,3 +71,23 @@ describe('colour override', () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe('shared photo design', () => {
+  it('keeps a valid design on the stand-in of a photo-made piece', async () => {
+    const { registerPlaceholderFurniture, getFurnitureType } =
+      await import('../data/furnitureCatalog.js');
+    registerPlaceholderFurniture({
+      id: 'custom-shared-1',
+      name: 'Bed',
+      widthCm: 160,
+      depthCm: 200,
+      heightCm: 95,
+      color: '#aaa19a',
+      design: { type: 'bed', palette: { body: '#aaa19a', accent: '#615c5a' } },
+    });
+    const def = getFurnitureType('custom-shared-1');
+    expect(def.placeholder).toBe(true);
+    expect(def.design.type).toBe('bed');
+    expect(def.design.palette.body).toBe('#aaa19a');
+  });
+});
