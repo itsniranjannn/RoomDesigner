@@ -50,6 +50,8 @@ export async function readImage(file, maxDim = 1400, mime = 'image/jpeg', qualit
   return {
     width,
     height,
+    sourceWidth: img.naturalWidth,
+    sourceHeight: img.naturalHeight,
     aspect: width / height,
     thumbUrl: thumb.toDataURL('image/jpeg', 0.7),
     dataUrl: canvas.toDataURL(mime, quality),
@@ -88,6 +90,8 @@ export function imageFromPixels(
   return {
     width: w,
     height: h,
+    sourceWidth: width,
+    sourceHeight: height,
     aspect: w / h,
     thumbUrl: thumb.toDataURL('image/jpeg', 0.7),
     dataUrl: canvas.toDataURL(mime, quality),
