@@ -716,16 +716,14 @@ export function FlatPlanCanvas() {
     if (!flat) return;
     svgRef.current.focus({ preventScroll: true });
     const p = toWorld(e);
-    if (e.button === 1 || (e.button === 0 && spaceDown)) {
+    // Middle or right button, Space + drag, or the Pan tool all drag the plan around
+    if (e.button === 2) setDraft(null);
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && (spaceDown || tool === 'pan'))) {
       e.preventDefault();
       svgRef.current.setPointerCapture(e.pointerId);
       gesture.current = { type: 'pan', sx: p.sx, sy: p.sy, view: viewRef.current, moved: false };
       autoFit.current = false;
       setPanning(true);
-      return;
-    }
-    if (e.button === 2) {
-      setDraft(null);
       return;
     }
     if (e.button !== 0) return;
@@ -1294,7 +1292,7 @@ export function FlatPlanCanvas() {
     );
 
   const cursorClass =
-    panning || spaceDown
+    panning || spaceDown || tool === 'pan'
       ? styles.cursorGrab
       : dragOp || hv?.type === 'handle'
         ? (dragOp ? openings.find((o) => o.id === dragOp.id)?.axis : hv.axis) === 'h'
