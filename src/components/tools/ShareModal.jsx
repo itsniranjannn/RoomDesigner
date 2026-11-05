@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link2, FileJson, FileText, Image as ImageIcon, Upload, Box } from 'lucide-react';
+import { Link2, FileJson, FileText, Image as ImageIcon, Upload, Box, Camera } from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
 import { TextField } from '../common/Field.jsx';
@@ -10,9 +10,12 @@ import {
   exportRoomPlanAsPNG,
   exportRoomPlanAsPDF,
   exportRoom3DAsPNG,
+  exportRoomRenderAsPNG,
   exportRoomAsJSON,
 } from '../../engine/exportPlan.js';
 import { canCapture3D } from '../../engine/snapshot3d.js';
+import { loadRenderPrefs } from '../../engine/renderSettings.js';
+import { RenderOptions } from '../preview3d/RenderImageDialog.jsx';
 import styles from './Tools.module.css';
 
 export function ShareModal({ onClose }) {
@@ -22,6 +25,7 @@ export function ShareModal({ onClose }) {
   const [message, setMessage] = useState(null); // { kind: 'ok' | 'error', text }
   const [busy, setBusy] = useState(false);
   const [busyKey, setBusyKey] = useState(null);
+  const [renderPrefs, setRenderPrefs] = useState(loadRenderPrefs);
   const [manualLink, setManualLink] = useState(null); // shown when the browser blocks copying
 
   const run = async (fn, okText, key = null) => {
@@ -163,6 +167,40 @@ export function ShareModal({ onClose }) {
             </div>
           </li>
         ))}
+
+        <li className={`${styles.option} ${styles.optionStack}`}>
+          <div className={styles.optionRow}>
+            <div className={styles.optionText}>
+              <h3 className={styles.optionTitle}>Render image</h3>
+              <p className={styles.optionHelp}>
+                The 3D view as a sharp, high-resolution picture with fine shadows, up to 4096 px
+                wide.
+              </p>
+              {!has3D && (
+                <p className={styles.optionHelp}>Switch to the 3D view first, then render.</p>
+              )}
+            </div>
+            <div className={styles.optionActions}>
+              <Button
+                icon={<Camera size={16} />}
+                disabled={busy || !has3D}
+                onClick={() =>
+                  run(
+                    () =>
+                      exportRoomRenderAsPNG(room, renderPrefs, (text) =>
+                        setMessage({ kind: 'info', text })
+                      ),
+                    undefined,
+                    'render'
+                  )
+                }
+              >
+                {busyKey === 'render' ? 'Rendering...' : 'PNG'}
+              </Button>
+            </div>
+          </div>
+          <RenderOptions value={renderPrefs} onChange={setRenderPrefs} disabled={busy} />
+        </li>
 
         <li className={styles.option}>
           <div className={styles.optionText}>

@@ -21,6 +21,7 @@ import {
   dateStamp,
 } from './exportLayout.js';
 import { capture3D } from './snapshot3d.js';
+import { normalizeRenderPrefs } from './renderSettings.js';
 import { buildRoomSheet, buildFlatSheet, estimateMeasure } from './sheetModel.js';
 
 /** Text measurement with the same fonts the sheet uses; falls back to an estimate. */
@@ -180,6 +181,44 @@ export async function exportFlat3DAsPNG(flat, levelId) {
     subtitle: `3D view${flat.levels.length > 1 ? `, up to ${level.name}` : ''}  ·  ${dateStamp(date)}`,
   });
   const name = exportFileName(flatPlanName(flat, levelId), '3d', 'png', 'Flat', date);
+  downloadBlob(blob, name);
+  return name;
+}
+
+/**
+ * A high-resolution render of the current 3D view of a room: antialiased, large shadow maps, up to 4096 px
+ * wide. `prefs` = { size, background, titleBlock } (see renderSettings.js); `onProgress(text)` reports steps.
+ */
+export async function exportRoomRenderAsPNG(room, prefs = {}, onProgress = () => {}) {
+  const date = new Date();
+  const p = normalizeRenderPrefs(prefs);
+  const { blob } = await capture3D({
+    title: room.name || 'Room',
+    subtitle: `Render  ·  ${dateStamp(date)}`,
+    ...p,
+    highQuality: true,
+    compact: true,
+    onProgress,
+  });
+  const name = exportFileName(room.name, 'render', 'png', 'Room', date);
+  downloadBlob(blob, name);
+  return name;
+}
+
+/** A high-resolution render of the current 3D view of a flat (the floors shown on screen). */
+export async function exportFlatRenderAsPNG(flat, levelId, prefs = {}, onProgress = () => {}) {
+  const date = new Date();
+  const p = normalizeRenderPrefs(prefs);
+  const level = flat.levels.find((l) => l.id === levelId) || flat.levels[0];
+  const { blob } = await capture3D({
+    title: flat.name || 'Flat',
+    subtitle: `Render${flat.levels.length > 1 ? `, up to ${level.name}` : ''}  ·  ${dateStamp(date)}`,
+    ...p,
+    highQuality: true,
+    compact: true,
+    onProgress,
+  });
+  const name = exportFileName(flatPlanName(flat, levelId), 'render', 'png', 'Flat', date);
   downloadBlob(blob, name);
   return name;
 }

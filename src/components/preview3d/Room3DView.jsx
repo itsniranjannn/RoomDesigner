@@ -10,7 +10,11 @@ import { Furniture3DBox } from './Furniture3DBox.jsx';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
 import { Box, Footprints, RotateCcw, Square } from 'lucide-react';
-import { LIGHTING, LIGHT_OPTIONS } from './lighting.jsx';
+import { LIGHTING, LIGHT_OPTIONS, SceneLights, FurnitureShadows, LampLights } from './lighting.jsx';
+import { MaterialsPanel } from './MaterialsPanel.jsx';
+import { useQuality, useSurfaceMaterials } from './useLook.js';
+import { collectLamps } from './lamps.js';
+import { normalizeFinish } from './materials.js';
 import { WalkControls } from './WalkControls.jsx';
 import { WalkHud } from './WalkHud.jsx';
 import { SnapshotBridge } from './SnapshotBridge.jsx';
@@ -115,6 +119,14 @@ export function Room3DView() {
   const [lighting, setLighting] = useState('day');
   const [walking, setWalking] = useState(false);
   const preset = LIGHTING[lighting];
+  const quality = useQuality();
+  const setRoomFinish = useRoomStore((state) => state.setRoomFinish);
+  const finish = normalizeFinish(room?.finish);
+  const materials = useSurfaceMaterials(room?.finish);
+  const lamps = useMemo(
+    () => (room ? collectLamps(room.placedFurniture, room.widthCm, room.depthCm) : []),
+    [room]
+  );
 
   const exitWalk = React.useCallback(() => {
     setWalking(false);
@@ -128,65 +140,29 @@ export function Room3DView() {
   return (
     <div className={styles.viewContainer} aria-label="3D room preview">
       <Canvas
+        key={quality.level}
         className={styles.canvas3d}
-        shadows
+        shadows={quality.settings.shadowType}
+        dpr={quality.settings.dpr}
         camera={{ position: [0.01, initialCamY, 0.01], fov: 45 }}
         gl={{ antialias: true }}
       >
         <SnapshotBridge />
         {preset.background && <color attach="background" args={[preset.background]} />}
 
-        {/* Balanced Architectural Studio Lighting */}
-        <ambientLight intensity={preset.ambient[0]} color={preset.ambient[1]} />
-        <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={preset.hemi} />
-        {preset.lamp > 0 && (
-          <pointLight
-            position={[0, 2.3, 0]}
-            intensity={preset.lamp}
-            distance={maxDimM * 2.2}
-            decay={1.4}
-            color="#FFD9A0"
-            castShadow
-          />
-        )}
-
-        {/* Key Directional Sun Light with acne-free normalBias */}
-        <directionalLight
-          castShadow
-          position={[maxDimM * 1.8, maxDimM * 2.8, maxDimM * 1.8]}
-          intensity={preset.sun[0]}
-          color={preset.sun[1]}
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-near={0.5}
-          shadow-camera-far={maxDimM * 8}
-          shadow-camera-left={-maxDimM * 2}
-          shadow-camera-right={maxDimM * 2}
-          shadow-camera-top={maxDimM * 2}
-          shadow-camera-bottom={-maxDimM * 2}
-          shadow-bias={0.00005}
-          shadow-normalBias={0.04}
+        <SceneLights
+          mode={lighting}
+          span={maxDimM}
+          settings={quality.settings}
+          fullLamps={lamps.length > 0}
         />
-
-        {/* Soft Warm Fill Light 1 */}
-        <directionalLight
-          position={[-maxDimM * 1.8, maxDimM * 2.2, -maxDimM * 1.8]}
-          intensity={preset.fill[0]}
-          color="#F5EFE6"
-        />
-
-        {/* Soft Cross Fill Light 2 (Illuminates South & West wall interior faces) */}
-        <directionalLight
-          position={[maxDimM * 1.8, maxDimM * 1.5, -maxDimM * 1.8]}
-          intensity={preset.fill[1]}
-          color="#FAF4EA"
-        />
+        <LampLights lamps={lamps} mode={lighting} max={quality.settings.maxLamps} />
 
         {/* Room Floor and Architectural Walls (Cutaway or Full-Height) */}
         {hasOutline(room) ? (
-          <OutlineWalls room={room} isFullHeight={isFullHeight || walking} />
+          <OutlineWalls room={room} isFullHeight={isFullHeight || walking} materials={materials} />
         ) : (
-          <Room3DWalls room={room} isFullHeight={isFullHeight || walking} />
+          <Room3DWalls room={room} isFullHeight={isFullHeight || walking} materials={materials} />
         )}
 
         {/* Detailed Architectural 3D Furniture */}
@@ -200,14 +176,23 @@ export function Room3DView() {
           />
         ))}
 
-        {/* Soft floor contact shadow */}
-        <ContactShadows
-          position={[0, 0.002, 0]}
-          opacity={0.35}
-          scale={maxDimM * 2}
-          blur={1.8}
-          far={maxDimM}
+        {/* Soft shadows under furniture: painted halos everywhere, a rendered contact layer on High */}
+        <FurnitureShadows
+          items={room.placedFurniture}
+          roomWidthCm={room.widthCm}
+          roomDepthCm={room.depthCm}
+          strength={preset.blob}
         />
+        {quality.settings.contactShadows && (
+          <ContactShadows
+            position={[0, 0.002, 0]}
+            opacity={preset.contact}
+            scale={maxDimM * 2}
+            blur={2.4}
+            far={Math.min(2.5, maxDimM)}
+            resolution={512}
+          />
+        )}
 
         {/* Camera transition & Orbit navigation */}
         <CameraRig
@@ -256,6 +241,17 @@ export function Room3DView() {
             </Button>
           </>
         )}
+        <MaterialsPanel
+          floor={finish.floor}
+          wall={finish.wall}
+          onFloor={(floor) => setRoomFinish({ floor })}
+          onWall={(wall) => setRoomFinish({ wall })}
+          quality={quality.mode}
+          onQuality={quality.setMode}
+          resolvedQuality={quality.level}
+          buttonClassName={styles.controlBtn}
+          textClassName={styles.controlText}
+        />
         <Button
           variant={walking ? 'primary' : 'secondary'}
           icon={<Footprints size={16} />}
