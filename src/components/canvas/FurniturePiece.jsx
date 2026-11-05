@@ -211,6 +211,8 @@ export function FurniturePiece({
     <g
       transform={`translate(${item.x}, ${item.y}) rotate(${rotation})`}
       className={isDragging ? cursors.grabbing : cursors.grab}
+      data-testid="furniture-piece"
+      data-piece-id={item.id}
       onPointerDown={handlePointerDown}
       onClick={(e) => {
         e.stopPropagation();
@@ -257,8 +259,8 @@ export function FurniturePiece({
           </g>
         )}
 
-        {/* Resting on another piece: dashed outline and a small height tag */}
-        {elevation > 0.5 && (
+        {/* Resting on another piece: dashed outline and a small height tag (wall pieces draw their own symbol) */}
+        {elevation > 0.5 && !def.wallMounted && (
           <g pointerEvents="none" data-testid="elevation-badge">
             <rect
               x={-hw}
