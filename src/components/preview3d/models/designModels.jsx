@@ -7,7 +7,13 @@ import * as THREE from 'three';
 import { Box, Pad, Cyl, Pillow, pillowRestY, shade, clamp, corners } from './shared.jsx';
 import { Mattress, Duvet } from './bed.jsx';
 import { Upholstered, ChairModel, BarStoolModel } from './seating.jsx';
-import { LeggedTable, TableRoundModel, CoffeeTableModel, DeskModel } from './tables.jsx';
+import {
+  LeggedTable,
+  TableRoundModel,
+  CoffeeTableModel,
+  DeskModel,
+  NightstandModel,
+} from './tables.jsx';
 import { WardrobeModel, BookshelfModel, SideboardModel } from './storage.jsx';
 
 /** Distance between two hex colours (0-441). */
@@ -197,6 +203,8 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
     legColor: palette.leg || '#2a2622',
     handleColor: '#C4A869',
   };
+  // Leg thickness measured from the photo (a fraction of the width), kept within sensible limits
+  const legThick = traits.legFrac ? clamp(traits.legFrac * widthM, 0.03, 0.1) : 0.06;
   let model;
   switch (design.type) {
     case 'bed':
@@ -214,7 +222,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       model = (
         <Upholstered
           {...common}
-          armRatio={0.1}
+          armRatio={traits.arm ?? 0.1}
           seats={traits.seats || 3}
           roughness={0.85}
           scatter={widthM > 1.5}
@@ -225,7 +233,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       model = (
         <Upholstered
           {...common}
-          armRatio={0.17}
+          armRatio={traits.arm ?? 0.17}
           seats={1}
           seatH={0.42}
           armH={0.58}
@@ -235,7 +243,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       );
       break;
     case 'chair':
-      model = <ChairModel {...common} />;
+      model = <ChairModel {...common} backStyle={traits.back || 'slat'} />;
       break;
     case 'stool':
       model = <BarStoolModel {...common} />;
@@ -250,8 +258,9 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
           topColor={palette.body}
           apronColor={common.subColor}
           legColor={common.legColor}
-          legThick={0.06}
+          legThick={legThick}
           inset={0.07}
+          roundLegs={!!traits.roundLegs}
         />
       );
       break;
@@ -265,10 +274,13 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       model = <DeskModel {...common} />;
       break;
     case 'wardrobe':
-      model = <WardrobeModel {...common} />;
+      model = <WardrobeModel {...common} doors={traits.doors} />;
       break;
     case 'bookshelf':
-      model = <BookshelfModel {...common} />;
+      model = <BookshelfModel {...common} shelves={traits.shelves} />;
+      break;
+    case 'nightstand':
+      model = <NightstandModel {...common} drawers={traits.drawers || 2} />;
       break;
     default:
       model = <SideboardModel {...common} />;

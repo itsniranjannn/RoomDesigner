@@ -28,6 +28,7 @@ export function LeggedTable({
   seam = false,
   drawer = false,
   ports = false,
+  roundLegs = false,
 }) {
   const legH = heightM - topH;
   const apronH = Math.min(0.08, legH * 0.18);
@@ -94,12 +95,24 @@ export function LeggedTable({
         ))}
       {corners(widthM, depthM, inset + legThick / 2).map(([x, z], i) => (
         <group key={i}>
-          <Box
-            position={[x, legH / 2, z]}
-            size={[legThick, legH, legThick]}
-            color={legColor}
-            roughness={0.5}
-          />
+          {roundLegs ? (
+            <Cyl
+              position={[x, legH / 2, z]}
+              radiusTop={legThick / 2}
+              radiusBottom={legThick / 2.6}
+              height={legH}
+              color={legColor}
+              roughness={0.5}
+              segments={16}
+            />
+          ) : (
+            <Box
+              position={[x, legH / 2, z]}
+              size={[legThick, legH, legThick]}
+              color={legColor}
+              roughness={0.5}
+            />
+          )}
           <Box
             position={[x, 0.006, z]}
             size={[legThick + 0.006, 0.012, legThick + 0.006]}
@@ -518,7 +531,7 @@ export function DeskModel({ widthM, depthM, heightM, mainColor, subColor, legCol
   );
 }
 
-export function NightstandModel({ widthM, depthM, heightM, mainColor, legColor }) {
+export function NightstandModel({ widthM, depthM, heightM, mainColor, legColor, drawers = 2 }) {
   const legH = Math.min(0.1, heightM * 0.2);
   const bodyH = heightM - legH;
   const topT = 0.02;
@@ -542,7 +555,7 @@ export function NightstandModel({ widthM, depthM, heightM, mainColor, legColor }
         height={bodyH - topT - 0.03}
         y={legH + 0.015}
         z={depthM / 2}
-        rows={2}
+        rows={drawers}
         color={mainColor}
         handleColor={BRASS.color}
         handle="knob"

@@ -28,7 +28,13 @@ import {
   fitBackground,
 } from '../../engine/hull.js';
 import { CustomMeshModel } from '../preview3d/models/customMesh.jsx';
-import { DESIGN_TYPES, PALETTE_SLOTS, buildDesign, designMainColor } from '../../engine/design.js';
+import {
+  DESIGN_TYPES,
+  PALETTE_SLOTS,
+  TYPICAL_WIDTH_CM,
+  buildDesign,
+  designMainColor,
+} from '../../engine/design.js';
 import local from './PhotoModelModal.module.css';
 
 const PHOTO_MAX = 480;
@@ -61,6 +67,75 @@ function SheetThumb({ rgba, width, height, detection, view }) {
   return <canvas ref={ref} className={local.cutout} aria-label="Detected view" />;
 }
 const PLAN_SIZE = 128;
+
+/** The option closest to a measured value, so a reading between two choices still shows one of them. */
+function traitValue(value, control) {
+  const v = value ?? control.fallback;
+  if (typeof control.fallback !== 'number') return v;
+  return control.options.reduce(
+    (best, [o]) => (Math.abs(o - v) < Math.abs(best - v) ? o : best),
+    control.options[0][0]
+  );
+}
+
+const range = (lo, hi) => Array.from({ length: hi - lo + 1 }, (_, i) => [lo + i, String(lo + i)]);
+const ARMS = [
+  [0.05, 'Slim'],
+  [0.1, 'Standard'],
+  [0.15, 'Wide'],
+  [0.2, 'Very wide'],
+];
+const LEGS = [
+  [0, 'Square'],
+  [1, 'Round'],
+];
+/** Look-and-feel choices per type: the traits read from the photos, which the user can correct. */
+const TRAIT_CONTROLS = {
+  bed: [
+    { key: 'pillows', label: 'Pillows', fallback: 2, options: range(1, 4) },
+    {
+      key: 'legs',
+      label: 'Base',
+      fallback: 0,
+      options: [
+        [0, 'Solid base'],
+        [1, 'On short feet'],
+      ],
+    },
+    {
+      key: 'channels',
+      label: 'Headboard',
+      fallback: 0,
+      options: [
+        [0, 'Plain'],
+        [1, 'Channel stitched'],
+      ],
+    },
+  ],
+  sofa: [
+    { key: 'seats', label: 'Seats', fallback: 3, options: range(1, 5) },
+    { key: 'arm', label: 'Arms', fallback: 0.1, options: ARMS },
+  ],
+  armchair: [{ key: 'arm', label: 'Arms', fallback: 0.17, options: [...ARMS, [0.17, 'Chunky']] }],
+  chair: [
+    {
+      key: 'back',
+      label: 'Back',
+      fallback: 'slat',
+      options: [
+        ['slat', 'Slatted'],
+        ['solid', 'Solid'],
+        ['open', 'Top rail only'],
+      ],
+    },
+  ],
+  table: [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
+  'coffee-table': [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
+  desk: [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
+  wardrobe: [{ key: 'doors', label: 'Doors', fallback: 2, options: range(1, 6) }],
+  bookshelf: [{ key: 'shelves', label: 'Compartments', fallback: 4, options: range(2, 8) }],
+  nightstand: [{ key: 'drawers', label: 'Drawers', fallback: 2, options: range(1, 4) }],
+};
 
 function rgbaToDataUrl(rgba, size, height = size) {
   const canvas = document.createElement('canvas');
@@ -177,6 +252,7 @@ export function PhotoModelModal({ onClose }) {
   const [dims, setDims] = useState({ widthCm: 80, depthCm: 50, heightCm: 80 });
   const [photos, setPhotos] = useState({}); // slotId -> { width, height, rgba, thumbUrl }
   const [tolerance, setTolerance] = useState(60);
+  const toleranceTouched = useRef(false); // once the user moves the slider, it is theirs
   const [design, setDesign] = useState(null); // type, palette and traits read from the photos
   const [typeChoice, setTypeChoice] = useState(''); // '' = detect from the photos
   const [message, setMessage] = useState(null);
@@ -184,6 +260,7 @@ export function PhotoModelModal({ onClose }) {
   const [sheet, setSheet] = useState(null); // { rgba, width, height, detection, slots: [slot|''] }
   const [keepRatio, setKeepRatio] = useState(true);
   const [anchor, setAnchor] = useState('widthCm');
+  const [sizeEdited, setSizeEdited] = useState(false); // false: the size follows the type's usual size
   const inputs = useRef({});
   const sheetInput = useRef(null);
   const dimsRef = useRef(dims);
@@ -197,6 +274,16 @@ export function PhotoModelModal({ onClose }) {
     }
     return out;
   }, [photos, tolerance]);
+
+  // A clean backdrop (a studio shot on white) can use a fine threshold, which keeps white and pale pieces;
+  // a noisy one (a phone photo) needs a coarser one
+  useEffect(() => {
+    if (toleranceTouched.current) return;
+    const list = Object.values(photos);
+    if (!list.length) return;
+    const noisy = list.some((p) => fitBackground(p.rgba, p.width, p.height).noise > 1.5);
+    setTolerance(noisy ? 60 : 16);
+  }, [photos]);
 
   // Photos or cut-out changes invalidate the previous model
   useEffect(() => {
@@ -317,8 +404,10 @@ export function PhotoModelModal({ onClose }) {
     const noisy = Object.values(next).some(
       (p) => fitBackground(p.rgba, p.width, p.height).noise > 1.5
     );
+    toleranceTouched.current = true;
     setTolerance(noisy ? 35 : 16);
     setKeepRatio(true);
+    setSizeEdited(false);
     setSheet(null);
   };
 
@@ -343,9 +432,26 @@ export function PhotoModelModal({ onClose }) {
             throw new Error(
               `No object found in the ${slot.label.toLowerCase()} photo. Try a plainer background.`
             );
+          // The same photo with its gaps left open, to read slatted backs
+          const open = normalizeView(
+            photo.rgba,
+            segmentObject(photo.rgba, photo.width, photo.height, tolerance, { keepGaps: true }),
+            photo.width,
+            photo.height,
+            96
+          );
+          if (open) norm.open = open.mask;
           views[slot.id] = norm;
         }
-        setDesign(buildDesign(views, dims, forceType || undefined));
+        let result = buildDesign(views, dims, forceType || undefined, sizeEdited);
+        // Photos give proportions, not size: until a real size is entered, use the type's usual one
+        if (!sizeEdited && ratios && TYPICAL_WIDTH_CM[result.type]) {
+          const next = dimensionsFromProportions(ratios, 'widthCm', TYPICAL_WIDTH_CM[result.type]);
+          setDims(next);
+          setAnchor('widthCm');
+          result = buildDesign(views, next, result.type, true);
+        }
+        setDesign(result);
       } catch (err) {
         setDesign(null);
         setMessage({ kind: 'error', text: err.message });
@@ -408,6 +514,7 @@ export function PhotoModelModal({ onClose }) {
   };
 
   const setDim = (key, value) => {
+    setSizeEdited(true);
     setAnchor(key);
     if (keepRatio && ratios) setDims(dimensionsFromProportions(ratios, key, value));
     else setDims((d) => ({ ...d, [key]: value }));
@@ -630,7 +737,10 @@ export function PhotoModelModal({ onClose }) {
             min={15}
             max={160}
             value={tolerance}
-            onChange={setTolerance}
+            onChange={(v) => {
+              toleranceTouched.current = true;
+              setTolerance(v);
+            }}
             hint="Works best with a plain, evenly lit background. Raise it if background stays visible; lower it if parts of the piece disappear."
           />
         </div>
@@ -649,6 +759,12 @@ export function PhotoModelModal({ onClose }) {
           </div>
           {design && (
             <div className={local.section}>
+              <p className={local.summary} aria-live="polite">
+                Detected: <strong>{DESIGN_TYPES.find((t) => t.id === design.type)?.label}</strong>,{' '}
+                {dims.widthCm} x {dims.depthCm} x {dims.heightCm} cm (width x depth x height).
+                {!sizeEdited &&
+                  ' The size is the usual one for this type: enter the real width above.'}
+              </p>
               <label className={local.designRow}>
                 <span>Type of furniture</span>
                 <select
@@ -680,40 +796,28 @@ export function PhotoModelModal({ onClose }) {
                   </label>
                 ))}
               </div>
-              {design.type === 'bed' && (
-                <label className={local.designRow}>
-                  <span>Pillows</span>
+              {(TRAIT_CONTROLS[design.type] || []).map((c) => (
+                <label key={c.key} className={local.designRow}>
+                  <span>{c.label}</span>
                   <select
                     className={local.select}
-                    value={design.traits.pillows ?? 2}
-                    aria-label="Number of pillows"
-                    onChange={(e) => setTrait('pillows', Number(e.target.value))}
+                    value={String(traitValue(design.traits[c.key], c))}
+                    aria-label={c.label}
+                    onChange={(e) =>
+                      setTrait(
+                        c.key,
+                        typeof c.fallback === 'number' ? Number(e.target.value) : e.target.value
+                      )
+                    }
                   >
-                    {[1, 2, 3, 4].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
+                    {c.options.map(([value, text]) => (
+                      <option key={value} value={String(value)}>
+                        {text}
                       </option>
                     ))}
                   </select>
                 </label>
-              )}
-              {design.type === 'sofa' && (
-                <label className={local.designRow}>
-                  <span>Seats</span>
-                  <select
-                    className={local.select}
-                    value={design.traits.seats ?? 3}
-                    aria-label="Number of seats"
-                    onChange={(e) => setTrait('seats', Number(e.target.value))}
-                  >
-                    {[2, 3, 4].map((n) => (
-                      <option key={n} value={n}>
-                        {n}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              )}
+              ))}
               <p className={local.note}>
                 Shown at its real size; each grid square is 50 cm. Drag to rotate. The model uses
                 the same parts as the built-in furniture, with the shape, proportions and colours

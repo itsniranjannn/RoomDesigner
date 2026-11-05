@@ -158,3 +158,159 @@ describe('design records from outside', () => {
     expect(d.extra).toBeUndefined();
   });
 });
+
+describe('reading structure from the front photo', () => {
+  const wood = [160, 120, 80];
+  const dark = [50, 35, 25];
+  const near = (u, targets) => targets.some((t) => Math.abs(u - t) < 0.03);
+
+  it('counts wardrobe doors from the gaps between them', () => {
+    const front = view(
+      () => true,
+      (u) => (near(u, [1 / 3, 2 / 3]) ? dark : wood)
+    );
+    const d = buildDesign({ front }, { widthCm: 150, depthCm: 55, heightCm: 200 }, 'wardrobe');
+    expect(d.traits.doors).toBe(3);
+  });
+
+  it('falls back to the width when no gaps show', () => {
+    const d = buildDesign(
+      {
+        front: view(
+          () => true,
+          () => wood
+        ),
+      },
+      { widthCm: 124, depthCm: 55, heightCm: 200 },
+      'wardrobe'
+    );
+    expect(d.traits.doors).toBe(2);
+  });
+
+  it('counts bookshelf compartments from the shelf lines', () => {
+    const front = view(
+      () => true,
+      (u, v) => (near(v, [0.25, 0.5, 0.75]) ? dark : wood)
+    );
+    const d = buildDesign({ front }, { widthCm: 80, depthCm: 30, heightCm: 180 }, 'bookshelf');
+    expect(d.traits.shelves).toBe(4);
+  });
+
+  it('counts nightstand drawers', () => {
+    const front = view(
+      () => true,
+      (u, v) => (near(v, [0.5]) ? dark : wood)
+    );
+    const d = buildDesign({ front }, { widthCm: 45, depthCm: 40, heightCm: 55 }, 'nightstand');
+    expect(d.traits.drawers).toBe(2);
+  });
+
+  it('tells a solid chair back from slats and an open back', () => {
+    const dims = { widthCm: 45, depthCm: 48, heightCm: 90 };
+    const chair = (back) =>
+      buildDesign(
+        { front: view((u, v) => (v < 0.3 ? back(u) : v < 0.5 || u < 0.1 || u > 0.9)) },
+        dims,
+        'chair'
+      ).traits.back;
+    expect(chair(() => true)).toBe('solid');
+    expect(chair((u) => Math.floor(u * 10) % 2 === 0)).toBe('slat');
+    expect(chair((u) => u < 0.1 || u > 0.9)).toBe('open');
+  });
+
+  it('keeps sofa seats within what the width allows', () => {
+    const front = view(
+      () => true,
+      (u, v) => (v > 0.5 && v < 0.76 && near(u, [0.5]) ? dark : wood)
+    );
+    const d = buildDesign({ front }, { widthCm: 210, depthCm: 90, heightCm: 85 }, 'sofa');
+    expect(d.traits.seats).toBe(2);
+    expect(d.traits.arm).toBeGreaterThanOrEqual(0.04);
+  });
+
+  it('measures the leg thickness of a table', () => {
+    const front = view((u, v) => v < 0.12 || u < 0.08 || u > 0.92);
+    const d = buildDesign({ front }, { widthCm: 150, depthCm: 80, heightCm: 75 }, 'table');
+    expect(d.traits.legFrac).toBeCloseTo(0.08, 1);
+  });
+});
+
+describe('faithful colours', () => {
+  it('uses the photographed duvet colour as it is, without brightening', () => {
+    const flat = () =>
+      view(
+        () => true,
+        () => [100, 90, 80]
+      );
+    const d = buildDesign(
+      {
+        front: flat(),
+        top: flat(),
+        left: view(
+          (u, v) => u < 0.1 || v > 0.45,
+          () => [100, 90, 80]
+        ),
+      },
+      { widthCm: 160, depthCm: 183, heightCm: 96 },
+      'bed'
+    );
+    const ch = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    expect(ch(d.palette.accent)).toEqual([100, 90, 80]);
+  });
+});
+
+describe('proportions without a real size', () => {
+  const traits = { rise: 1, gapFrac: 0, slabFrac: 0.1, round: false };
+  it('does not turn a wardrobe into a cabinet just because the size is small', () => {
+    // 80 wide, 30 deep, 90 high: the ratios of a 180 x 68 x 200 wardrobe
+    expect(classifyType(traits, { widthCm: 80, depthCm: 30, heightCm: 89 }, false)).toBe(
+      'wardrobe'
+    );
+    expect(classifyType(traits, { widthCm: 80, depthCm: 30, heightCm: 89 }, true)).not.toBe(
+      'wardrobe'
+    );
+  });
+  it('finds nightstands and coffee tables by ratio', () => {
+    expect(classifyType(traits, { widthCm: 48, depthCm: 42, heightCm: 55 }, false)).toBe(
+      'nightstand'
+    );
+    expect(
+      classifyType({ ...traits, gapFrac: 0.6 }, { widthCm: 80, depthCm: 45, heightCm: 30 }, false)
+    ).toBe('coffee-table');
+  });
+});
+
+describe('storage of new traits', () => {
+  it('keeps and clamps door, shelf, drawer, back and leg traits', () => {
+    expect(
+      sanitizeDesign({ type: 'wardrobe', palette: {}, traits: { doors: 99 } }).traits.doors
+    ).toBe(6);
+    expect(
+      sanitizeDesign({ type: 'bookshelf', palette: {}, traits: { shelves: 1 } }).traits.shelves
+    ).toBe(2);
+    expect(
+      sanitizeDesign({ type: 'nightstand', palette: {}, traits: { drawers: 3 } }).traits.drawers
+    ).toBe(3);
+    expect(sanitizeDesign({ type: 'chair', palette: {}, traits: { back: 'x' } }).traits.back).toBe(
+      'slat'
+    );
+    const t = sanitizeDesign({
+      type: 'table',
+      palette: {},
+      traits: { legFrac: 5, roundLegs: 1 },
+    }).traits;
+    expect(t.legFrac).toBe(0.12);
+    expect(t.roundLegs).toBe(1);
+  });
+});
+
+describe('slatted backs hidden by the filled silhouette', () => {
+  it('reads the gaps from the open mask when the photo has one', () => {
+    const dims = { widthCm: 45, depthCm: 48, heightCm: 90 };
+    const filled = view(() => true);
+    const slats = view((u) => Math.floor(u * 10) % 2 === 0);
+    expect(buildDesign({ front: filled }, dims, 'chair').traits.back).toBe('solid');
+    const front = { ...filled, open: slats.mask };
+    expect(buildDesign({ front }, dims, 'chair').traits.back).toBe('slat');
+  });
+});

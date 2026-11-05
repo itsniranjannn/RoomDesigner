@@ -252,7 +252,15 @@ export function ArmchairModel({ def, widthM, depthM, heightM, mainColor, cushion
   );
 }
 
-export function ChairModel({ widthM, depthM, heightM, mainColor, cushionColor, legColor }) {
+export function ChairModel({
+  widthM,
+  depthM,
+  heightM,
+  mainColor,
+  cushionColor,
+  legColor,
+  backStyle = 'slat',
+}) {
   const seatH = Math.min(0.46, heightM * 0.56);
   const legInset = 0.035;
   const backTop = heightM;
@@ -339,15 +347,25 @@ export function ChairModel({ widthM, depthM, heightM, mainColor, cushionColor, l
         color={mainColor}
         roughness={0.6}
       />
-      {[-0.28, -0.14, 0, 0.14, 0.28].map((f, i) => (
-        <Box
-          key={i}
-          position={[widthM * f, (slatBottom + backTop - 0.1) / 2, -depthM / 2 + legInset]}
-          size={[0.016, backTop - 0.1 - slatBottom, 0.016]}
+      {backStyle === 'solid' ? (
+        <Pad
+          position={[0, (slatBottom + backTop - 0.1) / 2, -depthM / 2 + legInset]}
+          size={[widthM - 0.07, backTop - 0.1 - slatBottom, 0.025]}
+          radius={0.01}
           color={mainColor}
           roughness={0.6}
         />
-      ))}
+      ) : backStyle === 'open' ? null : (
+        [-0.28, -0.14, 0, 0.14, 0.28].map((f, i) => (
+          <Box
+            key={i}
+            position={[widthM * f, (slatBottom + backTop - 0.1) / 2, -depthM / 2 + legInset]}
+            size={[0.016, backTop - 0.1 - slatBottom, 0.016]}
+            color={mainColor}
+            roughness={0.6}
+          />
+        ))
+      )}
     </group>
   );
 }
