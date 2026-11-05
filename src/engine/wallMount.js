@@ -169,7 +169,8 @@ export function freeWallSpot(room, def, existing = []) {
   const used = new Map();
   for (const it of existing) {
     const ed = resolveItemDef(it);
-    if (!ed?.wallMounted || ed.windowDressing !== def?.windowDressing) continue;
+    // Curtains only keep clear of other curtains; pictures and mirrors keep clear of everything
+    if (!ed?.wallMounted || (def?.windowDressing && !ed.windowDressing)) continue;
     const sp = snapToNearestWall(room, ed, it);
     if (!used.has(sp.wall)) used.set(sp.wall, []);
     used.get(sp.wall).push([sp.along - ed.widthCm / 2, sp.along + ed.widthCm / 2]);
