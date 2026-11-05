@@ -86,9 +86,16 @@ export function safeBaseName(name, fallback = 'Plan') {
   return safe || fallback;
 }
 
-/** A download name such as "Living_room-floorplan.png". */
-export function exportFileName(name, kind, ext, fallback = 'Plan') {
-  return `${safeBaseName(name, fallback)}-${kind}.${ext}`;
+/** "2026-11-05" for a date, in local time. */
+export function dateStamp(date) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}`;
+}
+
+/** A download name such as "Living_room-floorplan.png", or "Living_room-floorplan-2026-11-05.png" with a date. */
+export function exportFileName(name, kind, ext, fallback = 'Plan', date = null) {
+  const stamp = date ? `-${dateStamp(date)}` : '';
+  return `${safeBaseName(name, fallback)}-${kind}${stamp}.${ext}`;
 }
 
 /** Rough text width in drawing units when no real measurement is available. */

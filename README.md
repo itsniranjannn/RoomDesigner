@@ -15,7 +15,7 @@ Plan a room or a whole flat on a 2D plan, check that the furniture fits, and wal
 - **Room designer** with a 2D plan and a live 3D view of the same room, 101 furniture pieces (modern and Nepali), doors and windows.
 - **Flat designer**: draw walls, get rooms automatically, or start from Studio, 1BHK, 2BHK or 3BHK presets.
 - **Checks as you place**: collisions, door swings, blocked windows and cramped walking gaps.
-- **Export** the plan as PNG, PDF or JSON, or share the whole design as a link.
+- **Export** the floor plan as PNG or PDF, the 3D view as a PNG (twice the screen size, with a title strip), or the design as JSON, or share the whole design as a link. File names carry the design name and the date.
 - **Local and offline**: stored in IndexedDB, installable as a PWA.
 
 ![Start page](docs/assets/images/landing.jpg)
@@ -28,7 +28,7 @@ Drag pieces from the catalog onto the plan. Rotate, resize (0.4x to 2.5x), recol
 - **Measure** between any two points; the selected piece shows live distances to every wall.
 - **Layout suggestions** place a preset (bedroom, living, dining, study, Nepali sitting room) against the walls, clear of doors and windows.
 - **Trace image**: import a photo or scan of a floor plan and draw over it with adjustable opacity and scale.
-- **Photo to 3D furniture**: add 2 to 5 photos of a piece, or one product sheet showing several views (My Furniture, Create from photos). The app reads the type of furniture, proportions and colours from them and builds a catalog-style model from the same parts as the built-in furniture; the 2D plan shows your own top photo cut out. Everything happens in your browser and photos are never uploaded.
+- **Photo to 3D furniture**: add 2 to 5 photos of a piece, or one product sheet showing several views, on a white or dark background (My Furniture, Create from photos). The app reads the type of furniture, proportions and colours from them and builds a catalog-style model from the same parts as the built-in furniture (sofas with tufted backs, rounded arms and tapered legs, wood-frame lounge chairs, beds, tables, storage); the 2D plan shows your own top photo cut out. Everything happens in your browser and photos are never uploaded.
 - Undo and redo, and doors and windows you can drag along their wall.
 
 ## 3D view and walkthrough
@@ -53,7 +53,7 @@ The whole flat is also available in 3D.
 
 ## Export and share
 
-PNG and PDF exports are drawn from the same symbols as the editor, with a scale bar, a numbered key to the pieces and the room area. Rooms also export to JSON and import back. Share links carry the whole design in the URL, so nothing is uploaded.
+PNG and PDF exports are drawn from the same symbols as the editor (tints, photo cut-outs and stacked items included), with a scale bar, a numbered key to the pieces and the room area. The 3D view exports as its own PNG, for a room and for a flat (the flat export can save the plan and the 3D picture together). Rooms also export to JSON and import back. Share links carry the whole design in the URL, so nothing is uploaded.
 
 ![Exported floor plan](docs/assets/images/export-png.jpg)
 

@@ -92,3 +92,8 @@
   margin: var(--space-2) calc(var(--space-2) * -1);
   background: var(--color-taupe-light);
 }
+
+.item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

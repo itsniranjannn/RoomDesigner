@@ -3,6 +3,7 @@ import {
   chooseScale,
   rasterSize,
   exportFileName,
+  dateStamp,
   safeBaseName,
   formatPlanDate,
   titleBlockText,
@@ -328,5 +329,14 @@ describe('flat sheet model', () => {
     const model = buildFlatSheet(flat, rooms, flat.levels[0].id);
     expect(model.empty).toBe(true);
     expect(model.titleBlock.subtitle).toContain('0 rooms');
+  });
+});
+
+describe('dated export names', () => {
+  it('adds the local date to a file name', () => {
+    expect(dateStamp(new Date(2026, 10, 5))).toBe('2026-11-05');
+    expect(exportFileName('Living room', '3d', 'png', 'Room', new Date(2026, 0, 9))).toBe(
+      'Living_room-3d-2026-01-09.png'
+    );
   });
 });

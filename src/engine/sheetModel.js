@@ -473,6 +473,47 @@ export function buildFlatSheet(
     }
   }
 
+  // Room names sit on the largest free spot of a furnished room instead of printing over a bed or a sofa
+  const pieceBoxes = pieces.map((pc) => {
+    const r = ((pc.rotationDeg || 0) * Math.PI) / 180;
+    const w = Math.abs(Math.cos(r)) * pc.widthCm + Math.abs(Math.sin(r)) * pc.depthCm;
+    const h = Math.abs(Math.sin(r)) * pc.widthCm + Math.abs(Math.cos(r)) * pc.depthCm;
+    return { x: pc.x - w / 2, y: pc.y - h / 2, w, h };
+  });
+  roomLabels.forEach((l, i) => {
+    const space = spaces[i];
+    const room = space && rooms[space.roomId];
+    if (!room || !space.furnishable || !pieceBoxes.length) return;
+    const textW = l.lines.reduce((m, t) => Math.max(m, measure(t, l.font, 700, SANS)), 0);
+    const boxH = l.lines.length * l.lineH + l.metaFont * 1.4;
+    const overlap = (cx, cy) => {
+      const b = { x: cx - textW / 2, y: cy - l.lineH, w: textW, h: boxH };
+      return pieceBoxes.reduce((sum, p) => {
+        const ox = Math.min(b.x + b.w, p.x + p.w) - Math.max(b.x, p.x);
+        const oy = Math.min(b.y + b.h, p.y + p.h) - Math.max(b.y, p.y);
+        return ox > 0 && oy > 0 ? sum + ox * oy : sum;
+      }, 0);
+    };
+    if (overlap(l.x, l.y) === 0) return;
+    const x0 = space.x + textW / 2 + 4;
+    const x1 = space.x + room.widthCm - textW / 2 - 4;
+    const y0 = space.y + l.lineH + 4;
+    const y1 = space.y + room.depthCm - boxH + l.lineH - 4;
+    if (x1 < x0 || y1 < y0) return;
+    let best = null;
+    for (let cy = y0; cy <= y1; cy += 10) {
+      for (let cx = x0; cx <= x1; cx += 10) {
+        const o = overlap(cx, cy);
+        const d = Math.hypot(cx - l.x, cy - l.y);
+        if (!best || o < best.o || (o === best.o && d < best.d)) best = { o, d, cx, cy };
+      }
+    }
+    if (best && best.o < overlap(l.x, l.y)) {
+      l.x = best.cx;
+      l.y = best.cy;
+    }
+  });
+
   // Stair captions kept clear of the room labels
   const taken = roomLabels.map((l) => ({
     x: l.x - l.lines.reduce((m, t) => Math.max(m, measure(t, l.font, 700, SANS)), 0) / 2,

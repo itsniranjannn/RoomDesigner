@@ -13,6 +13,7 @@ import { Box, Footprints, RotateCcw, Square } from 'lucide-react';
 import { LIGHTING, LIGHT_OPTIONS } from './lighting.jsx';
 import { WalkControls } from './WalkControls.jsx';
 import { WalkHud } from './WalkHud.jsx';
+import { SnapshotBridge } from './SnapshotBridge.jsx';
 import styles from './Room3DView.module.css';
 
 const WALL_OPTIONS = [
@@ -132,6 +133,7 @@ export function Room3DView() {
         camera={{ position: [0.01, initialCamY, 0.01], fov: 45 }}
         gl={{ antialias: true }}
       >
+        <SnapshotBridge />
         {preset.background && <color attach="background" args={[preset.background]} />}
 
         {/* Balanced Architectural Studio Lighting */}

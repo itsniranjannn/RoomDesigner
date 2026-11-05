@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
@@ -12,6 +12,7 @@ import { WalkHud } from '../preview3d/WalkHud.jsx';
 import { LIGHTING, LIGHT_OPTIONS } from '../preview3d/lighting.jsx';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
+import { SnapshotBridge } from '../preview3d/SnapshotBridge.jsx';
 import {
   stairTreads,
   stairOpensOn,
@@ -39,6 +40,8 @@ import {
   isFlatBlocked,
   walkSurface,
 } from '../../engine/flatWalk.js';
+import planStyles from './FlatPlan.module.css';
+import { useFlatUi } from '../../store/flatUiStore.js';
 import styles from './FlatDesigner.module.css';
 
 const WALL_OPTIONS = [
@@ -458,6 +461,13 @@ export function Flat3DView() {
   const [fullHeight, setFullHeight] = useState(false);
   const [lighting, setLighting] = useState('day');
   const [walking, setWalking] = useState(false);
+  const notice = useFlatUi((s) => s.notice);
+  // A message such as "Saved ... .png" after an export; the plan clears its own, the 3D view clears here
+  useEffect(() => {
+    if (!notice) return undefined;
+    const t = setTimeout(() => useFlatUi.getState().setNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [walkLevel, setWalkLevel] = useState(0);
   const [resetKey, setResetKey] = useState(0);
   const preset = LIGHTING[lighting];
@@ -607,7 +617,14 @@ export function Flat3DView() {
         {walking && env && (
           <WalkControls env={env} onExit={exitWalk} onLevelChange={setWalkLevel} />
         )}
+        <SnapshotBridge />
       </Canvas>
+
+      {notice && (
+        <div className={`${planStyles.notice} ${styles.noticeTop}`} role="status">
+          {notice}
+        </div>
+      )}
 
       {walking && (
         <p className={styles.view3dHint} aria-live="polite">

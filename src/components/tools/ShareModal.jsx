@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Link2, FileJson, FileText, Image as ImageIcon, Upload } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link2, FileJson, FileText, Image as ImageIcon, Upload, Box } from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
 import { TextField } from '../common/Field.jsx';
@@ -9,8 +9,10 @@ import { encodeRoomToHash } from '../../engine/share.js';
 import {
   exportRoomPlanAsPNG,
   exportRoomPlanAsPDF,
+  exportRoom3DAsPNG,
   exportRoomAsJSON,
 } from '../../engine/exportPlan.js';
+import { canCapture3D } from '../../engine/snapshot3d.js';
 import styles from './Tools.module.css';
 
 export function ShareModal({ onClose }) {
@@ -19,20 +21,73 @@ export function ShareModal({ onClose }) {
   const fileRef = useRef(null);
   const [message, setMessage] = useState(null); // { kind: 'ok' | 'error', text }
   const [busy, setBusy] = useState(false);
+  const [busyKey, setBusyKey] = useState(null);
   const [manualLink, setManualLink] = useState(null); // shown when the browser blocks copying
 
-  const run = async (fn, okText) => {
+  const run = async (fn, okText, key = null) => {
     setBusy(true);
+    setBusyKey(key);
     setMessage(null);
     try {
-      await fn();
-      setMessage({ kind: 'ok', text: okText });
+      const result = await fn();
+      setMessage({
+        kind: 'ok',
+        text:
+          typeof result === 'string' ? `Saved as ${result}. Check your downloads folder.` : okText,
+      });
     } catch (err) {
       setMessage({ kind: 'error', text: err.message || 'Something went wrong.' });
     } finally {
       setBusy(false);
+      setBusyKey(null);
     }
   };
+
+  // The 3D view registers itself a moment after it appears, so check again while the dialog is open
+  const [has3D, setHas3D] = useState(canCapture3D());
+  useEffect(() => {
+    const t = setInterval(() => setHas3D(canCapture3D()), 400);
+    return () => clearInterval(t);
+  }, []);
+  const downloads = [
+    {
+      key: 'png',
+      title: 'Floor plan picture',
+      help: 'Top-down plan with each piece drawn as in the editor, door swings, windows, sizes and a key.',
+      label: 'PNG',
+      icon: <ImageIcon size={16} />,
+      run: () => exportRoomPlanAsPNG(room),
+    },
+    {
+      key: 'png3d',
+      title: '3D picture',
+      help: 'The 3D view as it is on screen, at twice the size, with a title strip.',
+      note: has3D ? null : 'Switch to the 3D view first, then export.',
+      label: 'PNG',
+      icon: <Box size={16} />,
+      disabled: !has3D,
+      run: () => exportRoom3DAsPNG(room),
+    },
+    {
+      key: 'pdf',
+      title: 'Printable plan',
+      help: 'The same plan on a page, drawn to scale for printing.',
+      label: 'PDF',
+      icon: <FileText size={16} />,
+      run: () => exportRoomPlanAsPDF(room),
+    },
+    {
+      key: 'json',
+      title: 'Design file',
+      help: 'Keeps every detail, so you can open the room again later or send it on.',
+      label: 'JSON',
+      icon: <FileJson size={16} />,
+      run: async () => {
+        exportRoomAsJSON(room);
+        return `${room.name}.room.json`;
+      },
+    },
+  ];
 
   const copyLink = () =>
     run(async () => {
@@ -90,37 +145,24 @@ export function ShareModal({ onClose }) {
           </div>
         </li>
 
-        <li className={styles.option}>
-          <div className={styles.optionText}>
-            <h3 className={styles.optionTitle}>Download</h3>
-            <p className={styles.optionHelp}>
-              A picture, a printable plan, or a file you can open again later.
-            </p>
-          </div>
-          <div className={styles.optionActions}>
-            <Button
-              icon={<ImageIcon size={16} />}
-              disabled={busy}
-              onClick={() => run(() => exportRoomPlanAsPNG(room), 'Picture downloaded.')}
-            >
-              PNG
-            </Button>
-            <Button
-              icon={<FileText size={16} />}
-              disabled={busy}
-              onClick={() => run(() => exportRoomPlanAsPDF(room), 'Plan downloaded.')}
-            >
-              PDF
-            </Button>
-            <Button
-              icon={<FileJson size={16} />}
-              disabled={busy}
-              onClick={() => run(async () => exportRoomAsJSON(room), 'Design file downloaded.')}
-            >
-              JSON
-            </Button>
-          </div>
-        </li>
+        {downloads.map((d) => (
+          <li className={styles.option} key={d.key}>
+            <div className={styles.optionText}>
+              <h3 className={styles.optionTitle}>{d.title}</h3>
+              <p className={styles.optionHelp}>{d.help}</p>
+              {d.note && <p className={styles.optionHelp}>{d.note}</p>}
+            </div>
+            <div className={styles.optionActions}>
+              <Button
+                icon={d.icon}
+                disabled={busy || d.disabled}
+                onClick={() => run(d.run, d.ok, d.key)}
+              >
+                {busyKey === d.key ? 'Preparing...' : d.label}
+              </Button>
+            </div>
+          </li>
+        ))}
 
         <li className={styles.option}>
           <div className={styles.optionText}>
