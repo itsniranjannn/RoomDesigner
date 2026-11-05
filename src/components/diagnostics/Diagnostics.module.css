@@ -1,0 +1,31 @@
+.diagnostics {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: var(--border-soft);
+}
+
+.title {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.text {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--color-ink-muted);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.status {
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
