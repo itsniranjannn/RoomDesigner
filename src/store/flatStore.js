@@ -49,6 +49,7 @@ import {
 } from '../engine/flatPassage.js';
 import { wallRunAt } from '../engine/flatWalls.js';
 import { useRoomStore } from './roomStore.js';
+import { applyStyleToRooms, resetStyleOnRooms } from '../data/stylePresets.js';
 
 const HISTORY_LIMIT = 80;
 
@@ -160,6 +161,27 @@ export const useFlatStore = create((set, get) => ({
     await get()._begin(named, rooms);
     set({ flats: await listFlatsFromDB() });
     return named;
+  },
+
+  /**
+   * Applies a style (floor, walls, furniture colours) to some rooms, or to all of them when `roomIds` is
+   * null. One undo step for the whole change. `options.wall` false leaves the walls alone.
+   */
+  applyStyle: (styleId, roomIds = null, options) => {
+    const { flat, rooms } = get();
+    if (!flat) return false;
+    const next = applyStyleToRooms(rooms, styleId, roomIds, options);
+    if (Object.keys(next).every((id) => next[id] === rooms[id])) return false;
+    return get()._apply({ flat, rooms: next });
+  },
+
+  /** Puts the chosen rooms (or all) back as they were before any style, in one undo step. */
+  resetStyle: (roomIds = null) => {
+    const { flat, rooms } = get();
+    if (!flat) return false;
+    const next = resetStyleOnRooms(rooms, roomIds);
+    if (Object.keys(next).every((id) => next[id] === rooms[id])) return false;
+    return get()._apply({ flat, rooms: next });
   },
 
   /** Fills an empty plan with a starting point (undoable). */

@@ -125,7 +125,7 @@ export function StylePanel({ current, hasStyle, onPick, onReset, scope, note }) 
           ? `${style.label}: ${style.note}.`
           : 'One click sets the floor, walls and the colours of recolourable furniture. Lamps, glass, appliances and pictures keep their own colours.'}
       </p>
-      {note}
+      {note && <p className={styles.note}>{note}</p>}
       <Button
         variant="secondary"
         size="small"

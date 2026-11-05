@@ -91,6 +91,7 @@ export function snapToNearestWall(room, def, at) {
         y: Math.round((e.p0.y + e.dy * along + e.ny * (d / 2)) * 10) / 10,
         rotationDeg: Math.round(rotationDeg),
         wall: e.i,
+        along,
       };
     }
   }
@@ -112,7 +113,84 @@ export function snapToNearestWall(room, def, at) {
         : wall === 'left'
           ? { x: d / 2, y: along }
           : { x: W - d / 2, y: along };
-  return { x: r(pos.x), y: r(pos.y), rotationDeg: SIDES[wall].rotationDeg, wall };
+  return { x: r(pos.x), y: r(pos.y), rotationDeg: SIDES[wall].rotationDeg, wall, along };
+}
+
+/** The walls of a room as lines to hang things on: key, length and a point `inward` cm in from the wall. */
+function wallLines(room) {
+  if (hasOutline(room)) {
+    return outlineEdges(room)
+      .filter((e) => !e.open)
+      .map((e) => ({
+        key: e.i,
+        len: e.len,
+        at: (along, inward) => ({
+          x: e.p0.x + e.dx * along + e.nx * inward,
+          y: e.p0.y + e.dy * along + e.ny * inward,
+        }),
+      }));
+  }
+  const W = room.widthCm;
+  const D = room.depthCm;
+  return [
+    { key: 'top', len: W, at: (a, i) => ({ x: a, y: i }) },
+    { key: 'right', len: D, at: (a, i) => ({ x: W - i, y: a }) },
+    { key: 'bottom', len: W, at: (a, i) => ({ x: a, y: D - i }) },
+    { key: 'left', len: D, at: (a, i) => ({ x: i, y: a }) },
+  ];
+}
+
+/** Doors and windows on one wall as [from, to] stretches along it. */
+function openingSpans(room, key) {
+  const same = (o, fallback) =>
+    typeof key === 'number' ? o.edge === key : (o.wall || fallback) === key;
+  const span = (o, w) => {
+    const a = Number.isFinite(o.offsetCm) ? o.offsetCm : 0;
+    return [a, a + (Number.isFinite(o.widthCm) ? o.widthCm : w)];
+  };
+  return [
+    ...(room.windows || []).filter((o) => same(o, 'top')).map((o) => span(o, 120)),
+    ...(room.doors || []).filter((o) => same(o, 'bottom')).map((o) => span(o, 90)),
+  ];
+}
+
+const STEP_CM = 10;
+const GAP_CM = 6;
+
+/**
+ * A free stretch of wall for a new piece: the longest wall first, from its middle outwards, clear of doors,
+ * windows and pieces already hung there. Falls back to the middle of the longest wall.
+ */
+export function freeWallSpot(room, def, existing = []) {
+  const w = def?.widthCm || 50;
+  const d = def?.depthCm || 10;
+  const lines = wallLines(room);
+  if (!lines.length) return { x: room.widthCm / 2, y: d / 2 };
+  const used = new Map();
+  for (const it of existing) {
+    const ed = resolveItemDef(it);
+    if (!ed?.wallMounted || ed.windowDressing !== def?.windowDressing) continue;
+    const sp = snapToNearestWall(room, ed, it);
+    if (!used.has(sp.wall)) used.set(sp.wall, []);
+    used.get(sp.wall).push([sp.along - ed.widthCm / 2, sp.along + ed.widthCm / 2]);
+  }
+  const blocked = (key, from, to) =>
+    [...(used.get(key) || []), ...(def?.windowDressing ? [] : openingSpans(room, key))].some(
+      ([a, b]) => from < b + GAP_CM && to > a - GAP_CM
+    );
+  const byLength = [...lines].sort((a, b) => b.len - a.len);
+  for (const line of byLength) {
+    if (line.len < w) continue;
+    const mid = line.len / 2;
+    for (let k = 0; k <= line.len / STEP_CM; k++) {
+      for (const sign of k === 0 ? [0] : [-1, 1]) {
+        const p = mid + sign * k * STEP_CM;
+        if (p - w / 2 < 0 || p + w / 2 > line.len) continue;
+        if (!blocked(line.key, p - w / 2, p + w / 2)) return line.at(p, d / 2);
+      }
+    }
+  }
+  return byLength[0].at(byLength[0].len / 2, d / 2);
 }
 
 /** The point on the wall just behind a window's centre. */
@@ -148,7 +226,7 @@ export function defaultWallSpot(room, def, existing = []) {
     );
     return free || spots[0];
   }
-  return { x: room.widthCm / 2, y: 0 };
+  return freeWallSpot(room, def, existing);
 }
 
 /** The wall piece as it should be stored: moved to its wall and given a hanging height. */

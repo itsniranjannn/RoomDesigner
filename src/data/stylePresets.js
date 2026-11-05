@@ -231,6 +231,12 @@ export function applyStyleToRoom(room, styleId, { floor = true, wall = true } = 
   if (floor) finishPatch.floor = style.floor;
   if (wall) finishPatch.wall = style.wall;
   const finished = applyFinish({ ...room, placedFurniture: items }, finishPatch);
+  // Already wearing this style and nothing would change: keep the very same room
+  const unchanged =
+    room.styleApplied?.id === style.id &&
+    items.every((item, i) => item === room.placedFurniture[i]) &&
+    JSON.stringify(finished.finish ?? null) === JSON.stringify(room.finish ?? null);
+  if (unchanged) return room;
   return { ...finished, styleApplied: { id: style.id, original } };
 }
 
@@ -269,4 +275,25 @@ export function resetStyleOnRooms(rooms, roomIds = null) {
     out[id] = !roomIds || roomIds.includes(id) ? resetStyleOnRoom(room) : room;
   }
   return out;
+}
+
+/**
+ * The most common floor or wall id (`key` is 'floor' or 'wall') chosen across some rooms, or null when
+ * none has one. The flat 3D view draws one wall finish for the whole flat, so it uses the rooms' choice.
+ */
+export function dominantFinish(rooms, key) {
+  const counts = new Map();
+  for (const room of rooms) {
+    const id = room?.finish?.[key];
+    if (id) counts.set(id, (counts.get(id) || 0) + 1);
+  }
+  let best = null;
+  for (const [id, n] of counts) if (!best || n > best.n) best = { id, n };
+  return best ? best.id : null;
+}
+
+/** The style id shared by all of these rooms, or null when they differ or have none. */
+export function sharedStyle(rooms) {
+  const ids = new Set(rooms.map((r) => styleOfRoom(r)));
+  return ids.size === 1 ? [...ids][0] : null;
 }

@@ -15,7 +15,8 @@ export const LIGHT_OPTIONS = [
 /**
  * Per mode: base light levels, where the sun (or moon) stands (`sunDir`, a direction from the room),
  * how dark the soft contact shadows under furniture are, the strength of the environment light and of
- * the warm lamps.
+ * the warm lamps. `down` is a soft, shadowless light straight from above: with tall walls and a low sun
+ * the rooms would otherwise sit in the walls' shadow, so evening and night get a gentle fill inside.
  */
 export const LIGHTING = {
   day: {
@@ -26,6 +27,7 @@ export const LIGHTING = {
     fill: [0.8, 0.6],
     lamp: 0,
     sunDir: [1, 1.55, 1],
+    down: [0, '#FFFFFF'],
     shadowRadius: 3,
     contact: 0.38,
     blob: 0.55,
@@ -36,12 +38,13 @@ export const LIGHTING = {
   },
   evening: {
     background: '#E7D2BE',
-    ambient: [0.4, '#F0BE92'],
-    hemi: 0.25,
+    ambient: [0.52, '#F0BE92'],
+    hemi: 0.32,
     sun: [0.85, '#FF9A55'],
     fill: [0.2, 0.12],
     lamp: 0.8,
     sunDir: [1.7, 0.62, 0.55],
+    down: [0.55, '#FFC999'],
     shadowRadius: 5,
     contact: 0.45,
     blob: 0.6,
@@ -52,12 +55,13 @@ export const LIGHTING = {
   },
   night: {
     background: '#1B2233',
-    ambient: [0.16, '#8CA0C8'],
-    hemi: 0.1,
+    ambient: [0.24, '#8CA0C8'],
+    hemi: 0.15,
     sun: [0.32, '#9DB4E0'],
     fill: [0.07, 0.05],
     lamp: 1.2,
     sunDir: [-0.9, 1.3, 0.8],
+    down: [0.3, '#8FA6D8'],
     shadowRadius: 6,
     contact: 0.5,
     blob: 0.55,
@@ -115,7 +119,8 @@ export function FurnitureShadows({ items, roomWidthCm, roomDepthCm, strength = 0
         .filter((it) => !it.elevationCm)
         .map((it) => {
           const def = resolveItemDef(it);
-          if (!def) return null;
+          // Pieces hung on a wall (a floor-length curtain) cast no halo on the floor
+          if (!def || def.wallMounted) return null;
           return {
             id: it.id,
             x: (it.x - roomWidthCm / 2) / 100,
@@ -254,9 +259,18 @@ export function SceneLights({
   const len = Math.hypot(dx, dy, dz);
   const dist = span * 2.4 + 4;
   const reach = span * 1.6 + 1;
+  // Without the environment light (Low quality) rooms read darker, so the ambient light makes up for it
+  const ambient = preset.ambient[0] * (settings.environment ? 1 : 1.15);
   return (
     <>
-      <ambientLight intensity={preset.ambient[0]} color={preset.ambient[1]} />
+      <ambientLight intensity={ambient} color={preset.ambient[1]} />
+      {preset.down[0] > 0 && (
+        <directionalLight
+          position={[cx + 0.01, y + span * 3 + 4, cz + 0.01]}
+          intensity={preset.down[0]}
+          color={preset.down[1]}
+        />
+      )}
       <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={preset.hemi} />
       {settings.environment && <SoftEnvironment mode={mode} />}
       {centerLamp && preset.lamp > 0 && (
