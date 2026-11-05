@@ -34,7 +34,16 @@ function NewRoomForm({ onClose }) {
 
   const handleSubmit = (e) => {
     e?.preventDefault();
-    createRoom(name.trim() || 'New Room', widthCm, depthCm);
+    // Read the boxes directly so a value typed just before Enter is not lost
+    const data = e?.currentTarget ? new FormData(e.currentTarget) : null;
+    const clampCm = (raw, fallback) => {
+      const n = Number(raw);
+      if (raw === null || raw === '' || !Number.isFinite(n)) return fallback;
+      return Math.max(MIN_CM, Math.min(MAX_CM, n));
+    };
+    const w = clampCm(data?.get('width'), widthCm);
+    const d = clampCm(data?.get('depth'), depthCm);
+    createRoom(name.trim() || 'New Room', w, d);
     onClose();
   };
 
@@ -84,6 +93,7 @@ function NewRoomForm({ onClose }) {
         <div className={styles.sizeRow}>
           <NumberField
             label="Width"
+            name="width"
             suffix="cm"
             min={MIN_CM}
             max={MAX_CM}
@@ -97,6 +107,7 @@ function NewRoomForm({ onClose }) {
           />
           <NumberField
             label="Depth"
+            name="depth"
             suffix="cm"
             min={MIN_CM}
             max={MAX_CM}

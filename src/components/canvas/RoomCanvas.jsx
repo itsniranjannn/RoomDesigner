@@ -83,6 +83,8 @@ export function RoomCanvas() {
         return;
       }
       if (e.key === 'Escape') {
+        // With nothing to cancel the key is left alone, so the app can step back out of a room
+        if (!state.measureActive && state.selectedItemIds.length === 0) return;
         e.preventDefault();
         if (state.measureActive) state.toggleMeasure();
         else state.deselectItem();

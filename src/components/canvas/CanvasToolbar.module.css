@@ -1,3 +1,8 @@
+/* Wrapper: invisible on wide screens; on phones it stacks the tool rows above the messages */
+.chrome {
+  display: contents;
+}
+
 /* Vertical tool strip on the left edge of the plan */
 .toolbar {
   position: absolute;
@@ -123,14 +128,30 @@
 }
 
 @media (max-width: 640px) {
+  .chrome {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    right: var(--space-3);
+    z-index: var(--z-chrome);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    pointer-events: none;
+  }
+
+  .toolbar,
+  .stack {
+    position: static;
+    pointer-events: none;
+  }
+
   .toolbar {
     flex-direction: row;
     flex-wrap: wrap;
-    right: var(--space-3);
   }
 
-  .stack {
-    top: 56px;
-    left: var(--space-3);
+  .toolbar > * {
+    pointer-events: auto;
   }
 }
