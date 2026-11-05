@@ -373,3 +373,319 @@
   gap: var(--space-3);
   padding: 0 var(--space-3) var(--space-3);
 }
+
+/* ---------- guided capture ---------- */
+
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-linen);
+  border: var(--border-soft);
+  border-radius: var(--radius-md);
+}
+
+.guideHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.guideTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.guideGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+@media (max-width: 520px) {
+  .guideGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.guideItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: 1.4;
+  color: var(--color-ink-muted);
+}
+
+.guideItem strong {
+  color: var(--color-ink);
+}
+
+.diagram {
+  width: 100%;
+  height: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+}
+
+.diaFrame {
+  fill: none;
+  stroke: var(--color-taupe);
+  stroke-width: 1.5;
+}
+
+.diaMargin {
+  fill: none;
+  stroke: var(--color-ink-faint);
+  stroke-width: 0.8;
+  stroke-dasharray: 3 3;
+}
+
+.diaFloor {
+  stroke: var(--color-taupe);
+  stroke-width: 1;
+}
+
+.diaLevel {
+  stroke: var(--color-indigo);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 2;
+}
+
+.diaPiece {
+  fill: var(--color-indigo-subtle);
+  stroke: var(--color-indigo);
+  stroke-width: 1.4;
+}
+
+.diaDark {
+  fill: var(--color-ink-muted);
+  stroke: none;
+  opacity: 0.55;
+}
+
+.diaText {
+  font-size: 6.5px;
+  fill: var(--color-ink-muted);
+}
+
+.helpBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font: inherit;
+  font-size: var(--text-xs);
+  font-weight: 400;
+  color: var(--color-indigo);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.helpBtn:hover {
+  text-decoration: underline;
+}
+
+.helpBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.slotHint {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--color-ink-muted);
+}
+
+.slotFlag {
+  display: inline-flex;
+  color: var(--color-maroon);
+}
+
+.checks {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.check1 {
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-xs);
+  line-height: 1.45;
+  background: var(--color-maroon-subtle);
+  border-radius: var(--radius-md);
+}
+
+.check1 svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--color-maroon);
+}
+
+.checkFix {
+  color: var(--color-ink-muted);
+}
+
+/* ---------- type choices ---------- */
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+.chip {
+  padding: 3px var(--space-3);
+  font-size: var(--text-xs);
+  color: var(--color-ink);
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.chip:hover {
+  color: var(--color-indigo);
+  border-color: var(--color-indigo);
+}
+
+.chip[aria-pressed='true'] {
+  color: var(--color-indigo);
+  font-weight: 600;
+  background: var(--color-indigo-subtle);
+  border-color: var(--color-indigo);
+}
+
+.chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------- fit to photo ---------- */
+
+.fit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-linen);
+  border-radius: var(--radius-md);
+}
+
+.fitHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.fitTitle {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+.steppers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.stepper {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+.stepperRow {
+  display: flex;
+  align-items: stretch;
+  background: var(--color-surface);
+  border: var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.stepBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  color: var(--color-ink-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.stepBtn:hover {
+  color: var(--color-indigo);
+  background: var(--color-indigo-subtle);
+}
+
+.stepBtn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.stepValue {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--color-ink);
+  text-align: center;
+  background: none;
+  border: 0;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.meterLine {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+}
+
+.meterBar {
+  height: 6px;
+  overflow: hidden;
+  background: var(--color-taupe-light);
+  border-radius: 999px;
+}
+
+.meterFill {
+  height: 100%;
+  background: var(--color-success);
+  border-radius: 999px;
+  transition: width 0.2s ease;
+}
+
+.meterFill[data-level='fair'] {
+  background: var(--color-indigo);
+}
+
+.meterFill[data-level='poor'] {
+  background: var(--color-maroon);
+}

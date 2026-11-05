@@ -1,8 +1,20 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { Camera, X, Sparkles, Save, LayoutGrid, Layers } from 'lucide-react';
+import {
+  Camera,
+  X,
+  Sparkles,
+  Save,
+  LayoutGrid,
+  Layers,
+  HelpCircle,
+  AlertTriangle,
+  Minus,
+  Plus,
+  Crosshair,
+} from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
 import { NumberField, RangeField, TextField } from '../common/Field.jsx';
@@ -33,13 +45,27 @@ import { CustomMeshModel } from '../preview3d/models/customMesh.jsx';
 import {
   DESIGN_TYPES,
   PALETTE_SLOTS,
+  SHORT_LABEL,
   TYPICAL_WIDTH_CM,
   buildDesign,
+  typeCandidates,
   designMainColor,
   inferDimensions,
   detectionConfidence,
   withMirroredSides,
 } from '../../engine/design.js';
+import {
+  VIEW_AXES,
+  photoQuality,
+  photoAspect,
+  normalizeMask,
+  fitScore,
+  describeFit,
+  fitHint,
+  matchPhotoDims,
+  silhouetteFromRender,
+} from '../../engine/photoFit.js';
+import { CaptureGuide, SLOT_HINTS, guideSeen, markGuideSeen } from './PhotoGuide.jsx';
 import local from './PhotoModelModal.module.css';
 
 const PHOTO_MAX = 480;
@@ -94,6 +120,15 @@ const LEGS = [
   [0, 'Square'],
   [1, 'Round'],
 ];
+const TUFTED = {
+  key: 'tufted',
+  label: 'Buttons',
+  fallback: 0,
+  options: [
+    [0, 'Plain'],
+    [1, 'Tufted with buttons'],
+  ],
+};
 const UPHOLSTERY = [
   {
     key: 'roll',
@@ -137,12 +172,170 @@ const TRAIT_CONTROLS = {
       ],
     },
     {
-      key: 'channels',
+      key: 'head',
       label: 'Headboard',
+      fallback: 'panel',
+      options: [
+        ['flat', 'Flat'],
+        ['panel', 'Panel'],
+        ['channel', 'Channel stitched'],
+        ['tufted', 'Tufted'],
+        ['slat', 'Slatted'],
+      ],
+    },
+  ],
+  'corner-sofa': [
+    {
+      key: 'side',
+      label: 'Chaise on the',
+      fallback: 'right',
+      options: [
+        ['right', 'Right'],
+        ['left', 'Left'],
+      ],
+    },
+    { key: 'seats', label: 'Seats along the back', fallback: 2, options: range(1, 4) },
+    { key: 'arm', label: 'Arms', fallback: 0.08, options: ARMS },
+    { ...TUFTED, label: 'Back cushions' },
+    UPHOLSTERY[2],
+  ],
+  'tub-chair': [
+    {
+      key: 'plan',
+      label: 'Shape',
+      fallback: 'round',
+      options: [
+        ['round', 'Round tub'],
+        ['bucket', 'Bucket'],
+      ],
+    },
+    {
+      key: 'base',
+      label: 'Base',
+      fallback: 'feet',
+      options: [
+        ['feet', 'Short feet'],
+        ['legs', 'Slim legs'],
+        ['pedestal', 'Swivel pedestal'],
+      ],
+    },
+    TUFTED,
+  ],
+  ottoman: [
+    {
+      key: 'shape',
+      label: 'Shape',
+      fallback: 'square',
+      options: [
+        ['square', 'Square or rectangular'],
+        ['round', 'Round pouf'],
+      ],
+    },
+    {
+      key: 'feet',
+      label: 'Feet',
+      fallback: 'short',
+      options: [
+        ['none', 'On the floor'],
+        ['short', 'Short feet'],
+        ['tall', 'Tall legs'],
+      ],
+    },
+    TUFTED,
+  ],
+  daybed: [
+    {
+      key: 'back',
+      label: 'Back',
+      fallback: 'panel',
+      options: [
+        ['panel', 'Solid panel'],
+        ['slat', 'Slatted'],
+        ['none', 'No back'],
+      ],
+    },
+    {
+      key: 'ends',
+      label: 'End panels',
+      fallback: 2,
+      options: [
+        [2, 'Both ends'],
+        [1, 'One end'],
+        [0, 'None'],
+      ],
+    },
+  ],
+  etagere: [
+    { key: 'shelves', label: 'Rows of shelves', fallback: 4, options: range(2, 7) },
+    { key: 'cols', label: 'Columns', fallback: 1, options: range(1, 4) },
+    {
+      key: 'base',
+      label: 'Lower part',
+      fallback: 'open',
+      options: [
+        ['open', 'Open'],
+        ['doors', 'Closed with doors'],
+        ['drawers', 'Drawers'],
+      ],
+    },
+    {
+      key: 'back',
+      label: 'Back',
+      fallback: 1,
+      options: [
+        [1, 'Closed back panel'],
+        [0, 'Open back'],
+      ],
+    },
+  ],
+  stool: [
+    {
+      key: 'seat',
+      label: 'Seat',
+      fallback: 'round',
+      options: [
+        ['round', 'Round'],
+        ['square', 'Square'],
+      ],
+    },
+    {
+      key: 'back',
+      label: 'Back',
       fallback: 0,
       options: [
-        [0, 'Plain'],
-        [1, 'Channel stitched'],
+        [0, 'No back'],
+        [1, 'Low back'],
+      ],
+    },
+    {
+      key: 'rest',
+      label: 'Footrest',
+      fallback: 0,
+      options: [
+        [0, 'None'],
+        [1, 'With footrest'],
+      ],
+    },
+  ],
+  cabinet: [
+    {
+      key: 'front',
+      label: 'Fronts',
+      fallback: 'doors',
+      options: [
+        ['doors', 'Doors'],
+        ['drawers', 'Drawers'],
+        ['mixed', 'Doors and drawers'],
+      ],
+    },
+    { key: 'n', label: 'Sections', fallback: 2, options: range(1, 5) },
+    {
+      key: 'legs',
+      label: 'Base',
+      fallback: 0,
+      options: [
+        [0, 'Plinth'],
+        [1, 'Legs'],
       ],
     },
   ],
@@ -289,6 +482,83 @@ function PresetCamera({ view, dims, nonce }) {
   return null;
 }
 
+const PROBE_SIZE = 96;
+
+/**
+ * The model's silhouette as the photo angle sees it: rendered flat white on black with an orthographic camera
+ * framed on the piece's size box, so the picture can be compared pixel for pixel with the photo's cut-out.
+ */
+function renderSilhouette(gl, scene, view, dims) {
+  const w = dims.widthCm / 100;
+  const d = dims.depthCm / 100;
+  const h = dims.heightCm / 100;
+  const { across, up, along } = viewExtent(view, w, d, h);
+  const cam = new THREE.OrthographicCamera(
+    -across / 2,
+    across / 2,
+    up / 2,
+    -up / 2,
+    0.01,
+    along + 20
+  );
+  const centre = new THREE.Vector3(0, h / 2, 0);
+  const dir = new THREE.Vector3(...VIEW_DIRECTION[view]);
+  if (view === 'top') dir.set(0, 1, 0);
+  cam.up.set(0, view === 'top' ? 0 : 1, view === 'top' ? -1 : 0);
+  cam.position.copy(centre).addScaledVector(dir.normalize(), along / 2 + 5);
+  cam.lookAt(centre);
+  const target = new THREE.WebGLRenderTarget(PROBE_SIZE, PROBE_SIZE);
+  const hidden = [];
+  scene.traverse((o) => {
+    if (o.userData?.probeHide && o.visible) {
+      o.visible = false;
+      hidden.push(o);
+    }
+  });
+  const override = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const prevOverride = scene.overrideMaterial;
+  const prevBackground = scene.background;
+  const prevTarget = gl.getRenderTarget();
+  const prevColor = gl.getClearColor(new THREE.Color());
+  const prevAlpha = gl.getClearAlpha();
+  const pixels = new Uint8Array(PROBE_SIZE * PROBE_SIZE * 4);
+  try {
+    scene.overrideMaterial = override;
+    scene.background = null;
+    gl.setRenderTarget(target);
+    gl.setClearColor(0x000000, 1);
+    gl.clear();
+    gl.render(scene, cam);
+    gl.readRenderTargetPixels(target, 0, 0, PROBE_SIZE, PROBE_SIZE, pixels);
+  } finally {
+    scene.overrideMaterial = prevOverride;
+    scene.background = prevBackground;
+    gl.setRenderTarget(prevTarget);
+    gl.setClearColor(prevColor, prevAlpha);
+    hidden.forEach((o) => (o.visible = true));
+    override.dispose();
+    target.dispose();
+  }
+  return silhouetteFromRender(pixels, PROBE_SIZE, PROBE_SIZE);
+}
+
+/** Reports the model's silhouette for the current photo angle and size whenever any of them change. */
+function SilhouetteProbe({ view, dims, signature, onResult }) {
+  const gl = useThree((state) => state.gl);
+  const scene = useThree((state) => state.scene);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        onResult({ mask: renderSilhouette(gl, scene, view, dims), view, dims });
+      } catch {
+        onResult(null);
+      }
+    }, 120);
+    return () => clearTimeout(timer);
+  }, [gl, scene, view, dims, signature, onResult]);
+  return null;
+}
+
 /** The user's cut-out photo as a see-through sheet laid over the model, sized to the piece's box for that angle. */
 function PhotoOverlay({ photo, mask, view, dims, opacity }) {
   const texture = useMemo(() => {
@@ -316,7 +586,12 @@ function PhotoOverlay({ photo, mask, view, dims, opacity }) {
     top: [-Math.PI / 2, 0, 0],
   }[view];
   return (
-    <mesh position={[0, h / 2, 0]} rotation={rotation} renderOrder={20}>
+    <mesh
+      position={[0, h / 2, 0]}
+      rotation={rotation}
+      renderOrder={20}
+      userData={{ probeHide: true }}
+    >
       <planeGeometry args={[across, up]} />
       <meshBasicMaterial
         map={texture}
@@ -331,7 +606,7 @@ function PhotoOverlay({ photo, mask, view, dims, opacity }) {
 }
 
 /** The finished model at its real size, drawn with the same component the room view uses. */
-function ModelPreview({ design, dims, color, view, nonce, overlay }) {
+function ModelPreview({ design, dims, color, view, nonce, overlay, onSilhouette }) {
   const w = dims.widthCm / 100;
   const d = dims.depthCm / 100;
   const h = dims.heightCm / 100;
@@ -361,12 +636,19 @@ function ModelPreview({ design, dims, color, view, nonce, overlay }) {
         intensity={0.7}
         color="#F5EFE6"
       />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow userData={{ probeHide: true }}>
         <planeGeometry args={[6, 6]} />
         <meshStandardMaterial color="#E4DACB" roughness={1} />
       </mesh>
-      <gridHelper args={[6, 12, '#B9AE9C', '#CFC5B4']} position={[0, 0.002, 0]} />
+      <gridHelper
+        args={[6, 12, '#B9AE9C', '#CFC5B4']}
+        position={[0, 0.002, 0]}
+        userData={{ probeHide: true }}
+      />
       <CustomMeshModel def={def} widthM={w} depthM={d} heightM={h} mainColor={color} />
+      {onSilhouette && (
+        <SilhouetteProbe view={view} dims={dims} signature={design} onResult={onSilhouette} />
+      )}
       {overlay && (
         <PhotoOverlay
           photo={overlay.photo}
@@ -383,6 +665,53 @@ function ModelPreview({ design, dims, color, view, nonce, overlay }) {
         target={[0, h / 2, 0]}
       />
     </Canvas>
+  );
+}
+
+/** A size with minus and plus buttons (shift moves by 10) and a box to type in. */
+function Stepper({ label, value, onChange }) {
+  const [draft, setDraft] = useState(String(value));
+  useEffect(() => setDraft(String(value)), [value]);
+  const set = (v) => onChange(Math.min(600, Math.max(5, Math.round(v))));
+  const commit = () => {
+    const n = Number(draft);
+    if (Number.isFinite(n) && draft !== '') set(n);
+    else setDraft(String(value));
+  };
+  return (
+    <div className={local.stepper} role="group" aria-label={label}>
+      <span>{label}</span>
+      <div className={local.stepperRow}>
+        <button
+          type="button"
+          className={local.stepBtn}
+          aria-label={`Make the ${label.toLowerCase()} smaller`}
+          onClick={(e) => set(value - (e.shiftKey ? 10 : 1))}
+        >
+          <Minus size={13} aria-hidden="true" />
+        </button>
+        <input
+          className={local.stepValue}
+          type="number"
+          inputMode="numeric"
+          min={5}
+          max={600}
+          value={draft}
+          aria-label={`${label} in centimeters`}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => e.key === 'Enter' && commit()}
+        />
+        <button
+          type="button"
+          className={local.stepBtn}
+          aria-label={`Make the ${label.toLowerCase()} larger`}
+          onClick={(e) => set(value + (e.shiftKey ? 10 : 1))}
+        >
+          <Plus size={13} aria-hidden="true" />
+        </button>
+      </div>
+    </div>
   );
 }
 
@@ -423,6 +752,9 @@ export function PhotoModelModal({ onClose }) {
   const [keepRatio, setKeepRatio] = useState(true);
   const [anchor, setAnchor] = useState('widthCm');
   const [sizeEdited, setSizeEdited] = useState(false); // false: the size follows the type's usual size
+  const [guideOpen, setGuideOpen] = useState(() => !guideSeen()); // shown the first time it is opened
+  const [candidates, setCandidates] = useState(null); // { list, agreement } of likely types
+  const [probe, setProbe] = useState(null); // the model's silhouette from the active photo angle
   const inputs = useRef({});
   const sheetInput = useRef(null);
   const dimsRef = useRef(dims);
@@ -457,6 +789,8 @@ export function PhotoModelModal({ onClose }) {
   // Photos or cut-out changes invalidate the previous model
   useEffect(() => {
     setDesign(null);
+    setCandidates(null);
+    setProbe(null);
   }, [segmented]);
 
   const loadPhoto = async (slot, file) => {
@@ -508,6 +842,39 @@ export function PhotoModelModal({ onClose }) {
     setDims(dimensionsFromProportions(ratios, anchor, dimsRef.current[anchor]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ratioKey, keepRatio]);
+  // Problems with each photo, in plain words, as soon as it is added
+  const qualityItems = useMemo(
+    () =>
+      VIEW_SLOTS.filter((slot) => photos[slot.id] && segmented[slot.id]).flatMap((slot) =>
+        photoQuality(photos[slot.id], segmented[slot.id].mask).map((q) => ({
+          slot: slot.id,
+          label: slot.label,
+          ...q,
+        }))
+      ),
+    [photos, segmented]
+  );
+  const flagged = new Set(qualityItems.map((q) => q.slot));
+  const handleSilhouette = useCallback((result) => setProbe(result), []);
+  // How closely the model's outline matches the cut-out of the photo being compared
+  const fit = useMemo(() => {
+    const photo = allPhotos[activeView];
+    const cut = segmented[activeView];
+    if (!probe || probe.view !== activeView || !photo || !cut) return null;
+    const model = normalizeMask(probe.mask, PROBE_SIZE, PROBE_SIZE, 64);
+    const target = normalizeMask(cut.mask, photo.width, photo.height, 64);
+    const axes = VIEW_AXES[activeView];
+    if (!model || !target) return null;
+    const modelAspect =
+      (model.frac.w * probe.dims[axes.across]) / (model.frac.h * probe.dims[axes.up]);
+    const targetAspect = photoAspect(cut.mask, photo.width, photo.height);
+    return {
+      ...fitScore(model, target, modelAspect, targetAspect),
+      frac: model.frac,
+      modelAspect,
+      photoAspect: targetAspect,
+    };
+  }, [probe, activeView, allPhotos, segmented]);
   const weakSlots = Object.entries(segmented).filter(
     ([slot, s]) => photos[slot] && (s.coverage < 0.03 || s.coverage > 0.92)
   );
@@ -629,6 +996,8 @@ export function PhotoModelModal({ onClose }) {
           result = buildDesign(views, next, result.type, true, hints);
         }
         setDesign(result);
+        // The likeliest types, for when the first guess is not steady or rests on few photos
+        setCandidates(typeCandidates(views, dims, sizeEdited, hints, result.type));
         setTypeOpen(false);
         setViewChoice((v) => (shownViews.includes(v) ? v : shownViews[0]));
         if (!nameTouched.current) {
@@ -699,6 +1068,22 @@ export function PhotoModelModal({ onClose }) {
       return;
     }
     onClose();
+  };
+
+  // Fine-tuning against the photo: one size at a time, no longer tied to the photos' proportions
+  const nudgeDim = (key, value) => {
+    setSizeEdited(true);
+    setAnchor(key);
+    setKeepRatio(false);
+    setDims((d) => ({ ...d, [key]: value }));
+  };
+
+  // Scales the model so its silhouette bounds take the proportions of the photo's cut-out
+  const matchPhoto = () => {
+    if (!fit) return;
+    setSizeEdited(true);
+    setKeepRatio(false);
+    setDims((d) => matchPhotoDims(d, activeView, fit.photoAspect, fit.frac, anchor));
   };
 
   const setDim = (key, value) => {
@@ -790,19 +1175,27 @@ export function PhotoModelModal({ onClose }) {
                 {photoCount} of 5. One is enough, more are more accurate
               </span>
             </h3>
-            <ul className={local.tips}>
-              <li>
-                Use a plain wall or sheet behind the piece and even light, without strong shadows.
-              </li>
-              <li>
-                Hold the camera level at mid-height, the same distance for every photo, with the
-                whole piece in frame.
-              </li>
-              <li>
-                One front photo is enough to start. Turn the piece a quarter turn for each extra
-                photo: a side photo gives the real depth and shape.
-              </li>
-            </ul>
+            <div>
+              <button
+                type="button"
+                className={local.helpBtn}
+                aria-expanded={guideOpen}
+                onClick={() => {
+                  if (guideOpen) markGuideSeen();
+                  setGuideOpen((open) => !open);
+                }}
+              >
+                <HelpCircle size={14} aria-hidden="true" /> How to photograph it
+              </button>
+            </div>
+            {guideOpen && (
+              <CaptureGuide
+                onClose={() => {
+                  markGuideSeen();
+                  setGuideOpen(false);
+                }}
+              />
+            )}
             <div className={local.sheetRow}>
               <Button
                 variant="secondary"
@@ -884,7 +1277,18 @@ export function PhotoModelModal({ onClose }) {
                 return (
                   <div key={slot.id} className={local.slot}>
                     <div className={local.slotHead}>
-                      <span>{slot.label}</span>
+                      <span>
+                        {slot.label}
+                        {flagged.has(slot.id) && !copy && (
+                          <span
+                            className={local.slotFlag}
+                            title="This photo could be better: see the tips below"
+                          >
+                            {' '}
+                            <AlertTriangle size={12} aria-label="Photo could be better" />
+                          </span>
+                        )}
+                      </span>
                       {photo && !copy && (
                         <button
                           type="button"
@@ -908,6 +1312,7 @@ export function PhotoModelModal({ onClose }) {
                         <span>Add photo</span>
                       </button>
                     )}
+                    {!photo && <span className={local.slotHint}>{SLOT_HINTS[slot.id]}</span>}
                     {copy && (
                       <span className={local.mirrorTag}>
                         Mirrored from the {VIEW_LABEL[copy].toLowerCase()} photo.{' '}
@@ -937,6 +1342,19 @@ export function PhotoModelModal({ onClose }) {
                 );
               })}
             </div>
+            {qualityItems.length > 0 && (
+              <ul className={local.checks} aria-label="Photo checks">
+                {qualityItems.map((q) => (
+                  <li key={`${q.slot}-${q.id}`} className={local.check1}>
+                    <AlertTriangle size={14} aria-hidden="true" />
+                    <span>
+                      <strong>{q.label} photo.</strong> {q.text}{' '}
+                      <span className={local.checkFix}>{q.fix}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             {lonelySide && (
               <label className={local.check}>
                 <input
@@ -1005,6 +1423,7 @@ export function PhotoModelModal({ onClose }) {
                   color={modelColor}
                   view={activeView}
                   nonce={viewNonce}
+                  onSilhouette={handleSilhouette}
                   overlay={
                     overlayOn && allPhotos[activeView]
                       ? {
@@ -1050,6 +1469,73 @@ export function PhotoModelModal({ onClose }) {
             </div>
           )}
           {design && (
+            <div className={local.fit} role="group" aria-label="Fit the size to your photo">
+              <div className={local.fitHead}>
+                <h3 className={local.fitTitle}>
+                  Fit to your {VIEW_LABEL[activeView].toLowerCase()} photo
+                </h3>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  icon={<Crosshair size={14} />}
+                  onClick={matchPhoto}
+                  disabled={!fit}
+                >
+                  Match photo
+                </Button>
+              </div>
+              <div className={local.steppers}>
+                <Stepper
+                  label="Width"
+                  value={dims.widthCm}
+                  onChange={(v) => nudgeDim('widthCm', v)}
+                />
+                <Stepper
+                  label="Depth"
+                  value={dims.depthCm}
+                  onChange={(v) => nudgeDim('depthCm', v)}
+                />
+                <Stepper
+                  label="Height"
+                  value={dims.heightCm}
+                  onChange={(v) => nudgeDim('heightCm', v)}
+                />
+              </div>
+              {fit ? (
+                <div className={local.meter} aria-live="polite">
+                  <div className={local.meterLine}>
+                    <span>
+                      <strong>{describeFit(fit.score).label}</strong> with this photo
+                    </span>
+                    <span>{Math.round(fit.score * 100)}%</span>
+                  </div>
+                  <div
+                    className={local.meterBar}
+                    role="meter"
+                    aria-label="How closely the model matches the photo"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.round(fit.score * 100)}
+                  >
+                    <div
+                      className={local.meterFill}
+                      data-level={describeFit(fit.score).level}
+                      style={{ width: `${Math.round(fit.score * 100)}%` }}
+                    />
+                  </div>
+                  <p className={local.note}>
+                    {fitHint(activeView, fit.modelAspect, fit.photoAspect) ||
+                      'The proportions agree with the photo.'}{' '}
+                    Turn on the overlay above to see the difference, and use the buttons to adjust
+                    (hold Shift for 10 cm).
+                  </p>
+                </div>
+              ) : (
+                <p className={local.note}>Measuring the model against the photo...</p>
+              )}
+            </div>
+          )}
+          {design && (
             <div className={local.section}>
               <div className={local.detected} aria-live="polite">
                 <p className={local.detectedLine}>
@@ -1063,11 +1549,33 @@ export function PhotoModelModal({ onClose }) {
                         className={local.linkBtn}
                         onClick={() => setTypeOpen(true)}
                       >
-                        Not right? Change type
+                        More types
                       </button>
                     </>
                   )}
                 </p>
+                {candidates &&
+                  (detectionConfidence(Object.keys(photos)) !== 'good' ||
+                    candidates.agreement < 0.75) && (
+                    <div className={local.chips} role="group" aria-label="Looks like">
+                      <span>Looks like:</span>
+                      {candidates.list.map((id) => (
+                        <button
+                          key={id}
+                          type="button"
+                          className={local.chip}
+                          aria-pressed={id === design.type}
+                          disabled={busy}
+                          onClick={() => {
+                            setTypeChoice(id);
+                            handleBuild(id);
+                          }}
+                        >
+                          {SHORT_LABEL[id] || typeLabel(id)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 {typeOpen && (
                   <label className={local.designRow}>
                     <span>Type of furniture</span>

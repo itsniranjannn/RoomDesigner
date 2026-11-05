@@ -174,6 +174,274 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
   );
 }
 
+/** Types drawn on the plan from the design record alone (when there is no top photo to show). */
+const SHAPE_PLAN_TYPES = [
+  'corner-sofa',
+  'tub-chair',
+  'ottoman',
+  'daybed',
+  'etagere',
+  'stool',
+  'cabinet',
+];
+
+/** The corner of an L-shaped sofa: the run along the back and the chaise, as plan points. */
+export function cornerSofaPoints(widthCm, depthCm, traits = {}) {
+  const hw = widthCm / 2;
+  const hd = depthCm / 2;
+  const seats = Math.min(4, Math.max(1, Math.round(traits.seats ?? 2)));
+  const armW = Math.min(20, Math.max(7, (traits.arm ?? 0.08) * widthCm));
+  const chaise = Math.min(widthCm * 0.5, Math.max(55, widthCm - armW - seats * 72));
+  const mainD = depthCm * 0.55;
+  const pts = [
+    [-hw, -hd],
+    [hw, -hd],
+    [hw, hd],
+    [hw - chaise, hd],
+    [hw - chaise, -hd + mainD],
+    [-hw, -hd + mainD],
+  ];
+  const flip = traits.side === 'left' ? -1 : 1;
+  const out = pts.map(([x, y]) => [x * flip, y]);
+  if (flip < 0) out.reverse();
+  return { points: out, chaise, mainD, armW, seats };
+}
+
+/** Plan drawn from the design record for the shapes that have no seating plan of their own. */
+function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
+  const { type, palette = {}, traits = {} } = design;
+  const same = !palette.body || String(palette.body).toLowerCase() === String(color).toLowerCase();
+  const cushion = same ? palette.cushion || color : color;
+  const stroke = { stroke: OUTLINE, strokeWidth: 1.2 };
+  if (type === 'corner-sofa') {
+    const { points, chaise, mainD, armW, seats } = cornerSofaPoints(widthCm, depthCm, traits);
+    const flip = traits.side === 'left' ? -1 : 1;
+    const backT = Math.min(mainD * 0.27, depthCm * 0.2);
+    const seatsW = widthCm - chaise - armW;
+    return (
+      <g>
+        <path
+          d={`M ${points.map(([x, y]) => `${x} ${y}`).join(' L ')} Z`}
+          fill={color}
+          {...stroke}
+          strokeLinejoin="round"
+        />
+        {Array.from({ length: seats }).map((_, i) => {
+          const x0 = -hw + armW + (seatsW / seats) * i + 1.5;
+          const w = seatsW / seats - 3;
+          return (
+            <rect
+              key={i}
+              x={flip < 0 ? hw - armW - (seatsW / seats) * (i + 1) + 1.5 : x0}
+              y={-hd + backT + 2}
+              width={w}
+              height={mainD - backT - 4}
+              rx={4}
+              fill={cushion}
+              stroke={LINE}
+              strokeWidth="0.7"
+            />
+          );
+        })}
+        <rect
+          x={flip < 0 ? -hw + armW + 1.5 : hw - chaise + 1.5}
+          y={-hd + mainD - 2}
+          width={chaise - armW - 3}
+          height={depthCm - mainD - 2 - 4}
+          rx={4}
+          fill={cushion}
+          stroke={LINE}
+          strokeWidth="0.7"
+        />
+        <line
+          x1={-hw + 3}
+          y1={-hd + backT}
+          x2={hw - 3}
+          y2={-hd + backT}
+          stroke={LINE}
+          strokeWidth="0.7"
+        />
+      </g>
+    );
+  }
+  if (type === 'tub-chair' || type === 'ottoman' || type === 'stool') {
+    const round =
+      type === 'tub-chair'
+        ? traits.plan !== 'bucket'
+        : type === 'ottoman'
+          ? traits.shape === 'round'
+          : traits.seat !== 'square';
+    const inset =
+      type === 'tub-chair' ? Math.min(widthCm, depthCm) * 0.14 : Math.min(widthCm, depthCm) * 0.07;
+    return (
+      <g>
+        {round ? (
+          <ellipse cx={0} cy={0} rx={hw} ry={hd} fill={color} {...stroke} />
+        ) : (
+          <rect
+            x={-hw}
+            y={-hd}
+            width={widthCm}
+            height={depthCm}
+            rx={type === 'tub-chair' ? hw * 0.5 : 6}
+            fill={color}
+            {...stroke}
+          />
+        )}
+        {round ? (
+          <ellipse
+            cx={0}
+            cy={type === 'tub-chair' ? hd * 0.12 : 0}
+            rx={hw - inset}
+            ry={hd - inset}
+            fill={cushion}
+            stroke={LINE}
+            strokeWidth="0.7"
+          />
+        ) : (
+          <rect
+            x={-hw + inset}
+            y={-hd + inset}
+            width={widthCm - inset * 2}
+            height={depthCm - inset * 2}
+            rx={5}
+            fill={cushion}
+            stroke={LINE}
+            strokeWidth="0.7"
+          />
+        )}
+        {type === 'tub-chair' && (
+          <path
+            d={`M ${-hw * 0.78} ${-hd * 0.2} A ${hw * 0.78} ${hd * 0.78} 0 0 1 ${hw * 0.78} ${-hd * 0.2}`}
+            fill="none"
+            stroke={LINE}
+            strokeWidth="1.4"
+          />
+        )}
+        {traits.tufted &&
+          type === 'ottoman' &&
+          [-0.25, 0.25].flatMap((a) =>
+            [-0.25, 0.25].map((b) => (
+              <circle key={`${a}${b}`} cx={a * widthCm} cy={b * depthCm} r={1.3} fill={LINE} />
+            ))
+          )}
+      </g>
+    );
+  }
+  if (type === 'daybed') {
+    const rail = Math.min(7, depthCm * 0.08);
+    const ends = traits.ends === 0 || traits.ends === 1 ? traits.ends : 2;
+    return (
+      <g>
+        <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={3} fill={color} {...stroke} />
+        <rect
+          x={-hw + (ends ? rail : 2)}
+          y={-hd + rail}
+          width={widthCm - (ends === 2 ? rail * 2 : ends ? rail + 2 : 4)}
+          height={depthCm - rail - 3}
+          rx={4}
+          fill={cushion}
+          stroke={LINE}
+          strokeWidth="0.7"
+        />
+        <ellipse
+          cx={-hw + rail + 9}
+          cy={0}
+          rx={5}
+          ry={depthCm * 0.3}
+          fill={palette.accent || cushion}
+          stroke={LINE}
+          strokeWidth="0.7"
+        />
+        {ends === 2 && (
+          <ellipse
+            cx={hw - rail - 9}
+            cy={0}
+            rx={5}
+            ry={depthCm * 0.3}
+            fill={palette.accent || cushion}
+            stroke={LINE}
+            strokeWidth="0.7"
+          />
+        )}
+      </g>
+    );
+  }
+  if (type === 'etagere') {
+    const cols = Math.min(4, Math.max(1, Math.round(traits.cols ?? 1)));
+    return (
+      <g>
+        <rect
+          x={-hw}
+          y={-hd}
+          width={widthCm}
+          height={depthCm}
+          rx={1.5}
+          fill={color}
+          fillOpacity="0.35"
+          {...stroke}
+        />
+        <rect
+          x={-hw + 2.5}
+          y={-hd + 2.5}
+          width={widthCm - 5}
+          height={depthCm - 5}
+          fill="none"
+          stroke={LINE}
+          strokeWidth="0.7"
+        />
+        {Array.from({ length: cols - 1 }).map((_, i) => (
+          <line
+            key={i}
+            x1={-hw + (widthCm * (i + 1)) / cols}
+            y1={-hd + 2.5}
+            x2={-hw + (widthCm * (i + 1)) / cols}
+            y2={hd - 2.5}
+            stroke={LINE}
+            strokeWidth="0.7"
+          />
+        ))}
+        <line
+          x1={-hw + 3}
+          y1={hd - 3}
+          x2={hw - 3}
+          y2={hd - 3}
+          stroke={LINE}
+          strokeWidth="1.6"
+          strokeDasharray="4 3"
+        />
+      </g>
+    );
+  }
+  // Cabinet or sideboard: the top, with a tick for each door or drawer front
+  const n = Math.min(5, Math.max(1, Math.round(traits.n ?? 2)));
+  return (
+    <g>
+      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} {...stroke} />
+      {Array.from({ length: n - 1 }).map((_, i) => (
+        <line
+          key={i}
+          x1={-hw + (widthCm * (i + 1)) / n}
+          y1={hd - 5}
+          x2={-hw + (widthCm * (i + 1)) / n}
+          y2={hd}
+          stroke={LINE}
+          strokeWidth="0.8"
+        />
+      ))}
+      <line
+        x1={-hw + 4}
+        y1={hd - 3}
+        x2={hw - 4}
+        y2={hd - 3}
+        stroke={LINE}
+        strokeWidth="1.6"
+        strokeDasharray="4 3"
+      />
+    </g>
+  );
+}
+
 /** 2D plan symbols: customMesh. Coordinates are centered at (0, 0), widthCm x depthCm. */
 export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, isSwatch }) {
   const loops = item.topOutline;
@@ -262,6 +530,19 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
   if (item.design && ['sofa', 'armchair', 'lounge'].includes(item.design.type) && !loops?.length) {
     return (
       <SeatingPlan
+        design={item.design}
+        widthCm={widthCm}
+        depthCm={depthCm}
+        hw={hw}
+        hd={hd}
+        color={color}
+      />
+    );
+  }
+
+  if (item.design && SHAPE_PLAN_TYPES.includes(item.design.type) && !loops?.length) {
+    return (
+      <ShapePlan
         design={item.design}
         widthCm={widthCm}
         depthCm={depthCm}

@@ -15,6 +15,16 @@ import {
   NightstandModel,
 } from './tables.jsx';
 import { WardrobeModel, BookshelfModel, SideboardModel } from './storage.jsx';
+import {
+  CornerSofaDesign,
+  TubChairDesign,
+  OttomanDesign,
+  DaybedDesign,
+  ShelvingDesign,
+  SideboardDesign,
+  StoolDesign,
+  Headboard,
+} from './designShapes.jsx';
 
 /** Distance between two hex colours (0-441). */
 function colourDistance(a, b) {
@@ -121,41 +131,17 @@ export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
         />
       )}
 
-      {/* Tall padded headboard, the full width of the bed, with a softly inset panel */}
-      <group name="headboard">
-        <Pad
-          position={[0, footH + (heightM - footH) / 2, -depthM / 2 + hb / 2]}
-          size={[widthM + 0.02, heightM - footH, hb]}
-          radius={0.04}
-          color={body}
-          roughness={0.92}
-        />
-        <Pad
-          position={[0, mattressTop + (heightM - mattressTop) / 2 - 0.02, -depthM / 2 + hb + 0.004]}
-          size={[widthM - 0.16, heightM - mattressTop - 0.12, 0.014]}
-          radius={0.012}
-          color={shade(body, 0.02)}
-          roughness={0.95}
-        />
-        {traits.channels
-          ? Array.from({ length: Math.max(2, Math.round(widthM / 0.28) - 1) }).map((_, i, a) => {
-              const x = -widthM / 2 + (widthM * (i + 1)) / (a.length + 1);
-              return (
-                <Box
-                  key={i}
-                  position={[
-                    x,
-                    mattressTop + (heightM - mattressTop) / 2 - 0.02,
-                    -depthM / 2 + hb + 0.012,
-                  ]}
-                  size={[0.006, heightM - mattressTop - 0.16, 0.004]}
-                  color={shade(body, -0.12)}
-                  castShadow={false}
-                />
-              );
-            })
-          : null}
-      </group>
+      {/* Tall headboard, the full width of the bed, in the style read from the photos */}
+      <Headboard
+        style={traits.head ?? (traits.channels ? 'channel' : 'panel')}
+        widthM={widthM}
+        depthM={depthM}
+        heightM={heightM}
+        footH={footH}
+        mattressTop={mattressTop}
+        hb={hb}
+        body={body}
+      />
 
       <Mattress widthM={widthM} depthM={mattressD} y={frameH} z={mattressZ} fabricColor={linen} />
       <Duvet
@@ -205,6 +191,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
   };
   // Leg thickness measured from the photo (a fraction of the width), kept within sensible limits
   const legThick = traits.legFrac ? clamp(traits.legFrac * widthM, 0.03, 0.1) : 0.06;
+  const shape = { widthM, depthM, heightM, palette, traits };
   let model;
   switch (design.type) {
     case 'bed':
@@ -265,7 +252,34 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       model = <ChairModel {...common} backStyle={traits.back || 'slat'} />;
       break;
     case 'stool':
-      model = <BarStoolModel {...common} />;
+      // Stools read before the seat, back and footrest options existed keep their original look
+      model =
+        traits.seat === undefined ? (
+          <BarStoolModel {...common} />
+        ) : (
+          <StoolDesign
+            widthM={widthM}
+            depthM={depthM}
+            heightM={heightM}
+            palette={palette}
+            traits={traits}
+          />
+        );
+      break;
+    case 'corner-sofa':
+      model = <CornerSofaDesign {...shape} />;
+      break;
+    case 'tub-chair':
+      model = <TubChairDesign {...shape} />;
+      break;
+    case 'ottoman':
+      model = <OttomanDesign {...shape} />;
+      break;
+    case 'daybed':
+      model = <DaybedDesign {...shape} />;
+      break;
+    case 'etagere':
+      model = <ShelvingDesign {...shape} />;
       break;
     case 'table':
       model = (
@@ -302,7 +316,12 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       model = <NightstandModel {...common} drawers={traits.drawers || 2} />;
       break;
     default:
-      model = <SideboardModel {...common} />;
+      model =
+        traits.front === undefined ? (
+          <SideboardModel {...common} />
+        ) : (
+          <SideboardDesign {...shape} />
+        );
   }
   return model;
 }

@@ -12,17 +12,22 @@
 
 export const DESIGN_TYPES = [
   { id: 'bed', label: 'Bed' },
+  { id: 'daybed', label: 'Daybed' },
   { id: 'sofa', label: 'Sofa' },
+  { id: 'corner-sofa', label: 'Corner sofa (L-shaped)' },
   { id: 'armchair', label: 'Armchair' },
+  { id: 'tub-chair', label: 'Tub chair (round or bucket)' },
   { id: 'lounge', label: 'Lounge chair (wood frame)' },
   { id: 'chair', label: 'Chair' },
-  { id: 'stool', label: 'Stool' },
+  { id: 'stool', label: 'Stool or bar stool' },
+  { id: 'ottoman', label: 'Ottoman or pouf' },
   { id: 'table', label: 'Dining table' },
   { id: 'table-round', label: 'Round table' },
   { id: 'coffee-table', label: 'Coffee table' },
   { id: 'desk', label: 'Desk' },
   { id: 'wardrobe', label: 'Wardrobe' },
   { id: 'bookshelf', label: 'Bookshelf' },
+  { id: 'etagere', label: 'Open shelving unit' },
   { id: 'cabinet', label: 'Cabinet or sideboard' },
   { id: 'nightstand', label: 'Nightstand or chest' },
 ];
@@ -30,6 +35,11 @@ export const DESIGN_TYPES = [
 /** A usual real width per type, used when the user has not entered a size (photos only give proportions). */
 export const TYPICAL_WIDTH_CM = {
   bed: 160,
+  daybed: 200,
+  'corner-sofa': 260,
+  'tub-chair': 75,
+  ottoman: 60,
+  etagere: 80,
   sofa: 200,
   armchair: 85,
   lounge: 72,
@@ -45,6 +55,29 @@ export const TYPICAL_WIDTH_CM = {
   nightstand: 48,
 };
 
+/** Short names for the quick "Looks like" choices. */
+export const SHORT_LABEL = {
+  bed: 'Bed',
+  daybed: 'Daybed',
+  sofa: 'Sofa',
+  'corner-sofa': 'Corner sofa',
+  armchair: 'Armchair',
+  'tub-chair': 'Tub chair',
+  lounge: 'Lounge chair',
+  chair: 'Chair',
+  stool: 'Stool',
+  ottoman: 'Ottoman',
+  table: 'Dining table',
+  'table-round': 'Round table',
+  'coffee-table': 'Coffee table',
+  desk: 'Desk',
+  wardrobe: 'Wardrobe',
+  bookshelf: 'Bookshelf',
+  etagere: 'Open shelving',
+  cabinet: 'Sideboard',
+  nightstand: 'Nightstand',
+};
+
 /** Colour slots each type exposes (label shown to the user), in palette order. */
 export const PALETTE_SLOTS = {
   bed: [
@@ -52,10 +85,33 @@ export const PALETTE_SLOTS = {
     ['accent', 'Duvet'],
     ['pillow', 'Pillows'],
   ],
+  daybed: [
+    ['body', 'Frame'],
+    ['cushion', 'Mattress'],
+    ['accent', 'Bolsters'],
+  ],
   sofa: [
     ['body', 'Body'],
     ['cushion', 'Cushions'],
     ['leg', 'Feet'],
+  ],
+  'corner-sofa': [
+    ['body', 'Body'],
+    ['cushion', 'Cushions'],
+    ['leg', 'Feet'],
+  ],
+  'tub-chair': [
+    ['body', 'Shell'],
+    ['cushion', 'Seat cushion'],
+    ['leg', 'Feet or base'],
+  ],
+  ottoman: [
+    ['body', 'Cover'],
+    ['leg', 'Feet'],
+  ],
+  etagere: [
+    ['body', 'Frame'],
+    ['accent', 'Doors and drawers'],
   ],
   armchair: [
     ['body', 'Body'],
@@ -100,6 +156,7 @@ export const PALETTE_SLOTS = {
   cabinet: [
     ['body', 'Body'],
     ['accent', 'Top'],
+    ['leg', 'Legs'],
   ],
   nightstand: [
     ['body', 'Body'],
@@ -262,14 +319,57 @@ export function measureTraits(views) {
     slabFrac = (last - first + 1) / s;
   }
   let round = false;
+  let lShape = null;
   if (views.top) {
     const s = views.top.size;
     let n = 0;
     for (let p = 0; p < s * s; p++) n += views.top.mask[p];
     const fill = n / (s * s);
-    round = fill > 0.7 && fill < 0.85;
+    lShape = detectLShape(views.top);
+    round = !lShape && fill > 0.7 && fill < 0.85;
   }
-  return { rise, tallEnd, bodyFrac, gapFrac, slabFrac, round };
+  // How much of the front view is solid when its gaps are left open (shelving and slats show the wall)
+  const openFill = front?.open ? fillOf(front, [0.1, 0.1, 0.9, 0.9], true) : null;
+  return {
+    rise,
+    tallEnd,
+    bodyFrac,
+    gapFrac,
+    slabFrac,
+    round,
+    lShape,
+    openFill,
+    domed: front ? isDomed(front) : false,
+    hasTop: Boolean(views.top),
+  };
+}
+
+/**
+ * An L-shaped plan view (a corner sofa): one front corner of the bounding box is empty while the rest is
+ * solid. Returns the side the chaise is on ('left' or 'right', seen from the front), or null.
+ */
+export function detectLShape(top) {
+  if (!top) return null;
+  const solid = (r) => (fillOf(top, r) ?? 0) >= 0.78;
+  const empty = (r) => (fillOf(top, r) ?? 1) <= 0.14;
+  // The back run is solid edge to edge; the chaise fills one front corner and leaves the other empty
+  if (!(solid([0, 0, 0.3, 0.3]) && solid([0.7, 0, 1, 0.3]) && solid([0.38, 0.2, 0.62, 0.45])))
+    return null;
+  if (empty([0, 0.72, 0.28, 1]) && solid([0.72, 0.72, 1, 1])) return 'right';
+  if (empty([0.72, 0.72, 1, 1]) && solid([0, 0.72, 0.28, 1])) return 'left';
+  return null;
+}
+
+/** Rounded shoulders in the front outline (a tub chair), not a step down to lower arms or a flat top. */
+function isDomed(front) {
+  const p = topProfile(front);
+  const s = p.length;
+  const centre = Math.max(...slice(p, 0.35, 0.65));
+  if (centre < 0.5) return false;
+  let sharp = 0;
+  for (let x = 1; x < s; x++) sharp = Math.max(sharp, Math.abs(p[x] - p[x - 1]));
+  const ends = [p[Math.round(s * 0.08)], p[Math.round(s * 0.92)]];
+  return sharp < 0.07 && ends.every((e) => e > 0.45 * centre && e < 0.9 * centre);
 }
 
 /**
@@ -279,13 +379,18 @@ export function measureTraits(views) {
  */
 export function classifyType(traits, dims, sizeKnown = true) {
   const { widthCm: w, depthCm: d, heightCm: h } = dims;
-  const { rise, gapFrac, round } = traits;
+  const { rise, gapFrac, round, lShape, domed } = traits;
   const backed = rise >= 1.25;
   const open = gapFrac > 0.3; // clear space under it: legs
   const wh = w / h;
   const dh = d / h;
   if (backed && !open) {
+    // An L-shaped plan view: a corner sofa (deep, so it must be checked before the bed)
+    if (lShape && w / d >= 0.9 && w / d <= 2.6) return 'corner-sofa';
     if (dh >= 1.5) return 'bed';
+    // A round plan, or a rounded outline when there is no plan photo: a tub chair
+    const squarish = Math.abs(w - d) <= 0.22 * Math.max(w, d);
+    if (squarish && wh <= 1.3 && (round || (domed && !traits.hasTop))) return 'tub-chair';
     return w / d >= 1.45 ? 'sofa' : 'armchair';
   }
   if (backed && open) {
@@ -305,8 +410,20 @@ export function classifyType(traits, dims, sizeKnown = true) {
   // Closed furniture: by size when it is known, otherwise by proportion alone
   const tall = sizeKnown ? h >= 150 : h / w >= 1.1 && h / d >= 2.3;
   const thin = sizeKnown ? d <= 40 : d / h <= 0.22;
+  // Shelving that shows the wall through its compartments is an open unit, not a closed case
+  const seeThrough = traits.openFill != null && traits.openFill < 0.72;
+  if (tall && thin && seeThrough) return 'etagere';
   if (tall) return thin ? 'bookshelf' : 'wardrobe';
-  if (sizeKnown ? h >= 90 && d <= 40 : h / w >= 0.9 && h / d >= 2.4) return 'bookshelf';
+  // Deep, long and low with a back and arms all round: a daybed
+  const daybedShape = w / d >= 1.7 && w / d <= 2.9 && dh >= 0.8 && dh <= 1.6;
+  if (daybedShape && gapFrac <= 0.3 && (!sizeKnown || h <= 105)) return 'daybed';
+  // Low and squarish with no back: an ottoman or pouf
+  const stoutLow = sizeKnown
+    ? h <= 50 && h / w <= 0.95 && w <= 110 && w / d <= 1.9 && w / d >= 0.5
+    : h / w <= 0.75 && w / d <= 1.7 && w / d >= 0.6 && d / h >= 1;
+  if (stoutLow && !seeThrough) return 'ottoman';
+  if (sizeKnown ? h >= 90 && d <= 40 : h / w >= 0.9 && h / d >= 2.4)
+    return seeThrough ? 'etagere' : 'bookshelf';
   if (sizeKnown ? w <= 65 && h <= 80 : w / h <= 0.9 && h / w <= 1.6 && d / w >= 0.7)
     return 'nightstand';
   return 'cabinet';
@@ -460,17 +577,17 @@ function taperedLegs(front) {
 }
 
 /** Tufting: small dark dimples (buttons) across the back cushions, found as isolated local luma minima. */
-function tuftedBack(front) {
+function tuftedBack(front, region = [0.2, 0.12, 0.8, 0.45]) {
   if (!front) return false;
   const s = front.size;
   const lum = new Float32Array(s * s);
   for (let p = 0; p < s * s; p++)
     lum[p] = luma([front.rgb[p * 3], front.rgb[p * 3 + 1], front.rgb[p * 3 + 2]]);
   let dimples = 0;
-  const x0 = Math.floor(s * 0.2);
-  const x1 = Math.ceil(s * 0.8);
-  const y0 = Math.floor(s * 0.12);
-  const y1 = Math.ceil(s * 0.45);
+  const x0 = Math.floor(s * region[0]);
+  const x1 = Math.ceil(s * region[2]);
+  const y0 = Math.floor(s * region[1]);
+  const y1 = Math.ceil(s * region[3]);
   for (let y = y0 + 2; y < y1 - 2; y++)
     for (let x = x0 + 2; x < x1 - 2; x++) {
       const p = y * s + x;
@@ -539,6 +656,35 @@ export function detectStructure(type, views, dims) {
   } else if (type === 'bookshelf') {
     const lines = F ? findLines(F, 'y', [0.12, 0.03, 0.88, 0.97], 5).length : 0;
     out.shelves = lines ? clampInt(lines + 1, 2, 8) : clampInt(dims.heightCm / 36, 3, 6);
+  } else if (type === 'etagere') {
+    Object.assign(out, shelvingDetails(F, dims));
+  } else if (type === 'cabinet') {
+    Object.assign(out, sideboardDetails(F, dims));
+  } else if (type === 'corner-sofa') {
+    out.side = detectLShape(T) || 'right';
+    const backSeams = F ? findLines(F, 'x', [0.1, 0.12, 0.9, 0.42]).length : 0;
+    const byWidth = clampInt((w * 0.66 - 0.2) / 0.75, 1, 4);
+    out.seats = backSeams ? clampInt(backSeams, 1, 4) : byWidth;
+    out.arm = 0.08;
+    out.tufted = tuftedBack(F) ? 1 : 0;
+    out.taper = taperedLegs(F) ? 1 : 0;
+  } else if (type === 'tub-chair') {
+    const fill = T ? (fillOf(T, [0, 0, 1, 1]) ?? 1) : null;
+    out.plan =
+      fill !== null ? (fill > 0.88 ? 'bucket' : 'round') : isDomed(F || T) ? 'round' : 'bucket';
+    out.base = F ? baseKind(F) : 'feet';
+    out.tufted = tuftedBack(F) ? 1 : 0;
+  } else if (type === 'ottoman') {
+    out.shape = T && roundPlan(T) ? 'round' : 'square';
+    out.tufted = T && tuftedBack(T, [0.15, 0.15, 0.85, 0.85]) ? 1 : 0;
+    const gap = F ? measureTraits({ front: F }).gapFrac : 0;
+    out.feet = gap < 0.04 ? 'none' : gap < 0.2 ? 'short' : 'tall';
+  } else if (type === 'daybed') {
+    const slats = F ? findLines(F, 'x', [0.08, 0.1, 0.92, 0.4], 3).length : 0;
+    out.back = slats >= 5 ? 'slat' : 'panel';
+    out.ends = 2;
+  } else if (type === 'stool') {
+    Object.assign(out, stoolDetails(F, T, dims));
   } else if (type === 'nightstand') {
     const lines = F ? findLines(F, 'y', [0.15, 0.05, 0.85, 0.9], 5).length : 0;
     out.drawers = lines ? clampInt(lines + 1, 1, 4) : 2;
@@ -591,8 +737,93 @@ export function detectStructure(type, views, dims) {
         ? 1
         : 0;
   } else if (type === 'bed' && F) {
-    out.channels = findLines(F, 'x', [0.1, 0.06, 0.9, 0.2]).length >= 2 ? 1 : 0;
+    out.head = headboardStyle(F, views.left || views.right ? measureTraits(views).bodyFrac : 0.55);
+    out.channels = out.head === 'channel' ? 1 : 0;
   }
+  return out;
+}
+
+const roundPlan = (top) => {
+  if (detectLShape(top)) return false;
+  const fill = fillOf(top, [0, 0, 1, 1]) ?? 1;
+  return fill > 0.7 && fill < 0.85;
+};
+
+/** Headboard style from the top band of the front view: stitching lines, buttons or slats. */
+function headboardStyle(F, bodyFrac) {
+  const band = [0.12, 0.04, 0.88, 0.22];
+  const lines = findLines(F, 'x', band, 3).length;
+  if (lines >= 5) return 'slat';
+  if (tuftedBack(F, [0.15, 0.04, 0.85, 0.24])) return 'tufted';
+  if (lines >= 2) return 'channel';
+  return bodyFrac > 0.75 ? 'flat' : 'panel';
+}
+
+/** What stands under a tub chair: short feet, slim legs or one central base. */
+function baseKind(F) {
+  const s = F.size;
+  const bottom = bottomProfile(F);
+  const lowest = Math.max(...Array.from(bottom));
+  const row = Math.max(0, Math.min(s - 1, Math.round(Math.min(lowest, 0.99) * s) - 2));
+  let n = 0;
+  for (let x = 0; x < s; x++) n += F.mask[row * s + x];
+  const gap = lowest - median(slice(bottom, 0.3, 0.7));
+  if (gap > 0.04 && n / s < 0.4) return 'pedestal';
+  return taperedLegs(F) ? 'legs' : 'feet';
+}
+
+/** Open shelving: rows, columns, and whether the lower part is closed with doors or drawers. */
+function shelvingDetails(F, dims) {
+  const out = {};
+  const rows = F ? findLines(F, 'y', [0.12, 0.03, 0.88, 0.97], 5).length : 0;
+  out.shelves = rows ? clampInt(rows + 1, 2, 7) : clampInt(dims.heightCm / 38, 3, 6);
+  const cols = F ? findLines(F, 'x', [0.05, 0.08, 0.95, 0.62]).length : 0;
+  out.cols = clampInt(cols + 1, 1, 4);
+  const upper = F ? (fillOf(F, [0.1, 0.05, 0.9, 0.6], true) ?? 1) : 1;
+  const lower = F ? (fillOf(F, [0.1, 0.72, 0.9, 0.97], true) ?? 0) : 0;
+  out.base = 'open';
+  if (F && lower >= 0.85 && upper < 0.85) {
+    const across = findLines(F, 'x', [0.08, 0.72, 0.92, 0.97]).length;
+    const along = findLines(F, 'y', [0.08, 0.72, 0.92, 0.97]).length;
+    out.base = along > across ? 'drawers' : 'doors';
+  }
+  out.back = upper >= 0.6 ? 1 : 0;
+  return out;
+}
+
+/** Sideboard: sections across, doors or drawers in each, and legs or a plinth. */
+function sideboardDetails(F, dims) {
+  const out = { front: 'doors', n: clampInt(dims.widthCm / 55, 2, 4), legs: 0 };
+  if (!F) return out;
+  const seams = findLines(F, 'x', [0.04, 0.2, 0.96, 0.85]).filter((f) => f > 0.12 && f < 0.88);
+  if (seams.length) out.n = clampInt(seams.length + 1, 2, 5);
+  const edges = [0, ...seams, 1];
+  let drawers = 0;
+  for (let i = 0; i + 1 < edges.length; i++) {
+    const rows = findLines(F, 'y', [edges[i] + 0.02, 0.2, edges[i + 1] - 0.02, 0.85], 4);
+    if (rows.length >= 1) drawers++;
+  }
+  out.front = drawers === 0 ? 'doors' : drawers >= edges.length - 1 ? 'drawers' : 'mixed';
+  out.legs = measureTraits({ front: F }).gapFrac > 0.08 ? 1 : 0;
+  return out;
+}
+
+/** Stool or bar stool: round or square seat, a back, a footrest. */
+function stoolDetails(F, T, dims) {
+  const out = { seat: T ? (roundPlan(T) ? 'round' : 'square') : 'round', back: 0, rest: 0 };
+  if (!F) return out;
+  const s = F.size;
+  const widths = [];
+  for (let y = 0; y < s; y++) {
+    let n = 0;
+    for (let x = 0; x < s; x++) n += F.mask[y * s + x];
+    widths.push(n);
+  }
+  const widest = Math.max(...widths);
+  const firstWide = widths.findIndex((v) => v >= widest * 0.85);
+  out.back = firstWide / s > 0.14 ? 1 : 0;
+  const mid = widths.slice(Math.floor(s * 0.5), Math.floor(s * 0.85));
+  out.rest = dims.heightCm >= 58 || Math.max(...mid, 0) >= widest * 0.7 ? 1 : 0;
   return out;
 }
 
@@ -619,9 +850,12 @@ export function classifyFromFront(front, wh) {
   }
   const seatSeam = findLines(front, 'y', [0.25, 0.3, 0.75, 0.8]).length >= 1;
   const soft = rolledArms(front)?.roll || tuftedBack(front) || seatSeam;
+  if (soft && wh >= 0.85 && wh <= 1.35 && isDomed(front)) return 'tub-chair';
   if (soft && wh >= 0.85 && wh <= 3.4) return wh >= 1.45 ? 'sofa' : 'armchair';
   if (wh <= 0.9) {
     const shelves = findLines(front, 'y', [0.12, 0.03, 0.88, 0.97], 5).length;
+    const seeThrough = front.open && (fillOf(front, [0.1, 0.1, 0.9, 0.9], true) ?? 1) < 0.72;
+    if (seeThrough && wh <= 0.75) return 'etagere';
     return shelves >= 3 && wh <= 0.75 ? 'bookshelf' : wh <= 0.7 ? 'wardrobe' : 'nightstand';
   }
   return wh <= 1.3 ? 'nightstand' : 'cabinet';
@@ -630,6 +864,11 @@ export function classifyFromFront(front, wh) {
 /** Usual height and depth (cm) per type, to fill in what a single photo cannot show. */
 const TYPICAL_HEIGHT_CM = {
   bed: 100,
+  daybed: 80,
+  'corner-sofa': 85,
+  'tub-chair': 78,
+  ottoman: 42,
+  etagere: 170,
   sofa: 85,
   armchair: 85,
   lounge: 80,
@@ -646,6 +885,11 @@ const TYPICAL_HEIGHT_CM = {
 };
 const TYPICAL_DEPTH_CM = {
   bed: 210,
+  daybed: 95,
+  'corner-sofa': 160,
+  'tub-chair': 75,
+  ottoman: 60,
+  etagere: 35,
   sofa: 90,
   armchair: 85,
   lounge: 78,
@@ -773,7 +1017,23 @@ function paletteFor(type, views) {
     ].filter(Boolean);
     palette.body = wood.length ? toHex(mean(wood.map(hexRgb))) : '#8a5a34';
     palette.leg = palette.body;
-  } else if (type === 'sofa' || type === 'armchair') {
+  } else if (type === 'tub-chair') {
+    palette.body = pickColor(F, [0.15, 0.1, 0.85, 0.5]) || all;
+    palette.cushion =
+      pickColor(T, [0.3, 0.3, 0.7, 0.7]) || pickColor(F, [0.25, 0.5, 0.75, 0.75]) || palette.body;
+    palette.leg = pickColor(F, [0.1, 0.94, 0.9, 1.0], 'dark') || FALLBACK.leg;
+  } else if (type === 'ottoman') {
+    palette.body = pickColor(T, [0.2, 0.2, 0.8, 0.8]) || pickColor(F, [0.1, 0.1, 0.9, 0.8]) || all;
+    palette.leg = pickColor(F, [0.1, 0.92, 0.9, 1.0], 'dark') || shadeHex(palette.body, 0.5);
+  } else if (type === 'daybed') {
+    palette.body = pickColor(F, [0.05, 0.05, 0.95, 0.35]) || all;
+    palette.cushion =
+      pickColor(T, [0.2, 0.3, 0.8, 0.8]) || pickColor(F, [0.2, 0.45, 0.8, 0.7]) || palette.body;
+    palette.accent = pickColor(T, [0.05, 0.1, 0.25, 0.9], 'light') || palette.cushion;
+  } else if (type === 'etagere') {
+    palette.body = pickColor(F, [0.02, 0.02, 0.98, 0.7], 'light') || all;
+    palette.accent = pickColor(F, [0.1, 0.75, 0.9, 0.95]) || palette.body;
+  } else if (type === 'sofa' || type === 'armchair' || type === 'corner-sofa') {
     palette.body = pickColor(F, [0.15, 0.1, 0.85, 0.4]) || all;
     palette.cushion =
       pickColor(T, [0.25, 0.4, 0.75, 0.85]) || pickColor(F, [0.2, 0.5, 0.8, 0.75]) || palette.body;
@@ -790,6 +1050,7 @@ function paletteFor(type, views) {
   } else if (type === 'cabinet') {
     palette.body = pickColor(F, [0.1, 0.3, 0.9, 0.9]) || all;
     palette.accent = pickColor(T, [0.1, 0.1, 0.9, 0.9]) || palette.body;
+    palette.leg = pickColor(F, [0.05, 0.9, 0.95, 1.0], 'dark') || shadeHex(palette.body, 0.45);
   } else {
     // Tables, desks: top from the plan view, legs from the lower part of the front view
     palette.body =
@@ -803,6 +1064,92 @@ function paletteFor(type, views) {
   return palette;
 }
 
+/** The detected type for the views, sizes and measured traits (what buildDesign uses when none is forced). */
+function pickType(views, traits, dims, sizeKnown, hints) {
+  const lone = views.front || views.back;
+  const frontOnly = lone && !views.left && !views.right && !views.top;
+  if (frontOnly)
+    return classifyFromFront(lone, hints.widthPerHeight || dims.widthCm / dims.heightCm);
+  if (!lone && !views.top && (views.left || views.right)) {
+    // Only a side view: its width is unknown, so assume the usual for a piece that deep
+    return classifyType(traits, { ...dims, widthCm: dims.depthCm * 1.25 }, false);
+  }
+  return classifyType(traits, dims, sizeKnown);
+}
+
+/** Types most often mistaken for each other, in order of likelihood: pads out the "Looks like" choices. */
+const NEIGHBORS = {
+  bed: ['daybed', 'sofa'],
+  daybed: ['sofa', 'bed', 'ottoman'],
+  sofa: ['corner-sofa', 'daybed', 'armchair'],
+  'corner-sofa': ['sofa', 'daybed'],
+  armchair: ['tub-chair', 'sofa', 'lounge'],
+  'tub-chair': ['armchair', 'ottoman', 'chair'],
+  lounge: ['armchair', 'chair'],
+  chair: ['stool', 'lounge', 'armchair'],
+  stool: ['chair', 'ottoman', 'table-round'],
+  ottoman: ['stool', 'coffee-table', 'nightstand'],
+  table: ['desk', 'coffee-table'],
+  'table-round': ['table', 'stool', 'coffee-table'],
+  'coffee-table': ['ottoman', 'table', 'desk'],
+  desk: ['table', 'cabinet'],
+  wardrobe: ['cabinet', 'bookshelf'],
+  bookshelf: ['etagere', 'wardrobe', 'cabinet'],
+  etagere: ['bookshelf', 'cabinet'],
+  cabinet: ['nightstand', 'bookshelf', 'ottoman'],
+  nightstand: ['cabinet', 'ottoman', 'stool'],
+};
+
+/**
+ * The likeliest types for the photos, best first, found by re-running the detection with the sizes and
+ * measurements nudged a little: a piece whose answer survives the nudging is a sure thing, one that flips
+ * is a toss-up between the types it flips to.
+ * @returns {{ list: string[], agreement: number }} up to three type ids, and how steady the first one was (0-1)
+ */
+export function typeCandidates(views, dims, sizeKnown = true, hints = {}, chosen = null) {
+  const traits = measureTraits(views);
+  const primary = TYPE_IDS.has(chosen) ? chosen : pickType(views, traits, dims, sizeKnown, hints);
+  const votes = new Map([[primary, 1]]);
+  let total = 1;
+  const tally = (type) => {
+    total++;
+    votes.set(type, (votes.get(type) || 0) + 1);
+  };
+  const scale = (k) => ({
+    widthCm: dims.widthCm * k[0],
+    depthCm: dims.depthCm * k[1],
+    heightCm: dims.heightCm * k[2],
+  });
+  const sizes = [
+    [0.8, 1, 1],
+    [1.25, 1, 1],
+    [1, 0.8, 1],
+    [1, 1.25, 1],
+    [1, 1, 0.8],
+    [1, 1, 1.25],
+  ];
+  for (const k of sizes) tally(pickType(views, traits, scale(k), sizeKnown, hints));
+  for (const t of [
+    { ...traits, gapFrac: traits.gapFrac * 0.6 },
+    { ...traits, gapFrac: traits.gapFrac * 1.5 },
+    { ...traits, rise: traits.rise * 0.8 },
+    { ...traits, rise: traits.rise * 1.25 },
+  ])
+    tally(pickType(views, t, dims, sizeKnown, hints));
+  if (hints.widthPerHeight)
+    for (const k of [0.85, 1.18])
+      tally(
+        pickType(views, traits, dims, sizeKnown, {
+          ...hints,
+          widthPerHeight: hints.widthPerHeight * k,
+        })
+      );
+  const ranked = [...votes.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
+  const list = [primary, ...ranked.filter((t) => t !== primary)];
+  for (const n of NEIGHBORS[primary] || []) if (!list.includes(n)) list.push(n);
+  return { list: list.slice(0, 3), agreement: (votes.get(primary) || 1) / total };
+}
+
 /**
  * Builds the design record from the prepared views and the real size.
  * @param {Record<string, {mask: Uint8Array, rgb: Uint8Array, size: number}>} views by slot id
@@ -812,16 +1159,9 @@ function paletteFor(type, views) {
  */
 export function buildDesign(views, dims, forceType, sizeKnown = true, hints = {}) {
   const traits = measureTraits(views);
-  const lone = views.front || views.back;
-  const frontOnly = lone && !views.left && !views.right && !views.top;
-  let type;
-  if (TYPE_IDS.has(forceType)) type = forceType;
-  else if (frontOnly)
-    type = classifyFromFront(lone, hints.widthPerHeight || dims.widthCm / dims.heightCm);
-  else if (!lone && !views.top && (views.left || views.right)) {
-    // Only a side view: its width is unknown, so assume the usual for a piece that deep
-    type = classifyType(traits, { ...dims, widthCm: dims.depthCm * 1.25 }, false);
-  } else type = classifyType(traits, dims, sizeKnown);
+  const type = TYPE_IDS.has(forceType)
+    ? forceType
+    : pickType(views, traits, dims, sizeKnown, hints);
   const palette = paletteFor(type, views);
   const out = { v: 1, type, palette, traits: {} };
   if (type === 'bed') {
@@ -835,6 +1175,9 @@ export function buildDesign(views, dims, forceType, sizeKnown = true, hints = {}
 }
 
 // ---------- storage ----------
+
+const HEADBOARDS = ['flat', 'panel', 'channel', 'tufted', 'slat'];
+const oneOf = (v, list, fallback) => (list.includes(v) ? v : fallback);
 
 const num = (v, lo, hi, fallback) => {
   const n = Number(v);
@@ -856,7 +1199,44 @@ export function sanitizeDesign(raw) {
     traits.pillows = Math.round(num(t.pillows, 1, 4, 2));
     traits.bodyFrac = num(t.bodyFrac, 0.25, 0.9, 0.55);
     traits.legs = t.legs ? 1 : 0;
-    traits.channels = t.channels ? 1 : 0;
+    // Older designs only knew channel stitching
+    traits.head = oneOf(t.head, HEADBOARDS, t.channels ? 'channel' : 'panel');
+    traits.channels = traits.head === 'channel' ? 1 : 0;
+  } else if (raw.type === 'corner-sofa') {
+    traits.side = oneOf(t.side, ['left', 'right'], 'right');
+    traits.seats = Math.round(num(t.seats, 1, 4, 2));
+    traits.arm = num(t.arm, 0.04, 0.2, 0.08);
+    traits.tufted = t.tufted ? 1 : 0;
+    traits.taper = t.taper ? 1 : 0;
+  } else if (raw.type === 'tub-chair') {
+    traits.plan = oneOf(t.plan, ['round', 'bucket'], 'round');
+    traits.base = oneOf(t.base, ['feet', 'legs', 'pedestal'], 'feet');
+    traits.tufted = t.tufted ? 1 : 0;
+  } else if (raw.type === 'ottoman') {
+    traits.shape = oneOf(t.shape, ['square', 'round'], 'square');
+    traits.tufted = t.tufted ? 1 : 0;
+    traits.feet = oneOf(t.feet, ['none', 'short', 'tall'], 'short');
+  } else if (raw.type === 'daybed') {
+    traits.back = oneOf(t.back, ['panel', 'slat', 'none'], 'panel');
+    traits.ends = t.ends === 1 || t.ends === 0 ? t.ends : 2;
+  } else if (raw.type === 'etagere') {
+    traits.shelves = Math.round(num(t.shelves, 2, 7, 4));
+    traits.cols = Math.round(num(t.cols, 1, 4, 1));
+    traits.base = oneOf(t.base, ['open', 'doors', 'drawers'], 'open');
+    traits.back = t.back === 0 ? 0 : 1;
+  } else if (raw.type === 'stool') {
+    // Stools drawn before these options existed keep their original look (no traits at all)
+    if (t.seat !== undefined) {
+      traits.seat = oneOf(t.seat, ['round', 'square'], 'round');
+      traits.back = t.back ? 1 : 0;
+      traits.rest = t.rest ? 1 : 0;
+    }
+  } else if (raw.type === 'cabinet') {
+    if (t.front !== undefined) {
+      traits.front = oneOf(t.front, ['doors', 'drawers', 'mixed'], 'doors');
+      traits.n = Math.round(num(t.n, 1, 5, 2));
+      traits.legs = t.legs ? 1 : 0;
+    }
   } else if (raw.type === 'sofa') {
     traits.seats = Math.round(num(t.seats, 1, 5, 3));
     traits.arm = num(t.arm, 0.04, 0.2, 0.1);
@@ -898,9 +1278,19 @@ export function designMainColor(design) {
 export function supportTraitsFor(design) {
   const type = design?.type;
   if (type === 'bed') return { supportsTop: true, supportKind: 'soft', surfaceHeightCm: 46 };
-  if (type === 'sofa' || type === 'armchair' || type === 'lounge')
-    return { supportsTop: true, supportKind: 'soft', surfaceHeightCm: 44 };
-  if (['table', 'table-round', 'coffee-table', 'desk', 'cabinet', 'nightstand'].includes(type))
+  if (
+    ['sofa', 'armchair', 'lounge', 'corner-sofa', 'tub-chair', 'daybed', 'ottoman'].includes(type)
+  )
+    return {
+      supportsTop: true,
+      supportKind: 'soft',
+      surfaceHeightCm: type === 'ottoman' ? 40 : 44,
+    };
+  if (
+    ['table', 'table-round', 'coffee-table', 'desk', 'cabinet', 'nightstand', 'etagere'].includes(
+      type
+    )
+  )
     return { supportsTop: true };
   return {};
 }
