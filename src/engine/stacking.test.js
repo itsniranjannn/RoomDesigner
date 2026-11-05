@@ -8,6 +8,8 @@ import {
   surfaceHeightOf,
   pickDefaultSupport,
 } from './stacking.js';
+import { canRestOn, drawOrder, isFloorCovering, dropTargetAt } from './stacking.js';
+import { FURNITURE_CATALOG } from '../data/furnitureCatalog.js';
 import { evaluateAllCollisions } from './collision.js';
 import { getFurnitureType } from '../data/furnitureCatalog.js';
 import { suggestLayout } from './layout.js';
@@ -28,7 +30,8 @@ describe('stacking engine', () => {
     expect(getFurnitureType('tv-43').restsOnTop).toBe(true);
     expect(getFurnitureType('media-console').supportsTop).toBe(true);
     expect(getFurnitureType('nightstand').supportsTop).toBe(true);
-    expect(getFurnitureType('sofa-3seat').supportsTop).toBeUndefined();
+    expect(getFurnitureType('sofa-3seat').supportsTop).toBe(true);
+    expect(getFurnitureType('rug-living').supportsTop).toBeUndefined();
     expect(surfaceHeightOf(getFurnitureType('vanity-dresser'))).toBe(75);
     expect(surfaceHeightOf(getFurnitureType('media-console'))).toBe(50);
   });
@@ -234,5 +237,88 @@ describe('roomStore stacking', () => {
     state().moveSelectionFrom({ [stand.id]: { x: stand.x, y: stand.y } }, 50, 30);
     expect(get('planter-small').x).toBe(150);
     expect(get('planter-small').y).toBe(130);
+  });
+});
+
+describe('generic stacking rules', () => {
+  const def = (id) => getFurnitureType(id);
+
+  it('has at least 25 small pieces that can rest on a surface', () => {
+    expect(FURNITURE_CATALOG.filter((i) => i.restsOnTop).length).toBeGreaterThanOrEqual(25);
+  });
+
+  it('lets a lamp rest on any flat top, but not on a rug', () => {
+    for (const id of [
+      'dining-table-4',
+      'desk-executive',
+      'kitchen-counter',
+      'bookshelf',
+      'wardrobe-2door',
+      'chest-drawers',
+      'ottoman',
+    ]) {
+      expect(canRestOn(def('desk-lamp'), def(id)), id).toBe(true);
+    }
+    expect(canRestOn(def('desk-lamp'), def('rug-living'))).toBe(false);
+    expect(isFloorCovering(def('rug-round'))).toBe(true);
+  });
+
+  it('puts pillows and cushions on beds and sofas, with the mattress or seat height', () => {
+    const items = [piece('b', 'bed-queen', 200, 200), piece('p', 'bed-pillow', 200, 140)];
+    expect(settleStacking(items)[1].elevationCm).toBe(46);
+    const sofa = [piece('s', 'sofa-3seat', 200, 200), piece('c', 'cushion-square', 150, 200)];
+    expect(settleStacking(sofa)[1].elevationCm).toBe(46);
+  });
+
+  it('keeps hard appliances and TVs off soft surfaces', () => {
+    expect(canRestOn(def('tv-43'), def('bed-queen'))).toBe(false);
+    expect(canRestOn(def('laptop'), def('sofa-3seat'))).toBe(false);
+    expect(canRestOn(def('laptop'), def('desk-executive'))).toBe(true);
+  });
+
+  it('does not stack a piece onto a top it is bigger than', () => {
+    expect(canRestOn(def('tv-55'), def('side-table'))).toBe(false);
+    expect(canRestOn(def('tv-55'), def('media-console'))).toBe(true);
+  });
+
+  it('never lifts items above a rug and draws rugs underneath', () => {
+    const items = [
+      piece('c', 'cushion-square', 200, 200),
+      piece('t', 'dining-table-4', 200, 200),
+      piece('r', 'rug-living', 200, 200),
+    ];
+    const settled = settleStacking(items);
+    expect(settled.find((i) => i.id === 't').elevationCm).toBe(0);
+    expect(drawOrder(settled).map((i) => i.id)[0]).toBe('r');
+    expect(findSupport(settled[0], settled)?.item.id).toBe('t');
+  });
+
+  it('reports the support under a hypothetical drop position', () => {
+    const items = [piece('d', 'desk-executive', 300, 200), piece('l', 'desk-lamp', 50, 50)];
+    expect(dropTargetAt(items[1], 300, 200, items).item.id).toBe('d');
+    expect(dropTargetAt(items[1], 50, 50, items)).toBeNull();
+  });
+
+  it('lets two pieces stand on the same support without clashing', () => {
+    const items = settleStacking([
+      piece('d', 'dining-table-4', 300, 200),
+      piece('a', 'fruit-bowl', 270, 200),
+      piece('b', 'vase-ceramic', 330, 200),
+    ]);
+    const enriched = items.map((i) => ({
+      ...i,
+      widthCm: def(i.furnitureTypeId).widthCm,
+      depthCm: def(i.furnitureTypeId).depthCm,
+    }));
+    expect(evaluateAllCollisions(enriched, 600, 500).collidingIds.size).toBe(0);
+  });
+
+  it('keeps stacked pieces together through duplicate-like moves', () => {
+    const before = settleStacking([
+      piece('d', 'desk-executive', 300, 200),
+      piece('l', 'laptop', 300, 200),
+    ]);
+    const moved = before.map((i) => ({ ...i, x: i.x + 50 }));
+    expect(reconcileStacking(before, moved)[1].elevationCm).toBe(75);
   });
 });

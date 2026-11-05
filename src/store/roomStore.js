@@ -100,6 +100,11 @@ export const useRoomStore = create((set, get) => ({
   viewMode: '2d', // '2d' | '3d'
   saveStatus: 'saved', // 'saved' | 'saving'
   collidingItemIds: new Set(),
+  // Piece a dragged item would come to rest on if dropped now (drives the plan highlight)
+  dropTargetId: null,
+  setDropTarget: (id) => {
+    if (get().dropTargetId !== id) set({ dropTargetId: id });
+  },
   boundaryCollidingIds: new Set(),
   isInitialAnimationDone: false,
 
@@ -821,7 +826,8 @@ export const useRoomStore = create((set, get) => ({
       if (value === null || value === undefined || value === '') delete merged[key];
       else merged[key] = value;
     }
-    const overrides = clampToBase(cleanOverrides(merged), getFurnitureType(target.furnitureTypeId));
+    const baseDef = getFurnitureType(target.furnitureTypeId);
+    const overrides = clampToBase(cleanOverrides(merged, baseDef), baseDef);
 
     const updated = (room.placedFurniture || []).map((item) => {
       if (item.id !== id) return item;

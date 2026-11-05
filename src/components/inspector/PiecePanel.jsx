@@ -1,7 +1,11 @@
 import React, { useRef } from 'react';
 import { ArrowDown, ArrowUp, Copy, Trash2 } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
-import { FURNITURE_CATEGORIES, resolveItemDef } from '../../data/furnitureCatalog.js';
+import {
+  FURNITURE_CATEGORIES,
+  isColorLocked,
+  resolveItemDef,
+} from '../../data/furnitureCatalog.js';
 import { ArchitecturalSilhouette } from '../canvas/ArchitecturalSilhouette.jsx';
 import { Button } from '../common/Button.jsx';
 import { RangeField, Segmented } from '../common/Field.jsx';
@@ -86,7 +90,7 @@ export function PiecePanel({ item, def, onClose }) {
       }
     >
       <SizeSection item={item} def={def} />
-      <FinishSection item={item} def={def} />
+      {!isColorLocked(def) && <FinishSection item={item} def={def} />}
 
       <Section title="Position & rotation">
         <div className={styles.grid2}>

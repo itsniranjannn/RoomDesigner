@@ -78,6 +78,17 @@ import {
   BookStackSilhouette,
 } from './smalls.jsx';
 
+import {
+  CushionSilhouette,
+  VaseSilhouette,
+  LaptopSilhouette,
+  PhotoFrameSilhouette,
+  SpeakerSilhouette,
+  KettleSilhouette,
+  BowlSilhouette,
+  FoldedSilhouette,
+} from './tabletop.jsx';
+
 export const SILHOUETTES = {
   bed: BedSilhouette,
   'bed-bunk': BedBunkSilhouette,
@@ -151,6 +162,14 @@ export const SILHOUETTES = {
   monitor: MonitorSilhouette,
   microwave: MicrowaveSilhouette,
   'book-stack': BookStackSilhouette,
+  cushion: CushionSilhouette,
+  vase: VaseSilhouette,
+  laptop: LaptopSilhouette,
+  'photo-frame': PhotoFrameSilhouette,
+  speaker: SpeakerSilhouette,
+  kettle: KettleSilhouette,
+  bowl: BowlSilhouette,
+  folded: FoldedSilhouette,
 };
 
 /** Unknown shape types fall back to the credenza-style rectangle. */

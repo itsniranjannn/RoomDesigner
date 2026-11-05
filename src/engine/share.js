@@ -114,7 +114,9 @@ export function sanitizeImportedRoom(data) {
       y: num(f.y, 0, 2000, 100),
       rotationDeg: num(f.rotationDeg, 0, 360, 0),
       elevationCm: num(f.elevationCm, 0, 400, 0),
-      ...(cleanOverrides(f.overrides) ? { overrides: cleanOverrides(f.overrides) } : {}),
+      ...(cleanOverrides(f.overrides, getFurnitureType(f.furnitureTypeId))
+        ? { overrides: cleanOverrides(f.overrides, getFurnitureType(f.furnitureTypeId)) }
+        : {}),
     }))
     .map((f, i, all) =>
       all.findIndex((g) => g.id === f.id) === i ? f : { ...f, id: `${f.id}-dup${i}` }

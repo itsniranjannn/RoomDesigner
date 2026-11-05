@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { getFurnitureType, resolveItemDef } from '../../data/furnitureCatalog.js';
 import { degToRad } from '../../engine/geometry.js';
 import { resolveModel } from './models/index.js';
@@ -11,11 +10,6 @@ import { resolveModel } from './models/index.js';
  * sofas have cushions & armrests.
  * Thin dispatcher: each shapeType is built by a module under ./models.
  */
-/** Slightly lighter shade of a colour, so cushions follow a recoloured body without matching it exactly. */
-function lighten(color, amount = 0.05) {
-  return new THREE.Color(color).offsetHSL(0, 0, amount).getStyle();
-}
-
 export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected }) {
   const def = resolveItemDef(item);
   if (!def) return null;
@@ -48,7 +42,7 @@ export function Furniture3DBox({ item, roomWidthCm, roomDepthCm, isSelected }) {
           fabricColor={def.fabricColor || '#FAF6EE'}
           headboardColor={def.headboardColor || '#5A554E'}
           accentColor={def.accentColor || '#C4B8A5'}
-          cushionColor={item.overrides?.color ? lighten(def.color) : def.cushionColor || def.color}
+          cushionColor={def.cushionColor || def.color}
           legColor={def.legColor || '#242321'}
           handleColor={def.handleColor || '#C4A869'}
           subColor={def.subColor || '#D4A359'}

@@ -23,6 +23,39 @@ export function offersSurface(def) {
   return !!def?.supportsTop && !def?.restsOnTop;
 }
 
+/** Rugs and carpets lie on the floor: they never lift a piece and always draw underneath. */
+export function isFloorCovering(def) {
+  return !!def && (def.shapeType?.startsWith('rug') || def.shapeType === 'nepali-dhaka-rug');
+}
+
+/** Footprints may overshoot a little (a pillow hanging over a bed edge) but a sofa is not a shelf item. */
+const FIT_SLACK = 1.1;
+
+/**
+ * True when a piece with `riderDef` may rest on a piece with `supportDef`: the rider is a small
+ * item, the support has a flat top, a hard appliance does not sink into a soft surface (bed,
+ * sofa) and the rider is not bigger than the top it sits on.
+ */
+export function canRestOn(riderDef, supportDef) {
+  if (!canRestOnTop(riderDef) || !offersSurface(supportDef)) return false;
+  if (isFloorCovering(supportDef)) return false;
+  if (supportDef.supportKind === 'soft' && riderDef.needsHardTop) return false;
+  const [rMin, rMax] = [riderDef.widthCm, riderDef.depthCm].sort((a, b) => a - b);
+  const [sMin, sMax] = [supportDef.widthCm, supportDef.depthCm].sort((a, b) => a - b);
+  return rMin <= sMin * FIT_SLACK + 1 && rMax <= sMax * FIT_SLACK + 1;
+}
+
+/** Paint order for the plan: floor coverings first, then by height, then by layer order. */
+export function drawOrder(items) {
+  return items
+    .map((item, index) => ({ item, index, rug: isFloorCovering(resolveItemDef(item)) ? 0 : 1 }))
+    .sort(
+      (a, b) =>
+        a.rug - b.rug || (a.item.elevationCm || 0) - (b.item.elevationCm || 0) || a.index - b.index
+    )
+    .map((e) => e.item);
+}
+
 /** Height of the usable top surface above the support's own base, in cm. */
 export function surfaceHeightOf(def) {
   if (!def) return 0;
@@ -55,12 +88,17 @@ export function findSupport(item, items) {
   for (const other of items) {
     if (other.id === item.id) continue;
     const def = resolveItemDef(other);
-    if (!offersSurface(def)) continue;
+    if (!canRestOn(own, def)) continue;
     if (!pointInFootprint(other, def, item.x, item.y)) continue;
     const topCm = surfaceTopOf(other, def);
     if (!best || topCm > best.topCm) best = { item: other, def, topCm };
   }
   return best;
+}
+
+/** The support a piece would rest on if it stood at (x, y) now; drives the drop highlight. */
+export function dropTargetAt(item, x, y, items) {
+  return findSupport({ ...item, x, y }, items);
 }
 
 /** Pieces currently resting on `support` (derived from geometry and elevation). */
@@ -162,11 +200,11 @@ export function footprintOf(item) {
  * types the piece lists in `stackableOn`. Returns the support item or null.
  */
 export function pickDefaultSupport(def, items) {
-  const candidates = items.filter((i) => offersSurface(resolveItemDef(i)));
+  const candidates = items.filter((i) => canRestOn(def, resolveItemDef(i)));
   const free = candidates.filter((c) => ridersOf(c, items).length === 0);
   const preferred = free.find((c) => def.stackableOn?.includes(c.furnitureTypeId));
   if (preferred) return preferred;
-  // A piece that names its supports (a TV) is better on the floor than on the wrong surface
+  // A piece that names its supports (a TV, a cushion) is better on the floor than on the wrong surface
   if (def.stackableOn?.length) return null;
   return free[0] || candidates[0] || null;
 }
