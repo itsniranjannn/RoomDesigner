@@ -16,6 +16,8 @@ export default defineConfig({
   },
   test: {
     globals: true,
+    // Playwright specs live in e2e/ and run with `npm run e2e`
+    include: ['src/**/*.{test,spec}.{js,jsx}'],
     environment: 'node',
     testTimeout: 30000,
   },
