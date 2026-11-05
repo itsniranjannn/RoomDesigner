@@ -1,34 +1,35 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { ArchitecturalSilhouette } from '../canvas/ArchitecturalSilhouette.jsx';
+import { startPointerDrag, wasJustDragged } from './pointerDrag.js';
 import styles from './CatalogItem.module.css';
 
-export function CatalogItem({ item, onSelect, onDelete }) {
+export function CatalogItem({ item, onSelect, onDelete, onDropped }) {
   // Fit the plan symbol inside the 100 x 70 preview box
   const scale = Math.min(84 / item.widthCm, 54 / item.depthCm);
   const previewW = item.widthCm * scale;
   const previewD = item.depthCm * scale;
 
-  const handleDragStart = (e) => {
-    e.dataTransfer.setData('text/plain', item.id);
-    e.dataTransfer.setData(
-      'application/json',
-      JSON.stringify({
-        furnitureTypeId: item.id,
-        widthCm: item.widthCm,
-        depthCm: item.depthCm,
-      })
-    );
-    e.dataTransfer.effectAllowed = 'copy';
+  // Pointer-event drag: works with mouse, pen and touch (long press), unlike native drag and drop
+  const handlePointerDown = (e) => {
+    if (e.target.closest?.('button')) return;
+    startPointerDrag(e, {
+      id: item.id,
+      label: item.name,
+      onEnd: (dropped) => dropped && onDropped?.(),
+    });
   };
 
   return (
     <div className={styles.cell}>
       <div
         className={styles.card}
-        draggable
-        onDragStart={handleDragStart}
-        onClick={() => onSelect(item.id)}
+        onPointerDown={handlePointerDown}
+        onDragStart={(e) => e.preventDefault()}
+        onClick={(e) => {
+          if (wasJustDragged(e.currentTarget)) return;
+          onSelect(item.id);
+        }}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
@@ -38,7 +39,7 @@ export function CatalogItem({ item, onSelect, onDelete }) {
           }
         }}
         aria-label={`Add ${item.name}, ${item.widthCm} by ${item.depthCm} centimeters`}
-        title="Click to add, or drag into the room"
+        title="Click to add, or drag into the room (touch: press and hold, then drag)"
       >
         <div className={styles.preview}>
           <svg

@@ -125,6 +125,7 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
                     key={item.id}
                     item={item}
                     onSelect={place}
+                    onDropped={onPlaced}
                     onDelete={group.id === 'custom' ? () => setPendingDelete(item) : undefined}
                   />
                 ))}

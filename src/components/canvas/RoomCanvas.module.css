@@ -16,7 +16,8 @@
   transition: background-color var(--transition-fast);
 }
 
-.dragOver {
+.dragOver,
+.canvasContainer[data-drop-over] {
   background-color: var(--color-indigo-subtle);
   box-shadow: inset 0 0 0 2px var(--color-indigo);
 }
