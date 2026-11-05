@@ -30,6 +30,12 @@ const matches = (item, query, categoryName) => {
   return query.split(/\s+/).every((word) => haystack.includes(word));
 };
 
+// "My furniture" comes first so the user's own pieces are always easy to reach
+const ORDERED_CATEGORIES = [
+  ...FURNITURE_CATEGORIES.filter((cat) => cat.id === 'custom'),
+  ...FURNITURE_CATEGORIES.filter((cat) => cat.id !== 'custom'),
+];
+
 export function FurnitureCatalog({ onClose, onPlaced }) {
   const addFurniture = useRoomStore((state) => state.addFurniture);
   const openModal = useRoomStore((state) => state.openModal);
@@ -44,7 +50,7 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
   const needle = query.trim().toLowerCase();
 
   const groups = [];
-  for (const cat of FURNITURE_CATEGORIES) {
+  for (const cat of ORDERED_CATEGORIES) {
     if (category !== 'all' && category !== cat.id) continue;
     const source =
       cat.id === 'custom'
@@ -87,7 +93,7 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
           label="Category"
           value={category}
           onChange={setCategory}
-          chips={[{ id: 'all', name: 'All' }, ...FURNITURE_CATEGORIES].map((cat) => ({
+          chips={[{ id: 'all', name: 'All' }, ...ORDERED_CATEGORIES].map((cat) => ({
             id: cat.id,
             label: SHORT_NAMES[cat.id] || cat.name,
           }))}
