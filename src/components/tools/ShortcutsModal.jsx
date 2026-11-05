@@ -1,5 +1,9 @@
 import React from 'react';
 import { Modal } from '../common/Modal.jsx';
+import { Button } from '../common/Button.jsx';
+import { Diagnostics } from '../diagnostics/Diagnostics.jsx';
+import { requestTour } from '../onboarding/tourState.js';
+import { useRoomStore } from '../../store/roomStore.js';
 import styles from './Tools.module.css';
 
 // Keys are written as "Ctrl + A"; "/" separates alternatives
@@ -63,12 +67,25 @@ function Keys({ text }) {
 }
 
 export function ShortcutsModal({ onClose }) {
+  const hasRoom = useRoomStore((state) => Boolean(state.room));
+  // Close first so the tour opens over the editor, not over this dialog
+  const takeTour = () => {
+    onClose();
+    setTimeout(() => requestTour('room'), 0);
+  };
   return (
     <Modal
       title="Keyboard shortcuts"
       subtitle="Plan shortcuts work while the 2D plan is showing."
       onClose={onClose}
       size="lg"
+      footer={
+        hasRoom && (
+          <Button variant="secondary" onClick={takeTour}>
+            Take the tour
+          </Button>
+        )
+      }
     >
       <div className={styles.shortcutGrid}>
         {SECTIONS.map((section) => (
@@ -85,6 +102,7 @@ export function ShortcutsModal({ onClose }) {
           </section>
         ))}
       </div>
+      <Diagnostics />
     </Modal>
   );
 }
