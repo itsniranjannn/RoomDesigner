@@ -130,7 +130,7 @@ export function AppShell() {
       title={incoming.error ? 'Link could not be opened' : 'Open shared design?'}
       subtitle={
         incoming.error ||
-        `"${incoming.room.name}" with ${incoming.room.placedFurniture.length} pieces`
+        `"${incoming.room.name}" with ${incoming.room.placedFurniture.length} ${incoming.room.placedFurniture.length === 1 ? 'piece' : 'pieces'}`
       }
       onClose={closeIncoming}
       size="sm"

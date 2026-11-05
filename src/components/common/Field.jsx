@@ -57,7 +57,7 @@ export function NumberField({
   // Tell the user when what they typed is outside the allowed range, before it is clamped
   const typed = draft === '' ? NaN : Number(draft);
   let rangeError = null;
-  if (Number.isFinite(typed)) {
+  if (Number.isFinite(typed) && draft !== String(value ?? '')) {
     if (min !== undefined && typed < min)
       rangeError = `Minimum is ${min}. It will be set to ${min}.`;
     else if (max !== undefined && typed > max)
