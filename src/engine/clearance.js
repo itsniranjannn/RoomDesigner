@@ -6,8 +6,13 @@
 
 import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { getRotatedRectCorners, getAABB } from './geometry.js';
-import { checkPolygonCollision } from './collision.js';
-import { hasOutline, outlineEdges, outlineOpeningZone } from './roomShape.js';
+import {
+  doorZone,
+  openingFrame,
+  polygonsOverlap,
+  windowSwingZones,
+  WINDOW_SILL_CM,
+} from './planning.js';
 
 const MIN_PASSAGE_CM = 60;
 // Gaps narrower than this are not mistaken for a passage (pieces simply sit side by side)
@@ -15,71 +20,31 @@ const MIN_WALKABLE_GAP_CM = 25;
 const WINDOW_DEPTH_CM = 30;
 const WINDOW_BLOCK_HEIGHT_CM = 100;
 
-function rectCorners(minX, minY, maxX, maxY) {
-  return [
-    { x: minX, y: minY },
-    { x: maxX, y: minY },
-    { x: maxX, y: maxY },
-    { x: minX, y: maxY },
-  ];
-}
-
-/** Interior rectangle of the given depth in front of an opening on a wall. */
-function getOpeningZone(wall, offsetCm, widthCm, depthCm, roomWidthCm, roomDepthCm) {
-  switch (wall) {
-    case 'top':
-      return rectCorners(offsetCm, 0, offsetCm + widthCm, depthCm);
-    case 'left':
-      return rectCorners(0, offsetCm, depthCm, offsetCm + widthCm);
-    case 'right':
-      return rectCorners(roomWidthCm - depthCm, offsetCm, roomWidthCm, offsetCm + widthCm);
-    case 'bottom':
-    default:
-      return rectCorners(offsetCm, roomDepthCm - depthCm, offsetCm + widthCm, roomDepthCm);
-  }
-}
-
-/** Zones that should stay free of furniture (door swings, window strips). */
+/** Zones that should stay free of furniture (door swings, window strips and swings). */
 export function getClearanceZones(room) {
   const zones = [];
-  if (hasOutline(room)) {
-    const solid = new Set(
-      outlineEdges(room)
-        .filter((e) => !e.open)
-        .map((e) => e.i)
-    );
-    const put = (kind, o, depth) => {
-      if (!solid.has(o.edge ?? 0)) return;
-      zones.push({ kind, openingId: o.id, corners: outlineOpeningZone(room, o, depth) });
-    };
-    for (const d of room.doors || [])
-      put('door', d, d.swingDirection === 'outward' ? 60 : d.widthCm);
-    for (const w of room.windows || []) put('window', w, WINDOW_DEPTH_CM);
-    return zones;
-  }
   for (const door of room.doors || []) {
-    const wall = door.wall || 'bottom';
-    const depth = door.swingDirection === 'outward' ? 60 : door.widthCm;
-    zones.push({
-      kind: 'door',
-      openingId: door.id,
-      corners: getOpeningZone(wall, door.offsetCm, door.widthCm, depth, room.widthCm, room.depthCm),
-    });
+    const zone = doorZone(room, door);
+    if (zone) zones.push({ kind: 'door', openingId: door.id, corners: zone.corners });
   }
   for (const win of room.windows || []) {
-    const wall = win.wall || 'top';
+    const frame = openingFrame(room, win, 'window');
+    if (!frame || frame.open) continue;
+    const a = win.offsetCm;
+    const b = win.offsetCm + win.widthCm;
     zones.push({
       kind: 'window',
       openingId: win.id,
-      corners: getOpeningZone(
-        wall,
-        win.offsetCm,
-        win.widthCm,
-        WINDOW_DEPTH_CM,
-        room.widthCm,
-        room.depthCm
-      ),
+      corners: [
+        frame.at(a, 0),
+        frame.at(b, 0),
+        frame.at(b, WINDOW_DEPTH_CM),
+        frame.at(a, WINDOW_DEPTH_CM),
+      ],
     });
+    windowSwingZones(room, win).forEach((corners) =>
+      zones.push({ kind: 'window-swing', openingId: win.id, corners })
+    );
   }
   return zones;
 }
@@ -112,7 +77,7 @@ function isFlat(def) {
 
 /**
  * Returns a list of clearance issues:
- * { itemId, kind: 'door-swing' | 'window' | 'tight-passage', openingId?, otherId?, gapCm? }
+ * { itemId, kind: 'door-swing' | 'window' | 'window-swing' | 'tight-passage', openingId?, otherId?, gapCm? }
  */
 export function evaluateClearance(room) {
   const issues = [];
@@ -136,17 +101,24 @@ export function evaluateClearance(room) {
   for (const entry of items) {
     if (isFlat(entry.def)) continue;
     for (const zone of zones) {
-      if (
-        zone.kind === 'window' &&
-        (entry.def.heightCm ?? 0) + entry.bottom <= WINDOW_BLOCK_HEIGHT_CM
-      )
-        continue;
-      if (checkPolygonCollision(entry.corners, zone.corners)) {
-        issues.push({
-          itemId: entry.item.id,
-          kind: zone.kind === 'door' ? 'door-swing' : 'window',
-          openingId: zone.openingId,
-        });
+      const top = (entry.def.heightCm ?? 0) + entry.bottom;
+      if (zone.kind === 'window' && top <= WINDOW_BLOCK_HEIGHT_CM) continue;
+      if (zone.kind === 'window-swing' && top <= WINDOW_SILL_CM) continue;
+      if (polygonsOverlap(entry.corners, zone.corners)) {
+        const kind =
+          zone.kind === 'door'
+            ? 'door-swing'
+            : zone.kind === 'window-swing'
+              ? 'window-swing'
+              : 'window';
+        // One window can sweep two leaves: report the piece once per opening
+        if (
+          issues.some(
+            (i) => i.itemId === entry.item.id && i.openingId === zone.openingId && i.kind === kind
+          )
+        )
+          continue;
+        issues.push({ itemId: entry.item.id, kind, openingId: zone.openingId });
       }
     }
   }
@@ -186,6 +158,8 @@ export function describeIssue(issue) {
       return 'Blocks a door swing';
     case 'window':
       return 'Obstructs a window';
+    case 'window-swing':
+      return 'Blocks a window from opening';
     case 'tight-passage':
       return `Only ${issue.gapCm} cm walking gap (min ${MIN_PASSAGE_CM} cm)`;
     default:
