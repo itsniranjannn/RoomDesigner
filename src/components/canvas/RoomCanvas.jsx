@@ -152,6 +152,19 @@ export function RoomCanvas() {
     return pt.matrixTransform(ctm.inverse());
   };
 
+  // Pieces dragged out of the catalog with pointer events (mouse, pen or touch) land here
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return undefined;
+    const onDrop = (e) => {
+      const { id, clientX, clientY } = e.detail;
+      const p = svgPoint({ clientX, clientY });
+      if (p) addFurniture(id, Math.round(p.x), Math.round(p.y));
+    };
+    el.addEventListener('furniture-drop', onDrop);
+    return () => el.removeEventListener('furniture-drop', onDrop);
+  }, [addFurniture]);
+
   // Drag on empty floor to box-select
   const handleSvgPointerDown = (e) => {
     if (measureActive || e.button !== 0) return;
@@ -239,6 +252,7 @@ export function RoomCanvas() {
   return (
     <div
       ref={containerRef}
+      data-furniture-drop
       className={`${styles.canvasContainer} ${isDragOver ? styles.dragOver : ''}`}
       onClick={() => {
         if (suppressClick.current) return;

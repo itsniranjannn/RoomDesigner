@@ -4,6 +4,8 @@
 }
 
 .card {
+  -webkit-touch-callout: none;
+  user-select: none;
   display: flex;
   flex-direction: column;
   gap: 2px;

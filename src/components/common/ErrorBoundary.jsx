@@ -33,11 +33,16 @@ export class ErrorBoundary extends React.Component {
           <p className={styles.eyebrow}>Room Designer Studio</p>
           <h1 className={styles.title}>Something went wrong</h1>
           <p className={styles.text}>
-            Your saved rooms are safe. Reload the page to carry on designing.
+            Your saved rooms are safe. Try again, or reload the page to carry on designing.
           </p>
-          <Button variant="primary" onClick={() => window.location.reload()}>
-            Reload page
-          </Button>
+          <div className={styles.actions}>
+            <Button variant="primary" onClick={() => this.setState({ error: null })}>
+              Try again
+            </Button>
+            <Button variant="secondary" onClick={() => window.location.reload()}>
+              Reload page
+            </Button>
+          </div>
         </section>
       </div>
     );
