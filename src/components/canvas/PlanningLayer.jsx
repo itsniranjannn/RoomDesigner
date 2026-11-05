@@ -47,7 +47,9 @@ function ServiceNode({ service, label, selected, interactive, svgRef }) {
       if (!p) return;
       if (!moved && Math.hypot(p.x - start.x, p.y - start.y) < 3) return;
       moved = true;
-      useRoomStore.getState().moveService(service.id, origin.x + (p.x - start.x), origin.y + (p.y - start.y));
+      useRoomStore
+        .getState()
+        .moveService(service.id, origin.x + (p.x - start.x), origin.y + (p.y - start.y));
     };
     const onUp = () => {
       window.removeEventListener('pointermove', onMove);
@@ -125,9 +127,7 @@ function PlaceSurface({ room, svgRef, bounds, kind }) {
       {placed && (
         <g opacity="0.6" pointerEvents="none">
           <PlacedService kind={kind} {...placed} />
-          {def.mount === 'wall' && (
-            <circle cx={placed.x} cy={placed.y} r="1.8" fill="#22485E" />
-          )}
+          {def.mount === 'wall' && <circle cx={placed.x} cy={placed.y} r="1.8" fill="#22485E" />}
         </g>
       )}
     </g>
@@ -136,7 +136,9 @@ function PlaceSurface({ room, svgRef, bounds, kind }) {
 
 function TurningSpace({ room }) {
   const t = useMemo(() => turningSpace(room), [room]);
-  const d = t.runs.map((r) => `M ${r.x0} ${r.y} h ${r.x1 - r.x0} v ${r.h} h ${-(r.x1 - r.x0)} z`).join(' ');
+  const d = t.runs
+    .map((r) => `M ${r.x0} ${r.y} h ${r.x1 - r.x0} v ${r.h} h ${-(r.x1 - r.x0)} z`)
+    .join(' ');
   return (
     <g pointerEvents="none" aria-hidden="true" data-testid="turning-space">
       {t.fits && <path d={d} fill="rgba(37, 112, 122, 0.20)" />}
@@ -257,7 +259,13 @@ export function PlanningLayer({ room, svgRef, bounds, checks }) {
           aria-hidden="true"
         >
           <circle r="30" className={styles.pulse} fill="none" stroke="#8B2635" strokeWidth="3" />
-          <circle r="30" className={styles.ring} fill="rgba(139, 38, 53, 0.08)" stroke="#8B2635" strokeWidth="2" />
+          <circle
+            r="30"
+            className={styles.ring}
+            fill="rgba(139, 38, 53, 0.08)"
+            stroke="#8B2635"
+            strokeWidth="2"
+          />
         </g>
       )}
     </g>

@@ -10,6 +10,7 @@ import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { SPACE_KINDS, stairRect, stairGeometry, stairFootprint, stairTargetIndex } from './flat.js';
 import { openingsOf, openWallsOf, levelSolidEdges, entranceOf } from './flatPlan.js';
 import { hasOutline, outlineEdges, pointOnEdge, polygonArea } from './roomShape.js';
+import { SERVICE_KINDS, doorGeometry, servicesOf, windowLeaves } from './planning.js';
 import {
   CELL,
   analyzeRuns,
@@ -61,7 +62,7 @@ const grow = (box, other) => ({
  * Stacks the title block, scale bar and key under a drawing and returns the sheet frame.
  * `content` is the drawing's bounding box in plan coordinates.
  */
-function frameSheet({ content, k, title, legend, legendTitle, kinds, measure }) {
+function frameSheet({ content, k, title, legend, legendTitle, kinds, serviceKinds, measure }) {
   const build = (scale) => {
     const margin = 30 * k;
     const contentW = content.x1 - content.x0;
@@ -123,6 +124,28 @@ function frameSheet({ content, k, title, legend, legendTitle, kinds, measure }) 
       y += 2 * k + font * 1.6 + (row + 1) * rowH + 4 * k;
     }
 
+    // Service points used in the room: the symbol and its name, wrapped to the sheet width
+    let serviceKey = null;
+    if (serviceKinds && serviceKinds.length > 0) {
+      const font = 8.6 * k;
+      const rowH = font * 2.6;
+      const iconW = font * 3;
+      let x = 0;
+      let row = 0;
+      const entries = [];
+      for (const e of serviceKinds) {
+        const w = iconW + measure(e.label, font, 500, SANS) + font * 1.2;
+        if (x > 0 && x + w > innerW) {
+          x = 0;
+          row++;
+        }
+        entries.push({ ...e, w, x: margin + x, row });
+        x += w + font * 0.8;
+      }
+      serviceKey = { font, entries, y: y + 2 * k, rowH, iconW, title: 'Services' };
+      y += 2 * k + font * 1.6 + (row + 1) * rowH + 4 * k;
+    }
+
     const blockH = 46 * k;
     const titleY = y + 6 * k;
     const text = titleBlockText({ ...title, scale });
@@ -147,7 +170,20 @@ function frameSheet({ content, k, title, legend, legendTitle, kinds, measure }) 
       rightFont: 9 * k,
     };
     const height = titleY + blockH + margin * 0.8;
-    return { width, height, k, margin, ox, oy, scaleBar, key, kindKey, titleBlock, scale };
+    return {
+      width,
+      height,
+      k,
+      margin,
+      ox,
+      oy,
+      scaleBar,
+      key,
+      kindKey,
+      serviceKey,
+      titleBlock,
+      scale,
+    };
   };
   // The scale is chosen for the whole sheet, so size it once with a stand-in label first
   const first = build({ label: '1:1', orientation: 'landscape' });
@@ -197,6 +233,22 @@ export function buildRoomSheet(room, { measure = estimateMeasure, date = new Dat
   for (const o of [...windows, ...doors]) {
     const len = outlined ? (edges[o.edge]?.len ?? 0) : o.horizontal ? W : D;
     if (!Number.isFinite(o.offsetCm)) o.offsetCm = Math.round(len / 2 - o.widthCm / 2);
+  }
+
+  // Where each door's leaf swings (either hinge side) and each opening window's leaves
+  (room.doors || []).forEach((raw, i) => {
+    const g = doorGeometry(room, raw);
+    if (g && doors[i]) doors[i].geom = g;
+  });
+  (room.windows || []).forEach((raw, i) => {
+    const leaves = windowLeaves(room, raw);
+    if (leaves.length && windows[i]) windows[i].leaves = leaves;
+  });
+  const services = servicesOf(room);
+  const serviceKinds = [];
+  for (const kind of Object.keys(SERVICE_KINDS)) {
+    if (services.some((sv) => sv.kind === kind))
+      serviceKinds.push({ kind, label: SERVICE_KINDS[kind].label });
   }
 
   const pieces = [];
@@ -269,11 +321,13 @@ export function buildRoomSheet(room, { measure = estimateMeasure, date = new Dat
     },
     legend,
     legendTitle: 'Key to numbered pieces',
+    serviceKinds,
     measure,
   });
 
   return {
     kind: 'room',
+    services,
     ...frame,
     room: { W, D, wall },
     outline: outlined ? { points: room.outline, edges } : null,

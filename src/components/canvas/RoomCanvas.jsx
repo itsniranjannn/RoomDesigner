@@ -8,13 +8,11 @@ import { GridOverlay } from './GridOverlay.jsx';
 import { FurniturePiece } from './FurniturePiece.jsx';
 import { CollisionLayer } from './CollisionLayer.jsx';
 import { CanvasToolbar } from './CanvasToolbar.jsx';
-import {
-  TraceLayer,
-  ClearanceLayer,
-  DimensionLayer,
-  MeasureLayer,
-  useClearanceIssues,
-} from './OverlayLayers.jsx';
+import { TraceLayer, ClearanceLayer, DimensionLayer, MeasureLayer } from './OverlayLayers.jsx';
+import { PlanningLayer } from './PlanningLayer.jsx';
+import { PlanningPanels } from './PlanningPanels.jsx';
+import { usePlanChecks } from './usePlanChecks.js';
+import { usePlanningStore } from '../../store/planningStore.js';
 import { MousePointerClick } from 'lucide-react';
 import { drawOrder } from '../../engine/stacking.js';
 import styles from './RoomCanvas.module.css';
@@ -40,7 +38,9 @@ export function RoomCanvas() {
   const [marquee, setMarquee] = useState(null); // { x0, y0, x1, y1 } in cm
   const [measurements, setMeasurements] = useState([]);
 
-  const issues = useClearanceIssues(room);
+  const accessible = usePlanningStore((s) => s.accessible);
+  const placing = usePlanningStore((s) => !!s.placeKind);
+  const checks = usePlanChecks(room, accessible);
 
   // Leaving the measure tool or switching rooms clears old measurements
   useEffect(() => {
@@ -72,6 +72,26 @@ export function RoomCanvas() {
           state.duplicateSelection();
         }
         return;
+      }
+
+      // Planning tools: Esc steps back out of placing or a selected point, Delete and R act on it
+      const plan = usePlanningStore.getState();
+      if (e.key === 'Escape' && plan.escape()) {
+        e.preventDefault();
+        return;
+      }
+      if (plan.selectedServiceId && state.selectedItemIds.length === 0) {
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+          e.preventDefault();
+          state.removeService(plan.selectedServiceId);
+          plan.clearServiceSelection();
+          return;
+        }
+        if (key === 'r') {
+          e.preventDefault();
+          state.rotateService(plan.selectedServiceId);
+          return;
+        }
       }
 
       if (e.key === '?') {
@@ -167,7 +187,7 @@ export function RoomCanvas() {
 
   // Drag on empty floor to box-select
   const handleSvgPointerDown = (e) => {
-    if (measureActive || e.button !== 0) return;
+    if (measureActive || placing || e.button !== 0) return;
     const start = svgPoint(e);
     if (!start) return;
     const additive = e.shiftKey || e.ctrlKey || e.metaKey;
@@ -239,7 +259,9 @@ export function RoomCanvas() {
   if (!room) return null;
 
   // Check if any doors swing outward so we expand canvas padding so the arc & label don't get cut off or overlap UI
-  const hasOutwardDoors = (room.doors || []).some((d) => d.swingDirection === 'outward');
+  const hasOutwardDoors =
+    (room.doors || []).some((d) => d.swingDirection === 'outward') ||
+    (room.windows || []).some((w) => w.swing === 'outward');
   const paddingCm = hasOutwardDoors ? 110 : 60;
   const viewBoxMinX = -paddingCm;
   const viewBoxMinY = -paddingCm;
@@ -335,6 +357,18 @@ export function RoomCanvas() {
             collidingItemIds={collidingItemIds}
           />
 
+          <PlanningLayer
+            room={room}
+            svgRef={svgRef}
+            checks={checks}
+            bounds={{
+              x: viewBoxMinX,
+              y: viewBoxMinY,
+              width: viewBoxWidth,
+              height: viewBoxHeight,
+            }}
+          />
+
           {showDimensions && selectedItemId && selectionCount === 1 && !measureActive && (
             <DimensionLayer room={room} itemId={selectedItemId} />
           )}
@@ -371,10 +405,12 @@ export function RoomCanvas() {
       </svg>
 
       <CanvasToolbar
-        issues={issues}
+        checks={checks}
         measurementCount={measurements.length}
         onClearMeasurements={() => setMeasurements([])}
       />
+
+      <PlanningPanels checks={checks} />
 
       {isEmpty && !measureActive && (
         <div className={styles.empty}>

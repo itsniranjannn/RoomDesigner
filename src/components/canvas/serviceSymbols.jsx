@@ -46,7 +46,15 @@ export function ServiceGlyph({ kind, ink: inkOverride, tint: tintOverride, strok
     fill: 'none',
   };
   const wallLine = (half) => (
-    <line x1={-half} y1="0" x2={half} y2="0" stroke={ink} strokeWidth={sw * 1.6} strokeLinecap="round" />
+    <line
+      x1={-half}
+      y1="0"
+      x2={half}
+      y2="0"
+      stroke={ink}
+      strokeWidth={sw * 1.6}
+      strokeLinecap="round"
+    />
   );
 
   switch (kind) {
@@ -82,7 +90,15 @@ export function ServiceGlyph({ kind, ink: inkOverride, tint: tintOverride, strok
     case 'ceiling':
       return (
         <g>
-          <circle cx="0" cy="0" r="11" fill={tint} fillOpacity="0.7" {...line} strokeDasharray="4 2.5" />
+          <circle
+            cx="0"
+            cy="0"
+            r="11"
+            fill={tint}
+            fillOpacity="0.7"
+            {...line}
+            strokeDasharray="4 2.5"
+          />
           <line x1="-7" y1="-7" x2="7" y2="7" {...line} />
           <line x1="7" y1="-7" x2="-7" y2="7" {...line} />
           <circle cx="0" cy="0" r="2" fill={ink} stroke="none" />
@@ -98,7 +114,7 @@ export function ServiceGlyph({ kind, ink: inkOverride, tint: tintOverride, strok
             textAnchor="middle"
             fontSize="8"
             fontWeight="700"
-            fontFamily="var(--font-sans, sans-serif)"
+            fontFamily="Arial, Helvetica, sans-serif"
             fill={ink}
             stroke="none"
           >
@@ -116,7 +132,13 @@ export function ServiceGlyph({ kind, ink: inkOverride, tint: tintOverride, strok
             fillOpacity="0.85"
             {...line}
           />
-          <path d="M -2.6 11.6 a 2.8 2.8 0 0 0 2.2 2" stroke="#fff" strokeWidth={sw * 0.8} fill="none" strokeLinecap="round" />
+          <path
+            d="M -2.6 11.6 a 2.8 2.8 0 0 0 2.2 2"
+            stroke="#fff"
+            strokeWidth={sw * 0.8}
+            fill="none"
+            strokeLinecap="round"
+          />
           {wallLine(9)}
         </g>
       );
@@ -139,7 +161,7 @@ export function ServiceGlyph({ kind, ink: inkOverride, tint: tintOverride, strok
             textAnchor="middle"
             fontSize="8.5"
             fontWeight="700"
-            fontFamily="var(--font-sans, sans-serif)"
+            fontFamily="Arial, Helvetica, sans-serif"
             fill={ink}
             stroke="none"
           >
@@ -151,7 +173,9 @@ export function ServiceGlyph({ kind, ink: inkOverride, tint: tintOverride, strok
     case 'radiator': {
       const fins = [];
       for (let x = -31; x <= 31; x += 6.2) {
-        fins.push(<line key={x} x1={x} y1="1.5" x2={x} y2="8.5" {...line} strokeWidth={sw * 0.8} />);
+        fins.push(
+          <line key={x} x1={x} y1="1.5" x2={x} y2="8.5" {...line} strokeWidth={sw * 0.8} />
+        );
       }
       return (
         <g>
@@ -171,7 +195,7 @@ export function ServiceGlyph({ kind, ink: inkOverride, tint: tintOverride, strok
             textAnchor="middle"
             fontSize="7.5"
             fontWeight="700"
-            fontFamily="var(--font-sans, sans-serif)"
+            fontFamily="Arial, Helvetica, sans-serif"
             fill={ink}
             stroke="none"
           >
