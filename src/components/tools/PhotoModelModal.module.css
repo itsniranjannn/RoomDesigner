@@ -230,3 +230,9 @@
   border-radius: var(--radius-sm);
   background: none;
 }
+
+.summary {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}

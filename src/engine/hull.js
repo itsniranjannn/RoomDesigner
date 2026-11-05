@@ -341,7 +341,7 @@ function fillSandwiched(mask, width, height) {
  * @param {number} tolerance - colour distance (0-441) treated as background, default 60
  * @returns {Uint8Array} mask (1 = object)
  */
-export function segmentObject(rgba, width, height, tolerance = 60) {
+export function segmentObject(rgba, width, height, tolerance = 60, { keepGaps = false } = {}) {
   const bg = fitBackground(rgba, width, height);
   const threshold = Math.max(tolerance, bg.noise * 3.2);
   const raw = new Uint8Array(width * height);
@@ -374,6 +374,8 @@ export function segmentObject(rgba, width, height, tolerance = 60) {
     radius,
     'max'
   );
+  // Gaps (between chair slats, shelf bays) are kept when asked, to read how open the piece is
+  if (keepGaps) return majority(keepLargestComponent(opened, width, height), width, height);
   const filled = fillHoles(keepLargestComponent(opened, width, height), width, height);
   const mask = fillHoles(fillSandwiched(filled, width, height), width, height);
   return majority(mask, width, height);

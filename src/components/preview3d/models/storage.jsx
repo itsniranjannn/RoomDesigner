@@ -70,9 +70,9 @@ function BookRow({ x0, x1, y, depth, seed, maxH = 0.28 }) {
   );
 }
 
-export function WardrobeModel({ widthM, depthM, heightM, mainColor, handleColor }) {
+export function WardrobeModel({ widthM, depthM, heightM, mainColor, handleColor, doors }) {
   const plinthH = 0.08;
-  const numDoors = clamp(Math.round(widthM / 0.62), 2, 6);
+  const numDoors = doors ? clamp(Math.round(doors), 1, 6) : clamp(Math.round(widthM / 0.62), 2, 6);
   const loft = heightM > 2.2;
   const lowTop = loft ? heightM - 0.42 : heightM - 0.05;
   const mirrored = widthM > 1.5;
@@ -160,10 +160,12 @@ export function WardrobeModel({ widthM, depthM, heightM, mainColor, handleColor 
   );
 }
 
-export function BookshelfModel({ widthM, depthM, heightM, mainColor }) {
+export function BookshelfModel({ widthM, depthM, heightM, mainColor, shelves }) {
   const frameThick = 0.03;
   const kick = 0.07;
-  const numShelves = clamp(Math.round(heightM / 0.36), 3, 6);
+  const numShelves = shelves
+    ? clamp(Math.round(shelves), 2, 8)
+    : clamp(Math.round(heightM / 0.36), 3, 6);
   const gap = (heightM - kick - frameThick) / numShelves;
   const shelfW = widthM - frameThick * 2;
   const back = '#3D2A1C';

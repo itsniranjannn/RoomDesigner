@@ -23,7 +23,25 @@ export const DESIGN_TYPES = [
   { id: 'wardrobe', label: 'Wardrobe' },
   { id: 'bookshelf', label: 'Bookshelf' },
   { id: 'cabinet', label: 'Cabinet or sideboard' },
+  { id: 'nightstand', label: 'Nightstand or chest' },
 ];
+
+/** A usual real width per type, used when the user has not entered a size (photos only give proportions). */
+export const TYPICAL_WIDTH_CM = {
+  bed: 160,
+  sofa: 200,
+  armchair: 85,
+  chair: 45,
+  stool: 38,
+  table: 150,
+  'table-round': 100,
+  'coffee-table': 100,
+  desk: 120,
+  wardrobe: 120,
+  bookshelf: 80,
+  cabinet: 140,
+  nightstand: 48,
+};
 
 /** Colour slots each type exposes (label shown to the user), in palette order. */
 export const PALETTE_SLOTS = {
@@ -77,6 +95,10 @@ export const PALETTE_SLOTS = {
     ['body', 'Body'],
     ['accent', 'Top'],
   ],
+  nightstand: [
+    ['body', 'Body'],
+    ['leg', 'Feet'],
+  ],
 };
 
 const TYPE_IDS = new Set(DESIGN_TYPES.map((t) => t.id));
@@ -101,6 +123,10 @@ const toHex = (rgb) =>
     )
     .join('');
 const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+const shadeHex = (hex, k) => {
+  const v = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  return toHex(v.map((c) => c * k));
+};
 const mean = (list) => {
   const out = [0, 0, 0];
   for (const c of list) for (let k = 0; k < 3; k++) out[k] += c[k] / list.length;
@@ -112,10 +138,12 @@ function regionPixels(view, x0, y0, x1, y1) {
   if (!view) return [];
   const s = view.size;
   const out = [];
+  // The mask with its gaps open, when there is one: colours of the piece, not of what shows through it
+  const mask = view.open || view.mask;
   for (let y = Math.floor(y0 * s); y < Math.ceil(y1 * s); y++) {
     for (let x = Math.floor(x0 * s); x < Math.ceil(x1 * s); x++) {
       const p = y * s + x;
-      if (view.mask[p]) out.push([view.rgb[p * 3], view.rgb[p * 3 + 1], view.rgb[p * 3 + 2]]);
+      if (mask[p]) out.push([view.rgb[p * 3], view.rgb[p * 3 + 1], view.rgb[p * 3 + 2]]);
     }
   }
   return out;
@@ -128,12 +156,6 @@ function pickColor(view, region, mode = 'mean') {
   px.sort((a, b) => luma(a) - luma(b));
   const n = Math.max(3, Math.round(px.length * 0.4));
   return toHex(mean(mode === 'light' ? px.slice(-n) : px.slice(0, n)));
-}
-
-/** Mixes a hex colour a fraction of the way towards white. */
-function lift(hex, k) {
-  const v = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
-  return toHex(v.map((c) => c + (255 - c) * k));
 }
 
 function objectMean(view) {
@@ -248,7 +270,7 @@ export function measureTraits(views) {
  * are used so the guess does not depend on a real size having been entered yet.
  * @param {{widthCm:number, depthCm:number, heightCm:number}} dims
  */
-export function classifyType(traits, dims) {
+export function classifyType(traits, dims, sizeKnown = true) {
   const { widthCm: w, depthCm: d, heightCm: h } = dims;
   const { rise, gapFrac, round } = traits;
   const backed = rise >= 1.25;
@@ -263,13 +285,167 @@ export function classifyType(traits, dims) {
   if (open || (gapFrac > 0.12 && h <= w)) {
     if (!backed && wh <= 0.75 && dh <= 0.75) return 'stool';
     if (round && Math.abs(w - d) < 0.2 * Math.max(w, d)) return 'table-round';
-    if (h / w <= 0.45 && h <= 60) return 'coffee-table';
-    if (h / w <= 0.7 && d / w <= 0.65 && w <= 175) return 'desk';
+    if (h / w <= 0.45 && (!sizeKnown || h <= 60)) return 'coffee-table';
+    if (sizeKnown ? h / w <= 0.7 && d / w <= 0.65 && w <= 175 : h / w <= 0.6 && d / w <= 0.5)
+      return 'desk';
     return 'table';
   }
-  if (h >= 150) return d <= 40 ? 'bookshelf' : 'wardrobe';
-  if (h >= 90 && d <= 40) return 'bookshelf';
+  // Closed furniture: by size when it is known, otherwise by proportion alone
+  const tall = sizeKnown ? h >= 150 : h / w >= 1.1 && h / d >= 2.3;
+  const thin = sizeKnown ? d <= 40 : d / h <= 0.22;
+  if (tall) return thin ? 'bookshelf' : 'wardrobe';
+  if (sizeKnown ? h >= 90 && d <= 40 : h / w >= 0.9 && h / d >= 2.4) return 'bookshelf';
+  if (sizeKnown ? w <= 65 && h <= 80 : w / h <= 0.9 && h / w <= 1.6 && d / w >= 0.7)
+    return 'nightstand';
   return 'cabinet';
+}
+
+// ---------- structure: seams, shelves, legs, arms ----------
+
+/**
+ * Thin dark or light lines across a band of the view: door gaps, drawer fronts, shelf edges, cushion seams.
+ * 'x' finds vertical lines (the signal runs along columns), 'y' finds horizontal ones.
+ * Returns the line positions as 0-1 fractions along the axis.
+ */
+export function findLines(view, axis, region, maxWidth = 4) {
+  if (!view) return [];
+  const [x0, y0, x1, y1] = region;
+  const s = view.size;
+  const a0 = Math.floor((axis === 'x' ? x0 : y0) * s);
+  const a1 = Math.ceil((axis === 'x' ? x1 : y1) * s);
+  const b0 = Math.floor((axis === 'x' ? y0 : x0) * s);
+  const b1 = Math.ceil((axis === 'x' ? y1 : x1) * s);
+  const signal = [];
+  for (let a = a0; a < a1; a++) {
+    // The median along the band, so a handle or a label covering part of a door is not taken as a gap
+    const values = [];
+    for (let b = b0; b < b1; b++) {
+      const p = axis === 'x' ? b * s + a : a * s + b;
+      if (!view.mask[p]) continue;
+      values.push(luma([view.rgb[p * 3], view.rgb[p * 3 + 1], view.rgb[p * 3 + 2]]));
+    }
+    signal.push(values.length >= (b1 - b0) * 0.6 ? median(values) : null);
+  }
+  const win = Math.max(maxWidth * 3, Math.round(s * 0.1));
+  const dev = signal.map((v, i) => {
+    if (v === null) return 0;
+    const near = [];
+    for (let j = Math.max(0, i - win); j <= Math.min(signal.length - 1, i + win); j++)
+      if (signal[j] !== null) near.push(signal[j]);
+    return near.length ? v - median(near) : 0;
+  });
+  const abs = dev.map(Math.abs).sort((p, q) => p - q);
+  const noise = abs[Math.floor(abs.length * 0.5)] || 0;
+  const thr = Math.max(12, noise * 3.5);
+  const found = [];
+  let i = 0;
+  while (i < dev.length) {
+    if (Math.abs(dev[i]) > thr) {
+      let j = i;
+      while (j + 1 < dev.length && Math.abs(dev[j + 1]) > thr * 0.6) j++;
+      if (j - i + 1 <= maxWidth + 1) found.push((a0 + (i + j + 1) / 2) / s);
+      i = j + 1;
+    } else i++;
+  }
+  // Lines hugging the outline are edges, not seams
+  return found.filter((f) => f > 0.1 && f < 0.9);
+}
+
+/** Width of the outermost run of object pixels along a row, as a fraction of the view (a leg, an arm). */
+function edgeRunFrac(view, row) {
+  const s = view.size;
+  const y = Math.min(s - 1, Math.max(0, Math.round(row * s)));
+  let x = 0;
+  while (x < s && !view.mask[y * s + x]) x++;
+  const start = x;
+  while (x < s && view.mask[y * s + x]) x++;
+  return (x - start) / s;
+}
+
+/** Share of a region of the view that is object (how solid it looks). */
+function fillOf(view, region, useOpen = false) {
+  if (!view) return null;
+  const mask = (useOpen && view.open) || view.mask;
+  const [x0, y0, x1, y1] = region;
+  const s = view.size;
+  let n = 0;
+  let tot = 0;
+  for (let y = Math.floor(y0 * s); y < Math.ceil(y1 * s); y++)
+    for (let x = Math.floor(x0 * s); x < Math.ceil(x1 * s); x++) {
+      tot++;
+      n += mask[y * s + x];
+    }
+  return tot ? n / tot : null;
+}
+
+const hexRgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const colourGap = (a, b) => {
+  const [p, q] = [hexRgb(a), hexRgb(b)];
+  return Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+};
+
+/** Arm width of a sofa or armchair as a fraction of its width, from where the top view changes colour. */
+function armFraction(top, fallback) {
+  if (!top) return fallback;
+  const s = top.size;
+  const edge = pickColor(top, [0.02, 0.45, 0.06, 0.85]);
+  if (!edge) return fallback;
+  for (let x = Math.round(s * 0.05); x < s * 0.35; x++) {
+    const px = regionPixels(top, x / s, 0.4, (x + 1) / s, 0.85);
+    if (px.length < 4) continue;
+    const m = mean(px);
+    if (colourGap(edge, toHex(m)) > 28) return x / s;
+  }
+  return fallback;
+}
+
+const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(v)));
+const round2 = (v) => Math.round(v * 100) / 100;
+
+/** Traits beyond the basic shape: what the front photo shows of doors, drawers, shelves, legs and arms. */
+export function detectStructure(type, views, dims) {
+  const F = views.front || views.back || null;
+  const T = views.top || null;
+  const out = {};
+  const w = dims.widthCm / 100;
+  if (type === 'wardrobe') {
+    const seams = F ? findLines(F, 'x', [0.05, 0.2, 0.95, 0.7]).length : 0;
+    out.doors = seams ? clampInt(seams + 1, 1, 6) : clampInt(w / 0.62, 2, 6);
+  } else if (type === 'bookshelf') {
+    const lines = F ? findLines(F, 'y', [0.12, 0.03, 0.88, 0.97], 5).length : 0;
+    out.shelves = lines ? clampInt(lines + 1, 2, 8) : clampInt(dims.heightCm / 36, 3, 6);
+  } else if (type === 'nightstand') {
+    const lines = F ? findLines(F, 'y', [0.15, 0.05, 0.85, 0.9], 5).length : 0;
+    out.drawers = lines ? clampInt(lines + 1, 1, 4) : 2;
+  } else if (type === 'chair') {
+    const fill = F ? fillOf(F, [0.22, 0.14, 0.78, 0.3], true) : null;
+    out.back = fill === null ? 'slat' : fill >= 0.8 ? 'solid' : fill >= 0.12 ? 'slat' : 'open';
+  } else if (type === 'sofa' || type === 'armchair') {
+    const arm = armFraction(T, type === 'sofa' ? 0.1 : 0.17);
+    out.arm = round2(Math.min(0.2, Math.max(0.04, arm)));
+    if (type === 'sofa') {
+      const seams = F ? findLines(F, 'x', [0.05, 0.5, 0.95, 0.76]).length : 0;
+      const inner = w * (1 - 2 * out.arm);
+      const lo = clampInt(Math.ceil(inner / 1.1), 1, 5);
+      const hi = clampInt(Math.floor(inner / 0.45), lo, 5);
+      out.seats = seams ? clampInt(seams + 1, lo, hi) : clampInt(inner / 0.7, lo, hi);
+    }
+  } else if (['table', 'coffee-table', 'desk'].includes(type) && F) {
+    const frac = edgeRunFrac(F, 0.97);
+    out.legFrac = round2(Math.min(0.12, Math.max(0.02, frac || 0.05)));
+    // A turned leg shades across its width; a square one is flat
+    const span = frac || 0.06;
+    const leg = pickColor(F, [0, 0.8, span, 0.98]);
+    const dark = pickColor(F, [0, 0.8, span, 0.98], 'dark');
+    const light = pickColor(F, [0, 0.8, span, 0.98], 'light');
+    out.roundLegs =
+      leg && dark && light && colourGap(dark, light) > 0.4 * Math.max(40, luma(hexRgb(leg)))
+        ? 1
+        : 0;
+  } else if (type === 'bed' && F) {
+    out.channels = findLines(F, 'x', [0.1, 0.06, 0.9, 0.2]).length >= 2 ? 1 : 0;
+  }
+  return out;
 }
 
 // ---------- palette ----------
@@ -309,13 +485,15 @@ function paletteFor(type, views) {
     // Headboard seen from the foot: the upholstery colour; duvet and pillows from the plan view
     palette.body =
       pickColor(F, [0.2, 0.06, 0.8, 0.2]) || pickColor(T, [0.2, 0.0, 0.8, 0.08]) || all;
-    // Folds and shadow darken the photographed cover, so lift it a little towards its lit side
-    palette.accent = lift(
-      pickColor(T, [0.2, 0.58, 0.8, 0.84]) ||
-        pickColor(F, [0.2, 0.55, 0.8, 0.85]) ||
-        FALLBACK.accent,
-      0.12
-    );
+    // The duvet is used as photographed: no brightening, so the colour stays faithful
+    // It is read from every view that shows it: the plan view alone sits in the shadow of the foot
+    const seen = [
+      pickColor(T, [0.2, 0.58, 0.8, 0.84]),
+      pickColor(F, [0.2, 0.55, 0.8, 0.85]),
+      views.left ? pickColor(views.left, [0.5, 0.3, 0.9, 0.65]) : null,
+      views.right ? pickColor(views.right, [0.1, 0.3, 0.5, 0.65]) : null,
+    ].filter(Boolean);
+    palette.accent = seen.length ? toHex(mean(seen.map(hexRgb))) : FALLBACK.accent;
     palette.pillow = pickColor(T, [0.2, 0.13, 0.8, 0.38], 'light') || FALLBACK.pillow;
   } else if (type === 'sofa' || type === 'armchair') {
     palette.body = pickColor(F, [0.15, 0.1, 0.85, 0.4]) || all;
@@ -328,6 +506,9 @@ function paletteFor(type, views) {
     palette.leg = pickColor(F, [0.0, 0.8, 1.0, 1.0], 'dark') || FALLBACK.leg;
   } else if (type === 'wardrobe' || type === 'bookshelf') {
     palette.body = pickColor(F, [0.1, 0.1, 0.9, 0.9]) || all;
+  } else if (type === 'nightstand') {
+    palette.body = pickColor(F, [0.1, 0.1, 0.9, 0.85]) || all;
+    palette.leg = pickColor(F, [0.1, 0.9, 0.9, 1.0], 'dark') || shadeHex(palette.body, 0.5);
   } else if (type === 'cabinet') {
     palette.body = pickColor(F, [0.1, 0.3, 0.9, 0.9]) || all;
     palette.accent = pickColor(T, [0.1, 0.1, 0.9, 0.9]) || palette.body;
@@ -350,9 +531,9 @@ function paletteFor(type, views) {
  * @param {{widthCm:number, depthCm:number, heightCm:number}} dims
  * @param {string} [forceType] a type id chosen by the user; otherwise it is detected
  */
-export function buildDesign(views, dims, forceType) {
+export function buildDesign(views, dims, forceType, sizeKnown = true) {
   const traits = measureTraits(views);
-  const type = TYPE_IDS.has(forceType) ? forceType : classifyType(traits, dims);
+  const type = TYPE_IDS.has(forceType) ? forceType : classifyType(traits, dims, sizeKnown);
   const palette = paletteFor(type, views);
   const out = { v: 1, type, palette, traits: {} };
   if (type === 'bed') {
@@ -360,10 +541,8 @@ export function buildDesign(views, dims, forceType) {
     // How high the covers sit compared with the headboard decides how deep the base is
     out.traits.bodyFrac = Math.round(Math.min(0.9, Math.max(0.25, traits.bodyFrac)) * 100) / 100;
     out.traits.legs = traits.gapFrac > 0.08 ? 1 : 0;
-    out.traits.channels = 0;
-  } else if (type === 'sofa') {
-    out.traits.seats = Math.min(4, Math.max(2, Math.round((dims.widthCm * 0.8) / 62)));
   }
+  Object.assign(out.traits, detectStructure(type, views, dims));
   return out;
 }
 
@@ -392,6 +571,20 @@ export function sanitizeDesign(raw) {
     traits.channels = t.channels ? 1 : 0;
   } else if (raw.type === 'sofa') {
     traits.seats = Math.round(num(t.seats, 1, 5, 3));
+    traits.arm = num(t.arm, 0.04, 0.2, 0.1);
+  } else if (raw.type === 'armchair') {
+    traits.arm = num(t.arm, 0.04, 0.22, 0.17);
+  } else if (raw.type === 'wardrobe') {
+    traits.doors = Math.round(num(t.doors, 1, 6, 2));
+  } else if (raw.type === 'bookshelf') {
+    traits.shelves = Math.round(num(t.shelves, 2, 8, 4));
+  } else if (raw.type === 'nightstand') {
+    traits.drawers = Math.round(num(t.drawers, 1, 4, 2));
+  } else if (raw.type === 'chair') {
+    traits.back = ['solid', 'slat', 'open'].includes(t.back) ? t.back : 'slat';
+  } else if (['table', 'coffee-table', 'desk'].includes(raw.type)) {
+    traits.legFrac = num(t.legFrac, 0.02, 0.12, 0.05);
+    traits.roundLegs = t.roundLegs ? 1 : 0;
   }
   return { v: 1, type: raw.type, palette, traits };
 }
