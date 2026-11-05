@@ -593,3 +593,17 @@ export function sanitizeDesign(raw) {
 export function designMainColor(design) {
   return design?.palette?.body || FALLBACK.body;
 }
+
+/**
+ * What a photo-made piece offers to small items resting on it (a laptop on a desk, a lamp on a nightstand),
+ * from its type: tables, desks and cabinets have a flat top; a bed has a soft one.
+ */
+export function supportTraitsFor(design) {
+  const type = design?.type;
+  if (type === 'bed') return { supportsTop: true, supportKind: 'soft', surfaceHeightCm: 46 };
+  if (type === 'sofa' || type === 'armchair')
+    return { supportsTop: true, supportKind: 'soft', surfaceHeightCm: 44 };
+  if (['table', 'table-round', 'coffee-table', 'desk', 'cabinet', 'nightstand'].includes(type))
+    return { supportsTop: true };
+  return {};
+}

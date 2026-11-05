@@ -252,6 +252,7 @@ export function PhotoModelModal({ onClose }) {
   const [dims, setDims] = useState({ widthCm: 80, depthCm: 50, heightCm: 80 });
   const [photos, setPhotos] = useState({}); // slotId -> { width, height, rgba, thumbUrl }
   const [tolerance, setTolerance] = useState(60);
+  const nameTouched = useRef(false); // until the user types a name, it follows the detected type
   const toleranceTouched = useRef(false); // once the user moves the slider, it is theirs
   const [design, setDesign] = useState(null); // type, palette and traits read from the photos
   const [typeChoice, setTypeChoice] = useState(''); // '' = detect from the photos
@@ -452,6 +453,10 @@ export function PhotoModelModal({ onClose }) {
           result = buildDesign(views, next, result.type, true);
         }
         setDesign(result);
+        if (!nameTouched.current) {
+          const label = DESIGN_TYPES.find((t) => t.id === result.type)?.label || 'furniture';
+          setName(`My ${label.toLowerCase()}`);
+        }
       } catch (err) {
         setDesign(null);
         setMessage({ kind: 'error', text: err.message });
@@ -556,7 +561,10 @@ export function PhotoModelModal({ onClose }) {
             label="Name"
             value={name}
             maxLength={60}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              nameTouched.current = true;
+              setName(e.target.value);
+            }}
           />
 
           <div className={local.section}>
