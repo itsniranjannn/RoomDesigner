@@ -5,6 +5,10 @@ import '@fontsource-variable/space-grotesk';
 import App from './App.jsx';
 import { ErrorBoundary } from './components/common/ErrorBoundary.jsx';
 import { useRoomStore } from './store/roomStore.js';
+import { installGlobalErrorHandlers } from './utils/errorLog.js';
+
+// Keep a small local log of uncaught errors for bug reports (nothing leaves the device)
+installGlobalErrorHandlers();
 
 // Handy for poking at state from the browser console during development only
 if (import.meta.env.DEV) {
