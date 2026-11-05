@@ -6,6 +6,7 @@ import { Box, Footprints, Square } from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
 import { Furniture3DBox } from '../preview3d/Furniture3DBox.jsx';
 import { WalkControls } from '../preview3d/WalkControls.jsx';
+import { WalkHud } from '../preview3d/WalkHud.jsx';
 import { LIGHTING, LIGHT_OPTIONS } from '../preview3d/lighting.jsx';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
@@ -161,44 +162,98 @@ const Part = ({ position, size, color, roughness = 0.6, shadow = true }) => (
   </mesh>
 );
 
-/** Frame, leaf and handle of a door; the main entrance gets a wine leaf and a doormat. */
-function Door3D({ fixture: f, swing, entrance }) {
+/** One clean translucent pane: it never writes depth, so what is behind it always shows. */
+function GlassPane({ width, height, position }) {
+  return (
+    <mesh position={position} renderOrder={2}>
+      <planeGeometry args={[width, height]} />
+      <meshStandardMaterial
+        color="#CFE4EE"
+        transparent
+        opacity={0.26}
+        roughness={0.08}
+        metalness={0}
+        side={THREE.DoubleSide}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+/** How far a walkthrough leaves an inner door ajar (radians). */
+const AJAR = 1.25;
+
+/**
+ * Frame, closed leaf and handles of a door, sitting inside the wall thickness. The main entrance
+ * gets a wine leaf and a small doormat inside. While walking, inner doors stand ajar.
+ */
+function Door3D({ fixture: f, swing, entrance, ajar }) {
   const frame = wallFrame(f);
   const w = (f.b - f.a) / 100;
   const t = f.thick / 100;
   const h = f.z1 / 100;
   const post = 0.05;
-  // Leaf hinged at the start of the opening, swung 70 degrees towards its side of the wall
-  const side = swing * (f.opening.flip ? -1 : 1) * frame.flip;
+  const tall = h > 1;
+  const leafW = w - post * 2;
+  const leafH = Math.max(0.2, h - post - 0.005);
+  const leafT = 0.04;
   const leafColor = entrance ? ENTRANCE_LEAF : LEAF;
-  const leafLen = w - 0.06;
-  const leafH = Math.max(0.2, h - 0.04);
-  const outLocal = f.outward * frame.flip;
+  const panelColor = entrance ? '#6B1726' : '#8C5F3D';
+  // Hinged at the start of the opening; opens towards its side of the wall
+  const side = swing * (f.opening.flip ? -1 : 1) * frame.flip;
+  const angle = ajar && !entrance && tall ? -side * AJAR : 0;
+  const lever = (z) => (
+    <Part
+      key={z}
+      position={[leafW - 0.07, Math.min(0.98, leafH * 0.5), z]}
+      size={[0.11, 0.022, 0.026]}
+      color="#C4A869"
+      roughness={0.3}
+      shadow={false}
+    />
+  );
   return (
     <group position={frame.position} rotation={frame.rotation}>
-      <Part position={[-(w / 2 - post / 2), h / 2, 0]} size={[post, h, t + 0.02]} color={TIMBER} />
-      <Part position={[w / 2 - post / 2, h / 2, 0]} size={[post, h, t + 0.02]} color={TIMBER} />
-      <Part position={[0, h - post / 2, 0]} size={[w, post, t + 0.02]} color={TIMBER} />
-      <Part position={[0, 0.006, 0]} size={[w, 0.012, t + 0.01]} color="#4A3424" shadow={false} />
-      <group position={[-w / 2 + 0.03, 0, 0]} rotation={[0, -side * 1.22, 0]}>
+      <Part position={[-(w / 2 - post / 2), h / 2, 0]} size={[post, h, t]} color={TIMBER} />
+      <Part position={[w / 2 - post / 2, h / 2, 0]} size={[post, h, t]} color={TIMBER} />
+      <Part position={[0, h - post / 2, 0]} size={[w - post * 2, post, t]} color={TIMBER} />
+      <Part
+        position={[0, 0.005, 0]}
+        size={[w - post * 2, 0.01, t - 0.01]}
+        color="#4A3424"
+        shadow={false}
+      />
+      <group position={[-w / 2 + post, 0, 0]} rotation={[0, angle, 0]}>
         <Part
-          position={[leafLen / 2, leafH / 2, 0]}
-          size={[leafLen, leafH, 0.04]}
+          position={[leafW / 2, 0.01 + leafH / 2, 0]}
+          size={[leafW, leafH, leafT]}
           color={leafColor}
         />
-        <Part
-          position={[leafLen - 0.07, Math.min(0.95, leafH * 0.5), side * 0.035]}
-          size={[0.1, 0.025, 0.03]}
-          color="#C4A869"
-          roughness={0.3}
-        />
+        {tall &&
+          [-1, 1].flatMap((face) => [
+            <Part
+              key={`u${face}`}
+              position={[leafW / 2, leafH * 0.72, face * (leafT / 2 + 0.002)]}
+              size={[leafW - 0.2, leafH * 0.28, 0.006]}
+              color={panelColor}
+              shadow={false}
+            />,
+            <Part
+              key={`l${face}`}
+              position={[leafW / 2, leafH * 0.28, face * (leafT / 2 + 0.002)]}
+              size={[leafW - 0.2, leafH * 0.4, 0.006]}
+              color={panelColor}
+              shadow={false}
+            />,
+          ])}
+        {tall && [lever(leafT / 2 + 0.014), lever(-(leafT / 2 + 0.014))]}
       </group>
-      {entrance && f.outward !== 0 && (
+      {entrance && f.outward !== 0 && tall && (
         <Part
-          position={[0, 0.01, outLocal * (t / 2 + 0.32)]}
-          size={[w, 0.02, 0.5]}
-          color="#8A2635"
-          roughness={0.95}
+          position={[0, 0.006, -f.outward * frame.flip * (t / 2 + 0.3)]}
+          size={[Math.min(w, 1.0) - 0.1, 0.012, 0.5]}
+          color="#4A4038"
+          roughness={0.98}
           shadow={false}
         />
       )}
@@ -206,33 +261,68 @@ function Door3D({ fixture: f, swing, entrance }) {
   );
 }
 
-/** Timber frame, sill board and cross bar around a window's glass. */
+/** Timber frame, thin centred cross bars, one glass pane and a sill board around a window. */
 function Window3D({ fixture: f }) {
   const frame = wallFrame(f);
   const w = (f.b - f.a) / 100;
   const t = f.thick / 100;
   const y0 = f.sill / 100;
   const y1 = f.z1 / 100;
-  const h = Math.max(0.1, y1 - y0);
+  const h = y1 - y0;
   const bar = 0.045;
+  if (h < 0.05) {
+    // Low walls: the window is marked on the wall top by a timber rim around a glass inlay
+    return (
+      <group position={frame.position} rotation={frame.rotation}>
+        <Part
+          position={[0, y0 + 0.004, 0]}
+          size={[w, 0.008, t - 0.01]}
+          color={TIMBER}
+          shadow={false}
+        />
+        <mesh position={[0, y0 + 0.0085, 0]}>
+          <boxGeometry args={[Math.max(0.05, w - 0.1), 0.002, Math.max(0.02, t - 0.06)]} />
+          <meshStandardMaterial color="#BFD7E3" roughness={0.2} />
+        </mesh>
+      </group>
+    );
+  }
+  const innerW = w - bar * 2;
+  const innerH = h - bar * 2;
   return (
     <group position={frame.position} rotation={frame.rotation}>
+      <Part position={[-(w / 2 - bar / 2), y0 + h / 2, 0]} size={[bar, h, t]} color={TIMBER} />
+      <Part position={[w / 2 - bar / 2, y0 + h / 2, 0]} size={[bar, h, t]} color={TIMBER} />
+      <Part position={[0, y1 - bar / 2, 0]} size={[innerW, bar, t]} color={TIMBER} />
+      <Part position={[0, y0 + bar / 2, 0]} size={[innerW, bar, t]} color={TIMBER} />
+      {innerW > 0.6 && (
+        <Part
+          position={[0, y0 + h / 2, 0]}
+          size={[0.025, innerH, 0.03]}
+          color={TIMBER}
+          shadow={false}
+        />
+      )}
+      {innerH > 0.5 && (
+        <Part
+          position={[0, y0 + h / 2, 0]}
+          size={[innerW, 0.025, 0.03]}
+          color={TIMBER}
+          shadow={false}
+        />
+      )}
+      <GlassPane width={innerW} height={innerH} position={[0, y0 + h / 2, 0]} />
       <Part
-        position={[-(w / 2 - bar / 2), y0 + h / 2, 0]}
-        size={[bar, h, t + 0.015]}
-        color={TIMBER}
+        position={[0, y0 - 0.012, 0]}
+        size={[w + 0.06, 0.024, t + 0.06]}
+        color="#E6DCCB"
+        shadow={false}
       />
-      <Part position={[w / 2 - bar / 2, y0 + h / 2, 0]} size={[bar, h, t + 0.015]} color={TIMBER} />
-      <Part position={[0, y1 - bar / 2, 0]} size={[w, bar, t + 0.015]} color={TIMBER} />
-      <Part position={[0, y0 + bar / 2, 0]} size={[w, bar, t + 0.015]} color={TIMBER} />
-      {h > 0.4 && <Part position={[0, y0 + h / 2, 0]} size={[0.03, h, 0.03]} color={TIMBER} />}
-      <Part position={[0, y0 + h / 2, 0]} size={[w - 0.1, 0.03, 0.03]} color={TIMBER} />
-      <Part position={[0, y0 - 0.012, 0]} size={[w + 0.1, 0.03, t + 0.1]} color="#E6DCCB" />
     </group>
   );
 }
 
-function WallBox({ box: b, color, glass = false }) {
+function WallBox({ box: b, color }) {
   const len = (b.b - b.a) / 100;
   const h = (b.z1 - b.z0) / 100;
   const mid = (b.a + b.b) / 200;
@@ -241,19 +331,15 @@ function WallBox({ box: b, color, glass = false }) {
   const pos = b.axis === 'h' ? [mid, y, across] : [across, y, mid];
   const dims = b.axis === 'h' ? [len, h, b.thick / 100] : [b.thick / 100, h, len];
   return (
-    <mesh position={pos} castShadow={!glass} receiveShadow>
+    <mesh position={pos} castShadow receiveShadow>
       <boxGeometry args={dims} />
-      {glass ? (
-        <meshStandardMaterial color="#BFD7E3" transparent opacity={0.35} roughness={0.1} />
-      ) : (
-        <meshStandardMaterial color={color} roughness={0.85} />
-      )}
+      <meshStandardMaterial color={color} roughness={0.85} />
     </mesh>
   );
 }
 
 /** Floors, walls (with real door and window openings) and furniture of one floor. */
-function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSlab }) {
+function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSlab, ajar }) {
   const openings = openingsOf(flat, level.id);
   const { boxes, skirting, fixtures, swings } = useMemo(() => {
     const analysis = analyzeLevel(flat, level.id);
@@ -320,9 +406,11 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSla
       {skirting.map((b, i) => (
         <WallBox key={`s${i}`} box={b} color={SKIRTING_COLOR} />
       ))}
-      {boxes.map((b, i) => (
-        <WallBox key={i} box={b} color={WALL_COLOR} glass={b.glass} />
-      ))}
+      {boxes
+        .filter((b) => !b.glass)
+        .map((b, i) => (
+          <WallBox key={i} box={b} color={WALL_COLOR} />
+        ))}
       {fixtures.map((f) =>
         f.type === 'door' ? (
           <Door3D
@@ -330,6 +418,7 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSla
             fixture={f}
             swing={swings[f.id] ?? 1}
             entrance={entranceId === f.id}
+            ajar={ajar}
           />
         ) : (
           <Window3D key={`${f.id}-${f.a}`} fixture={f} />
@@ -426,6 +515,8 @@ export function Flat3DView() {
             layout.cz + layout.span * 1.25,
           ],
           fov: 45,
+          near: 0.25,
+          far: 400,
         }}
         gl={{ antialias: true }}
       >
@@ -443,8 +534,10 @@ export function Flat3DView() {
           shadow-camera-right={maxDim * 1.5}
           shadow-camera-top={maxDim * 1.5}
           shadow-camera-bottom={-maxDim * 1.5}
+          shadow-camera-near={0.5}
           shadow-camera-far={maxDim * 8}
-          shadow-normalBias={0.04}
+          shadow-bias={-0.0002}
+          shadow-normalBias={0.05}
         />
         <directionalLight
           position={[layout.cx - maxDim, maxDim * 1.6, layout.cz - maxDim]}
@@ -476,6 +569,7 @@ export function Flat3DView() {
                 fullHeight={full || li < activeIdx}
                 entranceId={entrance?.opening.id}
                 withSlab={li > 0}
+                ajar={walking}
               />
               {flat.stairs
                 .filter((s) => s.levelId === level.id)
@@ -508,11 +602,13 @@ export function Flat3DView() {
 
       {walking && (
         <p className={styles.view3dHint} aria-live="polite">
-          Drag to look around. Walk with W A S D or the arrow keys, through doors and up stairs.
-          Press Esc to leave.
+          Drag to look around. Walk with W A S D (Shift to run), through doors and up stairs; the
+          arrow keys move and turn. Press Esc to leave.
           {entrance ? '' : ' This flat has no outer door, so you start in the first room.'}
         </p>
       )}
+
+      {walking && <WalkHud onExit={exitWalk} />}
 
       <div className={styles.view3dControls} role="toolbar" aria-label="3D view controls">
         <Segmented

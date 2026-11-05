@@ -6,6 +6,7 @@
 
 import { resolveItemDef } from '../data/furnitureCatalog.js';
 import { degToRad } from './geometry.js';
+import { circleHitsBox } from './walkMove.js';
 import { hasOutline, outlineEdges, pointOnEdge, pointInOutline } from './roomShape.js';
 
 export const PLAYER_RADIUS = 0.22;
@@ -88,14 +89,7 @@ export function isBlocked(px, pz, blockers) {
       if (!isOnFloor(floor, px + dx, pz + dz)) return true;
   }
   for (const b of blockers) {
-    const dx = px - b.x;
-    const dz = pz - b.z;
-    const c = Math.cos(b.theta);
-    const s = Math.sin(b.theta);
-    const lx = dx * c - dz * s;
-    const lz = dx * s + dz * c;
-    if (Math.abs(lx) < b.halfW + PLAYER_RADIUS && Math.abs(lz) < b.halfD + PLAYER_RADIUS)
-      return true;
+    if (circleHitsBox(px, pz, PLAYER_RADIUS, b.x, b.z, b.halfW, b.halfD, b.theta)) return true;
   }
   return false;
 }
