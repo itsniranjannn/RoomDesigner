@@ -91,7 +91,7 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
           ))}
 
           {allRooms.map((r) => {
-            const count = (r.placedFurniture || []).length;
+            const count = Array.isArray(r.placedFurniture) ? r.placedFurniture.length : 0;
             return (
               <div key={r.id} className={styles.row}>
                 <button

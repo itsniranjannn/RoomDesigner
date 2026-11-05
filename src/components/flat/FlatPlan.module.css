@@ -300,7 +300,8 @@
 
 .notice {
   position: absolute;
-  top: var(--space-4);
+  /* Bottom centre: the floor tabs own the top centre */
+  bottom: var(--space-4);
   left: 50%;
   transform: translateX(-50%);
   max-width: calc(100% - 32px);

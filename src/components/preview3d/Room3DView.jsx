@@ -48,8 +48,27 @@ function CameraRig({ maxDimM, resetTrigger, isFullHeight, enabled = true }) {
     transitionTime.current = 0;
   }, [resetTrigger, isFullHeight]);
 
+  // The view the person had before a walkthrough, put back when it ends
+  const saved = useRef(null);
+  const wasEnabled = useRef(true);
+  React.useEffect(() => {
+    if (enabled && !wasEnabled.current && saved.current && controlsRef.current) {
+      camera.position.copy(saved.current.position);
+      controlsRef.current.target.copy(saved.current.target);
+      controlsRef.current.update();
+      isTransitioning.current = false;
+    }
+    wasEnabled.current = enabled;
+  }, [enabled, camera]);
+
   useFrame((_, delta) => {
     if (!enabled) return;
+    if (!isTransitioning.current && controlsRef.current) {
+      saved.current = {
+        position: camera.position.clone(),
+        target: controlsRef.current.target.clone(),
+      };
+    }
     if (isTransitioning.current) {
       transitionTime.current += delta;
       const duration = 0.85;
@@ -98,7 +117,6 @@ export function Room3DView() {
 
   const exitWalk = React.useCallback(() => {
     setWalking(false);
-    setResetCounter((c) => c + 1);
   }, []);
 
   if (!room) return null;

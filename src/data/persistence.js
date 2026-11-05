@@ -50,6 +50,17 @@ export function clearActiveRoomId() {
   }
 }
 
+/** A stored room with damaged lists opens with those lists empty instead of failing to open. */
+function sanitizeRoom(room) {
+  const list = (v) => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []);
+  return {
+    ...room,
+    placedFurniture: list(room.placedFurniture),
+    doors: list(room.doors),
+    windows: list(room.windows),
+  };
+}
+
 export async function saveRoomToDB(room) {
   try {
     const db = await getDB();
@@ -74,7 +85,7 @@ export async function loadRoomFromDB(id) {
     const db = await getDB();
     if (!db) return null;
     const room = await db.get(STORE_ROOMS, id);
-    return room || null;
+    return room ? sanitizeRoom(room) : null;
   } catch (error) {
     if (import.meta.env?.DEV) {
       console.error('Failed to load room from IndexedDB:', error);
