@@ -4,6 +4,7 @@ import { useRoomStore } from '../../store/roomStore.js';
 import { moveSpan, resizeSpan, OPENING_LIMITS } from '../../engine/openings.js';
 import { hasOutline } from '../../engine/roomShape.js';
 import { OutlineBoundary } from './OutlineBoundary.jsx';
+import { DoorSwing, WindowSwing } from './OpeningSwings.jsx';
 import cursors from './Cursors.module.css';
 
 /**
@@ -422,6 +423,8 @@ function RectBoundary({ room, svgRef }) {
               )}
             </g>
 
+            <WindowSwing room={room} win={win} />
+
             {/* Left/Start Resize Handle */}
             {(isHovered || isActive) && (
               <rect
@@ -508,204 +511,8 @@ function RectBoundary({ room, svgRef }) {
             {/* Wall Cutout */}
             <rect x={dx} y={dy} width={dw} height={dh} fill="var(--color-linen)" />
 
-            {/* 90-degree Door Swing Arc (Inward vs Outward) */}
-            {(() => {
-              const isOutward = door.swingDirection === 'outward';
-
-              if (wall === 'bottom') {
-                return isOutward ? (
-                  <>
-                    {/* Outward swing: swings out below the room (towards +Y) */}
-                    <path
-                      d={`M ${dx} ${depthCm + door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} ${depthCm}`}
-                      fill="none"
-                      stroke="#9E8870"
-                      strokeWidth="1.2"
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={dx}
-                      y1={depthCm}
-                      x2={dx}
-                      y2={depthCm + door.widthCm}
-                      stroke="#2D231B"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      pointerEvents="none"
-                    />
-                  </>
-                ) : (
-                  <>
-                    {/* Inward swing: swings into the room (towards -Y) */}
-                    <path
-                      d={`M ${dx} ${depthCm - door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} ${depthCm}`}
-                      fill="none"
-                      stroke="#9E8870"
-                      strokeWidth="1.2"
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={dx}
-                      y1={depthCm}
-                      x2={dx}
-                      y2={depthCm - door.widthCm}
-                      stroke="#2D231B"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      pointerEvents="none"
-                    />
-                  </>
-                );
-              }
-
-              if (wall === 'top') {
-                return isOutward ? (
-                  <>
-                    {/* Outward swing: swings out above the room (towards -Y) */}
-                    <path
-                      d={`M ${dx} ${-door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 1 ${dx + door.widthCm} 0`}
-                      fill="none"
-                      stroke="#9E8870"
-                      strokeWidth="1.2"
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={dx}
-                      y1={0}
-                      x2={dx}
-                      y2={-door.widthCm}
-                      stroke="#2D231B"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      pointerEvents="none"
-                    />
-                  </>
-                ) : (
-                  <>
-                    {/* Inward swing: swings into the room (towards +Y) */}
-                    <path
-                      d={`M ${dx} ${door.widthCm} A ${door.widthCm} ${door.widthCm} 0 0 0 ${dx + door.widthCm} 0`}
-                      fill="none"
-                      stroke="#9E8870"
-                      strokeWidth="1.2"
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={dx}
-                      y1={0}
-                      x2={dx}
-                      y2={door.widthCm}
-                      stroke="#2D231B"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      pointerEvents="none"
-                    />
-                  </>
-                );
-              }
-
-              if (wall === 'left') {
-                return isOutward ? (
-                  <>
-                    {/* Outward swing: swings out to the left of the room (towards -X) */}
-                    <path
-                      d={`M ${-door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 0 0 ${dy + door.widthCm}`}
-                      fill="none"
-                      stroke="#9E8870"
-                      strokeWidth="1.2"
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={0}
-                      y1={dy}
-                      x2={-door.widthCm}
-                      y2={dy}
-                      stroke="#2D231B"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      pointerEvents="none"
-                    />
-                  </>
-                ) : (
-                  <>
-                    {/* Inward swing: swings into the room (towards +X) */}
-                    <path
-                      d={`M ${door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 1 0 ${dy + door.widthCm}`}
-                      fill="none"
-                      stroke="#9E8870"
-                      strokeWidth="1.2"
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={0}
-                      y1={dy}
-                      x2={door.widthCm}
-                      y2={dy}
-                      stroke="#2D231B"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      pointerEvents="none"
-                    />
-                  </>
-                );
-              }
-
-              if (wall === 'right') {
-                return isOutward ? (
-                  <>
-                    {/* Outward swing: swings out to the right of the room (towards +X) */}
-                    <path
-                      d={`M ${widthCm + door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 1 ${widthCm} ${dy + door.widthCm}`}
-                      fill="none"
-                      stroke="#9E8870"
-                      strokeWidth="1.2"
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={widthCm}
-                      y1={dy}
-                      x2={widthCm + door.widthCm}
-                      y2={dy}
-                      stroke="#2D231B"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      pointerEvents="none"
-                    />
-                  </>
-                ) : (
-                  <>
-                    {/* Inward swing: swings into the room (towards -X) */}
-                    <path
-                      d={`M ${widthCm - door.widthCm} ${dy} A ${door.widthCm} ${door.widthCm} 0 0 0 ${widthCm} ${dy + door.widthCm}`}
-                      fill="none"
-                      stroke="#9E8870"
-                      strokeWidth="1.2"
-                      strokeDasharray="3 3"
-                      pointerEvents="none"
-                    />
-                    <line
-                      x1={widthCm}
-                      y1={dy}
-                      x2={widthCm - door.widthCm}
-                      y2={dy}
-                      stroke="#2D231B"
-                      strokeWidth="2.8"
-                      strokeLinecap="round"
-                      pointerEvents="none"
-                    />
-                  </>
-                );
-              }
-
-              return null;
-            })()}
+            {/* Leaf and swing arc: either hinge side, either direction */}
+            <DoorSwing room={room} door={door} />
 
             {/* Draggable Door Body */}
             <g
