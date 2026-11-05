@@ -29,6 +29,7 @@ import { cleanOverrides } from '../engine/overrides.js';
 import { evaluateAllCollisions } from '../engine/collision.js';
 import { reconcileStacking, pickDefaultSupport } from '../engine/stacking.js';
 import { findFreePosition } from '../engine/placement.js';
+import { applyFinish } from '../components/preview3d/materials.js';
 import { clamp, normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
 import { clampOpening, DOOR_WIDTH_CM, defaultOpeningWidth } from '../engine/openings.js';
@@ -663,6 +664,15 @@ export const useRoomStore = create((set, get) => ({
 
     set({ room: updatedRoom, saveStatus: 'saving' });
 
+    persistDebounced(updatedRoom, set);
+  },
+
+  // Floor and wall finish of the 3D view (ids from preview3d/materials.js); classic = none chosen
+  setRoomFinish: (patch) => {
+    const { room } = get();
+    if (!room) return;
+    const updatedRoom = applyFinish(room, patch);
+    set({ room: updatedRoom, saveStatus: 'saving' });
     persistDebounced(updatedRoom, set);
   },
 

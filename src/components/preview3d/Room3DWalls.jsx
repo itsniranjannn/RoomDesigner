@@ -13,7 +13,16 @@ import React from 'react';
  * - Authentic door assemblies with timber threshold, posts, header jamb, 3D swung door leaf (inward swing),
  *   bronze hardware handle, and top lintels.
  */
-export function Room3DWalls({ room, isFullHeight = false }) {
+/** A shared textured material when the room has chosen one, otherwise the classic plain colour. */
+function SurfaceMat({ mat, color, roughness }) {
+  return mat ? (
+    <primitive object={mat} attach="material" />
+  ) : (
+    <meshStandardMaterial color={color} roughness={roughness} />
+  );
+}
+
+export function Room3DWalls({ room, isFullHeight = false, materials = null }) {
   const { widthCm, depthCm, doors = [], windows = [] } = room;
   const widthM = widthCm / 100;
   const depthM = depthCm / 100;
@@ -158,7 +167,7 @@ export function Room3DWalls({ room, isFullHeight = false }) {
               {/* Plaster Wall Segment */}
               <mesh castShadow receiveShadow position={[pt.x, halfH, pt.z]}>
                 <boxGeometry args={geomArgs} />
-                <meshStandardMaterial color={wallColor} roughness={0.85} />
+                <SurfaceMat mat={materials?.wall} color={wallColor} roughness={0.85} />
               </mesh>
 
               {/* Sage Pine Coping Cap on Top */}
@@ -264,7 +273,7 @@ export function Room3DWalls({ room, isFullHeight = false }) {
                 {/* Wall under sill */}
                 <mesh castShadow receiveShadow position={[pt.x, winSillH / 2, pt.z]}>
                   <boxGeometry args={underSillArgs} />
-                  <meshStandardMaterial color={wallColor} roughness={0.85} />
+                  <SurfaceMat mat={materials?.wall} color={wallColor} roughness={0.85} />
                 </mesh>
 
                 {/* Baseboard under sill */}
@@ -324,7 +333,7 @@ export function Room3DWalls({ room, isFullHeight = false }) {
                   <group position={[pt.x, (wallHeightM + winHeadH) / 2, pt.z]}>
                     <mesh castShadow receiveShadow>
                       <boxGeometry args={lintelArgs} />
-                      <meshStandardMaterial color={wallColor} roughness={0.85} />
+                      <SurfaceMat mat={materials?.wall} color={wallColor} roughness={0.85} />
                     </mesh>
                     <mesh
                       position={[0, (wallHeightM - winHeadH) / 2 + capHeightM / 2, 0]}
@@ -479,7 +488,7 @@ export function Room3DWalls({ room, isFullHeight = false }) {
                 <group position={[pt.x, (wallHeightM + 2.04) / 2, pt.z]}>
                   <mesh castShadow receiveShadow>
                     <boxGeometry args={doorLintelArgs} />
-                    <meshStandardMaterial color={wallColor} roughness={0.85} />
+                    <SurfaceMat mat={materials?.wall} color={wallColor} roughness={0.85} />
                   </mesh>
                   <mesh position={[0, (wallHeightM - 2.04) / 2 + capHeightM / 2, 0]} castShadow>
                     <boxGeometry args={doorCapArgs} />
@@ -507,21 +516,23 @@ export function Room3DWalls({ room, isFullHeight = false }) {
       {/* Warm Architectural Floor Plane */}
       <mesh receiveShadow position={[0, 0, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[widthM, depthM]} />
-        <meshStandardMaterial color={floorColor} roughness={0.8} />
+        <SurfaceMat mat={materials?.floor} color={floorColor} roughness={0.8} />
       </mesh>
 
-      {/* Subtle floor plank division lines */}
-      <group position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        {Array.from({ length: Math.floor(widthM / 0.45) }).map((_, idx) => {
-          const px = -halfW + (idx + 1) * 0.45;
-          return (
-            <mesh key={idx} position={[px, 0, 0]}>
-              <planeGeometry args={[0.003, depthM * 0.98]} />
-              <meshBasicMaterial color="#DDD3C4" />
-            </mesh>
-          );
-        })}
-      </group>
+      {/* Subtle floor plank division lines (classic floor only; a chosen floor has its own boards) */}
+      {!materials?.floor && (
+        <group position={[0, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          {Array.from({ length: Math.floor(widthM / 0.45) }).map((_, idx) => {
+            const px = -halfW + (idx + 1) * 0.45;
+            return (
+              <mesh key={idx} position={[px, 0, 0]}>
+                <planeGeometry args={[0.003, depthM * 0.98]} />
+                <meshBasicMaterial color="#DDD3C4" />
+              </mesh>
+            );
+          })}
+        </group>
+      )}
 
       {/* 4 Architectural Perimeter Walls */}
       {renderWall('top')}

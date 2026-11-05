@@ -9,7 +9,18 @@ import { pushOffInteriorWalls } from '../../engine/furnitureWalls.js';
 import { Furniture3DBox } from '../preview3d/Furniture3DBox.jsx';
 import { WalkControls } from '../preview3d/WalkControls.jsx';
 import { WalkHud } from '../preview3d/WalkHud.jsx';
-import { LIGHTING, LIGHT_OPTIONS } from '../preview3d/lighting.jsx';
+import {
+  LIGHTING,
+  LIGHT_OPTIONS,
+  SceneLights,
+  FurnitureShadows,
+  LampLights,
+} from '../preview3d/lighting.jsx';
+import { MaterialsPanel } from '../preview3d/MaterialsPanel.jsx';
+import { useQuality, useFlatLook } from '../preview3d/useLook.js';
+import { collectLamps } from '../preview3d/lamps.js';
+import { normalizeFinish } from '../preview3d/materials.js';
+import { floorMaterial, wallMaterial } from '../preview3d/surfaceTextures.js';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
 import { SnapshotBridge } from '../preview3d/SnapshotBridge.jsx';
@@ -327,7 +338,7 @@ function Window3D({ fixture: f }) {
   );
 }
 
-function WallBox({ box: b, color }) {
+function WallBox({ box: b, color, material = null }) {
   const len = (b.b - b.a) / 100;
   const h = (b.z1 - b.z0) / 100;
   const mid = (b.a + b.b) / 200;
@@ -338,13 +349,30 @@ function WallBox({ box: b, color }) {
   return (
     <mesh position={pos} castShadow receiveShadow>
       <boxGeometry args={dims} />
-      <meshStandardMaterial color={color} roughness={0.85} />
+      {material ? (
+        <primitive object={material} attach="material" />
+      ) : (
+        <meshStandardMaterial color={color} roughness={0.85} />
+      )}
     </mesh>
   );
 }
 
 /** Floors, walls (with real door and window openings) and furniture of one floor. */
-function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSlab, ajar }) {
+function LevelShell({
+  flat,
+  level,
+  rooms,
+  baseY,
+  fullHeight,
+  entranceId,
+  withSlab,
+  ajar,
+  wallMat = null,
+  floorId = null,
+  showShadows = true,
+  shadowStrength = 0.55,
+}) {
   const openings = openingsOf(flat, level.id);
   const { boxes, skirting, fixtures, swings } = useMemo(() => {
     const analysis = analyzeLevel(flat, level.id);
@@ -373,6 +401,8 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSla
       {spaces.map((space) => {
         const room = rooms[space.roomId];
         const color = (SPACE_KINDS[space.kind] || SPACE_KINDS.room).color;
+        // A room's own floor wins; otherwise the floor picked for the whole flat; otherwise the plain kind color
+        const spaceFloor = floorMaterial(normalizeFinish(room?.finish).floor || floorId);
         return (
           <group key={space.id}>
             {carveHoles(regionRects(space), withSlab ? holes : []).map((r, i) => (
@@ -382,7 +412,11 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSla
                 receiveShadow
               >
                 <boxGeometry args={[r.widthCm / 100, thick, r.depthCm / 100]} />
-                <meshStandardMaterial color={color} roughness={0.9} />
+                {spaceFloor ? (
+                  <primitive object={spaceFloor} attach="material" />
+                ) : (
+                  <meshStandardMaterial color={color} roughness={0.9} />
+                )}
               </mesh>
             ))}
             {room && space.furnishable && (
@@ -393,6 +427,14 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSla
                   (space.y + space.depthCm / 2) / 100,
                 ]}
               >
+                {showShadows && (
+                  <FurnitureShadows
+                    items={room.placedFurniture}
+                    roomWidthCm={room.widthCm}
+                    roomDepthCm={room.depthCm}
+                    strength={shadowStrength}
+                  />
+                )}
                 {(room.placedFurniture || []).map((raw) => {
                   const def = resolveItemDef(raw);
                   const item =
@@ -421,7 +463,7 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSla
       {boxes
         .filter((b) => !b.glass)
         .map((b, i) => (
-          <WallBox key={i} box={b} color={WALL_COLOR} />
+          <WallBox key={i} box={b} color={WALL_COLOR} material={wallMat} />
         ))}
       {fixtures.map((f) =>
         f.type === 'door' ? (
@@ -471,6 +513,9 @@ export function Flat3DView() {
   const [walkLevel, setWalkLevel] = useState(0);
   const [resetKey, setResetKey] = useState(0);
   const preset = LIGHTING[lighting];
+  const quality = useQuality();
+  const look = useFlatLook();
+  const wallMat = wallMaterial(look.wall);
 
   const layout = useMemo(() => {
     if (!flat) return null;
@@ -487,6 +532,29 @@ export function Flat3DView() {
 
   const start = useMemo(() => (flat ? flatWalkStart(flat, rooms) : null), [flat, rooms]);
   const entrance = useMemo(() => (flat ? entranceOf(flat) : null), [flat]);
+
+  // Lamps on the floor being shown light the room in the evening and at night
+  const lampLevel = flat ? (walking ? walkLevel : levelIndex(flat, levelId)) : 0;
+  const lamps = useMemo(() => {
+    const lvl = flat?.levels[lampLevel];
+    if (!lvl) return [];
+    const out = [];
+    for (const space of flat.spaces) {
+      const room = rooms[space.roomId];
+      if (space.levelId !== lvl.id || !space.furnishable || !room) continue;
+      const ox = (space.x + space.widthCm / 2) / 100;
+      const oz = (space.y + space.depthCm / 2) / 100;
+      for (const l of collectLamps(room.placedFurniture, room.widthCm, room.depthCm))
+        out.push({
+          ...l,
+          id: `${space.id}-${l.id}`,
+          x: l.x + ox,
+          z: l.z + oz,
+          y: l.y + (lampLevel * flat.floorHeightCm) / 100,
+        });
+    }
+    return out;
+  }, [flat, rooms, lampLevel]);
 
   // Walking rules: walls with door gaps, furniture of every room, and staircases between floors
   const env = useMemo(() => {
@@ -525,8 +593,9 @@ export function Flat3DView() {
   return (
     <div className={styles.view3d} aria-label="3D view of the flat">
       <Canvas
-        key={`${levelId}-${resetKey}`}
-        shadows
+        key={`${levelId}-${resetKey}-${quality.level}`}
+        shadows={quality.settings.shadowType}
+        dpr={quality.settings.dpr}
         camera={{
           position: [
             layout.cx + layout.span * 0.7,
@@ -540,38 +609,17 @@ export function Flat3DView() {
         gl={{ antialias: true }}
       >
         {preset.background && <color attach="background" args={[preset.background]} />}
-        <ambientLight intensity={preset.ambient[0]} color={preset.ambient[1]} />
-        <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={preset.hemi} />
-        <directionalLight
-          castShadow
-          position={[layout.cx + maxDim, maxDim * 2, layout.cz + maxDim]}
-          intensity={preset.sun[0]}
-          color={preset.sun[1]}
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
-          shadow-camera-left={-maxDim * 1.5}
-          shadow-camera-right={maxDim * 1.5}
-          shadow-camera-top={maxDim * 1.5}
-          shadow-camera-bottom={-maxDim * 1.5}
-          shadow-camera-near={0.5}
-          shadow-camera-far={maxDim * 8}
-          shadow-bias={-0.0002}
-          shadow-normalBias={0.05}
+        <SceneLights
+          mode={lighting}
+          span={maxDim}
+          cx={layout.cx}
+          cz={layout.cz}
+          settings={quality.settings}
+          centerLamp={!walking}
+          fullLamps={lamps.length > 0}
+          y={activeIdx * floorH}
         />
-        <directionalLight
-          position={[layout.cx - maxDim, maxDim * 1.6, layout.cz - maxDim]}
-          intensity={preset.fill[0]}
-          color="#F5EFE6"
-        />
-        {preset.lamp > 0 && !walking && (
-          <pointLight
-            position={[layout.cx, 2.4 + activeIdx * floorH, layout.cz]}
-            intensity={preset.lamp * 2}
-            distance={maxDim * 1.6}
-            decay={1.3}
-            color="#FFD9A0"
-          />
-        )}
+        <LampLights lamps={lamps} mode={lighting} max={quality.settings.maxLamps} />
         {walking && <WalkLamp intensity={preset.lamp} />}
 
         {flat.levels.map((level, li) => {
@@ -589,6 +637,9 @@ export function Flat3DView() {
                 entranceId={entrance?.opening.id}
                 withSlab={li > 0}
                 ajar={walking}
+                wallMat={wallMat}
+                floorId={look.floor}
+                shadowStrength={preset.blob}
               />
               {flat.stairs
                 .filter((s) => s.levelId === level.id)
@@ -599,13 +650,16 @@ export function Flat3DView() {
           );
         })}
 
-        <ContactShadows
-          position={[layout.cx, 0.002, layout.cz]}
-          opacity={0.35}
-          scale={layout.span * 2.4}
-          blur={1.8}
-          far={layout.span}
-        />
+        {quality.settings.contactShadows && (
+          <ContactShadows
+            position={[layout.cx, activeIdx * floorH + 0.002, layout.cz]}
+            opacity={preset.contact}
+            scale={layout.span * 2.4}
+            blur={2.4}
+            far={Math.min(2.5, layout.span)}
+            resolution={1024}
+          />
+        )}
         <OrbitControls
           enabled={!walking}
           target={[layout.cx, 0.3 + activeIdx * floorH, layout.cz]}
@@ -653,6 +707,17 @@ export function Flat3DView() {
             size="small"
           />
         )}
+        <MaterialsPanel
+          floor={look.floor}
+          wall={look.wall}
+          onFloor={(floor) => look.set({ floor })}
+          onWall={(wall) => look.set({ wall })}
+          quality={quality.mode}
+          onQuality={quality.setMode}
+          resolvedQuality={quality.level}
+          floorLabel="Floors"
+          floorNote="A floor chosen for a room in its own editor is kept for that room."
+        />
         <Button
           variant={walking ? 'primary' : 'secondary'}
           icon={<Footprints size={16} aria-hidden="true" />}

@@ -14,7 +14,7 @@ const CAP_H = 0.04;
  * by edge (an open edge has none); doors and windows are cut into them. Positions use the
  * same room-centred metres as the rectangular room, so furniture lines up with the plan.
  */
-export function OutlineWalls({ room, isFullHeight = false }) {
+export function OutlineWalls({ room, isFullHeight = false, materials = null }) {
   const { widthCm, depthCm, outline } = room;
   const edges = useMemo(() => outlineEdges(room), [room]);
   const H = isFullHeight ? 2.4 : 0.45;
@@ -45,7 +45,11 @@ export function OutlineWalls({ room, isFullHeight = false }) {
     return (
       <mesh key={key} position={[x, (z0 + z1) / 2, z]} castShadow receiveShadow {...extra}>
         <boxGeometry args={size} />
-        <meshStandardMaterial color={color} roughness={0.85} />
+        {color === WALL_COLOR && materials?.wall ? (
+          <primitive object={materials.wall} attach="material" />
+        ) : (
+          <meshStandardMaterial color={color} roughness={0.85} />
+        )}
       </mesh>
     );
   };
@@ -140,7 +144,11 @@ export function OutlineWalls({ room, isFullHeight = false }) {
     <group>
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
         <shapeGeometry args={[floorShape]} />
-        <meshStandardMaterial color={FLOOR_COLOR} roughness={0.8} side={THREE.DoubleSide} />
+        {materials?.floor ? (
+          <primitive object={materials.floor} attach="material" />
+        ) : (
+          <meshStandardMaterial color={FLOOR_COLOR} roughness={0.8} side={THREE.DoubleSide} />
+        )}
       </mesh>
       {edges.map(renderEdge)}
     </group>
