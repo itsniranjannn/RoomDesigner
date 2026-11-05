@@ -7,6 +7,8 @@
 import { cleanOverrides } from './overrides.js';
 import { clamp } from './geometry.js';
 import { sanitizeOutline } from './roomShape.js';
+import { sanitizeServices } from './planning.js';
+import { finishForStorage } from '../components/preview3d/materials.js';
 import { getFurnitureType, registerPlaceholderFurniture } from '../data/furnitureCatalog.js';
 
 const HASH_KEY = 'share=';
@@ -36,6 +38,8 @@ async function pipe(bytes, stream) {
 /** Fields that make up a shareable design (images and meshes excluded to keep links short). */
 function toShareableRoom(room) {
   const { id, name, widthCm, depthCm, doors, windows, placedFurniture, outline, openEdges } = room;
+  const services = sanitizeServices(room.services);
+  const finish = finishForStorage(room.finish);
   // Photo-made pieces: only name, size and colour travel, so the receiver sees a box of the right size
   const customTypes = [];
   const seen = new Set();
@@ -65,6 +69,8 @@ function toShareableRoom(room) {
     windows,
     placedFurniture,
     ...(outline ? { outline, ...(openEdges?.length ? { openEdges } : {}) } : {}),
+    ...(services.length ? { services } : {}),
+    ...(finish ? { finish } : {}),
     ...(customTypes.length ? { customTypes } : {}),
   };
 }
@@ -104,6 +110,8 @@ export function sanitizeImportedRoom(data) {
         offsetCm: num(o.offsetCm, 0, 2000, 20),
         widthCm: num(o.widthCm, 40, 400, 90),
         ...(o.swingDirection ? { swingDirection: String(o.swingDirection) } : {}),
+        ...(o.hingeSide === 'end' ? { hingeSide: 'end' } : {}),
+        ...(o.swing === 'inward' || o.swing === 'outward' ? { swing: o.swing } : {}),
       }));
   const furniture = (Array.isArray(data.placedFurniture) ? data.placedFurniture : [])
     .filter((f) => isObject(f) && typeof f.furnitureTypeId === 'string')
@@ -128,6 +136,7 @@ export function sanitizeImportedRoom(data) {
     .forEach((t) => registerPlaceholderFurniture(t));
   const widthCm = num(data.widthCm, 200, 1500, 400);
   const depthCm = num(data.depthCm, 200, 1500, 400);
+  const services = sanitizeServices(data.services, { maxX: widthCm, maxY: depthCm });
   // A room that is not a rectangle keeps its outline, pulled inside the room's box
   const cleaned = sanitizeOutline(data.outline);
   const outline = cleaned
@@ -156,6 +165,8 @@ export function sanitizeImportedRoom(data) {
     doors: fitOpenings(data.doors, 'bottom'),
     windows: fitOpenings(data.windows, 'top'),
     placedFurniture: furniture,
+    ...(services.length ? { services } : {}),
+    ...(finishForStorage(data.finish) ? { finish: finishForStorage(data.finish) } : {}),
     updatedAt: new Date().toISOString(),
   };
 }

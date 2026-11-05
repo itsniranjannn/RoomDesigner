@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { moveSpan, resizeSpan, OPENING_LIMITS, isResizable } from '../../engine/openings.js';
 import { outlineEdges, pointOnEdge } from '../../engine/roomShape.js';
+import { DoorSwing, WindowSwing } from './OpeningSwings.jsx';
 import cursors from './Cursors.module.css';
 
 const WALL = 16; // cm drawn across a wall
@@ -161,6 +162,7 @@ export function OutlineBoundary({ room, svgRef }) {
             return <line x1={p.x} y1={p.y} x2={q.x} y2={q.y} stroke="#3D536B" strokeWidth="1.8" />;
           })()}
         </g>
+        <WindowSwing room={room} win={win} />
         {hot && isResizable('window') && (
           <>
             {handle('start')}
@@ -192,11 +194,6 @@ export function OutlineBoundary({ room, svgRef }) {
     const cls = edge.dx !== 0 ? cursors.ewResize : cursors.nsResize;
     const outward = door.swingDirection === 'outward';
     const dir = outward ? -1 : 1;
-    const hinge = pointOnEdge(edge, a, 0);
-    const far = pointOnEdge(edge, b, 0);
-    const tip = pointOnEdge(edge, a, dir * door.widthCm);
-    // Sweep: from the leaf tip round to the far jamb
-    const sweep = outward ? 1 : 0;
     const label = pointOnEdge(edge, (a + b) / 2, dir * (door.widthCm + 12));
     return (
       <g
@@ -205,16 +202,7 @@ export function OutlineBoundary({ room, svgRef }) {
         onPointerLeave={() => setHoverId(null)}
       >
         <polygon points={pts(gapQuad(edge, a, b))} fill="var(--color-linen)" />
-        <g pointerEvents="none">
-          <path
-            d={`M ${tip.x} ${tip.y} A ${door.widthCm} ${door.widthCm} 0 0 ${sweep} ${far.x} ${far.y}`}
-            fill="none"
-            stroke="#784A28"
-            strokeWidth="1"
-            strokeDasharray="3 2"
-          />
-          <line x1={hinge.x} y1={hinge.y} x2={tip.x} y2={tip.y} stroke="#784A28" strokeWidth="2" />
-        </g>
+        <DoorSwing room={room} door={door} tone="outline" />
         <g className={cls} onPointerDown={(e) => startDrag(e, 'door', door, 'move')}>
           {hot && (
             <polygon

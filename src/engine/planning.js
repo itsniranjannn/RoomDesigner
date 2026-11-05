@@ -465,3 +465,16 @@ export function polygonsOverlap(a, b, eps = 0.5) {
   }
   return true;
 }
+
+/**
+ * Which jamb ('start' or 'end') is on the viewer's left and right when standing inside the
+ * room facing the wall the opening is in. Lets the inspector say "Left" and "Right" instead
+ * of "start" and "end".
+ */
+export function hingeSides(room, opening, type = 'door') {
+  const frame = openingFrame(room, opening, type);
+  if (!frame) return { left: 'start', right: 'end' };
+  // Facing the wall means facing -n; the viewer's right-hand direction on screen is (n.y, -n.x)
+  const toRight = frame.t.x * frame.n.y + frame.t.y * -frame.n.x;
+  return toRight > 0 ? { left: 'start', right: 'end' } : { left: 'end', right: 'start' };
+}

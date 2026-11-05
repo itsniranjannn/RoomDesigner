@@ -34,6 +34,7 @@ import { clamp, normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
 import { clampOpening, DOOR_WIDTH_CM, defaultOpeningWidth } from '../engine/openings.js';
 import { hasOutline, openingWallLength, longestSolidEdge } from '../engine/roomShape.js';
+import { MAX_SERVICES, SERVICE_KINDS, newServiceId, positionService } from '../engine/planning.js';
 
 const SAVE_DEBOUNCE_MS = 350;
 let saveDebounceTimer = null;
@@ -57,6 +58,12 @@ function clampToBase(overrides, base) {
   }
   return out;
 }
+
+/** Service points come back with undo and redo; rooms that never had any stay as they were. */
+const restoredServices = (room, snapshot) =>
+  snapshot.services && (snapshot.services.length > 0 || room.services)
+    ? { services: snapshot.services }
+    : {};
 
 const newItemId = () => `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -126,6 +133,7 @@ export const useRoomStore = create((set, get) => ({
       placedFurniture: JSON.parse(JSON.stringify(room.placedFurniture || [])),
       doors: JSON.parse(JSON.stringify(room.doors || [])),
       windows: JSON.parse(JSON.stringify(room.windows || [])),
+      services: JSON.parse(JSON.stringify(room.services || [])),
       selectedItemId: selectedItemId || null,
     };
   },
@@ -183,6 +191,7 @@ export const useRoomStore = create((set, get) => ({
       placedFurniture: prevSnapshot.placedFurniture,
       doors: prevSnapshot.doors,
       windows: prevSnapshot.windows,
+      ...restoredServices(room, prevSnapshot),
     };
 
     const enrichedItems = (updatedRoom.placedFurniture || []).map((item) => {
@@ -232,6 +241,7 @@ export const useRoomStore = create((set, get) => ({
       placedFurniture: nextSnapshot.placedFurniture,
       doors: nextSnapshot.doors,
       windows: nextSnapshot.windows,
+      ...restoredServices(room, nextSnapshot),
     };
 
     const enrichedItems = (updatedRoom.placedFurniture || []).map((item) => {
@@ -754,6 +764,81 @@ export const useRoomStore = create((set, get) => ({
       [key]: list.filter((item) => item.id !== id),
     };
 
+    set({ room: updatedRoom, saveStatus: 'saving' });
+    persistDebounced(updatedRoom, set);
+  },
+
+  // ---------- Service points (sockets, switches, water, drains ...) ----------
+
+  // Adds a service point; wall points snap to the nearest wall. Returns the new id.
+  addService: (kind, x, y) => {
+    const { room } = get();
+    if (!room) return null;
+    const placed = positionService(room, kind, x, y);
+    if (!placed) return null;
+    const existing = room.services || [];
+    if (existing.length >= MAX_SERVICES) return null;
+    get()._recordHistory();
+    const service = { id: newServiceId(), kind, ...placed };
+    const updatedRoom = { ...room, services: [...existing, service] };
+    set({ room: updatedRoom, saveStatus: 'saving' });
+    persistDebounced(updatedRoom, set);
+    return service.id;
+  },
+
+  // Moves a point (wall points stay on a wall). Pass recordHistory=false while dragging and
+  // push the pre-drag snapshot when the drag ends.
+  moveService: (id, x, y, recordHistory = false) => {
+    const { room } = get();
+    const target = (room?.services || []).find((s) => s.id === id);
+    if (!target) return;
+    const placed = positionService(room, target.kind, x, y, target.rotationDeg);
+    if (!placed) return;
+    if (recordHistory) get()._recordHistory();
+    const services = room.services.map((s) => (s.id === id ? { ...s, ...placed } : s));
+    const updatedRoom = { ...room, services };
+    set({ room: updatedRoom, saveStatus: 'saving' });
+    persistDebounced(updatedRoom, set);
+  },
+
+  // Turns a floor or ceiling point by a quarter turn (wall points follow their wall)
+  rotateService: (id, deltaDeg = 90) => {
+    const { room } = get();
+    const target = (room?.services || []).find((s) => s.id === id);
+    if (!target || SERVICE_KINDS[target.kind]?.mount === 'wall') return;
+    get()._recordHistory();
+    const rotationDeg = ((((target.rotationDeg || 0) + deltaDeg) % 360) + 360) % 360;
+    const services = room.services.map((s) => (s.id === id ? { ...s, rotationDeg } : s));
+    const updatedRoom = { ...room, services };
+    set({ room: updatedRoom, saveStatus: 'saving' });
+    persistDebounced(updatedRoom, set);
+  },
+
+  // Edits a point's note
+  updateService: (id, updates) => {
+    const { room } = get();
+    if (!(room?.services || []).some((s) => s.id === id)) return;
+    get()._recordHistory();
+    const services = room.services.map((s) => {
+      if (s.id !== id) return s;
+      const next = { ...s };
+      if (typeof updates.note === 'string') {
+        const note = updates.note.trim().slice(0, 80);
+        if (note) next.note = note;
+        else delete next.note;
+      }
+      return next;
+    });
+    const updatedRoom = { ...room, services };
+    set({ room: updatedRoom, saveStatus: 'saving' });
+    persistDebounced(updatedRoom, set);
+  },
+
+  removeService: (id) => {
+    const { room } = get();
+    if (!(room?.services || []).some((s) => s.id === id)) return;
+    get()._recordHistory();
+    const updatedRoom = { ...room, services: room.services.filter((s) => s.id !== id) };
     set({ room: updatedRoom, saveStatus: 'saving' });
     persistDebounced(updatedRoom, set);
   },
