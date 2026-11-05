@@ -229,6 +229,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
           roll={!!traits.roll}
           tufted={!!traits.tufted}
           taper={!!traits.taper}
+          longSeat={!!traits.longSeat}
         />
       );
       break;

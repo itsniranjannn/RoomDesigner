@@ -156,6 +156,24 @@ describe('custom mesh model', () => {
     }
   });
 
+  it('draws one long seat cushion, or one per seat for designs that never had the option', () => {
+    const cushions = (traits) =>
+      (
+        renderToStaticMarkup(
+          <CustomMeshModel
+            def={{ design: { v: 1, type: 'sofa', palette: { body: '#335577' }, traits } }}
+            widthM={1.5}
+            depthM={0.9}
+            heightM={0.85}
+            mainColor="#335577"
+          />
+        ).match(/name="seat-cushion"/g) || []
+      ).length;
+    expect(cushions({ seats: 2, longSeat: 1 })).toBe(1);
+    expect(cushions({ seats: 2, longSeat: 0 })).toBe(2);
+    expect(cushions({ seats: 3 })).toBe(3);
+  });
+
   it('keeps old voxel pieces working when the design is missing or unusable', () => {
     const html = renderToStaticMarkup(
       <CustomMeshModel

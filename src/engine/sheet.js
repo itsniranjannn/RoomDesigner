@@ -471,6 +471,30 @@ export function estimateProportions(cutouts) {
   return { widthCm: Math.exp(lw), depthCm: Math.exp(ld), heightCm: 1 };
 }
 
+/**
+ * The proportions the photos fix, even when they are too few to fix all three (a single front photo gives only
+ * the width-to-height ratio). Each value is null when no photo shows it.
+ * @returns {{ widthPerHeight: number|null, depthPerHeight: number|null, widthPerDepth: number|null }}
+ */
+export function estimatePartialProportions(cutouts) {
+  const sums = { wph: [], dph: [], wpd: [] };
+  for (const [slot, cut] of Object.entries(cutouts)) {
+    const box = maskBounds(cut.mask, cut.width, cut.height);
+    if (!box) continue;
+    const lr = Math.log(box.width / box.height);
+    if (slot === 'front' || slot === 'back') sums.wph.push(lr);
+    else if (slot === 'left' || slot === 'right') sums.dph.push(lr);
+    else if (slot === 'top') sums.wpd.push(lr);
+  }
+  const avg = (list) =>
+    list.length ? Math.exp(list.reduce((a, b) => a + b, 0) / list.length) : null;
+  return {
+    widthPerHeight: avg(sums.wph),
+    depthPerHeight: avg(sums.dph),
+    widthPerDepth: avg(sums.wpd),
+  };
+}
+
 /** Scales the proportions so the dimension `key` equals `value`; results are clamped to [5, 600] cm. */
 export function dimensionsFromProportions(ratios, key, value) {
   const k = value / ratios[key];

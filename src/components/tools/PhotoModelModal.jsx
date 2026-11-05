@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import * as THREE from 'three';
 import { Canvas, useThree } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
-import { Camera, X, Sparkles, Save, LayoutGrid } from 'lucide-react';
+import { Camera, X, Sparkles, Save, LayoutGrid, Layers } from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
 import { NumberField, RangeField, TextField } from '../common/Field.jsx';
@@ -15,6 +16,7 @@ import {
   chooseSideSlot,
   prepareCrop,
   estimateProportions,
+  estimatePartialProportions,
   dimensionsFromProportions,
 } from '../../engine/sheet.js';
 import {
@@ -34,6 +36,9 @@ import {
   TYPICAL_WIDTH_CM,
   buildDesign,
   designMainColor,
+  inferDimensions,
+  detectionConfidence,
+  withMirroredSides,
 } from '../../engine/design.js';
 import local from './PhotoModelModal.module.css';
 
@@ -143,6 +148,15 @@ const TRAIT_CONTROLS = {
   ],
   sofa: [
     { key: 'seats', label: 'Seats', fallback: 3, options: range(1, 5) },
+    {
+      key: 'longSeat',
+      label: 'Seat cushion',
+      fallback: 0,
+      options: [
+        [0, 'One per seat'],
+        [1, 'One long cushion'],
+      ],
+    },
     { key: 'arm', label: 'Arms', fallback: 0.1, options: ARMS },
     ...UPHOLSTERY,
   ],
@@ -227,27 +241,105 @@ function CutoutPreview({ photo, mask }) {
   return <canvas ref={ref} className={local.cutout} aria-label="Photo with background removed" />;
 }
 
-/** Moves the camera back so the whole piece fits, whatever its real size. */
-function FitCamera({ distance, target }) {
+const DETECTED_PREFIX = {
+  good: 'Detected:',
+  fair: 'Looks like a',
+  rough: 'Best guess from one photo:',
+};
+const typeLabel = (id) => DESIGN_TYPES.find((t) => t.id === id)?.label || 'furniture';
+const VIEW_LABEL = { front: 'Front', right: 'Right', back: 'Back', left: 'Left', top: 'Top' };
+/** Where the camera stands for each photo angle (the piece faces +z; the right photo is taken from +x). */
+const VIEW_DIRECTION = {
+  front: [0, 0, 1],
+  right: [1, 0, 0],
+  back: [0, 0, -1],
+  left: [-1, 0, 0],
+  top: [0, 1, 0.02],
+};
+const CAMERA_FOV = 22;
+
+/** The piece's size across the picture, up the picture, and along the line of sight, for a photo angle. */
+function viewExtent(view, w, d, h) {
+  if (view === 'front' || view === 'back') return { across: w, up: h, along: d };
+  if (view === 'top') return { across: w, up: d, along: h };
+  return { across: d, up: h, along: w };
+}
+
+/** Puts the camera at the angle of the chosen photo and far enough back that the whole piece fits. */
+function PresetCamera({ view, dims, nonce }) {
   const camera = useThree((state) => state.camera);
+  const size = useThree((state) => state.size);
+  const { widthCm, depthCm, heightCm } = dims;
   useEffect(() => {
-    camera.position.set(distance * 0.75, target + distance * 0.45, distance * 0.85);
-    camera.lookAt(0, target, 0);
+    const w = widthCm / 100;
+    const d = depthCm / 100;
+    const h = heightCm / 100;
+    const { across, up, along } = viewExtent(view, w, d, h);
+    const aspect = Math.max(0.3, size.width / Math.max(1, size.height));
+    const half = Math.max(up / 2, across / 2 / aspect) * 1.14;
+    const dist = half / Math.tan((CAMERA_FOV * Math.PI) / 360) + along / 2;
+    const target = new THREE.Vector3(0, h / 2, 0);
+    const dir = new THREE.Vector3(...VIEW_DIRECTION[view]).normalize();
+    camera.position.copy(target).addScaledVector(dir, dist);
+    camera.lookAt(target);
+    camera.near = 0.05;
+    camera.far = dist * 6 + 10;
     camera.updateProjectionMatrix();
-  }, [camera, distance, target]);
+  }, [camera, view, widthCm, depthCm, heightCm, nonce, size.width, size.height]);
   return null;
 }
 
+/** The user's cut-out photo as a see-through sheet laid over the model, sized to the piece's box for that angle. */
+function PhotoOverlay({ photo, mask, view, dims, opacity }) {
+  const texture = useMemo(() => {
+    const cut = cutoutImage(photo.rgba, mask, photo.width, photo.height, PHOTO_MAX);
+    if (!cut) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = cut.width;
+    canvas.height = cut.height;
+    canvas.getContext('2d').putImageData(new ImageData(cut.rgba, cut.width, cut.height), 0, 0);
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }, [photo, mask]);
+  useEffect(() => () => texture?.dispose(), [texture]);
+  if (!texture) return null;
+  const w = dims.widthCm / 100;
+  const d = dims.depthCm / 100;
+  const h = dims.heightCm / 100;
+  const { across, up } = viewExtent(view, w, d, h);
+  const rotation = {
+    front: [0, 0, 0],
+    back: [0, Math.PI, 0],
+    right: [0, Math.PI / 2, 0],
+    left: [0, -Math.PI / 2, 0],
+    top: [-Math.PI / 2, 0, 0],
+  }[view];
+  return (
+    <mesh position={[0, h / 2, 0]} rotation={rotation} renderOrder={20}>
+      <planeGeometry args={[across, up]} />
+      <meshBasicMaterial
+        map={texture}
+        transparent
+        opacity={opacity}
+        depthTest={false}
+        depthWrite={false}
+        toneMapped={false}
+      />
+    </mesh>
+  );
+}
+
 /** The finished model at its real size, drawn with the same component the room view uses. */
-function ModelPreview({ design, dims, color }) {
+function ModelPreview({ design, dims, color, view, nonce, overlay }) {
   const w = dims.widthCm / 100;
   const d = dims.depthCm / 100;
   const h = dims.heightCm / 100;
   const reach = Math.max(w, d, h);
   const def = useMemo(() => ({ design, color }), [design, color]);
   return (
-    <Canvas shadows camera={{ fov: 40 }}>
-      <FitCamera distance={reach * 1.55 + 0.3} target={h / 2} />
+    <Canvas shadows camera={{ fov: CAMERA_FOV }}>
+      <PresetCamera view={view} dims={dims} nonce={nonce} />
       <ambientLight intensity={1.15} color="#FAF7F0" />
       <hemisphereLight groundColor="#E0D5C5" color="#FFFFFF" intensity={0.7} />
       <directionalLight
@@ -275,9 +367,38 @@ function ModelPreview({ design, dims, color }) {
       </mesh>
       <gridHelper args={[6, 12, '#B9AE9C', '#CFC5B4']} position={[0, 0.002, 0]} />
       <CustomMeshModel def={def} widthM={w} depthM={d} heightM={h} mainColor={color} />
-      <OrbitControls autoRotate autoRotateSpeed={2.2} enablePan={false} target={[0, h / 2, 0]} />
+      {overlay && (
+        <PhotoOverlay
+          photo={overlay.photo}
+          mask={overlay.mask}
+          view={view}
+          dims={dims}
+          opacity={overlay.opacity}
+        />
+      )}
+      <OrbitControls
+        enablePan={false}
+        enableRotate={!overlay}
+        enableZoom={!overlay}
+        target={[0, h / 2, 0]}
+      />
     </Canvas>
   );
+}
+
+/** The user's photo as taken, scaled to fit its frame. */
+function PhotoPane({ photo }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas || !photo) return;
+    canvas.width = photo.width;
+    canvas.height = photo.height;
+    canvas
+      .getContext('2d')
+      .putImageData(new ImageData(photo.rgba, photo.width, photo.height), 0, 0);
+  }, [photo]);
+  return <canvas ref={ref} className={local.photoCanvas} aria-label="Your photo" />;
 }
 
 export function PhotoModelModal({ onClose }) {
@@ -290,6 +411,12 @@ export function PhotoModelModal({ onClose }) {
   const toleranceTouched = useRef(false); // once the user moves the slider, it is theirs
   const [design, setDesign] = useState(null); // type, palette and traits read from the photos
   const [typeChoice, setTypeChoice] = useState(''); // '' = detect from the photos
+  const [typeOpen, setTypeOpen] = useState(false); // the type picker stays hidden until "Not right?"
+  const [mirror, setMirror] = useState(true); // reuse a lone side photo, mirrored, for the other side
+  const [viewChoice, setViewChoice] = useState('front'); // which photo is shown beside the model
+  const [viewNonce, setViewNonce] = useState(0); // re-aims the camera when the same view is picked again
+  const [overlayOn, setOverlayOn] = useState(false);
+  const [overlayOpacity, setOverlayOpacity] = useState(0.5);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState(null); // { rgba, width, height, detection, slots: [slot|''] }
@@ -301,14 +428,21 @@ export function PhotoModelModal({ onClose }) {
   const dimsRef = useRef(dims);
   dimsRef.current = dims;
 
+  // A lone side photo can stand in, mirrored, for the missing side
+  const lonelySide = Boolean(photos.left) !== Boolean(photos.right);
+  const allPhotos = useMemo(
+    () => (mirror && lonelySide ? withMirroredSides(photos) : photos),
+    [photos, mirror, lonelySide]
+  );
+
   const segmented = useMemo(() => {
     const out = {};
-    for (const [slot, photo] of Object.entries(photos)) {
+    for (const [slot, photo] of Object.entries(allPhotos)) {
       const mask = segmentObject(photo.rgba, photo.width, photo.height, tolerance);
       out[slot] = { mask, coverage: maskCoverage(mask) };
     }
     return out;
-  }, [photos, tolerance]);
+  }, [allPhotos, tolerance]);
 
   // A clean backdrop (a studio shot on white) can use a fine threshold, which keeps white and pale pieces;
   // a noisy one (a phone photo) needs a coarser one
@@ -344,32 +478,29 @@ export function PhotoModelModal({ onClose }) {
     });
 
   const photoCount = Object.keys(photos).length;
+  const shownViews = VIEW_SLOTS.filter((slot) => allPhotos[slot.id]).map((slot) => slot.id);
+  const activeView = shownViews.includes(viewChoice) ? viewChoice : shownViews[0] || 'front';
   const modelColor = design ? designMainColor(design) : '#a0a0a0';
+  const cutouts = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(allPhotos).map(([slot, photo]) => [
+          slot,
+          { mask: segmented[slot].mask, width: photo.width, height: photo.height },
+        ])
+      ),
+    [segmented, allPhotos]
+  );
   const proportions = useMemo(
     () =>
       proportionWarnings(
-        Object.fromEntries(
-          Object.entries(photos).map(([slot, photo]) => [
-            slot,
-            { mask: segmented[slot].mask, width: photo.width, height: photo.height },
-          ])
-        ),
+        Object.fromEntries(Object.entries(cutouts).filter(([slot]) => photos[slot])),
         dims
       ),
-    [segmented, photos, dims]
+    [cutouts, photos, dims]
   );
-  const ratios = useMemo(
-    () =>
-      estimateProportions(
-        Object.fromEntries(
-          Object.entries(photos).map(([slot, photo]) => [
-            slot,
-            { mask: segmented[slot].mask, width: photo.width, height: photo.height },
-          ])
-        )
-      ),
-    [segmented, photos]
-  );
+  const ratios = useMemo(() => estimateProportions(cutouts), [cutouts]);
+  const partial = useMemo(() => estimatePartialProportions(cutouts), [cutouts]);
   const ratioKey = ratios ? `${ratios.widthCm.toFixed(3)}/${ratios.depthCm.toFixed(3)}` : '';
   // New photos change the shape: rescale the other sizes around the one the user last set
   useEffect(() => {
@@ -378,7 +509,7 @@ export function PhotoModelModal({ onClose }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ratioKey, keepRatio]);
   const weakSlots = Object.entries(segmented).filter(
-    ([, s]) => s.coverage < 0.03 || s.coverage > 0.92
+    ([slot, s]) => photos[slot] && (s.coverage < 0.03 || s.coverage > 0.92)
   );
 
   const loadSheet = async (file) => {
@@ -430,8 +561,8 @@ export function PhotoModelModal({ onClose }) {
       const crop = cropSheetView(sheet.rgba, sheet.width, sheet.height, sheet.detection, v);
       next[slot] = imageFromPixels(crop.rgba, crop.width, crop.height, PHOTO_MAX);
     });
-    if (Object.keys(next).length < 2) {
-      setMessage({ kind: 'error', text: 'Give at least two of the views a different role.' });
+    if (Object.keys(next).length < 1) {
+      setMessage({ kind: 'error', text: 'Give at least one of the views a role.' });
       return;
     }
     setPhotos(next);
@@ -454,7 +585,7 @@ export function PhotoModelModal({ onClose }) {
       try {
         const views = {};
         for (const slot of VIEW_SLOTS) {
-          const photo = photos[slot.id];
+          const photo = allPhotos[slot.id];
           if (!photo) continue;
           const norm = normalizeView(
             photo.rgba,
@@ -478,24 +609,28 @@ export function PhotoModelModal({ onClose }) {
           if (open) norm.open = open.mask;
           views[slot.id] = norm;
         }
-        let result = buildDesign(views, dims, forceType || undefined, sizeEdited);
-        // Photos give proportions, not size: until a real size is entered, use the type's usual one
-        if (!sizeEdited && ratios && TYPICAL_WIDTH_CM[result.type]) {
-          let usual = TYPICAL_WIDTH_CM[result.type];
-          let next = dimensionsFromProportions(ratios, 'widthCm', usual);
+        const hints = { widthPerHeight: partial.widthPerHeight };
+        let result = buildDesign(views, dims, forceType || undefined, sizeEdited, hints);
+        // Photos give proportions, not size: until a real size is entered, use the type's usual one.
+        // What the photos cannot show (the depth, from a lone front photo) is the usual for the type too
+        if (!sizeEdited && TYPICAL_WIDTH_CM[result.type]) {
+          const fit = (width) =>
+            ratios
+              ? dimensionsFromProportions(ratios, 'widthCm', width)
+              : inferDimensions(result.type, partial, width);
+          let next = fit(TYPICAL_WIDTH_CM[result.type]);
           if (result.type === 'sofa') {
             // Count the seats at a full sofa width first; a one or two seater is then narrower
-            const seats = buildDesign(views, next, result.type, true).traits.seats;
-            if (seats <= 2) {
-              usual = 80 + seats * 35;
-              next = dimensionsFromProportions(ratios, 'widthCm', usual);
-            }
+            const seats = buildDesign(views, next, result.type, true, hints).traits.seats;
+            if (seats <= 2) next = fit(80 + seats * 35);
           }
           setDims(next);
           setAnchor('widthCm');
-          result = buildDesign(views, next, result.type, true);
+          result = buildDesign(views, next, result.type, true, hints);
         }
         setDesign(result);
+        setTypeOpen(false);
+        setViewChoice((v) => (shownViews.includes(v) ? v : shownViews[0]));
         if (!nameTouched.current) {
           const label =
             result.type === 'lounge'
@@ -524,7 +659,7 @@ export function PhotoModelModal({ onClose }) {
     // The user's own top photo, cut out, is what the 2D plan shows; its outline is the footprint
     let planImage;
     let topOutline = [];
-    const topPhoto = photos.top;
+    const topPhoto = allPhotos.top;
     if (topPhoto) {
       const mask = segmented.top.mask;
       const cut = cutoutImage(topPhoto.rgba, mask, topPhoto.width, topPhoto.height);
@@ -537,10 +672,10 @@ export function PhotoModelModal({ onClose }) {
       }
     }
     // Catalog card: the piece itself, from the front photo when there is one
-    const thumbSlot = ['front', 'right', 'left', 'back', 'top'].find((id) => photos[id]);
+    const thumbSlot = ['front', 'right', 'left', 'back', 'top'].find((id) => allPhotos[id]);
     let thumb;
     if (thumbSlot) {
-      const photo = photos[thumbSlot];
+      const photo = allPhotos[thumbSlot];
       const cut = cutoutImage(photo.rgba, segmented[thumbSlot].mask, photo.width, photo.height);
       if (cut) thumb = squareThumb(cut);
     }
@@ -588,7 +723,7 @@ export function PhotoModelModal({ onClose }) {
             variant="secondary"
             icon={<Sparkles size={16} />}
             onClick={() => handleBuild()}
-            disabled={photoCount < 2 || busy}
+            disabled={photoCount < 1 || busy}
           >
             {busy ? 'Working...' : design ? 'Rebuild model' : 'Build 3D model'}
           </Button>
@@ -650,7 +785,10 @@ export function PhotoModelModal({ onClose }) {
 
           <div className={local.section}>
             <h3 className={local.sectionTitle}>
-              Photos <span className={local.sectionNote}>{photoCount} of 5, at least 2 needed</span>
+              Photos{' '}
+              <span className={local.sectionNote}>
+                {photoCount} of 5. One is enough, more are more accurate
+              </span>
             </h3>
             <ul className={local.tips}>
               <li>
@@ -661,8 +799,8 @@ export function PhotoModelModal({ onClose }) {
                 whole piece in frame.
               </li>
               <li>
-                Turn the piece a quarter turn between photos. Front and one side are enough; more
-                photos give a better shape.
+                One front photo is enough to start. Turn the piece a quarter turn for each extra
+                photo: a side photo gives the real depth and shape.
               </li>
             </ul>
             <div className={local.sheetRow}>
@@ -741,12 +879,13 @@ export function PhotoModelModal({ onClose }) {
             )}
             <div className={local.slots}>
               {VIEW_SLOTS.map((slot) => {
-                const photo = photos[slot.id];
+                const photo = allPhotos[slot.id];
+                const copy = photo?.mirroredFrom;
                 return (
                   <div key={slot.id} className={local.slot}>
                     <div className={local.slotHead}>
                       <span>{slot.label}</span>
-                      {photo && (
+                      {photo && !copy && (
                         <button
                           type="button"
                           className={local.iconBtn}
@@ -769,6 +908,18 @@ export function PhotoModelModal({ onClose }) {
                         <span>Add photo</span>
                       </button>
                     )}
+                    {copy && (
+                      <span className={local.mirrorTag}>
+                        Mirrored from the {VIEW_LABEL[copy].toLowerCase()} photo.{' '}
+                        <button
+                          type="button"
+                          className={local.linkBtn}
+                          onClick={() => inputs.current[slot.id]?.click()}
+                        >
+                          Use my own
+                        </button>
+                      </span>
+                    )}
                     <input
                       ref={(el) => {
                         inputs.current[slot.id] = el;
@@ -786,6 +937,25 @@ export function PhotoModelModal({ onClose }) {
                 );
               })}
             </div>
+            {lonelySide && (
+              <label className={local.check}>
+                <input
+                  type="checkbox"
+                  checked={mirror}
+                  onChange={(e) => setMirror(e.target.checked)}
+                />
+                <span>
+                  Only one side is photographed: use it, mirrored, for the other side too. Most
+                  furniture is the same on both sides.
+                </span>
+              </label>
+            )}
+            {photoCount === 1 && (
+              <p className={local.note}>
+                With one photo the depth and shape are inferred from the usual proportions of this
+                kind of furniture. Add a second photo from the side for a more accurate model.
+              </p>
+            )}
           </div>
 
           <RangeField
@@ -802,82 +972,186 @@ export function PhotoModelModal({ onClose }) {
         </div>
 
         <div className={local.right}>
-          <div className={local.preview} aria-label="3D model preview">
-            {design ? (
-              <ModelPreview design={design} dims={dims} color={modelColor} />
-            ) : (
-              <p className={local.placeholder}>
-                {photoCount < 2
-                  ? 'Add a front and a side photo to begin.'
-                  : 'Press "Build 3D model" to preview it here.'}
-              </p>
-            )}
-          </div>
-          {design && (
-            <div className={local.section}>
-              <p className={local.summary} aria-live="polite">
-                Detected: <strong>{DESIGN_TYPES.find((t) => t.id === design.type)?.label}</strong>,{' '}
-                {dims.widthCm} x {dims.depthCm} x {dims.heightCm} cm (width x depth x height).
-                {!sizeEdited &&
-                  ' The size is the usual one for this type: enter the real width above.'}
-              </p>
-              <label className={local.designRow}>
-                <span>Type of furniture</span>
-                <select
-                  className={local.select}
-                  value={design.type}
-                  aria-label="Type of furniture"
-                  onChange={(e) => {
-                    setTypeChoice(e.target.value);
-                    handleBuild(e.target.value);
+          {photoCount > 0 && (
+            <div className={local.viewTabs} role="group" aria-label="Photo to compare with">
+              {shownViews.map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  className={local.viewTab}
+                  aria-pressed={id === activeView}
+                  onClick={() => {
+                    setViewChoice(id);
+                    setViewNonce((n) => n + 1);
                   }}
                 >
-                  {DESIGN_TYPES.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className={local.palette} role="group" aria-label="Colours found in the photos">
-                {(PALETTE_SLOTS[design.type] || []).map(([key, label]) => (
-                  <label key={key} className={local.paletteItem}>
-                    <input
-                      type="color"
-                      value={design.palette[key] || '#888888'}
-                      aria-label={label}
-                      onChange={(e) => setPaletteColour(key, e.target.value)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </div>
-              {(TRAIT_CONTROLS[design.type] || []).map((c) => (
-                <label key={c.key} className={local.designRow}>
-                  <span>{c.label}</span>
-                  <select
-                    className={local.select}
-                    value={String(traitValue(design.traits[c.key], c))}
-                    aria-label={c.label}
-                    onChange={(e) =>
-                      setTrait(
-                        c.key,
-                        typeof c.fallback === 'number' ? Number(e.target.value) : e.target.value
-                      )
-                    }
-                  >
-                    {c.options.map(([value, text]) => (
-                      <option key={value} value={String(value)}>
-                        {text}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                  {VIEW_LABEL[id]}
+                </button>
               ))}
+            </div>
+          )}
+          <div className={local.compare}>
+            {photoCount > 0 && (
+              <figure className={local.photoFrame}>
+                <PhotoPane photo={allPhotos[activeView]} />
+                <figcaption>Your {VIEW_LABEL[activeView].toLowerCase()} photo</figcaption>
+              </figure>
+            )}
+            <div className={local.preview} aria-label="3D model preview">
+              {design ? (
+                <ModelPreview
+                  design={design}
+                  dims={dims}
+                  color={modelColor}
+                  view={activeView}
+                  nonce={viewNonce}
+                  overlay={
+                    overlayOn && allPhotos[activeView]
+                      ? {
+                          photo: allPhotos[activeView],
+                          mask: segmented[activeView].mask,
+                          opacity: overlayOpacity,
+                        }
+                      : null
+                  }
+                />
+              ) : (
+                <p className={local.placeholder}>
+                  {photoCount < 1
+                    ? 'Add a photo of the piece to begin. One is enough.'
+                    : 'Press "Build 3D model" to preview it here.'}
+                </p>
+              )}
+            </div>
+          </div>
+          {design && (
+            <div className={local.overlayRow}>
+              <label className={local.check}>
+                <input
+                  type="checkbox"
+                  checked={overlayOn}
+                  onChange={(e) => setOverlayOn(e.target.checked)}
+                />
+                <span>
+                  <Layers size={13} aria-hidden="true" /> Overlay my photo on the model
+                </span>
+              </label>
+              {overlayOn && (
+                <input
+                  type="range"
+                  min={0.15}
+                  max={0.9}
+                  step={0.05}
+                  value={overlayOpacity}
+                  aria-label="Photo overlay strength"
+                  onChange={(e) => setOverlayOpacity(Number(e.target.value))}
+                />
+              )}
+            </div>
+          )}
+          {design && (
+            <div className={local.section}>
+              <div className={local.detected} aria-live="polite">
+                <p className={local.detectedLine}>
+                  {DETECTED_PREFIX[detectionConfidence(Object.keys(photos))]}{' '}
+                  <strong>{typeLabel(design.type)}</strong>
+                  {typeOpen ? null : (
+                    <>
+                      {' '}
+                      <button
+                        type="button"
+                        className={local.linkBtn}
+                        onClick={() => setTypeOpen(true)}
+                      >
+                        Not right? Change type
+                      </button>
+                    </>
+                  )}
+                </p>
+                {typeOpen && (
+                  <label className={local.designRow}>
+                    <span>Type of furniture</span>
+                    <select
+                      className={local.select}
+                      value={design.type}
+                      aria-label="Type of furniture"
+                      onChange={(e) => {
+                        setTypeChoice(e.target.value);
+                        handleBuild(e.target.value);
+                      }}
+                    >
+                      {DESIGN_TYPES.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+                <p className={local.summary}>
+                  {dims.widthCm} x {dims.depthCm} x {dims.heightCm} cm (width x depth x height).
+                  {!sizeEdited &&
+                    ' The size is the usual one for this type: enter the real width above.'}
+                </p>
+              </div>
+              <details className={local.details}>
+                <summary>Adjust details</summary>
+                <div className={local.detailsBody}>
+                  <p className={local.note}>
+                    Read from your photos. Change anything that looks off: the model updates as you
+                    go.
+                  </p>
+                  {(TRAIT_CONTROLS[design.type] || []).map((c) => (
+                    <label key={c.key} className={local.designRow}>
+                      <span>{c.label}</span>
+                      <select
+                        className={local.select}
+                        value={String(traitValue(design.traits[c.key], c))}
+                        aria-label={c.label}
+                        onChange={(e) =>
+                          setTrait(
+                            c.key,
+                            typeof c.fallback === 'number' ? Number(e.target.value) : e.target.value
+                          )
+                        }
+                      >
+                        {c.options.map(([value, text]) => (
+                          <option key={value} value={String(value)}>
+                            {text}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
+                  <div
+                    className={local.palette}
+                    role="group"
+                    aria-label="Colours found in the photos"
+                  >
+                    {(PALETTE_SLOTS[design.type] || []).map(([key, label]) => (
+                      <label key={key} className={local.paletteItem}>
+                        <input
+                          type="color"
+                          value={design.palette[key] || '#888888'}
+                          aria-label={label}
+                          onChange={(e) => setPaletteColour(key, e.target.value)}
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </details>
+              {photoCount === 1 && (
+                <p className={local.note}>
+                  Built from one photo: add a second one from the side for a more accurate depth and
+                  shape.
+                </p>
+              )}
               <p className={local.note}>
-                Shown at its real size; each grid square is 50 cm. Drag to rotate. The model uses
-                the same parts as the built-in furniture, with the shape, proportions and colours
-                read from your photos.
+                Shown at its real size; each grid square is 50 cm. The camera starts at the angle of
+                the photo you pick; drag to rotate. The model uses the same parts as the built-in
+                furniture, with the shape, proportions and colours read from your photos.
               </p>
             </div>
           )}
