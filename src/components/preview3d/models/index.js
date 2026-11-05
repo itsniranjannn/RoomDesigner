@@ -69,6 +69,17 @@ import { VanityModel, SquatToiletModel, TankModel, BasketModel } from './bathroo
 import { PlanterModel, RugRoundModel, ScreenModel } from './accents.jsx';
 import { TableLampModel, MonitorModel, MicrowaveModel, BookStackModel } from './smalls.jsx';
 
+import {
+  CushionModel,
+  VaseModel,
+  LaptopModel,
+  PhotoFrameModel,
+  SpeakerModel,
+  KettleModel,
+  BowlModel,
+  FoldedModel,
+} from './tabletop.jsx';
+
 export const MODELS = {
   bed: BedModel,
   'bed-bunk': BedBunkModel,
@@ -142,6 +153,14 @@ export const MODELS = {
   monitor: MonitorModel,
   microwave: MicrowaveModel,
   'book-stack': BookStackModel,
+  cushion: CushionModel,
+  vase: VaseModel,
+  laptop: LaptopModel,
+  'photo-frame': PhotoFrameModel,
+  speaker: SpeakerModel,
+  kettle: KettleModel,
+  bowl: BowlModel,
+  folded: FoldedModel,
 };
 
 /** Unknown shape types fall back to a plain box of the catalog dimensions. */

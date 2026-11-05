@@ -7,7 +7,7 @@
 import { getFurnitureType, resolveItemDef } from '../data/furnitureCatalog.js';
 import { getRotatedRectCorners, getAABB } from './geometry.js';
 import { checkPolygonCollision } from './collision.js';
-import { offersSurface, surfaceTopOf } from './stacking.js';
+import { canRestOn, surfaceTopOf } from './stacking.js';
 import { getClearanceZones, facingGap, isTightPassage } from './clearance.js';
 import {
   hasOutline,
@@ -51,14 +51,17 @@ function makeEntry(typeId, def, x, y, rotationDeg, id) {
 
 /** A free support for a resting piece, preferring the types it lists in `stackableOn`. */
 function pickBase(def, placed) {
-  const supports = placed.filter((p) => offersSurface(p.def));
+  const supports = placed.filter((p) => canRestOn(def, p.def));
   const taken = (p) =>
     placed.some(
       (o) => o !== p && o.def.restsOnTop && o.item.x === p.item.x && o.item.y === p.item.y
     );
   const free = supports.filter((p) => !taken(p));
   const pool = free.length ? free : supports;
-  return pool.find((p) => def.stackableOn?.includes(p.item.furnitureTypeId)) || null;
+  const listed = pool.find((p) => def.stackableOn?.includes(p.item.furnitureTypeId));
+  if (listed) return listed;
+  // A piece that names its supports waits for one; any other small piece takes a free surface
+  return def.stackableOn?.length ? null : free[0] || null;
 }
 
 function tightWithAny(entry, placed) {

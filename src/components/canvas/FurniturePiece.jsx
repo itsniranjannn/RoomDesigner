@@ -4,6 +4,7 @@ import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { useRoomStore } from '../../store/roomStore.js';
 import { applySnapping } from '../../engine/snapping.js';
 import { normalizeAngle } from '../../engine/geometry.js';
+import { dropTargetAt } from '../../engine/stacking.js';
 import { ArchitecturalSilhouette } from './ArchitecturalSilhouette.jsx';
 import cursors from './Cursors.module.css';
 
@@ -20,6 +21,8 @@ export function FurniturePiece({
   const selectItem = useRoomStore((state) => state.selectItem);
   const updateFurniturePosition = useRoomStore((state) => state.updateFurniturePosition);
   const updateFurnitureRotation = useRoomStore((state) => state.updateFurnitureRotation);
+
+  const isDropTarget = useRoomStore((state) => state.dropTargetId === item.id);
 
   const def = resolveItemDef(item);
   const widthCm = def ? def.widthCm : 50;
@@ -104,11 +107,19 @@ export function FurniturePiece({
           );
       } else {
         updateFurniturePosition(item.id, snapped.x, snapped.y, false);
+        const found = dropTargetAt(
+          item,
+          snapped.x,
+          snapped.y,
+          useRoomStore.getState().room?.placedFurniture || []
+        );
+        useRoomStore.getState().setDropTarget(found ? found.item.id : null);
       }
     };
 
     const onPointerUp = () => {
       setIsDragging(false);
+      useRoomStore.getState().setDropTarget(null);
       window.removeEventListener('pointermove', onPointerMove);
       window.removeEventListener('pointerup', onPointerUp);
 
@@ -215,6 +226,36 @@ export function FurniturePiece({
         <g filter={isDragging ? 'url(#furniture-lift-shadow)' : 'url(#furniture-drop-shadow)'}>
           <ArchitecturalSilhouette item={def} widthCm={widthCm} depthCm={depthCm} />
         </g>
+
+        {/* A dragged piece would come to rest on this one: highlight it */}
+        {isDropTarget && (
+          <g pointerEvents="none" data-testid="drop-target">
+            <rect
+              x={-hw - 3}
+              y={-hd - 3}
+              width={widthCm + 6}
+              height={depthCm + 6}
+              rx={4}
+              fill="rgba(197, 160, 89, 0.18)"
+              stroke="#C5A059"
+              strokeWidth="2.2"
+            />
+            <g transform={`translate(0, ${-hd - 12}) rotate(${-rotation})`}>
+              <rect x={-30} y={-7} width={60} height={14} rx={7} fill="#1C1A17" opacity="0.9" />
+              <text
+                x={0}
+                y={3.5}
+                textAnchor="middle"
+                fill="#FAF6EE"
+                fontSize="8.5"
+                fontFamily="var(--font-mono)"
+                fontWeight="600"
+              >
+                Place on top
+              </text>
+            </g>
+          </g>
+        )}
 
         {/* Resting on another piece: dashed outline and a small height tag */}
         {elevation > 0.5 && (
