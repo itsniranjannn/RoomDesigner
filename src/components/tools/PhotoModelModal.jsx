@@ -89,6 +89,35 @@ const LEGS = [
   [0, 'Square'],
   [1, 'Round'],
 ];
+const UPHOLSTERY = [
+  {
+    key: 'roll',
+    label: 'Arm shape',
+    fallback: 0,
+    options: [
+      [0, 'Straight'],
+      [1, 'Rounded and padded'],
+    ],
+  },
+  {
+    key: 'tufted',
+    label: 'Back cushions',
+    fallback: 0,
+    options: [
+      [0, 'Plain'],
+      [1, 'Tufted with buttons'],
+    ],
+  },
+  {
+    key: 'taper',
+    label: 'Feet',
+    fallback: 0,
+    options: [
+      [0, 'Short round feet'],
+      [1, 'Tapered wooden legs'],
+    ],
+  },
+];
 /** Look-and-feel choices per type: the traits read from the photos, which the user can correct. */
 const TRAIT_CONTROLS = {
   bed: [
@@ -115,8 +144,13 @@ const TRAIT_CONTROLS = {
   sofa: [
     { key: 'seats', label: 'Seats', fallback: 3, options: range(1, 5) },
     { key: 'arm', label: 'Arms', fallback: 0.1, options: ARMS },
+    ...UPHOLSTERY,
   ],
-  armchair: [{ key: 'arm', label: 'Arms', fallback: 0.17, options: [...ARMS, [0.17, 'Chunky']] }],
+  armchair: [
+    { key: 'arm', label: 'Arms', fallback: 0.17, options: [...ARMS, [0.17, 'Chunky']] },
+    ...UPHOLSTERY,
+  ],
+  lounge: [{ key: 'slats', label: 'Back rails', fallback: 3, options: range(2, 5) }],
   chair: [
     {
       key: 'back',
@@ -447,14 +481,28 @@ export function PhotoModelModal({ onClose }) {
         let result = buildDesign(views, dims, forceType || undefined, sizeEdited);
         // Photos give proportions, not size: until a real size is entered, use the type's usual one
         if (!sizeEdited && ratios && TYPICAL_WIDTH_CM[result.type]) {
-          const next = dimensionsFromProportions(ratios, 'widthCm', TYPICAL_WIDTH_CM[result.type]);
+          let usual = TYPICAL_WIDTH_CM[result.type];
+          let next = dimensionsFromProportions(ratios, 'widthCm', usual);
+          if (result.type === 'sofa') {
+            // Count the seats at a full sofa width first; a one or two seater is then narrower
+            const seats = buildDesign(views, next, result.type, true).traits.seats;
+            if (seats <= 2) {
+              usual = 80 + seats * 35;
+              next = dimensionsFromProportions(ratios, 'widthCm', usual);
+            }
+          }
           setDims(next);
           setAnchor('widthCm');
           result = buildDesign(views, next, result.type, true);
         }
         setDesign(result);
         if (!nameTouched.current) {
-          const label = DESIGN_TYPES.find((t) => t.id === result.type)?.label || 'furniture';
+          const label =
+            result.type === 'lounge'
+              ? 'lounge chair'
+              : result.type === 'sofa' && result.traits.seats <= 2
+                ? 'loveseat'
+                : DESIGN_TYPES.find((t) => t.id === result.type)?.label || 'furniture';
           setName(`My ${label.toLowerCase()}`);
         }
       } catch (err) {

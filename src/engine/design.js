@@ -14,6 +14,7 @@ export const DESIGN_TYPES = [
   { id: 'bed', label: 'Bed' },
   { id: 'sofa', label: 'Sofa' },
   { id: 'armchair', label: 'Armchair' },
+  { id: 'lounge', label: 'Lounge chair (wood frame)' },
   { id: 'chair', label: 'Chair' },
   { id: 'stool', label: 'Stool' },
   { id: 'table', label: 'Dining table' },
@@ -31,6 +32,7 @@ export const TYPICAL_WIDTH_CM = {
   bed: 160,
   sofa: 200,
   armchair: 85,
+  lounge: 72,
   chair: 45,
   stool: 38,
   table: 150,
@@ -59,6 +61,10 @@ export const PALETTE_SLOTS = {
     ['body', 'Body'],
     ['cushion', 'Cushions'],
     ['leg', 'Feet'],
+  ],
+  lounge: [
+    ['body', 'Wood frame'],
+    ['cushion', 'Cushions'],
   ],
   chair: [
     ['body', 'Frame'],
@@ -281,7 +287,12 @@ export function classifyType(traits, dims, sizeKnown = true) {
     if (dh >= 1.5) return 'bed';
     return w / d >= 1.45 ? 'sofa' : 'armchair';
   }
-  if (backed && open) return wh <= 1.05 && dh <= 1.05 ? 'chair' : dh >= 1.5 ? 'bed' : 'sofa';
+  if (backed && open) {
+    if (wh <= 1.05 && dh <= 1.05) return 'chair';
+    // A deep, narrow seat on an open frame: a lounge chair, not a sofa
+    if (w / d < 1.4 && dh < 1.6) return 'lounge';
+    return dh >= 1.5 ? 'bed' : 'sofa';
+  }
   if (open || (gapFrac > 0.12 && h <= w)) {
     if (!backed && wh <= 0.75 && dh <= 0.75) return 'stool';
     if (round && Math.abs(w - d) < 0.2 * Math.max(w, d)) return 'table-round';
@@ -399,6 +410,119 @@ function armFraction(top, fallback) {
   return fallback;
 }
 
+/** Left and right edges (fractions of the view) of the object along one row of the view. */
+function rowSpan(view, row) {
+  const s = view.size;
+  const y = Math.min(s - 1, Math.max(0, Math.round(row * s)));
+  let lo = -1;
+  let hi = -1;
+  for (let x = 0; x < s; x++)
+    if (view.mask[y * s + x]) {
+      if (lo < 0) lo = x;
+      hi = x;
+    }
+  return lo < 0 ? null : { lo: lo / s, hi: (hi + 1) / s };
+}
+
+/** Do the arms stand wider than the back, like rolled padded arms? Compares the back rows with the arm rows. */
+function rolledArms(front) {
+  if (!front) return null;
+  const top = rowSpan(front, 0.12);
+  const mid = rowSpan(front, 0.62);
+  if (!top || !mid) return null;
+  const protrusion = (top.lo - mid.lo + (mid.hi - top.hi)) / 2;
+  return { roll: protrusion > 0.035, protrusion: Math.max(0, protrusion) };
+}
+
+/** Slim tapered legs: thin runs of object at the very bottom of the front view, with a gap under the body. */
+function taperedLegs(front) {
+  if (!front) return false;
+  const s = front.size;
+  const bottom = bottomProfile(front);
+  const centre = median(slice(bottom, 0.3, 0.7));
+  const lowest = Math.max(...Array.from(bottom));
+  if (lowest - centre < 0.04 || lowest < 0.9) return false;
+  const row = Math.round(Math.min(s - 1, (lowest - 0.02) * s));
+  let runs = 0;
+  let thin = 0;
+  let x = 0;
+  while (x < s) {
+    if (front.mask[row * s + x]) {
+      let e = x;
+      while (e < s && front.mask[row * s + e]) e++;
+      runs++;
+      if ((e - x) / s < 0.09) thin++;
+      x = e;
+    } else x++;
+  }
+  return runs >= 2 && thin === runs;
+}
+
+/** Tufting: small dark dimples (buttons) across the back cushions, found as isolated local luma minima. */
+function tuftedBack(front) {
+  if (!front) return false;
+  const s = front.size;
+  const lum = new Float32Array(s * s);
+  for (let p = 0; p < s * s; p++)
+    lum[p] = luma([front.rgb[p * 3], front.rgb[p * 3 + 1], front.rgb[p * 3 + 2]]);
+  let dimples = 0;
+  const x0 = Math.floor(s * 0.2);
+  const x1 = Math.ceil(s * 0.8);
+  const y0 = Math.floor(s * 0.12);
+  const y1 = Math.ceil(s * 0.45);
+  for (let y = y0 + 2; y < y1 - 2; y++)
+    for (let x = x0 + 2; x < x1 - 2; x++) {
+      const p = y * s + x;
+      if (!front.mask[p]) continue;
+      let ring = 0;
+      let n = 0;
+      let inside = true;
+      for (let dy = -2; dy <= 2; dy++)
+        for (let dx = -2; dx <= 2; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) < 2) continue;
+          const q = (y + dy) * s + x + dx;
+          if (!front.mask[q]) {
+            inside = false;
+            continue;
+          }
+          ring += lum[q];
+          n++;
+        }
+      if (!inside || n < 12) continue;
+      let isMin = true;
+      for (let dy = -1; dy <= 1 && isMin; dy++)
+        for (let dx = -1; dx <= 1; dx++)
+          if ((dx || dy) && lum[(y + dy) * s + x + dx] < lum[p]) {
+            isMin = false;
+            break;
+          }
+      if (isMin && ring / n - lum[p] > 9) dimples++;
+    }
+  return dimples >= 4;
+}
+
+/** Horizontal back rails seen from the back: bands of wood separated by gaps or cushion down the middle. */
+function countBackRails(view) {
+  if (!view) return 3;
+  const s = view.size;
+  const bands = [];
+  for (let y = Math.floor(s * 0.1); y < Math.floor(s * 0.9); y++) {
+    const px = regionPixels(view, 0.3, y / s, 0.7, (y + 1) / s);
+    bands.push(px.length ? mean(px.map((c) => [luma(c), 0, 0]))[0] : 0);
+  }
+  if (!bands.length) return 3;
+  const sorted = [...bands].sort((a, b) => a - b);
+  const cut =
+    (sorted[Math.floor(sorted.length * 0.25)] + sorted[Math.floor(sorted.length * 0.75)]) / 2;
+  let runs = 0;
+  let inside = false;
+  for (const v of bands) {
+    if (v > cut && !inside) runs++;
+    inside = v > cut;
+  }
+  return runs;
+}
+
 const clampInt = (v, lo, hi) => Math.max(lo, Math.min(hi, Math.round(v)));
 const round2 = (v) => Math.round(v * 100) / 100;
 
@@ -420,9 +544,19 @@ export function detectStructure(type, views, dims) {
   } else if (type === 'chair') {
     const fill = F ? fillOf(F, [0.22, 0.14, 0.78, 0.3], true) : null;
     out.back = fill === null ? 'slat' : fill >= 0.8 ? 'solid' : fill >= 0.12 ? 'slat' : 'open';
+  } else if (type === 'lounge') {
+    out.slats = clampInt(countBackRails(views.back || F), 2, 5);
   } else if (type === 'sofa' || type === 'armchair') {
     const arm = armFraction(T, type === 'sofa' ? 0.1 : 0.17);
     out.arm = round2(Math.min(0.2, Math.max(0.04, arm)));
+    const roll = rolledArms(F);
+    if (roll) {
+      out.roll = roll.roll ? 1 : 0;
+      // Arms that stand proud of the back are wide and padded
+      if (roll.roll) out.arm = round2(Math.min(0.14, Math.max(0.08, 0.05 + roll.protrusion * 1.6)));
+    }
+    out.tufted = tuftedBack(F) ? 1 : 0;
+    out.taper = taperedLegs(F) ? 1 : 0;
     if (type === 'sofa') {
       const seams = F ? findLines(F, 'x', [0.05, 0.5, 0.95, 0.76]).length : 0;
       const inner = w * (1 - 2 * out.arm);
@@ -495,6 +629,15 @@ function paletteFor(type, views) {
     ].filter(Boolean);
     palette.accent = seen.length ? toHex(mean(seen.map(hexRgb))) : FALLBACK.accent;
     palette.pillow = pickColor(T, [0.2, 0.13, 0.8, 0.38], 'light') || FALLBACK.pillow;
+  } else if (type === 'lounge') {
+    // Cushions from the middle of the front view; the frame from the posts and rails at the sides
+    palette.cushion = pickColor(F, [0.3, 0.1, 0.7, 0.35]) || all;
+    const wood = [
+      pickColor(F, [0.0, 0.5, 0.12, 0.98], 'light'),
+      pickColor(views.left || views.right, [0.1, 0.6, 0.9, 0.98], 'light'),
+    ].filter(Boolean);
+    palette.body = wood.length ? toHex(mean(wood.map(hexRgb))) : '#8a5a34';
+    palette.leg = palette.body;
   } else if (type === 'sofa' || type === 'armchair') {
     palette.body = pickColor(F, [0.15, 0.1, 0.85, 0.4]) || all;
     palette.cushion =
@@ -572,8 +715,16 @@ export function sanitizeDesign(raw) {
   } else if (raw.type === 'sofa') {
     traits.seats = Math.round(num(t.seats, 1, 5, 3));
     traits.arm = num(t.arm, 0.04, 0.2, 0.1);
+    traits.roll = t.roll ? 1 : 0;
+    traits.tufted = t.tufted ? 1 : 0;
+    traits.taper = t.taper ? 1 : 0;
   } else if (raw.type === 'armchair') {
     traits.arm = num(t.arm, 0.04, 0.22, 0.17);
+    traits.roll = t.roll ? 1 : 0;
+    traits.tufted = t.tufted ? 1 : 0;
+    traits.taper = t.taper ? 1 : 0;
+  } else if (raw.type === 'lounge') {
+    traits.slats = Math.round(num(t.slats, 2, 5, 3));
   } else if (raw.type === 'wardrobe') {
     traits.doors = Math.round(num(t.doors, 1, 6, 2));
   } else if (raw.type === 'bookshelf') {
@@ -601,7 +752,7 @@ export function designMainColor(design) {
 export function supportTraitsFor(design) {
   const type = design?.type;
   if (type === 'bed') return { supportsTop: true, supportKind: 'soft', surfaceHeightCm: 46 };
-  if (type === 'sofa' || type === 'armchair')
+  if (type === 'sofa' || type === 'armchair' || type === 'lounge')
     return { supportsTop: true, supportKind: 'soft', surfaceHeightCm: 44 };
   if (['table', 'table-round', 'coffee-table', 'desk', 'cabinet', 'nightstand'].includes(type))
     return { supportsTop: true };
