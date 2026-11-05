@@ -79,6 +79,15 @@ import {
 } from './smalls.jsx';
 
 import {
+  WallArtSilhouette,
+  WallMirrorHungSilhouette,
+  WallShelfSilhouette,
+  WallClockSilhouette,
+  WallPlanterSilhouette,
+  CurtainSilhouette,
+} from './wallDecor.jsx';
+
+import {
   CushionSilhouette,
   VaseSilhouette,
   LaptopSilhouette,
@@ -170,6 +179,12 @@ export const SILHOUETTES = {
   kettle: KettleSilhouette,
   bowl: BowlSilhouette,
   folded: FoldedSilhouette,
+  'wall-art': WallArtSilhouette,
+  'wall-mirror-hung': WallMirrorHungSilhouette,
+  'wall-shelf': WallShelfSilhouette,
+  'wall-clock': WallClockSilhouette,
+  'wall-planter': WallPlanterSilhouette,
+  curtain: CurtainSilhouette,
 };
 
 /** Unknown shape types fall back to the credenza-style rectangle. */

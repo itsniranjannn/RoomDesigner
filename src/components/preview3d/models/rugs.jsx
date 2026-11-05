@@ -1,6 +1,20 @@
 /** 3D models: rugs. Built from Three.js primitives; origin on the floor, centered on the footprint. */
+import React from 'react';
+import { PatternedRug } from './rugsPatterned.jsx';
+import { usesPatternModel } from '../patterns.js';
 
-export function RugModel({ def, widthM, depthM, mainColor }) {
+export function RugModel({ def, widthM, depthM, heightM, mainColor }) {
+  if (usesPatternModel(def)) {
+    return (
+      <PatternedRug
+        def={def}
+        widthM={widthM}
+        depthM={depthM}
+        heightM={heightM}
+        mainColor={mainColor}
+      />
+    );
+  }
   const rugThick = 0.012;
   const b1W = widthM * 0.86;
   const b1D = depthM * 0.88;
@@ -81,7 +95,18 @@ export function RugModel({ def, widthM, depthM, mainColor }) {
   );
 }
 
-export function RugRunnerModel({ def, widthM, depthM, mainColor }) {
+export function RugRunnerModel({ def, widthM, depthM, heightM, mainColor }) {
+  if (usesPatternModel(def)) {
+    return (
+      <PatternedRug
+        def={def}
+        widthM={widthM}
+        depthM={depthM}
+        heightM={heightM}
+        mainColor={mainColor}
+      />
+    );
+  }
   const runnerThick = 0.012; // 1.2cm plush runner pile
   const b1W = widthM * 0.82;
   const b1D = depthM * 0.94;
@@ -144,7 +169,26 @@ export function RugRunnerModel({ def, widthM, depthM, mainColor }) {
   );
 }
 
-export function NepaliDhakaRugModel({ widthM, depthM, heightM, mainColor, accentColor, subColor }) {
+export function NepaliDhakaRugModel({
+  def,
+  widthM,
+  depthM,
+  heightM,
+  mainColor,
+  accentColor,
+  subColor,
+}) {
+  if (usesPatternModel(def)) {
+    return (
+      <PatternedRug
+        def={def}
+        widthM={widthM}
+        depthM={depthM}
+        heightM={heightM}
+        mainColor={mainColor}
+      />
+    );
+  }
   const tile = 0.28;
   const cols = Math.max(4, Math.floor(widthM / tile));
   const rows = Math.max(4, Math.floor(depthM / tile));

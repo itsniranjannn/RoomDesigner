@@ -1,5 +1,9 @@
 /** 2D plan symbols: rugs. Coordinates are centered at (0, 0), widthCm x depthCm. */
-export function RugSilhouette({ widthCm, depthCm, hw, hd, color, accentColor, subColor }) {
+import { PatternPlan } from './PatternPlan.jsx';
+import { usesPatternModel } from '../../preview3d/patterns.js';
+export function RugSilhouette({ item, widthCm, depthCm, hw, hd, color, accentColor, subColor }) {
+  if (usesPatternModel(item))
+    return <PatternPlan item={item} widthCm={widthCm} depthCm={depthCm} />;
   const b1 = Math.min(18, widthCm * 0.08);
   const b2 = Math.min(28, widthCm * 0.12);
   const medallionR = Math.min(widthCm, depthCm) * 0.22;
@@ -110,7 +114,9 @@ export function RugSilhouette({ widthCm, depthCm, hw, hd, color, accentColor, su
   );
 }
 
-export function RugRunnerSilhouette({ widthCm, depthCm, hw, hd, color, subColor }) {
+export function RugRunnerSilhouette({ item, widthCm, depthCm, hw, hd, color, subColor }) {
+  if (usesPatternModel(item))
+    return <PatternPlan item={item} widthCm={widthCm} depthCm={depthCm} />;
   const b1 = Math.min(10, widthCm * 0.12);
   return (
     <g>
@@ -169,6 +175,7 @@ export function RugRunnerSilhouette({ widthCm, depthCm, hw, hd, color, subColor 
 }
 
 export function NepaliDhakaRugSilhouette({
+  item,
   widthCm,
   depthCm,
   hw,
@@ -177,6 +184,8 @@ export function NepaliDhakaRugSilhouette({
   accentColor,
   subColor,
 }) {
+  if (usesPatternModel(item))
+    return <PatternPlan item={item} widthCm={widthCm} depthCm={depthCm} />;
   const cols = Math.max(4, Math.floor(widthCm / 28));
   const rows = Math.max(4, Math.floor(depthCm / 28));
   return (

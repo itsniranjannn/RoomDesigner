@@ -67,6 +67,14 @@ import { DeskLModel, StandingDeskModel, ReceptionCounterModel } from './office.j
 import { SinkUnitModel, ApplianceModel } from './kitchenUnits.jsx';
 import { VanityModel, SquatToiletModel, TankModel, BasketModel } from './bathroom.jsx';
 import { PlanterModel, RugRoundModel, ScreenModel } from './accents.jsx';
+import {
+  WallArtModel,
+  WallMirrorHungModel,
+  WallShelfModel,
+  WallClockModel,
+  WallPlanterModel,
+} from './wallDecor.jsx';
+import { CurtainModel } from './curtains.jsx';
 import { TableLampModel, MonitorModel, MicrowaveModel, BookStackModel } from './smalls.jsx';
 
 import {
@@ -161,6 +169,12 @@ export const MODELS = {
   kettle: KettleModel,
   bowl: BowlModel,
   folded: FoldedModel,
+  'wall-art': WallArtModel,
+  'wall-mirror-hung': WallMirrorHungModel,
+  'wall-shelf': WallShelfModel,
+  'wall-clock': WallClockModel,
+  'wall-planter': WallPlanterModel,
+  curtain: CurtainModel,
 };
 
 /** Unknown shape types fall back to a plain box of the catalog dimensions. */

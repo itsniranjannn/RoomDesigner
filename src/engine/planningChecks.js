@@ -109,6 +109,7 @@ const typeId = (entry) => entry.item.furnitureTypeId || entry.def.id || '';
 function isFlatDef(def) {
   return (
     !def ||
+    def.wallMounted ||
     (def.heightCm ?? 100) < 5 ||
     def.shapeType === 'rug' ||
     def.shapeType === 'rug-runner' ||

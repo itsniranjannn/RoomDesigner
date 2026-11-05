@@ -30,6 +30,13 @@ import { evaluateAllCollisions } from '../engine/collision.js';
 import { reconcileStacking, pickDefaultSupport } from '../engine/stacking.js';
 import { findFreePosition } from '../engine/placement.js';
 import { applyFinish } from '../components/preview3d/materials.js';
+import { applyStyleToRoom, resetStyleOnRoom } from '../data/stylePresets.js';
+import {
+  snapToNearestWall,
+  defaultWallSpot,
+  defaultMountHeight,
+  clampMountHeight,
+} from '../engine/wallMount.js';
 import { clamp, normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
 import { clampOpening, DOOR_WIDTH_CM, defaultOpeningWidth } from '../engine/openings.js';
@@ -64,6 +71,49 @@ const restoredServices = (room, snapshot) =>
   snapshot.services && (snapshot.services.length > 0 || room.services)
     ? { services: snapshot.services }
     : {};
+
+/**
+ * Pieces that hang on a wall (frames, mirrors, shelves, curtains) always sit against the nearest wall:
+ * moved, turned or resized, they snap back flush and face into the room. Other pieces are untouched.
+ */
+function snapWallPieces(room, items) {
+  let changed = false;
+  const next = items.map((item) => {
+    const def = resolveItemDef(item);
+    if (!def?.wallMounted) return item;
+    const spot = snapToNearestWall(room, def, item);
+    const elevationCm = Number.isFinite(item.elevationCm)
+      ? item.elevationCm
+      : defaultMountHeight(def);
+    if (
+      Math.abs(spot.x - item.x) < 0.05 &&
+      Math.abs(spot.y - item.y) < 0.05 &&
+      (item.rotationDeg || 0) === spot.rotationDeg &&
+      item.elevationCm === elevationCm
+    )
+      return item;
+    changed = true;
+    return { ...item, x: spot.x, y: spot.y, rotationDeg: spot.rotationDeg, elevationCm };
+  });
+  return changed ? next : items;
+}
+
+/** The part of a room a style changes (finish and style record), kept in undo snapshots of style steps. */
+const lookOf = (room) => ({
+  finish: room.finish ? JSON.parse(JSON.stringify(room.finish)) : null,
+  styleApplied: room.styleApplied ? JSON.parse(JSON.stringify(room.styleApplied)) : null,
+});
+
+/** The room with the finish and style record of a snapshot, when the snapshot kept them. */
+function withSnapshotLook(room, snapshot) {
+  if (!snapshot.look) return room;
+  const { finish: _f, styleApplied: _s, ...rest } = room;
+  return {
+    ...rest,
+    ...(snapshot.look.finish ? { finish: snapshot.look.finish } : {}),
+    ...(snapshot.look.styleApplied ? { styleApplied: snapshot.look.styleApplied } : {}),
+  };
+}
 
 const newItemId = () => `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
@@ -126,10 +176,11 @@ export const useRoomStore = create((set, get) => ({
   canRedo: false,
 
   // Helper to obtain a deep snapshot of the active design entities
-  getCurrentSnapshot: () => {
+  getCurrentSnapshot: (includeLook = false) => {
     const { room, selectedItemId } = get();
     if (!room) return null;
     return {
+      ...(includeLook ? { look: lookOf(room) } : {}),
       placedFurniture: JSON.parse(JSON.stringify(room.placedFurniture || [])),
       doors: JSON.parse(JSON.stringify(room.doors || [])),
       windows: JSON.parse(JSON.stringify(room.windows || [])),
@@ -139,8 +190,8 @@ export const useRoomStore = create((set, get) => ({
   },
 
   // Record a history snapshot before an atomic action
-  _recordHistory: () => {
-    const snapshot = get().getCurrentSnapshot();
+  _recordHistory: (includeLook = false) => {
+    const snapshot = get().getCurrentSnapshot(includeLook);
     if (!snapshot) return;
     const { undoStack } = get();
     const nextUndoStack = [...undoStack.slice(-49), snapshot];
@@ -180,19 +231,23 @@ export const useRoomStore = create((set, get) => ({
     const { undoStack, redoStack, room } = get();
     if (undoStack.length === 0 || !room) return;
 
-    const currentSnapshot = get().getCurrentSnapshot();
     const prevSnapshot = undoStack[undoStack.length - 1];
+    // A style step also keeps the finish, so undoing and redoing it brings the floor and walls back too
+    const currentSnapshot = get().getCurrentSnapshot(!!prevSnapshot.look);
     const nextUndoStack = undoStack.slice(0, -1);
     const nextRedoStack = [...redoStack, currentSnapshot];
 
     // Apply snapshot to active room
-    const updatedRoom = {
-      ...room,
-      placedFurniture: prevSnapshot.placedFurniture,
-      doors: prevSnapshot.doors,
-      windows: prevSnapshot.windows,
-      ...restoredServices(room, prevSnapshot),
-    };
+    const updatedRoom = withSnapshotLook(
+      {
+        ...room,
+        placedFurniture: prevSnapshot.placedFurniture,
+        doors: prevSnapshot.doors,
+        windows: prevSnapshot.windows,
+        ...restoredServices(room, prevSnapshot),
+      },
+      prevSnapshot
+    );
 
     const enrichedItems = (updatedRoom.placedFurniture || []).map((item) => {
       const def = resolveItemDef(item);
@@ -231,18 +286,21 @@ export const useRoomStore = create((set, get) => ({
     const { undoStack, redoStack, room } = get();
     if (redoStack.length === 0 || !room) return;
 
-    const currentSnapshot = get().getCurrentSnapshot();
     const nextSnapshot = redoStack[redoStack.length - 1];
+    const currentSnapshot = get().getCurrentSnapshot(!!nextSnapshot.look);
     const nextRedoStack = redoStack.slice(0, -1);
     const nextUndoStack = [...undoStack, currentSnapshot];
 
-    const updatedRoom = {
-      ...room,
-      placedFurniture: nextSnapshot.placedFurniture,
-      doors: nextSnapshot.doors,
-      windows: nextSnapshot.windows,
-      ...restoredServices(room, nextSnapshot),
-    };
+    const updatedRoom = withSnapshotLook(
+      {
+        ...room,
+        placedFurniture: nextSnapshot.placedFurniture,
+        doors: nextSnapshot.doors,
+        windows: nextSnapshot.windows,
+        ...restoredServices(room, nextSnapshot),
+      },
+      nextSnapshot
+    );
 
     const enrichedItems = (updatedRoom.placedFurniture || []).map((item) => {
       const def = resolveItemDef(item);
@@ -411,8 +469,18 @@ export const useRoomStore = create((set, get) => ({
       customX !== null ? customX : stackBase ? stackBase.x : Math.round(room.widthCm / 2 + offsetX);
     let targetY =
       customY !== null ? customY : stackBase ? stackBase.y : Math.round(room.depthCm / 2 + offsetY);
+    // Wall pieces go on a wall: a curtain on a window that has none yet, anything else mid-wall
+    const wallSpot = catalogDef.wallMounted
+      ? customX === null
+        ? defaultWallSpot(room, catalogDef, room.placedFurniture || [])
+        : { x: customX, y: customY }
+      : null;
+    if (wallSpot) {
+      targetX = wallSpot.x;
+      targetY = wallSpot.y;
+    }
     // Added without choosing a spot: take the free place nearest the middle instead of piling on a piece
-    if (customX === null && !stackBase) {
+    if (customX === null && !stackBase && !wallSpot) {
       const others = (room.placedFurniture || [])
         .filter((item) => !item.elevationCm)
         .map((item) => {
@@ -457,7 +525,7 @@ export const useRoomStore = create((set, get) => ({
       x: clamped.x,
       y: clamped.y,
       rotationDeg: startRotation,
-      elevationCm: 0,
+      elevationCm: catalogDef.wallMounted ? defaultMountHeight(catalogDef) : 0,
     };
 
     let updatedFurniture = [...(room.placedFurniture || []), newItem];
@@ -987,6 +1055,43 @@ export const useRoomStore = create((set, get) => ({
     get()._commitFurnitureUpdate(updated, id);
   },
 
+  // How high a wall piece hangs (cm above the floor); pieces on a shelf follow it
+  setItemElevation: (id, elevationCm) => {
+    const { room } = get();
+    if (!room) return;
+    const target = (room.placedFurniture || []).find((i) => i.id === id);
+    const def = resolveItemDef(target);
+    if (!target || !def?.wallMounted) return;
+    const next = clampMountHeight(elevationCm, def);
+    if (next === Math.round(target.elevationCm || 0)) return;
+    get()._recordHistory();
+    get()._commitFurnitureUpdate(
+      (room.placedFurniture || []).map((i) => (i.id === id ? { ...i, elevationCm: next } : i)),
+      id
+    );
+  },
+
+  // One-click style: floor, walls and recoloured pieces in a single undo step (see data/stylePresets.js)
+  applyStyle: (styleId, options) => {
+    const { room } = get();
+    if (!room) return;
+    const next = applyStyleToRoom(room, styleId, options);
+    if (next === room) return;
+    get()._recordHistory(true);
+    set({ room: next, saveStatus: 'saving' });
+    persistDebounced(next, set);
+  },
+
+  // Puts the pieces and finish back as they were before any style
+  resetStyle: () => {
+    const { room } = get();
+    if (!room?.styleApplied) return;
+    get()._recordHistory(true);
+    const next = resetStyleOnRoom(room);
+    set({ room: next, saveStatus: 'saving' });
+    persistDebounced(next, set);
+  },
+
   // ---------- Room-level tools ----------
 
   _commitRoom: (updatedRoom) => {
@@ -1300,7 +1405,10 @@ export const useRoomStore = create((set, get) => ({
     if (!room) return;
 
     // Pieces resting on a moved support travel with it; orphaned ones drop to the floor
-    const updatedFurniture = reconcileStacking(room.placedFurniture || [], editedFurniture);
+    const updatedFurniture = reconcileStacking(
+      room.placedFurniture || [],
+      snapWallPieces(room, editedFurniture)
+    );
 
     const enrichedItems = updatedFurniture.map((item) => {
       const def = resolveItemDef(item);

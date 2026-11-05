@@ -115,6 +115,7 @@ const FOLLOWERS = {
   'rug-runner': ['subColor', 'accentColor'],
   'rug-round': ['subColor', 'accentColor'],
   'nepali-dhaka-rug': ['subColor', 'accentColor'],
+  curtain: ['subColor', 'accentColor'],
 };
 
 export function followersFor(shapeType) {

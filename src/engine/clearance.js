@@ -68,6 +68,7 @@ export function isTightPassage(gap) {
 function isFlat(def) {
   return (
     !def ||
+    def.wallMounted ||
     (def.heightCm ?? 100) < 5 ||
     def.shapeType === 'rug' ||
     def.shapeType === 'rug-runner' ||

@@ -63,6 +63,8 @@ export function checkFurnitureCollision(itemA, itemB, epsilon = 0.5) {
   // Rugs and carpet runners do not collide with furniture (furniture sits on rugs)
   const defA = resolveItemDef(itemA);
   const defB = resolveItemDef(itemB);
+  // Pieces hung on a wall do not clash with what stands on the floor
+  if (defA?.wallMounted || defB?.wallMounted) return false;
   if (
     defA?.shapeType === 'rug' ||
     defA?.shapeType === 'rug-runner' ||
@@ -153,6 +155,7 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm,
       depthCm: item.depthCm ?? def?.depthCm ?? 50,
       heightCm: def?.heightCm ?? 100,
       shapeType: def?.shapeType,
+      wallMounted: !!def?.wallMounted,
     };
   });
   // Resting pieces are checked against the originals so catalog flags stay resolvable
@@ -190,12 +193,12 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm,
   // Check pairwise furniture collisions (rugs and carpet runners exempt)
   for (let i = 0; i < n; i++) {
     const itemA = items[i];
-    if (isFlatRug(itemA.shapeType)) continue;
+    if (isFlatRug(itemA.shapeType) || itemA.wallMounted) continue;
     const cornersA = cornersMap.get(itemA.id);
 
     for (let j = i + 1; j < n; j++) {
       const itemB = items[j];
-      if (isFlatRug(itemB.shapeType)) continue;
+      if (isFlatRug(itemB.shapeType) || itemB.wallMounted) continue;
       // Items resting on top of one another (e.g. TV on console) do not clash
       if (!overlapsVertically(itemA, itemB)) continue;
       if (restsOn(itemA, itemB, byId, placedFurniture)) continue;
@@ -215,7 +218,12 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm,
 }
 
 function isFlatRug(shapeType) {
-  return shapeType === 'rug' || shapeType === 'rug-runner' || shapeType === 'nepali-dhaka-rug';
+  return (
+    shapeType === 'rug' ||
+    shapeType === 'rug-runner' ||
+    shapeType === 'rug-round' ||
+    shapeType === 'nepali-dhaka-rug'
+  );
 }
 
 function overlapsVertically(a, b, epsilon = 0.5) {

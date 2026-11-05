@@ -1,5 +1,7 @@
 /** 2D plan symbols: planters, round rugs and screens. Coordinates are centered at (0, 0), widthCm x depthCm. */
 import { HAIR, METAL } from './parts.jsx';
+import { PatternPlan } from './PatternPlan.jsx';
+import { usesPatternModel } from '../../preview3d/patterns.js';
 
 export function PlanterSilhouette({ hw, hd, color, subColor }) {
   const r = Math.min(hw, hd);
@@ -51,8 +53,10 @@ export function PlanterSilhouette({ hw, hd, color, subColor }) {
   );
 }
 
-export function RugRoundSilhouette({ hw, hd, color, subColor, accentColor }) {
+export function RugRoundSilhouette({ item, hw, hd, color, subColor, accentColor }) {
   const r = Math.min(hw, hd);
+  if (usesPatternModel(item))
+    return <PatternPlan item={item} widthCm={r * 2} depthCm={r * 2} round />;
   return (
     <g>
       <circle cx={0} cy={0} r={r} fill={color} stroke="rgba(0,0,0,0.35)" strokeWidth="1" />
