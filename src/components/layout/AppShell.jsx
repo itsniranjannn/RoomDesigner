@@ -15,6 +15,7 @@ import { NewFlatModal } from '../flat/NewFlatModal.jsx';
 import { Modal } from '../common/Modal.jsx';
 import { CanvasLoader } from '../common/CanvasLoader.jsx';
 import { Button } from '../common/Button.jsx';
+import { Tour } from '../onboarding/Tour.jsx';
 import { decodeRoomFromHash } from '../../engine/share.js';
 import styles from './AppShell.module.css';
 
@@ -189,6 +190,7 @@ export function AppShell() {
     return (
       <>
         <FlatDesigner />
+        <Tour kind="flat" launcher />
         {shareDialog}
       </>
     );
@@ -249,6 +251,7 @@ export function AppShell() {
         {docked && (
           <div
             className={`${styles.dock} ${styles.dockLeft} ${catalogOpen ? '' : styles.dockClosed}`}
+            data-tour="catalog"
             inert={!catalogOpen}
           >
             <div className={styles.dockInner}>{catalogPanel}</div>
@@ -268,6 +271,7 @@ export function AppShell() {
         {docked && (
           <div
             className={`${styles.dock} ${styles.dockRight} ${showInspector && inspectorOpen ? '' : styles.dockClosed}`}
+            data-tour="inspector"
             inert={!(showInspector && inspectorOpen)}
           >
             <div className={styles.dockInner}>{inspectorPanel}</div>
@@ -289,6 +293,7 @@ export function AppShell() {
 
       <NewRoomModal isOpen={isNewRoomModalOpen} onClose={() => setIsNewRoomModalOpen(false)} />
       <ModalHost />
+      <Tour kind="room" />
       {shareDialog}
     </div>
   );
