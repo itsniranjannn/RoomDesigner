@@ -11,7 +11,7 @@ const SECTIONS = [
       ['Shift + Click', 'Add or remove a piece'],
       ['Drag', 'Box-select on empty floor'],
       ['Ctrl + A', 'Select all pieces'],
-      ['Esc', 'Clear selection or leave measuring'],
+      ['Esc', 'Clear selection or leave measuring; inside a flat room, back to the flat'],
     ],
   },
   {
