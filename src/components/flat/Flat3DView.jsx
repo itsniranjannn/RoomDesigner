@@ -4,6 +4,8 @@ import { OrbitControls, ContactShadows } from '@react-three/drei';
 import * as THREE from 'three';
 import { Box, Footprints, Square } from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
+import { resolveItemDef } from '../../data/furnitureCatalog.js';
+import { pushOffInteriorWalls } from '../../engine/furnitureWalls.js';
 import { Furniture3DBox } from '../preview3d/Furniture3DBox.jsx';
 import { WalkControls } from '../preview3d/WalkControls.jsx';
 import { WalkHud } from '../preview3d/WalkHud.jsx';
@@ -388,16 +390,23 @@ function LevelShell({ flat, level, rooms, baseY, fullHeight, entranceId, withSla
                   (space.y + space.depthCm / 2) / 100,
                 ]}
               >
-                {(room.placedFurniture || []).map((item) => (
-                  <Furniture3DBox
-                    key={item.id}
-                    item={item}
-                    roomWidthCm={room.widthCm}
-                    roomDepthCm={room.depthCm}
-                    isSelected={false}
-                    isColliding={false}
-                  />
-                ))}
+                {(room.placedFurniture || []).map((raw) => {
+                  const def = resolveItemDef(raw);
+                  const item =
+                    def && !raw.elevationCm
+                      ? { ...raw, ...pushOffInteriorWalls(raw, space, room, boxes, def) }
+                      : raw;
+                  return (
+                    <Furniture3DBox
+                      key={item.id}
+                      item={item}
+                      roomWidthCm={room.widthCm}
+                      roomDepthCm={room.depthCm}
+                      isSelected={false}
+                      isColliding={false}
+                    />
+                  );
+                })}
               </group>
             )}
           </group>

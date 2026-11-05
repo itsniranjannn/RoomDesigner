@@ -69,7 +69,7 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
   const trace = room?.traceImage;
 
   return (
-    <>
+    <div className={styles.chrome}>
       <div
         className={styles.toolbar}
         role="toolbar"
@@ -249,6 +249,6 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
           </div>
         )}
       </div>
-    </>
+    </div>
   );
 }

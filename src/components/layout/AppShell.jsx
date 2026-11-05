@@ -54,6 +54,36 @@ export function AppShell() {
       : setDrawer((d) => (d === 'inspector' ? null : 'inspector'));
   const closeDrawer = () => setDrawer(null);
 
+  // Designing one room of a flat: browser Back and Escape return to the flat plan. The room
+  // is saved first (backToFlat flushes it), so no work is lost.
+  const inFlatRoom = flatMode === 'room';
+  useEffect(() => {
+    if (!inFlatRoom) return undefined;
+    let popped = false;
+    window.history.pushState({ rdFlatRoom: true }, '');
+    const goBack = () => useFlatStore.getState().backToFlat();
+    const onPop = () => {
+      popped = true;
+      goBack();
+    };
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || e.defaultPrevented) return;
+      if (useRoomStore.getState().viewMode !== '2d') return;
+      if (['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName)) return;
+      if (document.querySelector('[role="dialog"], [role="menu"], [aria-modal="true"]')) return;
+      if (useRoomStore.getState().activeModal) return;
+      goBack();
+    };
+    window.addEventListener('popstate', onPop);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      window.removeEventListener('keydown', onKey);
+      // Left by a button: drop the history entry added on entry
+      if (!popped && window.history.state?.rdFlatRoom) window.history.back();
+    };
+  }, [inFlatRoom]);
+
   // Escape closes an open drawer
   useEffect(() => {
     if (!drawer) return undefined;

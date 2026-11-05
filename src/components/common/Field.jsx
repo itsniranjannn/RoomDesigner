@@ -54,6 +54,16 @@ export function NumberField({
   const [draft, setDraft] = useState(value === undefined || value === null ? '' : String(value));
   useEffect(() => setDraft(value === undefined || value === null ? '' : String(value)), [value]);
 
+  // Tell the user when what they typed is outside the allowed range, before it is clamped
+  const typed = draft === '' ? NaN : Number(draft);
+  let rangeError = null;
+  if (Number.isFinite(typed)) {
+    if (min !== undefined && typed < min)
+      rangeError = `Minimum is ${min}. It will be set to ${min}.`;
+    else if (max !== undefined && typed > max)
+      rangeError = `Maximum is ${max}. It will be set to ${max}.`;
+  }
+
   const commit = () => {
     if (draft === '') {
       setDraft(value === undefined || value === null ? '' : String(value));
@@ -70,7 +80,7 @@ export function NumberField({
   };
 
   return (
-    <Field label={label} hint={hint} error={error} htmlFor={id} className={className}>
+    <Field label={label} hint={hint} error={error || rangeError} htmlFor={id} className={className}>
       <span className={styles.numberWrap}>
         <input
           id={id}
@@ -83,7 +93,12 @@ export function NumberField({
           step={step}
           onChange={(e) => setDraft(e.target.value)}
           onBlur={commit}
-          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              commit();
+              // Inside a form, Enter also submits it; the committed value is applied first
+            }
+          }}
           {...props}
         />
         {suffix && <span className={styles.suffix}>{suffix}</span>}
