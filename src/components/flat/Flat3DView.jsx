@@ -17,6 +17,8 @@ import {
   LampLights,
 } from '../preview3d/lighting.jsx';
 import { MaterialsPanel } from '../preview3d/MaterialsPanel.jsx';
+import { StyleButton } from '../preview3d/StylePicker.jsx';
+import { dominantFinish, sharedStyle } from '../../data/stylePresets.js';
 import { useQuality, useFlatLook } from '../preview3d/useLook.js';
 import { collectLamps } from '../preview3d/lamps.js';
 import { normalizeFinish } from '../preview3d/materials.js';
@@ -437,8 +439,11 @@ function LevelShell({
                 )}
                 {(room.placedFurniture || []).map((raw) => {
                   const def = resolveItemDef(raw);
+                  // Pictures, mirrors and curtains hang higher than the low walls: they show with full walls
+                  if (def?.wallMounted && !fullHeight) return null;
+                  // Pieces on the floor and pieces hung on a wall are moved clear of a wall drawn on the room's edge
                   const item =
-                    def && !raw.elevationCm
+                    def && (!raw.elevationCm || def.wallMounted)
                       ? { ...raw, ...pushOffInteriorWalls(raw, space, room, boxes, def) }
                       : raw;
                   return (
@@ -515,7 +520,18 @@ export function Flat3DView() {
   const preset = LIGHTING[lighting];
   const quality = useQuality();
   const look = useFlatLook();
-  const wallMat = wallMaterial(look.wall);
+  // One wall finish for the whole flat: the one picked here, else what its rooms were given (a style)
+  const wallMat = wallMaterial(look.wall || dominantFinish(Object.values(rooms), 'wall'));
+  const selected = useFlatStore((s) => s.selected);
+  const applyStyle = useFlatStore((s) => s.applyStyle);
+  const resetStyle = useFlatStore((s) => s.resetStyle);
+  const [styleScope, setStyleScope] = useState('all');
+  const selectedSpace =
+    selected?.type === 'space' ? flat?.spaces.find((sp) => sp.id === selected.id) : null;
+  const scopeRoom = selectedSpace && rooms[selectedSpace.roomId] ? selectedSpace : null;
+  const oneRoom = styleScope === 'one' && scopeRoom;
+  const styleRooms = oneRoom ? [rooms[scopeRoom.roomId]] : Object.values(rooms);
+  const styleRoomIds = oneRoom ? [scopeRoom.roomId] : null;
 
   const layout = useMemo(() => {
     if (!flat) return null;
@@ -707,6 +723,35 @@ export function Flat3DView() {
             size="small"
           />
         )}
+        <StyleButton
+          size="small"
+          current={sharedStyle(styleRooms)}
+          hasStyle={styleRooms.some((r) => r.styleApplied)}
+          onPick={(id) => {
+            // Walls are one finish for the whole flat in 3D, so a single room takes only floor and colours
+            applyStyle(id, styleRoomIds, oneRoom ? { wall: false } : undefined);
+            if (!oneRoom) look.set({ wall: null, floor: null });
+          }}
+          onReset={() => resetStyle(styleRoomIds)}
+          scope={
+            <Segmented
+              ariaLabel="Apply the style to"
+              options={[
+                { value: 'all', label: 'All rooms' },
+                {
+                  value: 'one',
+                  label: scopeRoom ? scopeRoom.name || 'This room' : 'One room',
+                  title: scopeRoom ? undefined : 'Select a room on the plan first',
+                },
+              ]}
+              value={oneRoom ? 'one' : 'all'}
+              onChange={(v) => setStyleScope(v === 'one' && !scopeRoom ? 'all' : v)}
+              size="small"
+              fill
+            />
+          }
+          note={scopeRoom ? null : 'Select a room on the plan to style just that room.'}
+        />
         <MaterialsPanel
           floor={look.floor}
           wall={look.wall}
