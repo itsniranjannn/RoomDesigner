@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
-  AlertTriangle,
+  ClipboardCheck,
   ImagePlus,
   Keyboard,
   MoveHorizontal,
+  Plug,
   Redo2,
   Ruler,
   ScanLine,
@@ -13,12 +14,10 @@ import {
 } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { readImage } from '../../engine/image.js';
-import { describeIssue } from './OverlayLayers.jsx';
-import { resolveItemDef } from '../../data/furnitureCatalog.js';
+import { usePlanningStore } from '../../store/planningStore.js';
 import { Button } from '../common/Button.jsx';
 import { NumberField, RangeField } from '../common/Field.jsx';
 import { Notice } from '../common/Notice.jsx';
-import { Popover } from '../common/Popover.jsx';
 import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
 import { useMediaQuery } from '../layout/hooks.js';
 import styles from './CanvasToolbar.module.css';
@@ -26,7 +25,7 @@ import styles from './CanvasToolbar.module.css';
 // Clicks on the overlay must not reach the canvas underneath (it would clear the selection)
 const stop = { onClick: (e) => e.stopPropagation(), onPointerDown: (e) => e.stopPropagation() };
 
-export function CanvasToolbar({ issues, onClearMeasurements, measurementCount }) {
+export function CanvasToolbar({ checks, onClearMeasurements, measurementCount }) {
   const room = useRoomStore((s) => s.room);
   const measureActive = useRoomStore((s) => s.measureActive);
   const showClearance = useRoomStore((s) => s.showClearance);
@@ -36,7 +35,8 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
   const toggleDimensions = useRoomStore((s) => s.toggleDimensions);
   const setTraceImage = useRoomStore((s) => s.setTraceImage);
   const updateTraceImage = useRoomStore((s) => s.updateTraceImage);
-  const selectItem = useRoomStore((s) => s.selectItem);
+  const panel = usePlanningStore((s) => s.panel);
+  const togglePanel = usePlanningStore((s) => s.togglePanel);
   const openModal = useRoomStore((s) => s.openModal);
   const undo = useRoomStore((s) => s.undo);
   const redo = useRoomStore((s) => s.redo);
@@ -68,13 +68,9 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
     }
   };
 
-  const nameOf = (id) => {
-    const item = (room.placedFurniture || []).find((i) => i.id === id);
-    return resolveItemDef(item)?.name || 'Piece';
-  };
-
   const side = phone ? 'bottom' : 'right';
   const trace = room?.traceImage;
+  const attention = (checks?.counts.error || 0) + (checks?.counts.warning || 0);
 
   return (
     <div className={styles.chrome}>
@@ -136,6 +132,30 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
         </ToolGroup>
         <ToolGroup vertical={!phone}>
           <ToolButton
+            active={panel === 'services'}
+            side={side}
+            onClick={() => togglePanel('services')}
+            label="Services: sockets, switches and pipes"
+          >
+            <Plug size={18} />
+          </ToolButton>
+          <ToolButton
+            active={panel === 'checks'}
+            side={side}
+            onClick={() => togglePanel('checks')}
+            label={attention > 0 ? `Plan checks (${attention} to look at)` : 'Plan checks'}
+            className={styles.checksButton}
+          >
+            <ClipboardCheck size={18} />
+            {attention > 0 && (
+              <span className={styles.badge} aria-hidden="true">
+                {attention > 9 ? '9+' : attention}
+              </span>
+            )}
+          </ToolButton>
+        </ToolGroup>
+        <ToolGroup vertical={!phone}>
+          <ToolButton
             side={side}
             onClick={() => fileRef.current?.click()}
             label="Trace a floor-plan image"
@@ -172,41 +192,6 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
             <Notice kind="warn">{placeNotice}</Notice>
           </div>
         )}
-        {issues.length > 0 && (
-          <div {...stop}>
-            <Popover
-              label="Clearance issues"
-              align="start"
-              renderTrigger={(props) => (
-                <button type="button" className={styles.issueChip} {...props}>
-                  <AlertTriangle size={16} aria-hidden="true" />
-                  {issues.length} clearance {issues.length === 1 ? 'issue' : 'issues'}
-                </button>
-              )}
-            >
-              {({ close }) => (
-                <ul className={styles.issueList}>
-                  {issues.map((issue, i) => (
-                    <li key={`${issue.itemId}-${issue.kind}-${i}`}>
-                      <button
-                        type="button"
-                        className={styles.issueRow}
-                        onClick={() => {
-                          selectItem(issue.itemId);
-                          close();
-                        }}
-                      >
-                        <strong>{nameOf(issue.itemId)}</strong>
-                        <span>{describeIssue(issue)}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Popover>
-          </div>
-        )}
-
         {measureActive && (
           <div className={styles.card} role="status" {...stop}>
             <span>Click two points to measure. Hold Shift to lock the angle.</span>

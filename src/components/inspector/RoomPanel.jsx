@@ -4,6 +4,7 @@ import { useRoomStore } from '../../store/roomStore.js';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { isResizable } from '../../engine/openings.js';
 import { hasOutline, outlineEdges, polygonArea } from '../../engine/roomShape.js';
+import { hingeSides } from '../../engine/planning.js';
 import { Button } from '../common/Button.jsx';
 import { SelectField } from '../common/Field.jsx';
 import { Section, IconButton } from '../common/Section.jsx';
@@ -17,10 +18,36 @@ const WALL_OPTIONS = [
   { value: 'right', label: 'Right wall' },
 ];
 
+const WINDOW_OPEN_OPTIONS = [
+  { value: 'none', label: 'Does not open (fixed or sliding)' },
+  { value: 'inward', label: 'Opens into the room' },
+  { value: 'outward', label: 'Opens outwards' },
+];
+
 const SWING_OPTIONS = [
   { value: 'inward', label: 'Into the room' },
   { value: 'outward', label: 'Out of the room' },
 ];
+
+/** Which side the leaf is hinged on, as seen standing inside the room facing the wall. */
+function HingeField({ room, opening, type, onChange }) {
+  const sides = hingeSides(room, opening, type);
+  const current = opening.hingeSide === 'end' ? 'end' : 'start';
+  return (
+    <SelectField
+      label="Hinged on"
+      hint="As you face the wall from inside the room."
+      options={[
+        { value: sides.left, label: 'Left side' },
+        { value: sides.right, label: 'Right side' },
+      ]}
+      value={current}
+      onChange={(hingeSide) =>
+        onChange(type, opening.id, { hingeSide: hingeSide === 'end' ? 'end' : undefined }, true)
+      }
+    />
+  );
+}
 
 function OpeningRow({ type, opening, index, canRemove, room }) {
   const updateOpening = useRoomStore((state) => state.updateOpening);
@@ -80,13 +107,32 @@ function OpeningRow({ type, opening, index, canRemove, room }) {
             : `Single door, ${opening.widthCm} cm. It slides along the wall but is not stretched.`}
         </p>
       </div>
-      {isDoor && (
-        <SelectField
-          label="Opens"
-          options={SWING_OPTIONS}
-          value={opening.swingDirection === 'outward' ? 'outward' : 'inward'}
-          onChange={(swingDirection) => updateOpening(type, opening.id, { swingDirection }, true)}
-        />
+      {isDoor ? (
+        <>
+          <SelectField
+            label="Opens"
+            options={SWING_OPTIONS}
+            value={opening.swingDirection === 'outward' ? 'outward' : 'inward'}
+            onChange={(swingDirection) => updateOpening(type, opening.id, { swingDirection }, true)}
+          />
+          <HingeField room={room} opening={opening} type={type} onChange={updateOpening} />
+        </>
+      ) : (
+        <>
+          <SelectField
+            label="Window opens"
+            options={WINDOW_OPEN_OPTIONS}
+            value={
+              opening.swing === 'inward' || opening.swing === 'outward' ? opening.swing : 'none'
+            }
+            onChange={(swing) =>
+              updateOpening(type, opening.id, { swing: swing === 'none' ? undefined : swing }, true)
+            }
+          />
+          {opening.swing && opening.widthCm <= 90 && (
+            <HingeField room={room} opening={opening} type={type} onChange={updateOpening} />
+          )}
+        </>
       )}
     </div>
   );

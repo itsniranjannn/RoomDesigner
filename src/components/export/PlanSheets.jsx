@@ -3,6 +3,8 @@ import { ArchitecturalSilhouette } from '../canvas/ArchitecturalSilhouette.jsx';
 import { regionRects } from '../../engine/flatWalls.js';
 import { SPACE_KINDS } from '../../engine/flat.js';
 import { SANS, SERIF } from '../../engine/exportLayout.js';
+import { SERVICE_KINDS } from '../../engine/planning.js';
+import { PlacedService, ServiceGlyph } from '../canvas/serviceSymbols.jsx';
 
 /**
  * PlanSheets.jsx
@@ -177,6 +179,47 @@ function KindKey({ model }) {
               strokeWidth={0.6 * Math.sqrt(k)}
             />
             <text x={e.x + font * 1.8} y={cy + font * 0.34} fill={INK}>
+              {e.label}
+            </text>
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+function ServicePoints({ services }) {
+  if (!services || services.length === 0) return null;
+  return (
+    <g>
+      {services.map((sv) => (
+        <PlacedService key={sv.id} kind={sv.kind} x={sv.x} y={sv.y} rotationDeg={sv.rotationDeg} />
+      ))}
+    </g>
+  );
+}
+
+function ServiceKey({ model }) {
+  const { serviceKey } = model;
+  if (!serviceKey) return null;
+  const font = serviceKey.font;
+  return (
+    <g fontFamily={SANS} fontSize={font}>
+      <text x={model.margin} y={serviceKey.y + font} fontWeight="700" fill={INK}>
+        {serviceKey.title}
+      </text>
+      {serviceKey.entries.map((e) => {
+        const cy = serviceKey.y + font * 1.6 + e.row * serviceKey.rowH + serviceKey.rowH * 0.5;
+        const size = SERVICE_KINDS[e.kind].size;
+        const scale = Math.min(0.9, (serviceKey.iconW * 0.9) / Math.max(size.w, size.d));
+        return (
+          <g key={e.kind}>
+            <g
+              transform={`translate(${e.x + serviceKey.iconW / 2} ${cy - size.d * scale * 0.4}) scale(${scale})`}
+            >
+              <ServiceGlyph kind={e.kind} strokeScale={1.3} />
+            </g>
+            <text x={e.x + serviceKey.iconW} y={cy + font * 0.34} fill={INK}>
               {e.label}
             </text>
           </g>
@@ -405,6 +448,46 @@ function RoomWindow({ win, W, D, wall }) {
   );
 }
 
+/** Door points from the planning geometry (honours the hinge side), when the model has it. */
+function geomPoints(door) {
+  const g = door.geom;
+  if (!g) return null;
+  return {
+    hinge: [g.hinge.x, g.hinge.y],
+    leaf: [g.tip.x, g.tip.y],
+    far: [g.far.x, g.far.y],
+    sweep: g.sweep,
+  };
+}
+
+/** Dashed leaves of a window that opens. */
+function WindowLeaves({ win }) {
+  if (!win.leaves) return null;
+  return (
+    <g>
+      {win.leaves.map((l, i) => (
+        <g key={i}>
+          <path
+            d={`M ${l.tip.x} ${l.tip.y} A ${l.radius} ${l.radius} 0 0 ${l.sweep} ${l.far.x} ${l.far.y}`}
+            fill="none"
+            stroke="#5A738E"
+            strokeWidth="1"
+            strokeDasharray="2 3"
+          />
+          <line
+            x1={l.hinge.x}
+            y1={l.hinge.y}
+            x2={l.tip.x}
+            y2={l.tip.y}
+            stroke="#3D536B"
+            strokeWidth="1.6"
+          />
+        </g>
+      ))}
+    </g>
+  );
+}
+
 /** Hinge, leaf tip and far end of a door, from its wall and swing side. */
 export function doorPoints(door, W, D) {
   const { wall: side, offsetCm: off, widthCm: w, outward } = door;
@@ -430,7 +513,7 @@ function RoomDoor({ door, W, D, wall }) {
   const dy = horizontal ? (side === 'top' ? -wall2 : D - wall2) : offsetCm;
   const dw = horizontal ? w : wall;
   const dh = horizontal ? wall : w;
-  const p = doorPoints(door, W, D);
+  const p = geomPoints(door) || doorPoints(door, W, D);
   return (
     <g>
       <rect x={dx} y={dy} width={dw} height={dh} fill={LINEN} />
@@ -572,10 +655,11 @@ function OutlineDoor({ door, edge, wall }) {
     edge.p0.x + edge.dx * t + edge.nx * d,
     edge.p0.y + edge.dy * t + edge.ny * d,
   ];
-  const hinge = at(a, 0);
-  const far = at(b, 0);
-  const leaf = at(a, s * door.widthCm);
-  const sweep = door.outward ? 1 : 0;
+  const gp = geomPoints(door);
+  const hinge = gp ? gp.hinge : at(a, 0);
+  const far = gp ? gp.far : at(b, 0);
+  const leaf = gp ? gp.leaf : at(a, s * door.widthCm);
+  const sweep = gp ? gp.sweep : door.outward ? 1 : 0;
   const w = door.widthCm;
   return (
     <g>
@@ -658,7 +742,10 @@ function OutlineDrawing({ model }) {
       )}
       {model.windows.map((win) =>
         edges[win.edge] ? (
-          <OutlineWindow key={win.id} win={win} edge={edges[win.edge]} wall={wall} />
+          <g key={win.id}>
+            <OutlineWindow win={win} edge={edges[win.edge]} wall={wall} />
+            <WindowLeaves win={win} />
+          </g>
         ) : null
       )}
       {model.doors.map((door) =>
@@ -667,6 +754,7 @@ function OutlineDrawing({ model }) {
         ) : null
       )}
       <Furniture pieces={model.pieces} />
+      <ServicePoints services={model.services} />
       <PieceLabels labels={model.labels} font={model.labelFont} k={model.k} />
       <DimensionLines
         dims={model.dims}
@@ -696,12 +784,16 @@ function RoomDrawing({ model }) {
       />
       <rect x={0} y={0} width={W} height={D} fill="none" stroke={WALL_LINE} strokeWidth="3.2" />
       {model.windows.map((win) => (
-        <RoomWindow key={win.id} win={win} W={W} D={D} wall={wall} />
+        <g key={win.id}>
+          <RoomWindow win={win} W={W} D={D} wall={wall} />
+          <WindowLeaves win={win} />
+        </g>
       ))}
       {model.doors.map((door) => (
         <RoomDoor key={door.id} door={door} W={W} D={D} wall={wall} />
       ))}
       <Furniture pieces={model.pieces} />
+      <ServicePoints services={model.services} />
       <PieceLabels labels={model.labels} font={model.labelFont} k={model.k} />
       <DimensionLines
         dims={model.dims}
@@ -1045,6 +1137,7 @@ export function PlanSheet({ model, width, height }) {
       <ScaleBar bar={model.scaleBar} k={k} />
       <PieceKey model={model} />
       <KindKey model={model} />
+      <ServiceKey model={model} />
       <TitleBlock tb={model.titleBlock} />
     </svg>
   );

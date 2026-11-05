@@ -1,14 +1,5 @@
 import React, { useMemo } from 'react';
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle2,
-  Info,
-  Plug,
-  RotateCw,
-  Trash2,
-  X,
-} from 'lucide-react';
+import { AlertCircle, AlertTriangle, CheckCircle2, Info, RotateCw, Trash2, X } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { usePlanningStore } from '../../store/planningStore.js';
 import {
@@ -32,7 +23,12 @@ function PanelShell({ title, label, onClose, children }) {
     <section className={styles.panel} role="dialog" aria-label={label || title} {...stop}>
       <header className={styles.header}>
         <h2 className={styles.title}>{title}</h2>
-        <button type="button" className={styles.close} onClick={onClose} aria-label={`Close ${title}`}>
+        <button
+          type="button"
+          className={styles.close}
+          onClick={onClose}
+          aria-label={`Close ${title}`}
+        >
           <X size={16} aria-hidden="true" />
         </button>
       </header>
@@ -59,7 +55,9 @@ function SelectedService({ service, label }) {
         <div>
           <strong>{label}</strong>
           <span className={styles.muted}>
-            {def.mount === 'wall' ? 'Sits on a wall. Drag it along the wall to move it.' : 'Drag it to move it.'}
+            {def.mount === 'wall'
+              ? 'Sits on a wall. Drag it along the wall to move it.'
+              : 'Drag it to move it.'}
           </span>
         </div>
       </div>
@@ -69,7 +67,9 @@ function SelectedService({ service, label }) {
         maxLength={80}
         placeholder="For example: by the bed"
         onChange={(e) => setDraft(e.target.value)}
-        onBlur={() => draft.trim() !== (service.note || '') && updateService(service.id, { note: draft })}
+        onBlur={() =>
+          draft.trim() !== (service.note || '') && updateService(service.id, { note: draft })
+        }
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
           e.stopPropagation();
@@ -77,7 +77,12 @@ function SelectedService({ service, label }) {
       />
       <div className={styles.row}>
         {def.mount !== 'wall' && (
-          <Button size="small" variant="secondary" icon={<RotateCw size={14} />} onClick={() => rotateService(service.id)}>
+          <Button
+            size="small"
+            variant="secondary"
+            icon={<RotateCw size={14} />}
+            onClick={() => rotateService(service.id)}
+          >
             Rotate
           </Button>
         )}
@@ -175,7 +180,12 @@ function IssueRow({ issue, active, onShow }) {
         <strong>{issue.title}</strong>
         <p>{issue.message}</p>
       </div>
-      <Button size="small" variant="secondary" onClick={() => onShow(issue)} aria-label={`Show: ${issue.title}`}>
+      <Button
+        size="small"
+        variant="secondary"
+        onClick={() => onShow(issue)}
+        aria-label={`Show: ${issue.title}`}
+      >
         Show
       </Button>
     </li>
@@ -231,7 +241,11 @@ export function PlanChecksPanel({ checks }) {
         <p className={styles.muted}>
           Wider doors and routes (120 cm), more room in front of units, and room for a 150 cm turn.
         </p>
-        <Switch checked={showTurning} onChange={setShowTurning} label="Show where a 150 cm circle fits" />
+        <Switch
+          checked={showTurning}
+          onChange={setShowTurning}
+          label="Show where a 150 cm circle fits"
+        />
       </div>
 
       {groups.map((g) => (
@@ -278,5 +292,3 @@ export function PlanningPanels({ checks }) {
   if (panel === 'checks') return <PlanChecksPanel checks={checks} />;
   return null;
 }
-
-export { Plug };
