@@ -144,6 +144,25 @@ Tests live next to the code (`*.test.js`) and cover the engine (collision, hull,
 npm run lint && npm run format:check && npm test && npm run build
 ```
 
+### End-to-end tests
+
+Browser tests use [Playwright](https://playwright.dev) and live in `e2e/`. They run against `vite preview` of the production build on port 4399 (never the dev server's 5173) and cover the main flows: starting a room, adding furniture by click and drag, move, rotate, delete and undo, doors and windows, 3D and the walkthrough, Services and Plan checks, Materials, share links, PNG export, creating furniture from a generated photo, the flat designer, a 375 x 812 phone viewport, persistence after reload, the tour and Diagnostics. Every test fails on any `console.error` or uncaught page error (the allow-list is in `e2e/fixtures.js`).
+
+```bash
+npm run e2e        # builds, then runs all flows headless
+npm run e2e:ui     # Playwright's interactive UI
+E2E_SKIP_BUILD=1 npx playwright test share   # reuse dist/, run one file
+```
+
+Locally the installed Chrome is used (`channel: 'chrome'`), so nothing is downloaded. Use `E2E_CHANNEL=msedge` for Edge, or `E2E_CHANNEL= npx playwright install chromium` once and run with an empty `E2E_CHANNEL` to use Playwright's own Chromium. In CI the `e2e` job installs Chromium with `npx playwright install --with-deps chromium` and uploads `playwright-report` and the traces when a test fails. Unit tests (`npm test`) never pick up `e2e/`.
+
+The first-run tour is switched off in the tests. To switch it off by hand, open the app with `?tour=0` or set `localStorage['rd.tour.disabled'] = '1'`.
+
+### Error reporting and the tour
+
+- **Local error log.** Uncaught errors, unhandled promise rejections and error-screen catches are kept in a rolling log of the last 50 (`src/utils/errorLog.js`, `localStorage` key `rd.errorLog`) with the app version, route (never the share data) and browser. Room contents are never recorded and nothing is sent anywhere. The error screen has **Copy error details**; **Keyboard shortcuts** has a **Diagnostics** section with **Copy** and **Clear**. To forward errors to a real service later, set `window.__ROOM_STUDIO_ERROR_HOOK__ = (entry) => ...`.
+- **First-run tour.** A short, skippable tour (`src/components/onboarding/`) shows once in the room editor and once in the flat designer. Esc skips, the arrow keys move between steps, and the page stays usable while it shows. Take it again from **Keyboard shortcuts**, or with the help button in the flat designer.
+
 ## Built with
 
 React 19, Vite 6, Zustand, three.js with React Three Fiber and drei, `idb`, Framer Motion and Lucide icons.
