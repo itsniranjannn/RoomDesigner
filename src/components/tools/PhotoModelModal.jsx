@@ -972,7 +972,7 @@ export function PhotoModelModal({ onClose }) {
         </div>
 
         <div className={local.right}>
-          {photoCount > 0 && (
+          {shownViews.length > 1 && (
             <div className={local.viewTabs} role="group" aria-label="Photo to compare with">
               {shownViews.map((id) => (
                 <button
