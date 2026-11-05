@@ -12,6 +12,9 @@ import { Segmented } from '../common/Field.jsx';
 import { Box, Footprints, RotateCcw, Square } from 'lucide-react';
 import { LIGHTING, LIGHT_OPTIONS, SceneLights, FurnitureShadows, LampLights } from './lighting.jsx';
 import { MaterialsPanel } from './MaterialsPanel.jsx';
+import { StyleButton } from './StylePicker.jsx';
+import { styleOfRoom } from '../../data/stylePresets.js';
+import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { useQuality, useSurfaceMaterials } from './useLook.js';
 import { collectLamps } from './lamps.js';
 import { normalizeFinish } from './materials.js';
@@ -121,6 +124,8 @@ export function Room3DView() {
   const preset = LIGHTING[lighting];
   const quality = useQuality();
   const setRoomFinish = useRoomStore((state) => state.setRoomFinish);
+  const applyStyle = useRoomStore((state) => state.applyStyle);
+  const resetStyle = useRoomStore((state) => state.resetStyle);
   const finish = normalizeFinish(room?.finish);
   const materials = useSurfaceMaterials(room?.finish);
   const lamps = useMemo(
@@ -131,6 +136,18 @@ export function Room3DView() {
   const exitWalk = React.useCallback(() => {
     setWalking(false);
   }, []);
+
+  // Pictures, mirrors and curtains hang higher than the low cutaway walls, so they show with full walls
+  const showWallPieces = isFullHeight || walking;
+  const pieces = useMemo(
+    () =>
+      (room?.placedFurniture || []).map((item) => ({
+        item,
+        wall: !!resolveItemDef(item)?.wallMounted,
+      })),
+    [room]
+  );
+  const hiddenWallPieces = !showWallPieces && pieces.some((p) => p.wall);
 
   if (!room) return null;
 
@@ -166,15 +183,17 @@ export function Room3DView() {
         )}
 
         {/* Detailed Architectural 3D Furniture */}
-        {(room.placedFurniture || []).map((item) => (
-          <Furniture3DBox
-            key={item.id}
-            item={item}
-            roomWidthCm={room.widthCm}
-            roomDepthCm={room.depthCm}
-            isSelected={selectedItemId === item.id}
-          />
-        ))}
+        {pieces
+          .filter((p) => showWallPieces || !p.wall)
+          .map(({ item }) => (
+            <Furniture3DBox
+              key={item.id}
+              item={item}
+              roomWidthCm={room.widthCm}
+              roomDepthCm={room.depthCm}
+              isSelected={selectedItemId === item.id}
+            />
+          ))}
 
         {/* Soft shadows under furniture: painted halos everywhere, a rendered contact layer on High */}
         <FurnitureShadows
@@ -207,7 +226,7 @@ export function Room3DView() {
       <p className={styles.hint} aria-live="polite">
         {walking
           ? 'Drag to look around. Walk with W A S D (Shift to run); the arrow keys also move and turn. Press Esc to leave.'
-          : 'Drag to turn the view, right-drag to move it, scroll to zoom.'}
+          : `Drag to turn the view, right-drag to move it, scroll to zoom.${hiddenWallPieces ? ' Pictures, mirrors and curtains show with Full walls.' : ''}`}
       </p>
 
       {walking && <WalkHud onExit={exitWalk} />}
@@ -241,6 +260,14 @@ export function Room3DView() {
             </Button>
           </>
         )}
+        <StyleButton
+          current={styleOfRoom(room)}
+          hasStyle={!!room.styleApplied}
+          onPick={(id) => applyStyle(id)}
+          onReset={resetStyle}
+          buttonClassName={styles.controlBtn}
+          textClassName={styles.controlText}
+        />
         <MaterialsPanel
           floor={finish.floor}
           wall={finish.wall}

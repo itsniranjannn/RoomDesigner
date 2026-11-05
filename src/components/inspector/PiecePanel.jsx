@@ -13,6 +13,7 @@ import { Section } from '../common/Section.jsx';
 import { supportOf } from '../../engine/stacking.js';
 import { InspectorShell } from './InspectorShell.jsx';
 import { FinishSection, SizeSection } from './PieceSections.jsx';
+import { MountSection, PatternSection } from './PatternSection.jsx';
 import styles from './Inspector.module.css';
 
 const QUICK_ANGLES = [0, 90, 180, 270].map((deg) => ({ value: deg, label: `${deg}°` }));
@@ -91,6 +92,8 @@ export function PiecePanel({ item, def, onClose }) {
     >
       <SizeSection item={item} def={def} />
       {!isColorLocked(def) && <FinishSection item={item} def={def} />}
+      <PatternSection item={item} def={def} />
+      <MountSection item={item} def={def} />
 
       <Section title="Position & rotation">
         <div className={styles.grid2}>
@@ -111,30 +114,39 @@ export function PiecePanel({ item, def, onClose }) {
             </span>
           </div>
         )}
-        <RangeField
-          label="Rotation"
-          min={0}
-          max={359}
-          value={rotation}
-          valueLabel={`${rotation}°`}
-          onChange={(v) => updateFurnitureRotation(item.id, v, false)}
-          onPointerDown={beginSlide}
-          onPointerUp={endSlide}
-          onKeyDown={beginSlide}
-          onKeyUp={endSlide}
-          onBlur={endSlide}
-        />
-        <Segmented
-          ariaLabel="Quick rotation"
-          options={QUICK_ANGLES}
-          value={rotation}
-          onChange={(deg) => updateFurnitureRotation(item.id, deg, true)}
-          size="small"
-          fill
-        />
-        <p className={styles.note}>
-          Drag the piece on the plan to move it. Press R to turn it in 15 degree steps.
-        </p>
+        {def.wallMounted ? (
+          <p className={styles.note}>
+            This piece hangs on the nearest wall and faces into the room. Drag it along the plan to
+            move it; it snaps flush to whichever wall is closest.
+          </p>
+        ) : (
+          <>
+            <RangeField
+              label="Rotation"
+              min={0}
+              max={359}
+              value={rotation}
+              valueLabel={`${rotation}°`}
+              onChange={(v) => updateFurnitureRotation(item.id, v, false)}
+              onPointerDown={beginSlide}
+              onPointerUp={endSlide}
+              onKeyDown={beginSlide}
+              onKeyUp={endSlide}
+              onBlur={endSlide}
+            />
+            <Segmented
+              ariaLabel="Quick rotation"
+              options={QUICK_ANGLES}
+              value={rotation}
+              onChange={(deg) => updateFurnitureRotation(item.id, deg, true)}
+              size="small"
+              fill
+            />
+            <p className={styles.note}>
+              Drag the piece on the plan to move it. Press R to turn it in 15 degree steps.
+            </p>
+          </>
+        )}
       </Section>
 
       <Section title="Layer order">

@@ -1,4 +1,6 @@
 import { Box, Cyl, Ball, CHROME, clamp, shade } from './shared.jsx';
+import { PatternedRug } from './rugsPatterned.jsx';
+import { usesPatternModel } from '../patterns.js';
 
 /** 3D models: planters, round rugs and screens. Built from Three.js primitives; origin on the floor, centered on the footprint. */
 export function PlanterModel({ widthM, depthM, heightM, mainColor, subColor }) {
@@ -100,7 +102,19 @@ export function PlanterModel({ widthM, depthM, heightM, mainColor, subColor }) {
   );
 }
 
-export function RugRoundModel({ widthM, depthM, heightM, mainColor, subColor, accentColor }) {
+export function RugRoundModel({ def, widthM, depthM, heightM, mainColor, subColor, accentColor }) {
+  if (usesPatternModel(def)) {
+    return (
+      <PatternedRug
+        def={def}
+        widthM={widthM}
+        depthM={depthM}
+        heightM={heightM}
+        mainColor={mainColor}
+        round
+      />
+    );
+  }
   const r = Math.min(widthM, depthM) / 2;
   const rings = [
     [0.92, subColor],

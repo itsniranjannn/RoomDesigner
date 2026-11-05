@@ -54,7 +54,9 @@ export function buildBlockers(room) {
     .map((item) => {
       const def = resolveItemDef(item);
       if (!def) return null;
+      // Pieces hung on a wall are above the floor and out of the way
       const flat =
+        def.wallMounted ||
         (def.heightCm ?? 50) < 15 ||
         def.shapeType === 'rug' ||
         def.shapeType === 'rug-runner' ||

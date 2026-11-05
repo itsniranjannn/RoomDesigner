@@ -21,6 +21,7 @@ export const FURNITURE_CATEGORIES = [
   { id: 'kitchen', name: 'Kitchen' },
   { id: 'decor', name: 'Decor & Accents' },
   { id: 'bathroom', name: 'Bathroom & Utility' },
+  { id: 'wall', name: 'Walls & Windows' },
   { id: 'custom', name: 'My Furniture' },
 ];
 
@@ -1850,6 +1851,354 @@ export const FURNITURE_CATALOG = [
       'sideboard-buffet',
     ],
   },
+
+  // ==========================================
+  // PATTERNED RUGS (pattern is selectable in the inspector; colours follow the main colour)
+  // ==========================================
+  {
+    id: 'rug-persian',
+    name: 'Persian Rug',
+    category: 'decor',
+    widthCm: 200,
+    depthCm: 300,
+    heightCm: 1.5,
+    color: '#7A1F2B', // Madder red field
+    subColor: '#D9B26A', // Saffron gold
+    accentColor: '#1F3552', // Lapis navy
+    shapeType: 'rug',
+    pattern: 'persian',
+  },
+  {
+    id: 'rug-kilim',
+    name: 'Kilim Rug',
+    category: 'decor',
+    widthCm: 160,
+    depthCm: 230,
+    heightCm: 1,
+    color: '#A8482C', // Burnt sienna
+    subColor: '#E3B960', // Ochre
+    accentColor: '#2E4A5C', // Slate teal
+    shapeType: 'rug',
+    pattern: 'kilim',
+  },
+  {
+    id: 'rug-dhaka-pattern',
+    name: 'Dhaka Weave Rug',
+    nepaliName: 'ढाका गलैँचा',
+    category: 'nepali',
+    widthCm: 170,
+    depthCm: 240,
+    heightCm: 1.2,
+    color: '#9B2D3A', // Dhaka red
+    subColor: '#D9A441', // Marigold
+    accentColor: '#22353F', // Charcoal indigo
+    shapeType: 'rug',
+    pattern: 'dhaka',
+  },
+  {
+    id: 'rug-striped',
+    name: 'Striped Cotton Rug',
+    category: 'decor',
+    widthCm: 160,
+    depthCm: 230,
+    heightCm: 1,
+    color: '#E9E2D2', // Natural cotton
+    subColor: '#33506B', // Denim stripe
+    accentColor: '#C9783D', // Rust pinstripe
+    shapeType: 'rug',
+    pattern: 'stripes',
+  },
+  {
+    id: 'rug-shag',
+    name: 'Shag Rug',
+    category: 'decor',
+    widthCm: 200,
+    depthCm: 290,
+    heightCm: 3,
+    color: '#D8CDBB', // Oat
+    subColor: '#B7A98F',
+    accentColor: '#8C7E66',
+    shapeType: 'rug',
+    pattern: 'shag',
+  },
+  {
+    id: 'rug-round-woven',
+    name: 'Round Woven Rug',
+    category: 'decor',
+    widthCm: 150,
+    depthCm: 150,
+    heightCm: 1.2,
+    color: '#2F4858', // Deep teal
+    subColor: '#D9A441',
+    accentColor: '#A8482C',
+    shapeType: 'rug-round',
+    pattern: 'rings',
+  },
+  {
+    id: 'rug-runner-kilim',
+    name: 'Kilim Runner',
+    category: 'decor',
+    widthCm: 70,
+    depthCm: 240,
+    heightCm: 1,
+    color: '#34506B',
+    subColor: '#E3B960',
+    accentColor: '#A8482C',
+    shapeType: 'rug-runner',
+    pattern: 'kilim',
+  },
+
+  // ==========================================
+  // CURTAINS (hang at windows: wall-mounted, floor length)
+  // ==========================================
+  {
+    id: 'curtain-heavy-closed',
+    name: 'Heavy Curtains (Closed)',
+    category: 'wall',
+    widthCm: 160,
+    depthCm: 14,
+    heightCm: 230,
+    color: '#8A6B58', // Mocha drape
+    subColor: '#C9B39B',
+    accentColor: '#5E4636',
+    handleColor: '#2A2622', // Black rod
+    shapeType: 'curtain',
+    pattern: 'plain',
+    curtainStyle: 'closed',
+    sheer: false,
+    wallMounted: true,
+    windowDressing: true,
+    mountHeightCm: 0,
+  },
+  {
+    id: 'curtain-heavy-open',
+    name: 'Heavy Curtains (Open)',
+    category: 'wall',
+    widthCm: 220,
+    depthCm: 16,
+    heightCm: 230,
+    color: '#5F6F66', // Eucalyptus drape
+    subColor: '#A3B1A8',
+    accentColor: '#3F4B44',
+    handleColor: '#B8913F', // Brass rod
+    shapeType: 'curtain',
+    pattern: 'stripes',
+    curtainStyle: 'open',
+    sheer: false,
+    wallMounted: true,
+    windowDressing: true,
+    mountHeightCm: 0,
+  },
+  {
+    id: 'curtain-sheer-closed',
+    name: 'Sheer Curtains (Closed)',
+    category: 'wall',
+    widthCm: 160,
+    depthCm: 12,
+    heightCm: 230,
+    color: '#F1EADB', // Ivory voile
+    subColor: '#D9CFBC',
+    accentColor: '#BFB39B',
+    handleColor: '#2A2622',
+    shapeType: 'curtain',
+    pattern: 'plain',
+    curtainStyle: 'closed',
+    sheer: true,
+    wallMounted: true,
+    windowDressing: true,
+    mountHeightCm: 0,
+  },
+  {
+    id: 'curtain-sheer-open',
+    name: 'Sheer Curtains (Open)',
+    category: 'wall',
+    widthCm: 200,
+    depthCm: 12,
+    heightCm: 230,
+    color: '#EDE6D6',
+    subColor: '#D2C8B3',
+    accentColor: '#B8AC92',
+    handleColor: '#B8913F',
+    shapeType: 'curtain',
+    pattern: 'plain',
+    curtainStyle: 'open',
+    sheer: true,
+    wallMounted: true,
+    windowDressing: true,
+    mountHeightCm: 0,
+  },
+
+  // ==========================================
+  // WALL ART, MIRRORS, SHELVES, CLOCKS AND WALL PLANTERS (hang on the nearest wall)
+  // ==========================================
+  {
+    id: 'wall-art-landscape',
+    colorLocked: true,
+    name: 'Framed Mountain Print',
+    category: 'wall',
+    widthCm: 80,
+    depthCm: 4,
+    heightCm: 55,
+    color: '#3A2E26', // Dark walnut frame
+    subColor: '#C97B4A',
+    accentColor: '#3D5A6C',
+    shapeType: 'wall-art',
+    artStyle: 'landscape',
+    wallMounted: true,
+    mountHeightCm: 135,
+  },
+  {
+    id: 'wall-art-abstract',
+    colorLocked: true,
+    name: 'Abstract Canvas',
+    category: 'wall',
+    widthCm: 60,
+    depthCm: 4,
+    heightCm: 80,
+    color: '#C8B79B', // Pale oak frame
+    subColor: '#C4623C',
+    accentColor: '#2F5A68',
+    shapeType: 'wall-art',
+    artStyle: 'abstract',
+    wallMounted: true,
+    mountHeightCm: 125,
+  },
+  {
+    id: 'wall-art-sunrise',
+    colorLocked: true,
+    name: 'Sunrise Print',
+    category: 'wall',
+    widthCm: 70,
+    depthCm: 4,
+    heightCm: 50,
+    color: '#1F1D1B', // Black frame
+    subColor: '#E3A15C',
+    accentColor: '#4C6272',
+    shapeType: 'wall-art',
+    artStyle: 'sunrise',
+    wallMounted: true,
+    mountHeightCm: 140,
+  },
+  {
+    id: 'wall-gallery-set',
+    colorLocked: true,
+    name: 'Gallery Wall Set',
+    category: 'wall',
+    widthCm: 130,
+    depthCm: 4,
+    heightCm: 70,
+    color: '#2A2420',
+    subColor: '#C26E48',
+    accentColor: '#41677A',
+    shapeType: 'wall-art',
+    artStyle: 'gallery',
+    wallMounted: true,
+    mountHeightCm: 130,
+  },
+  {
+    id: 'nepali-thangka',
+    colorLocked: true,
+    name: 'Mandala Thangka',
+    nepaliName: 'थाङ्का',
+    category: 'nepali',
+    widthCm: 55,
+    depthCm: 4,
+    heightCm: 75,
+    color: '#7B1E2E', // Brocade-red border
+    subColor: '#D9A441', // Gold
+    accentColor: '#22485E', // Indigo
+    shapeType: 'wall-art',
+    artStyle: 'mandala',
+    wallMounted: true,
+    mountHeightCm: 125,
+  },
+  {
+    id: 'mirror-wall-round',
+    colorLocked: true,
+    name: 'Round Wall Mirror',
+    category: 'wall',
+    widthCm: 70,
+    depthCm: 4,
+    heightCm: 70,
+    color: '#B8913F', // Brass frame
+    mirrorColor: '#C3DCE8',
+    shapeType: 'wall-mirror-hung',
+    mirrorShape: 'round',
+    wallMounted: true,
+    mountHeightCm: 115,
+  },
+  {
+    id: 'mirror-wall-arch',
+    colorLocked: true,
+    name: 'Arched Wall Mirror',
+    category: 'wall',
+    widthCm: 55,
+    depthCm: 4,
+    heightCm: 130,
+    color: '#26231F', // Black frame
+    mirrorColor: '#C3DCE8',
+    shapeType: 'wall-mirror-hung',
+    mirrorShape: 'arch',
+    wallMounted: true,
+    mountHeightCm: 60,
+  },
+  {
+    id: 'mirror-wall-rect',
+    colorLocked: true,
+    name: 'Framed Wall Mirror',
+    category: 'wall',
+    widthCm: 60,
+    depthCm: 4,
+    heightCm: 90,
+    color: '#8A6A4B', // Oak frame
+    mirrorColor: '#C3DCE8',
+    shapeType: 'wall-mirror-hung',
+    mirrorShape: 'rect',
+    wallMounted: true,
+    mountHeightCm: 100,
+  },
+  {
+    id: 'wall-shelf-floating',
+    name: 'Floating Shelf',
+    category: 'wall',
+    widthCm: 90,
+    depthCm: 20,
+    heightCm: 4,
+    color: '#8A6A4B', // Oak board
+    shapeType: 'wall-shelf',
+    wallMounted: true,
+    mountHeightCm: 140,
+    supportsTop: true,
+    surfaceHeightCm: 4,
+  },
+  {
+    id: 'wall-clock-round',
+    colorLocked: true,
+    name: 'Round Wall Clock',
+    category: 'wall',
+    widthCm: 36,
+    depthCm: 5,
+    heightCm: 36,
+    color: '#26231F',
+    subColor: '#F6F1E7',
+    shapeType: 'wall-clock',
+    wallMounted: true,
+    mountHeightCm: 190,
+  },
+  {
+    id: 'wall-planter-hanging',
+    colorLocked: true,
+    name: 'Hanging Wall Planter',
+    category: 'wall',
+    widthCm: 34,
+    depthCm: 14,
+    heightCm: 42,
+    color: '#4F7A52', // Trailing green
+    subColor: '#D4CABB', // Ceramic pot
+    shapeType: 'wall-planter',
+    wallMounted: true,
+    mountHeightCm: 120,
+  },
 ];
 
 // ==========================================
@@ -1914,7 +2263,15 @@ export function getFurnitureType(id) {
 }
 
 /** Fields a user may override per placed item (size and finish). */
-const OVERRIDABLE_FIELDS = ['widthCm', 'depthCm', 'heightCm', 'color', 'subColor', 'accentColor'];
+const OVERRIDABLE_FIELDS = [
+  'widthCm',
+  'depthCm',
+  'heightCm',
+  'color',
+  'subColor',
+  'accentColor',
+  'pattern',
+];
 const COLOR_FIELDS = ['color', 'subColor', 'accentColor'];
 
 /** True for pieces whose finish is part of what they are (screens, glass, ceramics, appliances, brass). */

@@ -9,6 +9,8 @@ import { Button } from '../common/Button.jsx';
 import { SelectField } from '../common/Field.jsx';
 import { Section, IconButton } from '../common/Section.jsx';
 import { InspectorShell } from './InspectorShell.jsx';
+import { StylePanel } from '../preview3d/StylePicker.jsx';
+import { styleOfRoom } from '../../data/stylePresets.js';
 import styles from './Inspector.module.css';
 
 const WALL_OPTIONS = [
@@ -209,6 +211,8 @@ function PieceList({ pieces }) {
 export function RoomPanel({ onClose }) {
   const room = useRoomStore((state) => state.room);
   const addOpening = useRoomStore((state) => state.addOpening);
+  const applyStyle = useRoomStore((state) => state.applyStyle);
+  const resetStyle = useRoomStore((state) => state.resetStyle);
   const pieces = room.placedFurniture || [];
   const doors = room.doors || [];
   const windows = room.windows || [];
@@ -242,6 +246,15 @@ export function RoomPanel({ onClose }) {
             <span className={styles.statLabel}>{pieces.length === 1 ? 'Piece' : 'Pieces'}</span>
           </div>
         </div>
+      </Section>
+
+      <Section title="Style">
+        <StylePanel
+          current={styleOfRoom(room)}
+          hasStyle={!!room.styleApplied}
+          onPick={(id) => applyStyle(id)}
+          onReset={resetStyle}
+        />
       </Section>
 
       <Section title="Doors & windows">
