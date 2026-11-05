@@ -13,7 +13,7 @@ import {
 } from './shared.jsx';
 
 /** Rectangular top with four legs and an optional apron frame under it. */
-function LeggedTable({
+export function LeggedTable({
   widthM,
   depthM,
   heightM,

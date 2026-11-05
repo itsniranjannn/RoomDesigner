@@ -42,7 +42,7 @@ function Stitches({ y, xs = [], zs = [], w, d, color }) {
   );
 }
 
-function Mattress({ widthM, depthM, y, z, fabricColor }) {
+export function Mattress({ widthM, depthM, y, z, fabricColor }) {
   const mattressH = 0.22;
   const w = widthM - 0.04;
   const edge = shade(fabricColor, -0.09);
@@ -95,7 +95,7 @@ function Mattress({ widthM, depthM, y, z, fabricColor }) {
   );
 }
 
-function Duvet({ widthM, mattressTop, z0, z1, accentColor, fabricColor, throwBlanket }) {
+export function Duvet({ widthM, mattressTop, z0, z1, accentColor, fabricColor, throwBlanket }) {
   const d = z1 - z0;
   const w = widthM - 0.02;
   const line = shade(accentColor, -0.1);

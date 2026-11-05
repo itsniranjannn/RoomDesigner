@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { getFurnitureType } from '../../../data/furnitureCatalog.js';
 import { upgradeLegacyMesh } from '../../../engine/hull.js';
 import { FallbackBoxModel } from './fallback.jsx';
+import { sanitizeDesign } from '../../../engine/design.js';
+import { DesignModel } from './designModels.jsx';
 
 /**
  * Geometry for a photo-made mesh: positions in [-0.5, 0.5] x [0, 1] x [-0.5, 0.5], vertex colours stored as
@@ -210,6 +212,20 @@ function PhotoMesh({ mesh, textures, widthM, depthM, heightM, color, baseColor }
 
 /** Photo-made custom item; a plain box until a mesh has been generated. */
 export function CustomMeshModel({ def, widthM, depthM, heightM, mainColor }) {
+  // Pieces made from photos are drawn by the catalog builders from their design record
+  const design = useMemo(() => sanitizeDesign(def.design), [def.design]);
+  if (design) {
+    return (
+      <DesignModel
+        def={def}
+        design={design}
+        widthM={widthM}
+        depthM={depthM}
+        heightM={heightM}
+        mainColor={mainColor}
+      />
+    );
+  }
   if (!def.mesh) {
     return (
       <FallbackBoxModel widthM={widthM} depthM={depthM} heightM={heightM} mainColor={mainColor} />

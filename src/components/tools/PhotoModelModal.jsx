@@ -23,16 +23,12 @@ import {
   normalizeView,
   maskCoverage,
   proportionWarnings,
-  buildModelFromViews,
-  topDownImage,
-  renderMesh,
   footprintOutline,
-  meshAverageHex,
-  pickPlanSlot,
   cutoutImage,
   fitBackground,
 } from '../../engine/hull.js';
 import { CustomMeshModel } from '../preview3d/models/customMesh.jsx';
+import { DESIGN_TYPES, PALETTE_SLOTS, buildDesign, designMainColor } from '../../engine/design.js';
 import local from './PhotoModelModal.module.css';
 
 const PHOTO_MAX = 480;
@@ -74,22 +70,24 @@ function rgbaToDataUrl(rgba, size, height = size) {
   return canvas.toDataURL('image/png');
 }
 
-const TEXTURE_SIZE = 256;
+const THUMB_SIZE = 128;
 
-/** Opaque colour image of a prepared view (rgb triples), stored as the photo texture of the model. */
-function rgbToDataUrl(rgb, size) {
-  const rgba = new Uint8ClampedArray(size * size * 4);
-  for (let p = 0; p < size * size; p++) {
-    rgba[p * 4] = rgb[p * 3];
-    rgba[p * 4 + 1] = rgb[p * 3 + 1];
-    rgba[p * 4 + 2] = rgb[p * 3 + 2];
-    rgba[p * 4 + 3] = 255;
-  }
+/** The cut-out photo centred on a square transparent canvas, for the catalog card. */
+function squareThumb(cut) {
+  const src = document.createElement('canvas');
+  src.width = cut.width;
+  src.height = cut.height;
+  src.getContext('2d').putImageData(new ImageData(cut.rgba, cut.width, cut.height), 0, 0);
   const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  canvas.getContext('2d').putImageData(new ImageData(rgba, size, size), 0, 0);
-  return canvas.toDataURL('image/jpeg', 0.92);
+  canvas.width = THUMB_SIZE;
+  canvas.height = THUMB_SIZE;
+  const scale = (THUMB_SIZE - 8) / Math.max(cut.width, cut.height);
+  const w = cut.width * scale;
+  const h = cut.height * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(src, (THUMB_SIZE - w) / 2, (THUMB_SIZE - h) / 2, w, h);
+  return canvas.toDataURL('image/png');
 }
 
 /** Source photo with the removed background greyed out so users can judge the cut-out. */
@@ -132,12 +130,12 @@ function FitCamera({ distance, target }) {
 }
 
 /** The finished model at its real size, drawn with the same component the room view uses. */
-function ModelPreview({ model, textures, dims, color }) {
+function ModelPreview({ design, dims, color }) {
   const w = dims.widthCm / 100;
   const d = dims.depthCm / 100;
   const h = dims.heightCm / 100;
   const reach = Math.max(w, d, h);
-  const def = useMemo(() => ({ mesh: model, textures, color }), [model, textures, color]);
+  const def = useMemo(() => ({ design, color }), [design, color]);
   return (
     <Canvas shadows camera={{ fov: 40 }}>
       <FitCamera distance={reach * 1.55 + 0.3} target={h / 2} />
@@ -179,8 +177,8 @@ export function PhotoModelModal({ onClose }) {
   const [dims, setDims] = useState({ widthCm: 80, depthCm: 50, heightCm: 80 });
   const [photos, setPhotos] = useState({}); // slotId -> { width, height, rgba, thumbUrl }
   const [tolerance, setTolerance] = useState(60);
-  const [model, setModel] = useState(null);
-  const [textures, setTextures] = useState(null); // slot -> photo texture (data URL)
+  const [design, setDesign] = useState(null); // type, palette and traits read from the photos
+  const [typeChoice, setTypeChoice] = useState(''); // '' = detect from the photos
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
   const [sheet, setSheet] = useState(null); // { rgba, width, height, detection, slots: [slot|''] }
@@ -202,7 +200,7 @@ export function PhotoModelModal({ onClose }) {
 
   // Photos or cut-out changes invalidate the previous model
   useEffect(() => {
-    setModel(null);
+    setDesign(null);
   }, [segmented]);
 
   const loadPhoto = async (slot, file) => {
@@ -224,7 +222,7 @@ export function PhotoModelModal({ onClose }) {
     });
 
   const photoCount = Object.keys(photos).length;
-  const modelColor = useMemo(() => (model ? meshAverageHex(model) : '#a0a0a0'), [model]);
+  const modelColor = design ? designMainColor(design) : '#a0a0a0';
   const proportions = useMemo(
     () =>
       proportionWarnings(
@@ -324,29 +322,13 @@ export function PhotoModelModal({ onClose }) {
     setSheet(null);
   };
 
-  const handleBuild = () => {
+  const handleBuild = (forceType = typeChoice) => {
     setBusy(true);
     setMessage(null);
-    // Let the spinner paint before the synchronous carving work
+    // Let the spinner paint before the analysis
     setTimeout(() => {
       try {
-        const views = VIEW_SLOTS.filter((slot) => photos[slot.id]).map((slot) => {
-          const photo = photos[slot.id];
-          const norm = normalizeView(
-            photo.rgba,
-            segmented[slot.id].mask,
-            photo.width,
-            photo.height
-          );
-          if (!norm)
-            throw new Error(
-              `No object found in the ${slot.label.toLowerCase()} photo. Try a plainer background.`
-            );
-          return { slot: slot.id, angle: slot.angle, ...norm };
-        });
-        const built = buildModelFromViews(views);
-        // The photos themselves, cut to the piece, are projected back onto the surface for crisp colour
-        const tex = {};
+        const views = {};
         for (const slot of VIEW_SLOTS) {
           const photo = photos[slot.id];
           if (!photo) continue;
@@ -355,14 +337,17 @@ export function PhotoModelModal({ onClose }) {
             segmented[slot.id].mask,
             photo.width,
             photo.height,
-            TEXTURE_SIZE
+            96
           );
-          if (norm) tex[slot.id] = rgbToDataUrl(norm.rgb, TEXTURE_SIZE);
+          if (!norm)
+            throw new Error(
+              `No object found in the ${slot.label.toLowerCase()} photo. Try a plainer background.`
+            );
+          views[slot.id] = norm;
         }
-        setTextures(tex);
-        setModel(built);
+        setDesign(buildDesign(views, dims, forceType || undefined));
       } catch (err) {
-        setModel(null);
+        setDesign(null);
         setMessage({ kind: 'error', text: err.message });
       } finally {
         setBusy(false);
@@ -370,16 +355,35 @@ export function PhotoModelModal({ onClose }) {
     }, 30);
   };
 
+  const setPaletteColour = (key, value) =>
+    setDesign((d) => ({ ...d, palette: { ...d.palette, [key]: value } }));
+  const setTrait = (key, value) =>
+    setDesign((d) => ({ ...d, traits: { ...d.traits, [key]: value } }));
+
   const handleSave = async () => {
-    if (!model) return;
-    const topPixels = topDownImage(model, PLAN_SIZE);
-    // The user's own photo, cut out, is what the 2D plan shows
+    if (!design) return;
+    // The user's own top photo, cut out, is what the 2D plan shows; its outline is the footprint
     let planImage;
-    const slot = pickPlanSlot(Object.keys(photos));
-    if (slot) {
-      const photo = photos[slot];
-      const cut = cutoutImage(photo.rgba, segmented[slot].mask, photo.width, photo.height);
+    let topOutline = [];
+    const topPhoto = photos.top;
+    if (topPhoto) {
+      const mask = segmented.top.mask;
+      const cut = cutoutImage(topPhoto.rgba, mask, topPhoto.width, topPhoto.height);
       if (cut) planImage = rgbaToDataUrl(cut.rgba, cut.width, cut.height);
+      const norm = normalizeView(topPhoto.rgba, mask, topPhoto.width, topPhoto.height, PLAN_SIZE);
+      if (norm) {
+        const alpha = new Uint8ClampedArray(PLAN_SIZE * PLAN_SIZE * 4);
+        for (let p = 0; p < norm.mask.length; p++) alpha[p * 4 + 3] = norm.mask[p] ? 255 : 0;
+        topOutline = footprintOutline(alpha, PLAN_SIZE);
+      }
+    }
+    // Catalog card: the piece itself, from the front photo when there is one
+    const thumbSlot = ['front', 'right', 'left', 'back', 'top'].find((id) => photos[id]);
+    let thumb;
+    if (thumbSlot) {
+      const photo = photos[thumbSlot];
+      const cut = cutoutImage(photo.rgba, segmented[thumbSlot].mask, photo.width, photo.height);
+      if (cut) thumb = squareThumb(cut);
     }
     try {
       await addCustomFurniture({
@@ -391,12 +395,10 @@ export function PhotoModelModal({ onClose }) {
         depthCm: dims.depthCm,
         heightCm: dims.heightCm,
         color: modelColor,
-        mesh: { positions: model.positions, colors: model.colors, indices: model.indices },
-        textures: textures || undefined,
-        topImage: rgbaToDataUrl(topPixels, PLAN_SIZE),
+        design,
         planImage,
-        topOutline: footprintOutline(topPixels, PLAN_SIZE),
-        thumb: rgbaToDataUrl(renderMesh(model, { size: PLAN_SIZE }), PLAN_SIZE),
+        topOutline,
+        thumb,
       });
     } catch {
       setMessage({ kind: 'error', text: 'This piece could not be saved on this device.' });
@@ -414,7 +416,7 @@ export function PhotoModelModal({ onClose }) {
   return (
     <Modal
       title="Create furniture from photos"
-      subtitle="Photograph a piece from a few sides. The 3D model is built on this device and your photos are never uploaded."
+      subtitle="Photograph a piece from a few sides. A catalog-style 3D model is made from what the photos show, on this device. Your photos are never uploaded."
       onClose={onClose}
       size="xl"
       footer={
@@ -425,16 +427,16 @@ export function PhotoModelModal({ onClose }) {
           <Button
             variant="secondary"
             icon={<Sparkles size={16} />}
-            onClick={handleBuild}
+            onClick={() => handleBuild()}
             disabled={photoCount < 2 || busy}
           >
-            {busy ? 'Building...' : model ? 'Rebuild model' : 'Build 3D model'}
+            {busy ? 'Working...' : design ? 'Rebuild model' : 'Build 3D model'}
           </Button>
           <Button
             variant="primary"
             icon={<Save size={16} />}
             onClick={handleSave}
-            disabled={!model}
+            disabled={!design}
           >
             Save to My furniture
           </Button>
@@ -635,8 +637,8 @@ export function PhotoModelModal({ onClose }) {
 
         <div className={local.right}>
           <div className={local.preview} aria-label="3D model preview">
-            {model ? (
-              <ModelPreview model={model} textures={textures} dims={dims} color={modelColor} />
+            {design ? (
+              <ModelPreview design={design} dims={dims} color={modelColor} />
             ) : (
               <p className={local.placeholder}>
                 {photoCount < 2
@@ -645,17 +647,83 @@ export function PhotoModelModal({ onClose }) {
               </p>
             )}
           </div>
-          {model && (
-            <p className={local.note}>
-              Shown at its real size; each grid square is 50 cm. Drag to rotate. A model built from
-              silhouettes fills in hollow parts the photos cannot show, such as the space under a
-              table top.
-            </p>
+          {design && (
+            <div className={local.section}>
+              <label className={local.designRow}>
+                <span>Type of furniture</span>
+                <select
+                  className={local.select}
+                  value={design.type}
+                  aria-label="Type of furniture"
+                  onChange={(e) => {
+                    setTypeChoice(e.target.value);
+                    handleBuild(e.target.value);
+                  }}
+                >
+                  {DESIGN_TYPES.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className={local.palette} role="group" aria-label="Colours found in the photos">
+                {(PALETTE_SLOTS[design.type] || []).map(([key, label]) => (
+                  <label key={key} className={local.paletteItem}>
+                    <input
+                      type="color"
+                      value={design.palette[key] || '#888888'}
+                      aria-label={label}
+                      onChange={(e) => setPaletteColour(key, e.target.value)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+              {design.type === 'bed' && (
+                <label className={local.designRow}>
+                  <span>Pillows</span>
+                  <select
+                    className={local.select}
+                    value={design.traits.pillows ?? 2}
+                    aria-label="Number of pillows"
+                    onChange={(e) => setTrait('pillows', Number(e.target.value))}
+                  >
+                    {[1, 2, 3, 4].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              {design.type === 'sofa' && (
+                <label className={local.designRow}>
+                  <span>Seats</span>
+                  <select
+                    className={local.select}
+                    value={design.traits.seats ?? 3}
+                    aria-label="Number of seats"
+                    onChange={(e) => setTrait('seats', Number(e.target.value))}
+                  >
+                    {[2, 3, 4].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <p className={local.note}>
+                Shown at its real size; each grid square is 50 cm. Drag to rotate. The model uses
+                the same parts as the built-in furniture, with the shape, proportions and colours
+                read from your photos.
+              </p>
+            </div>
           )}
           <p className={local.note}>
-            Furniture made from photos stays on this device. Your photo is shown on the 2D plan and
-            the model in 3D. Shared links and JSON files keep its position but not its photo or
-            model.
+            Furniture made from photos stays on this device. Your top photo is shown on the 2D plan.
+            Shared links and JSON files keep the model's type, colours and size, but not the photos.
           </p>
         </div>
       </div>

@@ -28,7 +28,7 @@ Drag pieces from the catalog onto the plan. Rotate, resize (0.4x to 2.5x), recol
 - **Measure** between any two points; the selected piece shows live distances to every wall.
 - **Layout suggestions** place a preset (bedroom, living, dining, study, Nepali sitting room) against the walls, clear of doors and windows.
 - **Trace image**: import a photo or scan of a floor plan and draw over it with adjustable opacity and scale.
-- **Photo to 3D furniture**: add 2 to 5 photos of a piece (My Furniture, Create from photos) and a blocky, planning-quality model is built from the silhouettes in your browser. Photos are never uploaded.
+- **Photo to 3D furniture**: add 2 to 5 photos of a piece, or one product sheet showing several views (My Furniture, Create from photos). The app reads the type of furniture, proportions and colours from them and builds a catalog-style model from the same parts as the built-in furniture; the 2D plan shows your own top photo cut out. Everything happens in your browser and photos are never uploaded.
 - Undo and redo, and doors and windows you can drag along their wall.
 
 ## 3D view and walkthrough
