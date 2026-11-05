@@ -365,8 +365,10 @@ export function RoomCanvas() {
       {isEmpty && !measureActive && (
         <div className={styles.empty}>
           <MousePointerClick size={22} aria-hidden="true" />
-          <p className={styles.emptyTitle}>Pick a piece on the left to start</p>
-          <p className={styles.emptyText}>Click one to add it, or drag it into the room.</p>
+          <p className={styles.emptyTitle}>Add your first piece</p>
+          <p className={styles.emptyText}>
+            Open the furniture list, then click a piece to add it or drag it into the room.
+          </p>
         </div>
       )}
 

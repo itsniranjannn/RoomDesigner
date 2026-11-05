@@ -10,6 +10,7 @@ import { Button } from '../common/Button.jsx';
 import { ConfirmDialog } from '../common/ConfirmDialog.jsx';
 import { SearchField } from '../common/Field.jsx';
 import { IconButton } from '../common/Section.jsx';
+import { ChipRow } from './ChipRow.jsx';
 import { CatalogItem } from './CatalogItem.jsx';
 import styles from './FurnitureCatalog.module.css';
 
@@ -69,7 +70,11 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
       <header className={styles.header}>
         <div className={styles.heading}>
           <h2 className={styles.title}>Furniture</h2>
-          <span className={styles.count}>{totalCount} pieces</span>
+          <span className={styles.count}>
+            {needle || category !== 'all'
+              ? `${shownCount} of ${totalCount} pieces`
+              : `${totalCount} pieces`}
+          </span>
         </div>
         <IconButton label="Hide furniture list" onClick={onClose}>
           <PanelLeftClose size={18} />
@@ -78,19 +83,15 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
 
       <div className={styles.controls}>
         <SearchField value={query} onChange={setQuery} placeholder="Search furniture" />
-        <div className={styles.chips} role="group" aria-label="Category">
-          {[{ id: 'all', name: 'All' }, ...FURNITURE_CATEGORIES].map((cat) => (
-            <button
-              key={cat.id}
-              type="button"
-              className={`${styles.chip} ${category === cat.id ? styles.chipOn : ''}`}
-              aria-pressed={category === cat.id}
-              onClick={() => setCategory(cat.id)}
-            >
-              {SHORT_NAMES[cat.id] || cat.name}
-            </button>
-          ))}
-        </div>
+        <ChipRow
+          label="Category"
+          value={category}
+          onChange={setCategory}
+          chips={[{ id: 'all', name: 'All' }, ...FURNITURE_CATEGORIES].map((cat) => ({
+            id: cat.id,
+            label: SHORT_NAMES[cat.id] || cat.name,
+          }))}
+        />
       </div>
 
       <div className={styles.scroll}>
