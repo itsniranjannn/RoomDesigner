@@ -7,6 +7,10 @@ import {
   buildDesign,
   sanitizeDesign,
   depthProfile,
+  classifyFromFront,
+  inferDimensions,
+  detectionConfidence,
+  withMirroredSides,
 } from './design.js';
 
 const S = 40;
@@ -312,5 +316,117 @@ describe('slatted backs hidden by the filled silhouette', () => {
     expect(buildDesign({ front: filled }, dims, 'chair').traits.back).toBe('solid');
     const front = { ...filled, open: slats.mask };
     expect(buildDesign({ front }, dims, 'chair').traits.back).toBe('slat');
+  });
+});
+
+describe('one long seat cushion on a sofa', () => {
+  const fabric = [60, 90, 150];
+  const dark = [20, 30, 50];
+  const near = (u, t) => Math.abs(u - t) < 0.03;
+  const dims = { widthCm: 150, depthCm: 85, heightCm: 85 };
+
+  it('is found when two back cushions sit on one seat with no seam across it', () => {
+    const front = view(
+      () => true,
+      (u, v) => (v > 0.12 && v < 0.42 && near(u, 0.5) ? dark : fabric)
+    );
+    const d = buildDesign({ front }, dims, 'sofa');
+    expect(d.traits.longSeat).toBe(1);
+    expect(d.traits.seats).toBe(2);
+  });
+
+  it('stays off when the seat has its own seams', () => {
+    const front = view(
+      () => true,
+      (u, v) => (v > 0.12 && v < 0.76 && near(u, 0.5) ? dark : fabric)
+    );
+    expect(buildDesign({ front }, dims, 'sofa').traits.longSeat).toBe(0);
+  });
+
+  it('is kept by storage and defaults to separate cushions for older designs', () => {
+    const base = { type: 'sofa', palette: { body: '#112233' } };
+    expect(sanitizeDesign({ ...base, traits: { seats: 2, longSeat: 1 } }).traits.longSeat).toBe(1);
+    const old = sanitizeDesign({ ...base, traits: { seats: 3 } });
+    expect(old.traits.longSeat).toBe(0);
+    expect(old.traits.seats).toBe(3);
+  });
+});
+
+describe('building from a single photo', () => {
+  const sofaFront = () =>
+    view(
+      () => true,
+      (u, v) => (v > 0.5 && v < 0.6 ? [30, 40, 70] : [60, 90, 150])
+    );
+
+  it('guesses the type from the front view and its proportions alone', () => {
+    expect(classifyFromFront(sofaFront(), 1.9)).toBe('sofa');
+    expect(classifyFromFront(sofaFront(), 1.1)).toBe('armchair');
+    const table = view((u, v) => v < 0.12 || u < 0.08 || u > 0.92);
+    expect(classifyFromFront(table, 2)).toBe('table');
+    const stool = view((u, v) => v < 0.12 || u < 0.1 || u > 0.9);
+    expect(classifyFromFront(stool, 0.6)).toBe('stool');
+  });
+
+  it('builds a complete design from the front photo only', () => {
+    const d = buildDesign(
+      { front: sofaFront() },
+      { widthCm: 80, depthCm: 50, heightCm: 80 },
+      undefined,
+      false,
+      {
+        widthPerHeight: 1.9,
+      }
+    );
+    expect(d.type).toBe('sofa');
+    expect(d.traits.seats).toBeGreaterThanOrEqual(1);
+    expect(d.palette.body).toMatch(/^#[0-9a-f]{6}$/);
+  });
+
+  it('builds from a lone side photo too', () => {
+    const side = view((u, v) => u < 0.1 || v > 0.45);
+    expect(
+      buildDesign({ left: side }, { widthCm: 80, depthCm: 50, heightCm: 80 }).type
+    ).toBeTruthy();
+  });
+
+  it('fills in the depth and height a photo cannot show with the usual for the type', () => {
+    const sofa = inferDimensions('sofa', { widthPerHeight: 2 }, 200);
+    expect(sofa).toEqual({ widthCm: 200, depthCm: 90, heightCm: 100 });
+    expect(inferDimensions('chair', {}).depthCm).toBe(48);
+    // A side photo fixes the depth instead
+    expect(inferDimensions('sofa', { depthPerHeight: 1 }, 200).depthCm).toBe(85);
+  });
+
+  it('says how sure it is from the photos it had', () => {
+    expect(detectionConfidence(['front'])).toBe('rough');
+    expect(detectionConfidence(['front', 'top'])).toBe('fair');
+    expect(detectionConfidence(['front', 'right'])).toBe('good');
+  });
+});
+
+describe('mirroring the other side', () => {
+  const photo = (marks) => {
+    const rgba = new Uint8ClampedArray(4 * 2 * 4);
+    marks.forEach((x) => {
+      rgba[x * 4] = 200; // red in column x of the first row
+      rgba[x * 4 + 3] = 255;
+    });
+    return { width: 4, height: 2, rgba };
+  };
+
+  it('copies a lone side flipped left to right for the opposite side', () => {
+    const out = withMirroredSides({ right: photo([0]) });
+    expect(out.left.mirroredFrom).toBe('right');
+    expect(out.left.rgba[3 * 4]).toBe(200);
+    expect(out.left.rgba[0]).toBe(0);
+    expect(withMirroredSides({ left: photo([1]) }).right.rgba[2 * 4]).toBe(200);
+  });
+
+  it('never replaces a photo the user gave', () => {
+    const mine = photo([2]);
+    const out = withMirroredSides({ right: photo([0]), left: mine });
+    expect(out.left).toBe(mine);
+    expect(withMirroredSides({ front: photo([0]) }).left).toBeUndefined();
   });
 });

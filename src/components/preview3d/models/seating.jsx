@@ -131,6 +131,7 @@ export function Upholstered({
   roll = false,
   tufted = false,
   taper = false,
+  longSeat = false,
 }) {
   const footH = taper ? 0.16 : FOOT_H;
   const armW = widthM * armRatio;
@@ -196,20 +197,21 @@ export function Upholstered({
         />
       ))}
 
-      {/* Seat cushions with welting, front seam and a base welt line */}
-      {Array.from({ length: seats }).map((_, i) => {
-        const cx = -innerW / 2 + seatW * (i + 0.5);
+      {/* Seat cushions with welting, front seam and a base welt line: one per seat, or one long one */}
+      {Array.from({ length: longSeat ? 1 : seats }).map((_, i) => {
+        const cushionW = longSeat ? innerW : seatW;
+        const cx = longSeat ? 0 : -innerW / 2 + seatW * (i + 0.5);
         return (
           <group key={i} name="seat-cushion">
             <Pad
               position={[cx, seatH - 0.07, backThick / 2]}
-              size={[seatW - 0.015, 0.14, seatDepth - 0.02]}
+              size={[cushionW - 0.015, 0.14, seatDepth - 0.02]}
               radius={0.05}
               color={cushionColor}
             />
             <EdgePiping
               position={[cx, seatH - 0.004, backThick / 2]}
-              width={seatW - 0.015}
+              width={cushionW - 0.015}
               depth={seatDepth - 0.02}
               color={welt}
             />

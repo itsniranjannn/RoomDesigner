@@ -43,6 +43,21 @@ describe('photo furniture plan symbol', () => {
     expect(html).toMatch(/y1="27(\.0+)?"/);
   });
 
+  it('draws one long seat cushion on the plan of a sofa when the design asks for it', () => {
+    const sofa = (longSeat) =>
+      render({
+        design: {
+          v: 1,
+          type: 'sofa',
+          palette: { body: '#335577' },
+          traits: { seats: 2, longSeat },
+        },
+      });
+    const cushions = (html) => (html.match(/<rect/g) || []).length;
+    expect(cushions(sofa(1))).toBe(cushions(sofa(0)) - 1);
+    expect(sofa(1)).not.toContain('NaN');
+  });
+
   it('follows an L-shaped footprint instead of a rectangle', () => {
     const L = [[-0.5, -0.5, 0.5, -0.5, 0.5, 0, 0, 0, 0, 0.5, -0.5, 0.5]];
     const html = render({ topOutline: L });

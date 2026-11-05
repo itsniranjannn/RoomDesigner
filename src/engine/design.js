@@ -559,10 +559,14 @@ export function detectStructure(type, views, dims) {
     out.taper = taperedLegs(F) ? 1 : 0;
     if (type === 'sofa') {
       const seams = F ? findLines(F, 'x', [0.05, 0.5, 0.95, 0.76]).length : 0;
+      const backSeams = F ? findLines(F, 'x', [0.05, 0.12, 0.95, 0.42]).length : 0;
       const inner = w * (1 - 2 * out.arm);
       const lo = clampInt(Math.ceil(inner / 1.1), 1, 5);
       const hi = clampInt(Math.floor(inner / 0.45), lo, 5);
       out.seats = seams ? clampInt(seams + 1, lo, hi) : clampInt(inner / 0.7, lo, hi);
+      // Several back cushions but no seam across the seat: one long seat cushion, like many loveseats
+      out.longSeat = !seams && backSeams >= 1 ? 1 : 0;
+      if (out.longSeat) out.seats = clampInt(backSeams + 1, 2, hi);
     }
   } else if (['table', 'coffee-table', 'desk'].includes(type) && F) {
     const frac = edgeRunFrac(F, 0.97);
@@ -578,6 +582,125 @@ export function detectStructure(type, views, dims) {
         : 0;
   } else if (type === 'bed' && F) {
     out.channels = findLines(F, 'x', [0.1, 0.06, 0.9, 0.2]).length >= 2 ? 1 : 0;
+  }
+  return out;
+}
+
+// ---------- one photo: guessing from the front view alone ----------
+
+/**
+ * Best guess of the type from a front (or back) view and its width-to-height ratio only, for when no side or
+ * top photo says how deep the piece is. Cruder than classifyType, so the app presents it as a guess.
+ * @param {number} wh the width of the piece divided by its height, from the photo
+ */
+export function classifyFromFront(front, wh) {
+  const { gapFrac, slabFrac } = measureTraits({ front });
+  const open = gapFrac > 0.3; // clear space under it: legs
+  if (open) {
+    if (wh <= 0.8) {
+      // A back shows above the seat of a chair; a stool is a seat on legs
+      const upper = fillOf(front, [0.2, 0.2, 0.8, 0.36], true) ?? 0;
+      return upper >= 0.12 && slabFrac < 0.4 ? 'chair' : 'stool';
+    }
+    if (wh >= 2.3) return 'coffee-table';
+    return wh >= 1.75 ? 'table' : 'desk';
+  }
+  const seatSeam = findLines(front, 'y', [0.25, 0.3, 0.75, 0.8]).length >= 1;
+  const soft = rolledArms(front)?.roll || tuftedBack(front) || seatSeam;
+  if (soft && wh >= 0.85 && wh <= 3.4) return wh >= 1.45 ? 'sofa' : 'armchair';
+  if (wh <= 0.9) {
+    const shelves = findLines(front, 'y', [0.12, 0.03, 0.88, 0.97], 5).length;
+    return shelves >= 3 && wh <= 0.75 ? 'bookshelf' : wh <= 0.7 ? 'wardrobe' : 'nightstand';
+  }
+  return wh <= 1.3 ? 'nightstand' : 'cabinet';
+}
+
+/** Usual height and depth (cm) per type, to fill in what a single photo cannot show. */
+const TYPICAL_HEIGHT_CM = {
+  bed: 100,
+  sofa: 85,
+  armchair: 85,
+  lounge: 80,
+  chair: 90,
+  stool: 65,
+  table: 75,
+  'table-round': 75,
+  'coffee-table': 45,
+  desk: 75,
+  wardrobe: 200,
+  bookshelf: 180,
+  cabinet: 80,
+  nightstand: 55,
+};
+const TYPICAL_DEPTH_CM = {
+  bed: 210,
+  sofa: 90,
+  armchair: 85,
+  lounge: 78,
+  chair: 48,
+  stool: 38,
+  table: 90,
+  'table-round': 100,
+  'coffee-table': 55,
+  desk: 60,
+  wardrobe: 55,
+  bookshelf: 30,
+  cabinet: 45,
+  nightstand: 40,
+};
+
+/**
+ * A believable size when the photos fix only some of the three proportions: what they do show is kept, the rest
+ * is the usual for the type.
+ * @param {{widthPerHeight?: number|null, depthPerHeight?: number|null, widthPerDepth?: number|null}} known
+ * @param {number} [widthCm] the width to build around (default: the type's usual one)
+ */
+export function inferDimensions(type, known = {}, widthCm = TYPICAL_WIDTH_CM[type] ?? 100) {
+  const clampCm = (v) => Math.min(600, Math.max(5, Math.round(v)));
+  const height = known.widthPerHeight
+    ? widthCm / known.widthPerHeight
+    : (TYPICAL_HEIGHT_CM[type] ?? 80);
+  let depth = TYPICAL_DEPTH_CM[type] ?? 50;
+  if (known.depthPerHeight) depth = height * known.depthPerHeight;
+  else if (known.widthPerDepth) depth = widthCm / known.widthPerDepth;
+  else if (type === 'table-round') depth = widthCm;
+  return { widthCm: clampCm(widthCm), depthCm: clampCm(depth), heightCm: clampCm(height) };
+}
+
+/** How sure the detection can be, from which photos it had: 'good' (side and front), 'fair', or 'rough'. */
+export function detectionConfidence(slots) {
+  const has = (id) => slots.includes(id);
+  const side = has('left') || has('right');
+  const front = has('front') || has('back');
+  if (side && front) return 'good';
+  if (slots.length >= 2) return 'fair';
+  return 'rough';
+}
+
+/**
+ * Fills in a missing side photo with the mirror image of the one given (a piece is nearly always the same on
+ * both sides). Photos are { width, height, rgba }; the copies carry `mirroredFrom` and never replace a real photo.
+ * @returns {Record<string, object>} the photos by slot id, with the copies added
+ */
+export function withMirroredSides(photos) {
+  const out = { ...photos };
+  for (const [from, to] of [
+    ['right', 'left'],
+    ['left', 'right'],
+  ]) {
+    const src = photos[from];
+    if (!src || photos[to]) continue;
+    const rgba = new Uint8ClampedArray(src.rgba.length);
+    for (let y = 0; y < src.height; y++)
+      for (let x = 0; x < src.width; x++) {
+        const a = (y * src.width + x) * 4;
+        const b = (y * src.width + (src.width - 1 - x)) * 4;
+        rgba[b] = src.rgba[a];
+        rgba[b + 1] = src.rgba[a + 1];
+        rgba[b + 2] = src.rgba[a + 2];
+        rgba[b + 3] = src.rgba[a + 3];
+      }
+    out[to] = { ...src, rgba, thumbUrl: undefined, mirroredFrom: from };
   }
   return out;
 }
@@ -673,10 +796,20 @@ function paletteFor(type, views) {
  * @param {Record<string, {mask: Uint8Array, rgb: Uint8Array, size: number}>} views by slot id
  * @param {{widthCm:number, depthCm:number, heightCm:number}} dims
  * @param {string} [forceType] a type id chosen by the user; otherwise it is detected
+ * @param {{widthPerHeight?: number|null}} [hints] proportions read from the photos, for a lone front view
  */
-export function buildDesign(views, dims, forceType, sizeKnown = true) {
+export function buildDesign(views, dims, forceType, sizeKnown = true, hints = {}) {
   const traits = measureTraits(views);
-  const type = TYPE_IDS.has(forceType) ? forceType : classifyType(traits, dims, sizeKnown);
+  const lone = views.front || views.back;
+  const frontOnly = lone && !views.left && !views.right && !views.top;
+  let type;
+  if (TYPE_IDS.has(forceType)) type = forceType;
+  else if (frontOnly)
+    type = classifyFromFront(lone, hints.widthPerHeight || dims.widthCm / dims.heightCm);
+  else if (!lone && !views.top && (views.left || views.right)) {
+    // Only a side view: its width is unknown, so assume the usual for a piece that deep
+    type = classifyType(traits, { ...dims, widthCm: dims.depthCm * 1.6 }, false);
+  } else type = classifyType(traits, dims, sizeKnown);
   const palette = paletteFor(type, views);
   const out = { v: 1, type, palette, traits: {} };
   if (type === 'bed') {
@@ -718,6 +851,7 @@ export function sanitizeDesign(raw) {
     traits.roll = t.roll ? 1 : 0;
     traits.tufted = t.tufted ? 1 : 0;
     traits.taper = t.taper ? 1 : 0;
+    traits.longSeat = t.longSeat ? 1 : 0; // older designs have none: separate seat cushions
   } else if (raw.type === 'armchair') {
     traits.arm = num(t.arm, 0.04, 0.22, 0.17);
     traits.roll = t.roll ? 1 : 0;

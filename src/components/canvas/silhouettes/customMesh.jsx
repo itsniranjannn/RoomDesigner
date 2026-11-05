@@ -99,6 +99,7 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
   const backH = depthCm * 0.26;
   const inner = widthCm - armW * 2;
   const roll = !!traits.roll;
+  const longSeat = type === 'sofa' && !!traits.longSeat && seats > 1;
   return (
     <g>
       <rect
@@ -123,16 +124,29 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
       />
       {Array.from({ length: seats }).map((_, i) => (
         <g key={i}>
-          <rect
-            x={-hw + armW + (inner / seats) * i + 1.5}
-            y={-hd + backH + 2}
-            width={inner / seats - 3}
-            height={depthCm - backH - 6}
-            rx={4}
-            fill={cushion}
-            stroke={LINE}
-            strokeWidth="0.7"
-          />
+          {/* One long seat cushion is drawn once, across all the seats */}
+          {(!longSeat || i === 0) && (
+            <rect
+              x={-hw + armW + (longSeat ? 0 : (inner / seats) * i) + 1.5}
+              y={-hd + backH + 2}
+              width={(longSeat ? inner : inner / seats) - 3}
+              height={depthCm - backH - 6}
+              rx={4}
+              fill={cushion}
+              stroke={LINE}
+              strokeWidth="0.7"
+            />
+          )}
+          {longSeat && i > 0 && (
+            <line
+              x1={-hw + armW + (inner / seats) * i}
+              y1={-hd + 1}
+              x2={-hw + armW + (inner / seats) * i}
+              y2={-hd + backH}
+              stroke={LINE}
+              strokeWidth="0.7"
+            />
+          )}
           {traits.tufted &&
             [0.28, 0.72].map((f) => (
               <circle

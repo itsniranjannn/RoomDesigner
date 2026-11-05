@@ -6,6 +6,7 @@ import {
   assignSheetViews,
   chooseSideSlot,
   estimateProportions,
+  estimatePartialProportions,
   dimensionsFromProportions,
 } from './sheet.js';
 
@@ -152,6 +153,13 @@ describe('proportions from the views', () => {
   it('works from front and top alone, and gives up when depth is unknown', () => {
     expect(estimateProportions({ front: box(60, 40), top: box(60, 80) }).depthCm).toBeCloseTo(2, 5);
     expect(estimateProportions({ front: box(60, 40) })).toBeNull();
+  });
+
+  it('reads what a single photo shows of the proportions', () => {
+    const p = estimatePartialProportions({ front: box(60, 40) });
+    expect(p.widthPerHeight).toBeCloseTo(1.5, 5);
+    expect(p.depthPerHeight).toBeNull();
+    expect(estimatePartialProportions({ right: box(80, 40) }).depthPerHeight).toBeCloseTo(2, 5);
   });
 
   it('scales every size from the one the user knows', () => {
