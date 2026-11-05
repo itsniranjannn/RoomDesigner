@@ -97,6 +97,9 @@ export const useRoomStore = create((set, get) => ({
   showClearance: true,
   showDimensions: true,
   customVersion: 0,
+  // Short message about the last piece that could not be placed as asked (shown over the plan)
+  placeNotice: null,
+  clearPlaceNotice: () => set({ placeNotice: null }),
   activeModal: null, // 'shortcuts' | 'layout' | 'share' | 'photo' | null
   viewMode: '2d', // '2d' | '3d'
   saveStatus: 'saved', // 'saved' | 'saving'
@@ -369,6 +372,17 @@ export const useRoomStore = create((set, get) => ({
     const catalogDef = getFurnitureType(furnitureTypeId);
     if (!catalogDef) return;
 
+    // A piece bigger than the room in both turns cannot be placed: say so instead of overflowing
+    const fitsAsIs = catalogDef.widthCm <= room.widthCm && catalogDef.depthCm <= room.depthCm;
+    const fitsTurned = catalogDef.depthCm <= room.widthCm && catalogDef.widthCm <= room.depthCm;
+    if (!fitsAsIs && !fitsTurned) {
+      set({
+        placeNotice: `${catalogDef.name} (${catalogDef.widthCm} x ${catalogDef.depthCm} cm) is bigger than this room (${room.widthCm} x ${room.depthCm} cm). Make the room larger or pick a smaller piece.`,
+      });
+      return;
+    }
+    const startRotation = fitsAsIs ? 0 : 90;
+
     // Record snapshot before adding furniture
     get()._recordHistory();
 
@@ -419,7 +433,7 @@ export const useRoomStore = create((set, get) => ({
         y: targetY,
         widthCm: catalogDef.widthCm,
         depthCm: catalogDef.depthCm,
-        rotationDeg: 0,
+        rotationDeg: startRotation,
       },
       room.widthCm,
       room.depthCm,
@@ -431,7 +445,7 @@ export const useRoomStore = create((set, get) => ({
       furnitureTypeId,
       x: clamped.x,
       y: clamped.y,
-      rotationDeg: 0,
+      rotationDeg: startRotation,
       elevationCm: 0,
     };
 
@@ -967,6 +981,27 @@ export const useRoomStore = create((set, get) => ({
   removeCustomFurniture: async (id) => {
     unregisterCustomFurniture(id);
     await deleteCustomFurnitureFromDB(id);
+    // Copies placed in rooms go too, as the confirmation promises (otherwise they stay as
+    // pieces nobody can draw)
+    const openId = get().room?.id;
+    try {
+      for (const stored of await listRoomsFromDB()) {
+        if (stored.id === openId) continue;
+        const kept = (stored.placedFurniture || []).filter((i) => i.furnitureTypeId !== id);
+        if (kept.length !== (stored.placedFurniture || []).length)
+          await saveRoomToDB({ ...stored, placedFurniture: kept });
+      }
+    } catch {
+      // The catalog entry is already gone; a room that could not be cleaned is cleaned on its next save
+    }
+    const open = get().room;
+    if (open && (open.placedFurniture || []).some((i) => i.furnitureTypeId === id)) {
+      get()._commitFurnitureUpdate(
+        open.placedFurniture.filter((i) => i.furnitureTypeId !== id),
+        null
+      );
+      set({ selectedItemId: null, selectedItemIds: [] });
+    }
     set((state) => ({ customVersion: state.customVersion + 1 }));
   },
 

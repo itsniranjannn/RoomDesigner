@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ImagePlus,
@@ -42,6 +42,14 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
   const redo = useRoomStore((s) => s.redo);
   const canUndo = useRoomStore((s) => s.canUndo);
   const canRedo = useRoomStore((s) => s.canRedo);
+
+  const placeNotice = useRoomStore((s) => s.placeNotice);
+  const clearPlaceNotice = useRoomStore((s) => s.clearPlaceNotice);
+  useEffect(() => {
+    if (!placeNotice) return undefined;
+    const t = setTimeout(clearPlaceNotice, 6000);
+    return () => clearTimeout(t);
+  }, [placeNotice, clearPlaceNotice]);
 
   const phone = useMediaQuery('(max-width: 640px)');
   const fileRef = useRef(null);
@@ -159,6 +167,11 @@ export function CanvasToolbar({ issues, onClearMeasurements, measurementCount })
       </div>
 
       <div className={styles.stack}>
+        {placeNotice && (
+          <div {...stop}>
+            <Notice kind="warn">{placeNotice}</Notice>
+          </div>
+        )}
         {issues.length > 0 && (
           <div {...stop}>
             <Popover
