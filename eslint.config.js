@@ -45,6 +45,6 @@ export default [
     // Playwright specs and fixtures: `async ({}, use)` is the documented fixture shape
     files: ['e2e/**/*.js', 'playwright.config.js'],
     languageOptions: { globals: { ...globals.node, ...globals.browser } },
-    rules: { 'no-empty-pattern': 'off' },
+    rules: { 'no-empty-pattern': 'off', 'react-hooks/rules-of-hooks': 'off' }, // Playwright's use()
   },
 ];

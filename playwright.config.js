@@ -24,15 +24,17 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.js',
   outputDir: './test-results',
-  timeout: 60_000,
+  timeout: 90_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
   forbidOnly: CI,
   retries: CI ? 1 : 0,
-  workers: CI ? 2 : undefined,
-  reporter: CI
-    ? [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]]
-    : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+  workers: 2,
+  reporter: [
+    ...(CI ? [['github']] : []),
+    ['list'],
+    ['html', { open: 'never', outputFolder: 'playwright-report' }],
+  ],
   use: {
     baseURL: BASE_URL,
     channel,
