@@ -113,33 +113,35 @@ export function StyleGrid({ current, onPick, disabled = false }) {
   );
 }
 
-/** Grid, a one-line description of the chosen style and the reset button. */
+/** Reset button and a line about the chosen style, then the cards. */
 export function StylePanel({ current, hasStyle, onPick, onReset, scope, note }) {
   const style = STYLE_PRESETS.find((s) => s.id === current);
   return (
     <div className={styles.panel}>
       {scope}
+      <div className={styles.head}>
+        <p className={styles.note}>
+          {style
+            ? `${style.label}: ${style.note}.`
+            : 'Sets the floor, walls and the colours of recolourable furniture. Lamps, glass, appliances and pictures keep theirs.'}
+        </p>
+        <Button
+          variant="secondary"
+          size="small"
+          icon={<RotateCcw size={14} aria-hidden="true" />}
+          onClick={onReset}
+          disabled={!hasStyle}
+          title={
+            hasStyle
+              ? 'Put the floor, walls and furniture colours back as they were'
+              : 'No style applied'
+          }
+        >
+          Reset to original
+        </Button>
+      </div>
       <StyleGrid current={current} onPick={onPick} />
-      <p className={styles.note}>
-        {style
-          ? `${style.label}: ${style.note}.`
-          : 'One click sets the floor, walls and the colours of recolourable furniture. Lamps, glass, appliances and pictures keep their own colours.'}
-      </p>
       {note && <p className={styles.note}>{note}</p>}
-      <Button
-        variant="secondary"
-        size="small"
-        icon={<RotateCcw size={14} aria-hidden="true" />}
-        onClick={onReset}
-        disabled={!hasStyle}
-        title={
-          hasStyle
-            ? 'Put the floor, walls and furniture colours back as they were'
-            : 'No style applied'
-        }
-      >
-        Reset to original
-      </Button>
     </div>
   );
 }
