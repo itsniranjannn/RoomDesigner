@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import { Box, Pad, Cyl, Pillow, pillowRestY, shade, clamp, corners } from './shared.jsx';
 import { Mattress, Duvet } from './bed.jsx';
-import { Upholstered, ChairModel, BarStoolModel } from './seating.jsx';
+import { Upholstered, ChairModel, BarStoolModel, LoungeChairModel } from './seating.jsx';
 import {
   LeggedTable,
   TableRoundModel,
@@ -226,6 +226,9 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
           seats={traits.seats || 3}
           roughness={0.85}
           scatter={widthM > 1.5}
+          roll={!!traits.roll}
+          tufted={!!traits.tufted}
+          taper={!!traits.taper}
         />
       );
       break;
@@ -239,6 +242,21 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
           armH={0.58}
           roughness={0.7}
           scatter
+          roll={!!traits.roll}
+          tufted={!!traits.tufted}
+          taper={!!traits.taper}
+        />
+      );
+      break;
+    case 'lounge':
+      model = (
+        <LoungeChairModel
+          widthM={widthM}
+          depthM={depthM}
+          heightM={heightM}
+          mainColor={palette.body}
+          cushionColor={palette.cushion || palette.body}
+          slats={traits.slats || 3}
         />
       );
       break;

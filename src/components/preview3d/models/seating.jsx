@@ -7,6 +7,7 @@ import {
   Pillow,
   leaningPillow,
   Strut,
+  strutTransform,
   CHROME,
   BLACK_PLASTIC,
   corners,
@@ -48,6 +49,70 @@ export function scatterPillows({ widthM, depthM, heightM, armRatio, seats, seatH
   }));
 }
 
+/** Button-tufted face of a back cushion: a grid of buttons with creases between them and piped edges. */
+export function TuftedFace({ width, height, z, color, lift }) {
+  const cols = width > 0.5 ? 3 : 2;
+  const rows = 2;
+  const gx = width * 0.64;
+  const gy = height * 0.34;
+  const xs = Array.from({ length: cols }, (_, i) => (cols === 1 ? 0 : (i / (cols - 1) - 0.5) * gx));
+  const ys = [-gy / 2, gy / 2].slice(0, rows);
+  return (
+    <group name="tufting">
+      {xs.flatMap((x, i) =>
+        ys.map((y, j) => (
+          <Ball
+            key={`${i}-${j}`}
+            position={[x, y, z + 0.002]}
+            radius={0.014}
+            scale={[1, 1, 0.55]}
+            color={color}
+            segments={8}
+            castShadow={false}
+          />
+        ))
+      )}
+      {ys.map((y) => (
+        <Box
+          key={`h${y}`}
+          position={[0, y, z]}
+          size={[gx, 0.004, 0.003]}
+          color={color}
+          castShadow={false}
+        />
+      ))}
+      {xs.map((x) => (
+        <Box
+          key={`v${x}`}
+          position={[x, 0, z]}
+          size={[0.004, gy, 0.003]}
+          color={color}
+          castShadow={false}
+        />
+      ))}
+      {/* piped edge */}
+      {[-1, 1].map((sg) => (
+        <Box
+          key={`pt${sg}`}
+          position={[0, (sg * (height - 0.07)) / 2, z]}
+          size={[width - 0.07, 0.009, 0.006]}
+          color={lift}
+          castShadow={false}
+        />
+      ))}
+      {[-1, 1].map((sg) => (
+        <Box
+          key={`px${sg}`}
+          position={[(sg * (width - 0.07)) / 2, 0, z]}
+          size={[0.009, height - 0.07, 0.006]}
+          color={lift}
+          castShadow={false}
+        />
+      ))}
+    </group>
+  );
+}
+
 /** Upholstered sofa or armchair: frame, arms, back, seat cushions and loose back cushions. */
 export function Upholstered({
   widthM,
@@ -63,7 +128,11 @@ export function Upholstered({
   roughness,
   recliner = false,
   scatter = false,
+  roll = false,
+  tufted = false,
+  taper = false,
 }) {
+  const footH = taper ? 0.16 : FOOT_H;
   const armW = widthM * armRatio;
   const backThick = depthM * 0.26;
   const innerW = widthM - armW * 2;
@@ -75,29 +144,43 @@ export function Upholstered({
     <group>
       {/* Frame below the seat, standing on feet */}
       <Pad
-        position={[0, (FOOT_H + seatH - 0.1) / 2 + 0.02, 0]}
-        size={[widthM, seatH - 0.1 - FOOT_H + 0.06, depthM]}
+        position={[0, (footH + seatH - 0.1) / 2 + 0.02, 0]}
+        size={[widthM, seatH - 0.1 - footH + 0.06, depthM]}
         radius={0.03}
         color={mainColor}
         roughness={roughness}
       />
-      {corners(widthM, depthM, 0.07).map(([x, z], i) => (
-        <Cyl
-          key={i}
-          position={[x, FOOT_H / 2, z]}
-          radiusTop={0.024}
-          radiusBottom={0.018}
-          height={FOOT_H}
-          color={legColor}
-          roughness={0.5}
-          segments={12}
-        />
-      ))}
+      {taper
+        ? corners(widthM, depthM, 0.11).map(([x, z], i) => (
+            <Cyl
+              key={i}
+              position={[x + Math.sign(x) * 0.02, footH / 2, z + Math.sign(z) * 0.02]}
+              rotation={[-Math.sign(z) * 0.2, 0, Math.sign(x) * 0.2]}
+              radiusTop={0.03}
+              radiusBottom={0.013}
+              height={footH + 0.02}
+              color={legColor}
+              roughness={0.55}
+              segments={14}
+            />
+          ))
+        : corners(widthM, depthM, 0.07).map(([x, z], i) => (
+            <Cyl
+              key={i}
+              position={[x, FOOT_H / 2, z]}
+              radiusTop={0.024}
+              radiusBottom={0.018}
+              height={FOOT_H}
+              color={legColor}
+              roughness={0.5}
+              segments={12}
+            />
+          ))}
 
       {/* Back and arms */}
       <Pad
-        position={[0, (FOOT_H + heightM) / 2 - 0.03, -depthM / 2 + backThick / 2]}
-        size={[widthM, heightM - FOOT_H, backThick]}
+        position={[0, (footH + heightM) / 2 - 0.03, -depthM / 2 + backThick / 2]}
+        size={[widthM, heightM - footH, backThick]}
         radius={0.05}
         color={mainColor}
         roughness={roughness}
@@ -105,9 +188,9 @@ export function Upholstered({
       {[-1, 1].map((s) => (
         <Pad
           key={s}
-          position={[s * (widthM / 2 - armW / 2), (FOOT_H + armH) / 2, 0]}
-          size={[armW, armH - FOOT_H, depthM]}
-          radius={Math.min(0.06, armW / 2.5)}
+          position={[s * (widthM / 2 - armW / 2), (footH + armH) / 2, 0]}
+          size={[armW, armH - footH, depthM]}
+          radius={roll ? Math.min(0.12, armW / 2.05) : Math.min(0.06, armW / 2.5)}
           color={mainColor}
           roughness={roughness}
         />
@@ -157,16 +240,26 @@ export function Upholstered({
             color={welt}
             castShadow={false}
           />
-          {[-0.18, 0.18].map((f) => (
-            <Ball
-              key={f}
-              position={[(seatW - 0.03) * f, backCushionH * 0.05, 0.068]}
-              radius={0.011}
+          {tufted ? (
+            <TuftedFace
+              width={seatW - 0.03}
+              height={backCushionH}
+              z={0.066}
               color={welt}
-              segments={8}
-              castShadow={false}
+              lift={shade(cushionColor, 0.06)}
             />
-          ))}
+          ) : (
+            [-0.18, 0.18].map((f) => (
+              <Ball
+                key={f}
+                position={[(seatW - 0.03) * f, backCushionH * 0.05, 0.068]}
+                radius={0.011}
+                color={welt}
+                segments={8}
+                castShadow={false}
+              />
+            ))
+          )}
         </group>
       ))}
       {scatter &&
@@ -639,6 +732,140 @@ export function OttomanModel({ widthM, depthM, heightM, cushionColor, legColor }
         cols={cols}
         rows={rows}
         color={dark}
+      />
+    </group>
+  );
+}
+
+/** Rectangular wooden bar running between two points (frames, slanted legs, armrests). */
+export function WoodBar({ from, to, size = [0.04, 0.03], color, roughness = 0.5 }) {
+  const { position, quaternion, length } = strutTransform(from, to);
+  return (
+    <mesh position={position} quaternion={quaternion} castShadow receiveShadow>
+      <boxGeometry args={[size[0], length, size[1]]} />
+      <meshStandardMaterial color={color} roughness={roughness} />
+    </mesh>
+  );
+}
+
+/**
+ * Mid-century lounge chair: an exposed wooden frame (slanted legs, back posts, flat wooden armrests and
+ * horizontal back rails) with a loose seat cushion and a loose back cushion, open at the sides.
+ */
+export function LoungeChairModel({ widthM, depthM, heightM, mainColor, cushionColor, slats = 3 }) {
+  const seatTop = clamp(heightM * 0.55, 0.34, 0.44);
+  const sideX = widthM / 2 - 0.03;
+  const zFront = depthM / 2 - 0.08;
+  const zFoot = -depthM / 2 + 0.03;
+  const zSeatBack = -depthM / 2 + 0.2;
+  const railY = seatTop - 0.12;
+  const armY = seatTop + 0.2;
+  const topY = heightM - 0.015;
+  const zTop = -depthM / 2 + 0.03;
+  const postZ = (y) => zSeatBack + ((y - railY) / (topY - railY)) * (zTop - zSeatBack);
+  const inner = widthM - 0.15;
+  const cushionLean = Math.atan2(zSeatBack - zTop, topY - railY);
+  const backH = topY - seatTop - 0.06;
+  const wood = mainColor;
+  const rail = shade(wood, -0.06);
+  return (
+    <group>
+      {[-1, 1].map((s) => {
+        const x = s * sideX;
+        return (
+          <group key={s}>
+            {/* front leg, raked forward, rising into the armrest */}
+            <WoodBar
+              from={[x, 0, zFront + 0.045]}
+              to={[x, armY - 0.02, zFront - 0.015]}
+              size={[0.04, 0.04]}
+              color={wood}
+            />
+            {/* rear leg: splays backwards at the floor and meets the seat rail */}
+            <WoodBar
+              from={[x, 0, zFoot]}
+              to={[x, railY + 0.03, zSeatBack + 0.09]}
+              size={[0.04, 0.035]}
+              color={wood}
+            />
+            {/* back post leaning back from the rail up to the top of the back */}
+            <WoodBar
+              from={[x, railY, zSeatBack + 0.05]}
+              to={[x, topY, zTop]}
+              size={[0.04, 0.035]}
+              color={wood}
+            />
+            {/* side rails under the seat */}
+            <WoodBar
+              from={[x, railY + 0.02, zFront]}
+              to={[x, railY + 0.02, zSeatBack + 0.06]}
+              size={[0.035, 0.05]}
+              color={rail}
+            />
+            <WoodBar
+              from={[x, railY - 0.07, zFront + 0.01]}
+              to={[x, railY - 0.07, zSeatBack + 0.1]}
+              size={[0.03, 0.03]}
+              color={rail}
+            />
+            {/* flat wooden armrest, wider than the post, ending in a rounded front */}
+            <WoodBar
+              from={[x, armY, zFront + 0.045]}
+              to={[x, armY + 0.02, zTop + 0.1]}
+              size={[0.055, 0.022]}
+              color={wood}
+            />
+          </group>
+        );
+      })}
+      {/* cross rails across the front and back of the seat frame */}
+      <Box
+        position={[0, railY + 0.03, zFront]}
+        size={[widthM - 0.06, 0.05, 0.03]}
+        color={rail}
+        roughness={0.5}
+      />
+      <Box
+        position={[0, railY - 0.07, zFront + 0.01]}
+        size={[widthM - 0.06, 0.03, 0.025]}
+        color={rail}
+        roughness={0.5}
+      />
+      <Box
+        position={[0, railY + 0.03, zSeatBack + 0.05]}
+        size={[widthM - 0.06, 0.05, 0.03]}
+        color={rail}
+        roughness={0.5}
+      />
+      {/* horizontal back rails */}
+      {Array.from({ length: slats }).map((_, i) => {
+        const y = seatTop + 0.1 + ((topY - seatTop - 0.16) * i) / Math.max(1, slats - 1);
+        return (
+          <Box
+            key={i}
+            position={[0, y, postZ(y) - 0.005]}
+            size={[widthM - 0.06, 0.055, 0.022]}
+            color={wood}
+            roughness={0.5}
+          />
+        );
+      })}
+      {/* loose seat cushion */}
+      <Pad
+        position={[0, seatTop - 0.065, (zFront + zSeatBack) / 2 + 0.01]}
+        size={[inner, 0.13, zFront - zSeatBack - 0.02]}
+        radius={0.04}
+        color={cushionColor}
+        roughness={0.98}
+      />
+      {/* loose back cushion leaning on the rails */}
+      <Pad
+        position={[0, seatTop + backH / 2 - 0.02, postZ(seatTop + backH / 2) + 0.075]}
+        rotation={[-cushionLean, 0, 0]}
+        size={[inner, backH, 0.11]}
+        radius={0.04}
+        color={cushionColor}
+        roughness={0.98}
       />
     </group>
   );

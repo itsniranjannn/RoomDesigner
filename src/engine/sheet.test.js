@@ -165,3 +165,42 @@ describe('proportions from the views', () => {
     expect(dimensionsFromProportions(r, 'widthCm', 5000).depthCm).toBe(600);
   });
 });
+
+describe('sheets on a dark background with dimension lines', () => {
+  const DW = 400;
+  const DH = 240;
+  function darkSheet() {
+    const rgba = new Uint8ClampedArray(DW * DH * 4);
+    for (let i = 0; i < DW * DH; i++) {
+      rgba[i * 4] = 24;
+      rgba[i * 4 + 1] = 24;
+      rgba[i * 4 + 2] = 26;
+      rgba[i * 4 + 3] = 255;
+    }
+    const fill = (x0, y0, x1, y1, c) => {
+      for (let y = y0; y < y1; y++)
+        for (let x = x0; x < x1; x++) {
+          const i = (y * DW + x) * 4;
+          rgba[i] = c[0];
+          rgba[i + 1] = c[1];
+          rgba[i + 2] = c[2];
+        }
+    };
+    // two pieces (L shapes keep them from being solid), joined by a thin green line under their feet
+    fill(20, 20, 100, 90, [140, 90, 50]);
+    fill(30, 30, 90, 60, [24, 24, 26]);
+    fill(140, 20, 220, 90, [140, 90, 50]);
+    fill(150, 30, 210, 60, [24, 24, 26]);
+    fill(10, 100, 230, 101, [120, 160, 40]);
+    // a full-bleed close-up inset
+    fill(250, 20, 390, 220, [90, 70, 50]);
+    return rgba;
+  }
+
+  it('keeps the pieces apart, ignores the line and drops the close-up', () => {
+    const { views } = detectSheetViews(darkSheet(), DW, DH);
+    expect(views).toHaveLength(2);
+    expect(views[0].box.x).toBeLessThan(40);
+    expect(views[1].box.x).toBeGreaterThan(120);
+  });
+});

@@ -8,8 +8,8 @@
 
 import { fitBackground, segmentObject, normalizeView, carveVoxels, maskBounds } from './hull.js';
 
-const ANALYSIS_EDGE = 360;
-const MAX_VIEWS = 8;
+const ANALYSIS_EDGE = 900;
+const MAX_VIEWS = 12;
 
 /** Box-averaged downscale to at most `edge` pixels on the long side. */
 function downscale(rgba, width, height, edge) {
@@ -73,8 +73,51 @@ function dilate(mask, width, height, radius) {
   return out;
 }
 
+/** Erosion followed by dilation: removes strokes thinner than the kernel (dimension lines, frames, text). */
+function open(mask, width, height, radius) {
+  const inverse = mask.map((v) => (v ? 0 : 1));
+  const eroded = dilate(inverse, width, height, radius).map((v) => (v ? 0 : 1));
+  return dilate(eroded, width, height, radius);
+}
+
 /**
- * Finds the separate objects on a plain background (connected groups of non-background pixels).
+ * Clears long thin horizontal and vertical strokes (dimension lines, panel frames): a pixel that belongs to
+ * a horizontal run at least `minRun` long but is at most `thin` pixels tall (or the same vertically).
+ */
+function stripLines(mask, width, height, minRun, thin) {
+  const out = Uint8Array.from(mask);
+  const sweep = (along, across, alongLen, acrossLen, index) => {
+    for (let a = 0; a < acrossLen; a++) {
+      let b = 0;
+      while (b < alongLen) {
+        if (!mask[index(a, b)]) {
+          b++;
+          continue;
+        }
+        let e = b;
+        while (e < alongLen && mask[index(a, e)]) e++;
+        if (e - b >= minRun) {
+          for (let k = b; k < e; k++) {
+            // thickness across the run at this position
+            let t = 1;
+            for (let d = 1; a - d >= 0 && mask[index(a - d, k)] && t <= thin; d++) t++;
+            for (let d = 1; a + d < acrossLen && mask[index(a + d, k)] && t <= thin; d++) t++;
+            if (t <= thin) out[index(a, k)] = 0;
+          }
+        }
+        b = e;
+      }
+    }
+  };
+  sweep('x', 'y', width, height, (a, b) => a * width + b);
+  sweep('y', 'x', height, width, (a, b) => b * width + a);
+  return out;
+}
+
+/**
+ * Finds the separate objects on a plain background (light or dark): connected groups of pixels that differ
+ * from the background colour estimated along the border. Thin strokes (dimension lines, frames, a watermark)
+ * are ignored, and a close-up inset that fills its whole box is not taken for a view.
  * @returns {{ views: Array<{ id: number, box: {x:number,y:number,w:number,h:number}, area: number }>, labels: Int16Array, analysis: {width:number,height:number,scale:number} }}
  *   boxes are in source pixels, in reading order (left to right within a row, rows top to bottom)
  */
@@ -83,16 +126,23 @@ export function detectSheetViews(rgba, width, height) {
   const { width: sw, height: sh } = small;
   const bg = fitBackground(small.rgba, sw, sh);
   const threshold = Math.max(22, bg.noise * 4);
-  const raw = new Uint8Array(sw * sh);
+  const marked = new Uint8Array(sw * sh);
   for (let y = 0; y < sh; y++) {
     for (let x = 0; x < sw; x++) {
       const i = (y * sw + x) * 4;
       const [r, g, b] = bg.at(x / sw, y / sh);
       const dist = Math.hypot(small.rgba[i] - r, small.rgba[i + 1] - g, small.rgba[i + 2] - b);
-      if (dist > threshold) raw[y * sw + x] = 1;
+      if (dist > threshold) marked[y * sw + x] = 1;
     }
   }
-  const grown = dilate(raw, sw, sh, Math.max(2, Math.round(Math.max(sw, sh) * 0.012)));
+  const rough = stripLines(marked, sw, sh, Math.round(Math.max(sw, sh) * 0.06), 2);
+  // Only blobs that are more than a thin stroke count; strokes touching a blob stay part of it (a thin leg)
+  const core = open(rough, sw, sh, Math.max(1, Math.round(Math.max(sw, sh) * 0.003)));
+  // Edge pixels the opening shaved off are restored a few pixels deep; strokes beyond that stay gone
+  const reach = dilate(core, sw, sh, 3);
+  const raw = new Uint8Array(sw * sh);
+  for (let p = 0; p < raw.length; p++) if (rough[p] && reach[p]) raw[p] = 1;
+  const grown = dilate(raw, sw, sh, 1);
   const labels = new Int16Array(sw * sh).fill(-1);
   const found = [];
   const stack = [];
@@ -131,9 +181,63 @@ export function detectSheetViews(rgba, width, height) {
     }
     found.push(comp);
   }
+  // Two views joined by a smear on the floor (a reflection, a shadow): cut a wide blob where it is thinnest
+  const splitWide = (c) => {
+    const w = c.maxX - c.minX + 1;
+    const h = c.maxY - c.minY + 1;
+    if (w < h * 1.9) return;
+    const cols = new Int32Array(w);
+    for (let y = c.minY; y <= c.maxY; y++)
+      for (let x = c.minX; x <= c.maxX; x++) {
+        const p = y * sw + x;
+        if (labels[p] === c.id && raw[p]) cols[x - c.minX]++;
+      }
+    const top = Math.max(...cols);
+    let best = -1;
+    for (let k = Math.floor(w * 0.3); k <= Math.ceil(w * 0.7); k++)
+      if (cols[k] <= top * 0.12 && (best < 0 || cols[k] < cols[best])) best = k;
+    if (best < 0) return;
+    const part = { id: found.length, minX: sw, minY: sh, maxX: -1, maxY: -1, area: 0 };
+    const rest = { id: c.id, minX: sw, minY: sh, maxX: -1, maxY: -1, area: 0 };
+    for (let y = c.minY; y <= c.maxY; y++)
+      for (let x = c.minX; x <= c.maxX; x++) {
+        const p = y * sw + x;
+        if (labels[p] !== c.id) continue;
+        const target = x - c.minX > best ? part : rest;
+        if (target === part) labels[p] = part.id;
+        if (!raw[p]) continue;
+        target.area++;
+        if (x < target.minX) target.minX = x;
+        if (x > target.maxX) target.maxX = x;
+        if (y < target.minY) target.minY = y;
+        if (y > target.maxY) target.maxY = y;
+      }
+    Object.assign(c, rest);
+    found.push(part);
+    splitWide(c);
+    splitWide(part);
+  };
+  for (const c of [...found]) if (c.maxX >= 0) splitWide(c);
+  // A close-up inset fills its whole box; real pieces leave background inside theirs
+  const solidBox = (c) =>
+    (c.area / ((c.maxX - c.minX + 1) * (c.maxY - c.minY + 1)) > 0.88 && c.area > sw * sh * 0.15) ||
+    // a frame or panel spanning most of the picture is not a view either
+    (c.maxX - c.minX + 1 > sw * 0.9 && c.maxY - c.minY + 1 > sh * 0.9 && found.length > 1);
+  for (const c of found) if (c.maxX >= 0 && solidBox(c)) c.area = 0;
+  // Views of one piece are drawn at similar scale: a much bigger blob is a close-up or a panel
+  const boxArea = (c) => (c.maxX - c.minX + 1) * (c.maxY - c.minY + 1);
+  const sizes = found
+    .filter((c) => c.area > 0 && c.area >= sw * sh * 0.003)
+    .map(boxArea)
+    .sort((p, q) => p - q);
+  if (sizes.length >= 4) {
+    const med = sizes[Math.floor(sizes.length / 2)];
+    for (const c of found)
+      if (c.area > 0 && boxArea(c) > med * 1.8 && c.area / boxArea(c) < 0.85) c.area = 0;
+  }
   const biggest = Math.max(0, ...found.map((c) => c.area));
   const keep = found
-    .filter((c) => c.maxX >= 0 && c.area >= Math.max(biggest * 0.04, sw * sh * 0.003))
+    .filter((c) => c.maxX >= 0 && c.area >= Math.max(biggest * 0.12, sw * sh * 0.003))
     .sort((a, b) => b.area - a.area)
     .slice(0, MAX_VIEWS);
 
@@ -190,7 +294,7 @@ export function cropSheetView(rgba, width, height, detection, view, marginRatio 
       const label = labels[ly * analysis.width + lx];
       const o = (y * w + x) * 4;
       const s = ((y0 + y) * width + (x0 + x)) * 4;
-      if (label !== -1 && label !== view.id) {
+      if (label !== view.id) {
         const [r, g, b] = bg.at((x0 + x) / width, (y0 + y) / height);
         out[o] = r;
         out[o + 1] = g;
@@ -236,6 +340,8 @@ export function assignSheetViews(views) {
     return out;
   }
   const ratio = (a, b) => Math.abs(Math.log(a / b));
+  const topPart = (F, S, T) =>
+    ratio(F.w, T.w) * 0.6 + ratio(S.w, T.h) * 0.6 + ratio(F.w / F.h / (S.w / S.h), T.w / T.h);
   let best = null;
   for (const [f, s, t] of permutations(views.length, 3)) {
     const F = views[f].box;
@@ -244,19 +350,62 @@ export function assignSheetViews(views) {
     const cost =
       // heights and widths shared directly (works when views share a scale)
       ratio(F.h, S.h) * 0.6 +
-      ratio(F.w, T.w) * 0.6 +
-      ratio(S.w, T.h) * 0.6 +
-      // and the aspect loop (works for any scale): (w/h) * (d/h)^-1 = w/d
-      ratio(F.w / F.h / (S.w / S.h), T.w / T.h) +
-      // prefer reading order and a top view that is taller than it is wide-ish
+      topPart(F, S, T) +
+      // prefer reading order
       (f > s ? 0.05 : 0) +
       (s > t ? 0.02 : 0) +
       (f > t ? 0.02 : 0);
     if (!best || cost < best.cost) best = { cost, f, s, t };
   }
-  out[best.f] = 'front';
-  out[best.s] = 'right';
-  out[best.t] = 'top';
+  const Fb = views[best.f].box;
+  const Sb = views[best.s].box;
+  // A real side view is shaped differently from the front; without that the 'top' is just another side
+  if (best && topPart(Fb, Sb, views[best.t].box) < 0.3 && ratio(Fb.w / Fb.h, Sb.w / Sb.h) > 0.12) {
+    out[best.f] = 'front';
+    out[best.s] = 'right';
+    out[best.t] = 'top';
+    // The same view drawn bigger elsewhere on the sheet (a full-size render beside the small drawing) has
+    // more detail: use it instead when it has the same shape
+    for (const slotIndex of [best.f, best.s]) {
+      const role = out[slotIndex];
+      const base = views[slotIndex].box;
+      let bigger = slotIndex;
+      for (let i = 0; i < views.length; i++) {
+        if (out[i] && i !== slotIndex) continue;
+        const b = views[i].box;
+        if (
+          ratio(b.w / b.h, base.w / base.h) < 0.04 &&
+          b.w * b.h > views[bigger].box.w * views[bigger].box.h * 1.4
+        )
+          bigger = i;
+      }
+      if (bigger !== slotIndex) {
+        out[slotIndex] = null;
+        out[bigger] = role;
+      }
+    }
+    return out;
+  }
+  // No plan view among them (a render from the front, the side and the back, plus a three-quarter view):
+  // the first view is the front, the side is the one that differs most from it in shape, the back looks like it
+  const aspect = (i) => views[i].box.w / views[i].box.h;
+  let pick = null;
+  for (let s = 1; s < views.length; s++) {
+    const cost =
+      ratio(views[0].box.h, views[s].box.h) * 0.6 -
+      Math.min(0.4, ratio(aspect(0), aspect(s))) * 0.5 +
+      s * 0.01;
+    if (!pick || cost < pick.cost) pick = { cost, s };
+  }
+  out[0] = 'front';
+  out[pick.s] = 'right';
+  for (let b = 1; b < views.length; b++) {
+    if (b === pick.s) continue;
+    if (ratio(aspect(0), aspect(b)) < 0.15 && ratio(views[0].box.h, views[b].box.h) < 0.14) {
+      out[b] = 'back';
+      break;
+    }
+  }
   return out;
 }
 

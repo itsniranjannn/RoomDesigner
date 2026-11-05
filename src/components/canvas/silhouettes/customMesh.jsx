@@ -15,6 +15,151 @@ export function outlinePath(loops, widthCm, depthCm) {
     .join(' ');
 }
 
+const LINE = 'rgba(34,24,14,0.55)';
+
+/** Plan view drawn from a seating design when the user gave no top photo: arms, back, seat and feet. */
+function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
+  const { type, palette = {}, traits = {} } = design;
+  const baseColor = palette.body;
+  const same = !baseColor || String(baseColor).toLowerCase() === String(color).toLowerCase();
+  const cushion = same ? palette.cushion || color : color;
+  if (type === 'lounge') {
+    const bar = Math.max(4, widthCm * 0.07);
+    const seatD = depthCm * 0.52;
+    return (
+      <g>
+        <rect
+          x={-hw}
+          y={-hd}
+          width={widthCm}
+          height={depthCm}
+          rx={3}
+          fill={color}
+          fillOpacity="0.2"
+        />
+        {/* wooden armrests and back rail */}
+        {[-1, 1].map((sg) => (
+          <rect
+            key={sg}
+            x={sg < 0 ? -hw : hw - bar}
+            y={-hd + depthCm * 0.12}
+            width={bar}
+            height={depthCm * 0.88}
+            rx={bar / 2.2}
+            fill={color}
+            stroke={OUTLINE}
+            strokeWidth="1.1"
+          />
+        ))}
+        <rect
+          x={-hw}
+          y={-hd}
+          width={widthCm}
+          height={bar * 0.9}
+          rx={2}
+          fill={color}
+          stroke={OUTLINE}
+          strokeWidth="1.1"
+        />
+        {/* loose cushions */}
+        <rect
+          x={-hw + bar + 1}
+          y={-hd + bar * 0.9 + 1}
+          width={widthCm - 2 * bar - 2}
+          height={depthCm * 0.2}
+          rx={4}
+          fill={cushion}
+          stroke={OUTLINE}
+          strokeWidth="1"
+        />
+        <rect
+          x={-hw + bar + 1}
+          y={hd - seatD - 2}
+          width={widthCm - 2 * bar - 2}
+          height={seatD}
+          rx={5}
+          fill={cushion}
+          stroke={OUTLINE}
+          strokeWidth="1"
+        />
+        <line
+          x1={-hw + bar + 6}
+          y1={hd - 3}
+          x2={hw - bar - 6}
+          y2={hd - 3}
+          stroke={LINE}
+          strokeWidth="1.6"
+          strokeDasharray="4 3"
+        />
+      </g>
+    );
+  }
+  const seats = type === 'sofa' ? traits.seats || 2 : 1;
+  const armW = widthCm * (traits.arm ?? (type === 'sofa' ? 0.1 : 0.17));
+  const backH = depthCm * 0.26;
+  const inner = widthCm - armW * 2;
+  const roll = !!traits.roll;
+  return (
+    <g>
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={roll ? armW / 2 : 6}
+        fill={color}
+        stroke="#222222"
+        strokeWidth="1.2"
+      />
+      <rect
+        x={-hw + armW}
+        y={-hd + 1}
+        width={inner}
+        height={backH}
+        rx={3}
+        fill={cushion}
+        stroke={LINE}
+        strokeWidth="0.6"
+      />
+      {Array.from({ length: seats }).map((_, i) => (
+        <g key={i}>
+          <rect
+            x={-hw + armW + (inner / seats) * i + 1.5}
+            y={-hd + backH + 2}
+            width={inner / seats - 3}
+            height={depthCm - backH - 6}
+            rx={4}
+            fill={cushion}
+            stroke={LINE}
+            strokeWidth="0.7"
+          />
+          {traits.tufted &&
+            [0.28, 0.72].map((f) => (
+              <circle
+                key={f}
+                cx={-hw + armW + (inner / seats) * (i + f)}
+                cy={-hd + 1 + backH * 0.5}
+                r={1.1}
+                fill={LINE}
+              />
+            ))}
+        </g>
+      ))}
+      {[-1, 1].map((sg) => (
+        <line
+          key={sg}
+          x1={sg * (hw - armW)}
+          y1={-hd + 2}
+          x2={sg * (hw - armW)}
+          y2={hd - 2}
+          stroke={LINE}
+          strokeWidth="0.7"
+        />
+      ))}
+    </g>
+  );
+}
+
 /** 2D plan symbols: customMesh. Coordinates are centered at (0, 0), widthCm x depthCm. */
 export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, isSwatch }) {
   const loops = item.topOutline;
@@ -97,6 +242,19 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
           />
         )}
       </g>
+    );
+  }
+
+  if (item.design && ['sofa', 'armchair', 'lounge'].includes(item.design.type) && !loops?.length) {
+    return (
+      <SeatingPlan
+        design={item.design}
+        widthCm={widthCm}
+        depthCm={depthCm}
+        hw={hw}
+        hd={hd}
+        color={color}
+      />
     );
   }
 
