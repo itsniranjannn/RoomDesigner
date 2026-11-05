@@ -242,9 +242,10 @@ export function measureTraits(views) {
   }
   let gapFrac = 0;
   let slabFrac = 0.1;
+  // Space under the piece shows in a side view too, when that is all there is
+  const underside = front || views.left || views.right;
+  if (underside) gapFrac = 1 - median(slice(bottomProfile(underside), 0.3, 0.7));
   if (front) {
-    const bottom = bottomProfile(front);
-    gapFrac = 1 - median(slice(bottom, 0.3, 0.7));
     // Thickness of the top: rows from the top that are nearly as wide as the widest row
     const s = front.size;
     const widths = [];
@@ -559,13 +560,22 @@ export function detectStructure(type, views, dims) {
     out.taper = taperedLegs(F) ? 1 : 0;
     if (type === 'sofa') {
       const seams = F ? findLines(F, 'x', [0.05, 0.5, 0.95, 0.76]).length : 0;
-      const backSeams = F ? findLines(F, 'x', [0.05, 0.12, 0.95, 0.42]).length : 0;
+      // Only between the arms: where an arm meets the back is not a cushion seam
+      const lo2 = Math.min(0.4, out.arm + 0.08);
+      const between = (y0, y1) =>
+        F
+          ? findLines(F, 'x', [lo2, y0, 1 - lo2, y1]).filter(
+              (f) => f > lo2 + 0.05 && f < 1 - lo2 - 0.05
+            )
+          : [];
+      const backSeams = between(0.12, 0.42).length;
+      const seatSeams = between(0.5, 0.76).length;
       const inner = w * (1 - 2 * out.arm);
       const lo = clampInt(Math.ceil(inner / 1.1), 1, 5);
       const hi = clampInt(Math.floor(inner / 0.45), lo, 5);
       out.seats = seams ? clampInt(seams + 1, lo, hi) : clampInt(inner / 0.7, lo, hi);
       // Several back cushions but no seam across the seat: one long seat cushion, like many loveseats
-      out.longSeat = !seams && backSeams >= 1 ? 1 : 0;
+      out.longSeat = !seams && !seatSeams && backSeams >= 1 ? 1 : 0;
       if (out.longSeat) out.seats = clampInt(backSeams + 1, 2, hi);
     }
   } else if (['table', 'coffee-table', 'desk'].includes(type) && F) {
@@ -602,6 +612,8 @@ export function classifyFromFront(front, wh) {
       const upper = fillOf(front, [0.2, 0.2, 0.8, 0.36], true) ?? 0;
       return upper >= 0.12 && slabFrac < 0.4 ? 'chair' : 'stool';
     }
+    // Cushions and a back fill the upper half of a lounge chair; a table shows only its top there
+    if (wh <= 1.6 && (fillOf(front, [0.25, 0.1, 0.75, 0.45]) ?? 0) >= 0.5) return 'lounge';
     if (wh >= 2.3) return 'coffee-table';
     return wh >= 1.75 ? 'table' : 'desk';
   }
@@ -808,7 +820,7 @@ export function buildDesign(views, dims, forceType, sizeKnown = true, hints = {}
     type = classifyFromFront(lone, hints.widthPerHeight || dims.widthCm / dims.heightCm);
   else if (!lone && !views.top && (views.left || views.right)) {
     // Only a side view: its width is unknown, so assume the usual for a piece that deep
-    type = classifyType(traits, { ...dims, widthCm: dims.depthCm * 1.6 }, false);
+    type = classifyType(traits, { ...dims, widthCm: dims.depthCm * 1.25 }, false);
   } else type = classifyType(traits, dims, sizeKnown);
   const palette = paletteFor(type, views);
   const out = { v: 1, type, palette, traits: {} };
