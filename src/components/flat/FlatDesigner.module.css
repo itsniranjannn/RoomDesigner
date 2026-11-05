@@ -463,3 +463,10 @@
     display: none;
   }
 }
+
+/* In the 3D view the bottom edge holds the lighting and walls controls, so messages go below the floor tabs */
+.view3d .noticeTop {
+  top: 64px;
+  bottom: auto;
+  z-index: 5;
+}

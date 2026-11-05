@@ -18,7 +18,9 @@ import {
   safeBaseName,
   pdfLayout,
   rasterSize,
+  dateStamp,
 } from './exportLayout.js';
+import { capture3D } from './snapshot3d.js';
 import { buildRoomSheet, buildFlatSheet, estimateMeasure } from './sheetModel.js';
 
 /** Text measurement with the same fonts the sheet uses; falls back to an estimate. */
@@ -125,14 +127,16 @@ async function toPdf(rendered) {
 
 export async function exportRoomPlanAsPNG(room) {
   const rendered = await renderRoomPlan(room);
-  downloadBlob(await toPng(rendered), exportFileName(room.name, 'floorplan', 'png', 'Room'));
-  return true;
+  const name = exportFileName(room.name, 'floorplan', 'png', 'Room', new Date());
+  downloadBlob(await toPng(rendered), name);
+  return name;
 }
 
 export async function exportRoomPlanAsPDF(room) {
   const rendered = await renderRoomPlan(room);
-  downloadBlob(await toPdf(rendered), exportFileName(room.name, 'floorplan', 'pdf', 'Room'));
-  return true;
+  const name = exportFileName(room.name, 'floorplan', 'pdf', 'Room', new Date());
+  downloadBlob(await toPdf(rendered), name);
+  return name;
 }
 
 function flatPlanName(flat, levelId) {
@@ -143,20 +147,41 @@ function flatPlanName(flat, levelId) {
 
 export async function exportFlatPlanAsPNG(flat, rooms, levelId) {
   const rendered = await renderFlatPlan(flat, rooms, levelId);
-  downloadBlob(
-    await toPng(rendered),
-    exportFileName(flatPlanName(flat, levelId), 'floorplan', 'png', 'Flat')
-  );
-  return true;
+  const name = exportFileName(flatPlanName(flat, levelId), 'floorplan', 'png', 'Flat', new Date());
+  downloadBlob(await toPng(rendered), name);
+  return name;
 }
 
 export async function exportFlatPlanAsPDF(flat, rooms, levelId) {
   const rendered = await renderFlatPlan(flat, rooms, levelId);
-  downloadBlob(
-    await toPdf(rendered),
-    exportFileName(flatPlanName(flat, levelId), 'floorplan', 'pdf', 'Flat')
-  );
-  return true;
+  const name = exportFileName(flatPlanName(flat, levelId), 'floorplan', 'pdf', 'Flat', new Date());
+  downloadBlob(await toPdf(rendered), name);
+  return name;
+}
+
+/** The current 3D view of a room as a PNG at twice the screen size, under a title strip. */
+export async function exportRoom3DAsPNG(room) {
+  const date = new Date();
+  const { blob } = await capture3D({
+    title: room.name || 'Room',
+    subtitle: `3D view  ·  ${dateStamp(date)}`,
+  });
+  const name = exportFileName(room.name, '3d', 'png', 'Room', date);
+  downloadBlob(blob, name);
+  return name;
+}
+
+/** The current 3D view of a flat (the floors shown on screen) as a PNG under a title strip. */
+export async function exportFlat3DAsPNG(flat, levelId) {
+  const date = new Date();
+  const level = flat.levels.find((l) => l.id === levelId) || flat.levels[0];
+  const { blob } = await capture3D({
+    title: flat.name || 'Flat',
+    subtitle: `3D view${flat.levels.length > 1 ? `, up to ${level.name}` : ''}  ·  ${dateStamp(date)}`,
+  });
+  const name = exportFileName(flatPlanName(flat, levelId), '3d', 'png', 'Flat', date);
+  downloadBlob(blob, name);
+  return name;
 }
 
 export function exportRoomAsJSON(room) {
