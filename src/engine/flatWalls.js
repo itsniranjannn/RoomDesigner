@@ -636,11 +636,63 @@ export const WINDOW_SILL = WINDOW_SILL_CM;
 export const WALL_HEIGHT = WALL_HEIGHT_CM;
 export const CUTAWAY_HEIGHT = CUTAWAY_HEIGHT_CM;
 
-/** Whether a wall runs into this one at the grid vertex where a stretch ends. */
-function perpendicularAt(edges, axis, lineCell, posCell) {
-  return axis === 'h'
-    ? edges.has(edgeKey('v', posCell, lineCell)) || edges.has(edgeKey('v', posCell, lineCell - 1))
-    : edges.has(edgeKey('h', lineCell, posCell)) || edges.has(edgeKey('h', lineCell - 1, posCell));
+/** Grid vertex (cells) at a point along a stretch. */
+const vertexOf = (axis, lineCell, posCell) =>
+  axis === 'h' ? { i: posCell, j: lineCell } : { i: lineCell, j: posCell };
+
+/**
+ * Wall edges perpendicular to a stretch at grid vertex (i, j), with the side they lie on
+ * (+1 towards larger coordinates, -1 towards smaller ones).
+ */
+function perpendicularEdges(edges, axis, i, j) {
+  const list = [];
+  const add = (key, side) => {
+    if (edges.has(key)) list.push({ key, side });
+  };
+  if (axis === 'h') {
+    add(edgeKey('v', i, j), 1);
+    add(edgeKey('v', i, j - 1), -1);
+  } else {
+    add(edgeKey('h', i, j), 1);
+    add(edgeKey('h', i - 1, j), -1);
+  }
+  return list;
+}
+
+/** Whether a wall edge is an outer wall standing outside its grid line (so it covers a corner itself). */
+const hasOutwardBox = (key, isExteriorEdge, outsideCell) =>
+  !!outsideCell && isExteriorEdge(key) && outwardOf(key, outsideCell) !== 0;
+
+/** Overlap kept inside a wall that a stretch butts into, so no sliver shows between them. */
+const TUCK_CM = 1;
+
+/**
+ * How far a stretch's box reaches past the grid vertex at one of its ends (cm), chosen so
+ * corners close without two boxes sharing a coplanar face:
+ *  - an outer wall reaches to the outer corner when a wall turns inwards from its end, and the
+ *    vertical wall of that corner stops at the horizontal one, which already covers it;
+ *  - at a concave corner, or a free end, nothing sticks out into the room;
+ *  - a centred (interior) wall stops just inside the wall it joins.
+ */
+function stretchReach(ctx, s, thick, endCm) {
+  const { edges, isExteriorEdge, outsideCell } = ctx;
+  const lineCell = Math.round(s.line / CELL);
+  const { i, j } = vertexOf(s.axis, lineCell, Math.round(endCm / CELL));
+  const perps = perpendicularEdges(edges, s.axis, i, j);
+  if (perps.length === 0) return 0;
+  if (s.outward === 0) {
+    const outer = perps.find((p) => hasOutwardBox(p.key, isExteriorEdge, outsideCell));
+    return outer ? TUCK_CM : thick / 2 - 0.3;
+  }
+  // Perpendicular walls on the room side of this wall (opposite its outward direction)
+  const inward = perps.filter((p) => p.side === -s.outward);
+  if (inward.length === 0) return 0;
+  const corner = inward.find((p) => hasOutwardBox(p.key, isExteriorEdge, outsideCell));
+  if (!corner) return TUCK_CM;
+  if (s.axis === 'h') return thick;
+  // Which way this stretch leaves the vertex, and whether the horizontal wall covers the corner
+  const leaves = endCm === s.from ? 1 : -1;
+  return -outwardOf(corner.key, outsideCell) === leaves ? 0 : thick;
 }
 
 /**
@@ -649,6 +701,7 @@ function perpendicularAt(edges, axis, lineCell, posCell) {
  * Every wall is built from separate boxes around each opening (left, right, above and below it),
  * so doors and windows are real holes. Outer walls stand outside the room outline (their inner
  * face is on the grid line, as in the room designer) and interior walls are centred on it.
+ * In the low (cutaway) view windows stay solid wall, marked by their fixture on the wall top.
  *
  * Boxes are { axis, line, off, a, b, thick, z0, z1, glass } (a..b along the wall, cm; `off` is how
  * far the box centre sits off the grid line). Fixtures are { id, type, axis, line, off, a, b,
@@ -665,23 +718,37 @@ export function wallPieces(
   const head = fullHeight ? DOOR_HEIGHT_CM : H;
   const boxes = [];
   const fixtures = [];
+  const ctx = { edges, isExteriorEdge, outsideCell };
   for (const s of wallStretches(edges, isExteriorEdge, outsideCell)) {
     const thick = s.exterior ? s.thick : WALL3D_INTERIOR_CM;
     const off = (s.outward * thick) / 2;
     const lineCell = Math.round(s.line / CELL);
-    const reach = (posCm) =>
-      s.outward !== 0 && perpendicularAt(edges, s.axis, lineCell, Math.round(posCm / CELL))
-        ? thick
-        : thick / 2;
+    // A frame never overlaps a centred wall that joins this one at the edge of the opening
+    const clear = (posCm) => {
+      const { i, j } = vertexOf(s.axis, lineCell, Math.round(posCm / CELL));
+      const joined = perpendicularEdges(edges, s.axis, i, j).some(
+        (p) => !hasOutwardBox(p.key, isExteriorEdge, outsideCell)
+      );
+      return joined ? WALL3D_INTERIOR_CM / 2 : 0;
+    };
     const ops = openings
       .filter(
         (o) =>
           o.axis === s.axis && o.line === s.line && o.start < s.to && o.start + o.widthCm > s.from
       )
-      .map((o) => ({ ...o, a: Math.max(s.from, o.start), b: Math.min(s.to, o.start + o.widthCm) }))
+      .map((o) => {
+        const a0 = Math.max(s.from, o.start);
+        const b0 = Math.min(s.to, o.start + o.widthCm);
+        return {
+          ...o,
+          a: a0 % CELL === 0 ? a0 + clear(a0) : a0,
+          b: b0 % CELL === 0 ? b0 - clear(b0) : b0,
+        };
+      })
+      .filter((o) => o.b - o.a > 20)
       .sort((p, q) => p.a - q.a);
-    const from = s.from - reach(s.from);
-    const to = s.to + reach(s.to);
+    const from = s.from - stretchReach(ctx, s, thick, s.from);
+    const to = s.to + stretchReach(ctx, s, thick, s.to);
     let cursor = from;
     const solid = (a, b, z0, z1) => {
       if (b - a > 0.5 && z1 - z0 > 0.5)
@@ -689,7 +756,8 @@ export function wallPieces(
     };
     for (const o of ops) {
       solid(cursor, o.a, 0, H);
-      const fixture = {
+      const lowWindow = o.type === 'window' && !fullHeight;
+      fixtures.push({
         id: o.id,
         type: o.type,
         axis: s.axis,
@@ -699,17 +767,18 @@ export function wallPieces(
         b: o.b,
         thick,
         z1: Math.min(head, H),
-        sill: o.type === 'window' ? Math.min(sill, H) : 0,
+        sill: o.type === 'window' ? (lowWindow ? H : Math.min(sill, H)) : 0,
         exterior: s.exterior,
         outward: s.outward,
         opening: o,
-      };
-      fixtures.push(fixture);
+      });
       if (o.type === 'door') {
         if (fullHeight) solid(o.a, o.b, head, H);
+      } else if (lowWindow) {
+        solid(o.a, o.b, 0, H);
       } else {
         solid(o.a, o.b, 0, Math.min(sill, H));
-        if (fullHeight) solid(o.a, o.b, head, H);
+        solid(o.a, o.b, head, H);
         boxes.push({
           axis: s.axis,
           line: s.line,

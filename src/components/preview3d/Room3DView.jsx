@@ -12,6 +12,7 @@ import { Segmented } from '../common/Field.jsx';
 import { Box, Footprints, RotateCcw, Square } from 'lucide-react';
 import { LIGHTING, LIGHT_OPTIONS } from './lighting.jsx';
 import { WalkControls } from './WalkControls.jsx';
+import { WalkHud } from './WalkHud.jsx';
 import styles from './Room3DView.module.css';
 
 const WALL_OPTIONS = [
@@ -200,9 +201,11 @@ export function Room3DView() {
 
       <p className={styles.hint} aria-live="polite">
         {walking
-          ? 'Drag to look around. Walk with W A S D or the arrow keys. Press Esc to leave.'
+          ? 'Drag to look around. Walk with W A S D (Shift to run); the arrow keys also move and turn. Press Esc to leave.'
           : 'Drag to turn the view, right-drag to move it, scroll to zoom.'}
       </p>
+
+      {walking && <WalkHud onExit={exitWalk} />}
 
       <div className={styles.controls} role="toolbar" aria-label="3D view controls">
         <Segmented

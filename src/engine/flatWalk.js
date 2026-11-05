@@ -8,6 +8,7 @@
  */
 
 import { buildBlockers, PLAYER_RADIUS } from './walk.js';
+import { circleHitsBox, nearestFree, clearestYaw } from './walkMove.js';
 import { wallPieces } from './flatWalls.js';
 import { analyzeLevel, levelSolidEdges, openingsOf, entranceOf } from './flatPlan.js';
 import { levelIndex, stairHeightAt, stairTopTread, stairTargetIndex, stairRect } from './flat.js';
@@ -76,13 +77,7 @@ export function isFlatBlocked(px, pz, obstacles) {
     if ((px - nx) ** 2 + (pz - nz) ** 2 < r * r) return true;
   }
   for (const b of obstacles.furniture) {
-    const dx = px - b.x;
-    const dz = pz - b.z;
-    const c = Math.cos(b.theta);
-    const s = Math.sin(b.theta);
-    const lx = dx * c - dz * s;
-    const lz = dx * s + dz * c;
-    if (Math.abs(lx) < b.halfW + r && Math.abs(lz) < b.halfD + r) return true;
+    if (circleHitsBox(px, pz, r, b.x, b.z, b.halfW, b.halfD, b.theta)) return true;
   }
   return false;
 }
@@ -105,10 +100,12 @@ export function flatWalkStart(flat, rooms = {}) {
       const x = (cx + inward.dx * depth) / 100;
       const z = (cz + inward.dy * depth) / 100;
       if (isFlatBlocked(x, z, obstacles)) continue;
+      const free = (px, pz) => !isFlatBlocked(px, pz, obstacles);
       return {
         x,
         z,
-        yaw: Math.atan2(-inward.dx, -inward.dy),
+        // Facing in, turned a little when furniture stands straight ahead
+        yaw: clearestYaw(x, z, Math.atan2(-inward.dx, -inward.dy), free),
         levelIdx: levelIndex(flat, levelId),
         levelId,
         entranceId: opening.id,
@@ -117,9 +114,13 @@ export function flatWalkStart(flat, rooms = {}) {
   }
   const space = flat.spaces[0];
   if (!space) return null;
+  // The middle of the first room, nudged to clear floor when furniture stands there
+  const mid = { x: (space.x + space.widthCm / 2) / 100, z: (space.y + space.depthCm / 2) / 100 };
+  const obstacles = levelObstacles(flat, rooms, space.levelId);
+  const clear = nearestFree(mid.x, mid.z, (x, z) => !isFlatBlocked(x, z, obstacles)) || mid;
   return {
-    x: (space.x + space.widthCm / 2) / 100,
-    z: (space.y + space.depthCm / 2) / 100,
+    x: clear.x,
+    z: clear.z,
     yaw: 0,
     levelIdx: levelIndex(flat, space.levelId),
     levelId: space.levelId,
