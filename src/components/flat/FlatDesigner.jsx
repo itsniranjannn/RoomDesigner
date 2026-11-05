@@ -29,6 +29,7 @@ const VIEW_OPTIONS = [
 
 const TOOL_KEYS = {
   v: 'select',
+  h: 'pan',
   w: 'wall',
   e: 'eraser',
   d: 'door',

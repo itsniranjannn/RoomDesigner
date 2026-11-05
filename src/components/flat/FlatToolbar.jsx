@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   MousePointer2,
+  Hand,
   PenLine,
   Eraser,
   DoorOpen,
@@ -24,6 +25,7 @@ import styles from './FlatDesigner.module.css';
 
 const TOOL_DEFS = [
   { id: 'select', label: 'Select', key: 'V', icon: MousePointer2 },
+  { id: 'pan', label: 'Pan', key: 'H', icon: Hand },
   { id: 'wall', label: 'Draw wall', key: 'W', icon: PenLine },
   { id: 'eraser', label: 'Erase wall', key: 'E', icon: Eraser },
   { id: 'door', label: 'Door', key: 'D', icon: DoorOpen },
