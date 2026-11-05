@@ -52,6 +52,7 @@ function toShareableRoom(room) {
         depthCm: def.depthCm,
         heightCm: def.heightCm,
         color: def.color,
+        ...(def.design ? { design: def.design } : {}),
       });
   }
   return {
