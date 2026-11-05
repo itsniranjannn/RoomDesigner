@@ -194,3 +194,39 @@
   font-size: var(--text-xs);
   color: var(--color-ink-muted);
 }
+
+.designRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+}
+
+.designRow .select {
+  width: auto;
+  min-width: 140px;
+}
+
+.palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.paletteItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-ink-muted);
+}
+
+.paletteItem input {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: none;
+}

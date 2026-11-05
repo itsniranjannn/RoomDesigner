@@ -49,7 +49,7 @@ export function scatterPillows({ widthM, depthM, heightM, armRatio, seats, seatH
 }
 
 /** Upholstered sofa or armchair: frame, arms, back, seat cushions and loose back cushions. */
-function Upholstered({
+export function Upholstered({
   widthM,
   depthM,
   heightM,

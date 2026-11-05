@@ -8,6 +8,7 @@ import {
   TEXTURE_SLOTS,
   PHOTO_PROJECTION_GLSL,
 } from './customMesh.jsx';
+import { effectivePalette } from './designModels.jsx';
 import { resolveModel } from './index.js';
 
 // One triangle, indexed
@@ -113,5 +114,71 @@ describe('custom mesh model', () => {
     );
     expect(html).toContain('0.8,0.9,0.5');
     expect(html).not.toMatch(/NaN|Infinity/);
+  });
+
+  it('draws a photo-made piece from its design with the catalog builders, for every type', () => {
+    const types = [
+      'bed',
+      'sofa',
+      'armchair',
+      'chair',
+      'stool',
+      'table',
+      'table-round',
+      'coffee-table',
+      'desk',
+      'wardrobe',
+      'bookshelf',
+      'cabinet',
+    ];
+    const palette = {
+      body: '#aaa19a',
+      accent: '#615c5a',
+      pillow: '#d4d3d2',
+      cushion: '#998877',
+      leg: '#222222',
+    };
+    for (const type of types) {
+      const design = { v: 1, type, palette, traits: { pillows: 2, seats: 3, bodyFrac: 0.55 } };
+      for (const color of ['#aaa19a', '#2b7a78']) {
+        const html = renderToStaticMarkup(
+          <CustomMeshModel
+            def={{ design }}
+            widthM={1.6}
+            depthM={1.8}
+            heightM={1}
+            mainColor={color}
+          />
+        );
+        expect(html.length).toBeGreaterThan(200);
+        expect(html).not.toMatch(/NaN|Infinity/);
+      }
+    }
+  });
+
+  it('keeps old voxel pieces working when the design is missing or unusable', () => {
+    const html = renderToStaticMarkup(
+      <CustomMeshModel
+        def={{ mesh: indexed, design: { type: 'nonsense' } }}
+        widthM={0.8}
+        depthM={0.5}
+        heightM={0.9}
+        mainColor="#885533"
+      />
+    );
+    expect(html).toContain('0.8,0.9,0.5');
+  });
+
+  it('follows the body colour when it is changed, leaving contrasting parts alone', () => {
+    const design = {
+      v: 1,
+      type: 'bed',
+      palette: { body: '#aaa19a', accent: '#202020', pillow: '#f4f1ea' },
+      traits: {},
+    };
+    expect(effectivePalette(design, '#aaa19a')).toEqual(design.palette);
+    const next = effectivePalette(design, '#2b7a78');
+    expect(next.body).toBe('#2b7a78');
+    expect(next.accent).toBe('#202020');
   });
 });
