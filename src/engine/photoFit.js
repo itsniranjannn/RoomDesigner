@@ -19,20 +19,19 @@ export function photoQuality(photo, mask) {
   const { width, height, rgba } = photo;
   if (!width || !height || !rgba) return out;
 
-  // Light: the piece itself, or the whole picture when nothing was cut out yet
+  // Light: a picture with nothing bright anywhere in it was taken in dim light. A dark piece on a bright
+  // backdrop is fine, so this looks at the whole frame rather than at the piece.
   const bounds = mask ? maskBounds(mask, width, height) : null;
-  let sum = 0;
-  let n = 0;
   const step = Math.max(1, Math.floor(Math.sqrt((width * height) / 6000)));
+  const lumas = [];
   for (let y = 0; y < height; y += step)
     for (let x = 0; x < width; x += step) {
       const p = y * width + x;
-      if (mask && bounds && !mask[p]) continue;
-      sum += luma(rgba[p * 4], rgba[p * 4 + 1], rgba[p * 4 + 2]);
-      n++;
+      lumas.push(luma(rgba[p * 4], rgba[p * 4 + 1], rgba[p * 4 + 2]));
     }
-  const mean = n ? sum / n : 128;
-  if (mean < 62)
+  lumas.sort((m, n) => m - n);
+  const bright = lumas.length ? lumas[Math.floor(lumas.length * 0.95)] : 255;
+  if (bright < 120)
     out.push({
       id: 'dark',
       text: 'This photo is quite dark.',
@@ -43,7 +42,11 @@ export function photoQuality(photo, mask) {
   const srcW = photo.sourceWidth || width;
   const srcH = photo.sourceHeight || height;
   const pieceLong = bounds ? Math.max(bounds.width, bounds.height) * (srcW / width) : null;
-  if (Math.max(srcW, srcH) < 500 || (pieceLong !== null && pieceLong < 260))
+  // A view cut out of a product sheet is small by nature: only a tiny one is worth a warning
+  const tooSmall = photo.fromSheet
+    ? Math.max(srcW, srcH) < 160
+    : Math.max(srcW, srcH) < 500 || (pieceLong !== null && pieceLong < 260);
+  if (tooSmall)
     out.push({
       id: 'small',
       text: 'The piece is small in this photo, or the photo has few pixels.',
@@ -67,7 +70,7 @@ export function photoQuality(photo, mask) {
 
     // Tilt: the floor line under the piece should run level
     const tilt = floorTiltDegrees(mask, width, height, bounds);
-    if (tilt !== null && Math.abs(tilt) > 4)
+    if (tilt !== null && Math.abs(tilt) > 5)
       out.push({
         id: 'tilted',
         text: `The camera looks tilted (about ${Math.round(Math.abs(tilt))} degrees).`,
@@ -159,16 +162,16 @@ export function normalizeMask(mask, width, height, size = 64) {
   };
 }
 
-/** Share of the two silhouettes that overlap (intersection over union), for masks of equal size. */
+/** How much two silhouettes of equal size overlap, 0-1 (the Dice score: twice the shared area over both areas). */
 export function silhouetteOverlap(a, b) {
   if (!a || !b || a.length !== b.length) return 0;
   let both = 0;
-  let either = 0;
+  let total = 0;
   for (let i = 0; i < a.length; i++) {
     if (a[i] && b[i]) both++;
-    if (a[i] || b[i]) either++;
+    total += (a[i] ? 1 : 0) + (b[i] ? 1 : 0);
   }
-  return either ? both / either : 0;
+  return total ? (2 * both) / total : 0;
 }
 
 /**
@@ -191,7 +194,7 @@ export function fitScore(model, photo, modelAspect, photoAspectRatio) {
 /** A word and a tone for a fit score. */
 export function describeFit(score) {
   if (score >= 0.85) return { level: 'good', label: 'Close match' };
-  if (score >= 0.7) return { level: 'fair', label: 'Fairly close' };
+  if (score >= 0.7) return { level: 'fair', label: 'Roughly similar' };
   return { level: 'poor', label: 'Noticeably different' };
 }
 

@@ -38,11 +38,22 @@ describe('checking a photo as it is added', () => {
     expect(photoQuality(p, mask)).toEqual([]);
   });
 
+  it('does not call a dark piece on a bright backdrop too dark', () => {
+    const { photo: p, mask } = photo({ bg: 240, fg: 20 });
+    expect(ids(photoQuality(p, mask))).not.toContain('dark');
+  });
+
   it('says when it is too dark and how to fix it', () => {
-    const { photo: p, mask } = photo({ bg: 40, fg: 20 });
+    const { photo: p, mask } = photo({ bg: 70, fg: 30 });
     const found = photoQuality(p, mask);
     expect(ids(found)).toContain('dark');
     expect(found.find((q) => q.id === 'dark').fix).toMatch(/light|window/i);
+  });
+
+  it('does not nag about the size of a view cut from a product sheet', () => {
+    const { photo: p, mask } = photo();
+    const sheet = { ...p, sourceWidth: 300, sourceHeight: 240, fromSheet: true };
+    expect(ids(photoQuality(sheet, mask))).not.toContain('small');
   });
 
   it('says when the photo is small or the piece fills little of it', () => {
@@ -114,6 +125,7 @@ describe('fitting the model to a photo', () => {
 
   it('describes a score in plain words', () => {
     expect(describeFit(0.95).level).toBe('good');
+    expect(describeFit(0.85).level).toBe('good');
     expect(describeFit(0.75).level).toBe('fair');
     expect(describeFit(0.3).level).toBe('poor');
   });
