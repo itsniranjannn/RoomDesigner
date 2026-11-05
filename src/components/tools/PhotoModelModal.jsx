@@ -926,7 +926,10 @@ export function PhotoModelModal({ onClose }) {
       if (!slot || used.has(slot)) return;
       used.add(slot);
       const crop = cropSheetView(sheet.rgba, sheet.width, sheet.height, sheet.detection, v);
-      next[slot] = imageFromPixels(crop.rgba, crop.width, crop.height, PHOTO_MAX);
+      next[slot] = {
+        ...imageFromPixels(crop.rgba, crop.width, crop.height, PHOTO_MAX),
+        fromSheet: true,
+      };
     });
     if (Object.keys(next).length < 1) {
       setMessage({ kind: 'error', text: 'Give at least one of the views a role.' });
@@ -1525,7 +1528,9 @@ export function PhotoModelModal({ onClose }) {
                   </div>
                   <p className={local.note}>
                     {fitHint(activeView, fit.modelAspect, fit.photoAspect) ||
-                      'The proportions agree with the photo.'}{' '}
+                      (fit.score < 0.78
+                        ? 'The overall size agrees; the difference is in the details of the outline.'
+                        : 'The proportions agree with the photo.')}{' '}
                     Turn on the overlay above to see the difference, and use the buttons to adjust
                     (hold Shift for 10 cm).
                   </p>
