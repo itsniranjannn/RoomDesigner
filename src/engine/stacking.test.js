@@ -9,7 +9,7 @@ import {
   pickDefaultSupport,
 } from './stacking.js';
 import { canRestOn, drawOrder, isFloorCovering, dropTargetAt } from './stacking.js';
-import { FURNITURE_CATALOG } from '../data/furnitureCatalog.js';
+import { FURNITURE_CATALOG, registerCustomFurniture } from '../data/furnitureCatalog.js';
 import { evaluateAllCollisions } from './collision.js';
 import { getFurnitureType } from '../data/furnitureCatalog.js';
 import { suggestLayout } from './layout.js';
@@ -320,5 +320,47 @@ describe('generic stacking rules', () => {
     ]);
     const moved = before.map((i) => ({ ...i, x: i.x + 50 }));
     expect(reconcileStacking(before, moved)[1].elevationCm).toBe(75);
+  });
+});
+
+describe('photo-made pieces as supports', () => {
+  beforeEach(() => {
+    registerCustomFurniture({
+      id: 'custom-photo-table',
+      name: 'Photo table',
+      widthCm: 150,
+      depthCm: 80,
+      heightCm: 76,
+      color: '#855638',
+      design: { v: 1, type: 'table', palette: { body: '#855638' }, traits: {} },
+    });
+    registerCustomFurniture({
+      id: 'custom-photo-wardrobe',
+      name: 'Photo wardrobe',
+      widthCm: 120,
+      depthCm: 55,
+      heightCm: 190,
+      color: '#a78355',
+      design: { v: 1, type: 'wardrobe', palette: { body: '#a78355' }, traits: { doors: 3 } },
+    });
+  });
+
+  it('lets a laptop rest on a photo table at its real height', () => {
+    const items = [piece('t', 'custom-photo-table', 200, 100), piece('l', 'laptop', 210, 100)];
+    expect(findSupport(items[1], items)?.item.id).toBe('t');
+    expect(settleStacking(items)[1].elevationCm).toBe(76);
+  });
+
+  it('keeps following a resized table top', () => {
+    const items = [
+      piece('t', 'custom-photo-table', 200, 100, { overrides: { heightCm: 90 } }),
+      piece('l', 'laptop', 210, 100),
+    ];
+    expect(settleStacking(items)[1].elevationCm).toBe(90);
+  });
+
+  it('does not offer a wardrobe top to small items', () => {
+    const items = [piece('w', 'custom-photo-wardrobe', 200, 100), piece('l', 'laptop', 210, 100)];
+    expect(findSupport(items[1], items)).toBeNull();
   });
 });

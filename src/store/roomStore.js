@@ -28,6 +28,7 @@ import { sanitizeImportedRoom } from '../engine/share.js';
 import { cleanOverrides } from '../engine/overrides.js';
 import { evaluateAllCollisions } from '../engine/collision.js';
 import { reconcileStacking, pickDefaultSupport } from '../engine/stacking.js';
+import { findFreePosition } from '../engine/placement.js';
 import { clamp, normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
 import { clampOpening, DOOR_WIDTH_CM, defaultOpeningWidth } from '../engine/openings.js';
@@ -385,6 +386,31 @@ export const useRoomStore = create((set, get) => ({
       customX !== null ? customX : stackBase ? stackBase.x : Math.round(room.widthCm / 2 + offsetX);
     let targetY =
       customY !== null ? customY : stackBase ? stackBase.y : Math.round(room.depthCm / 2 + offsetY);
+    // Added without choosing a spot: take the free place nearest the middle instead of piling on a piece
+    if (customX === null && !stackBase) {
+      const others = (room.placedFurniture || [])
+        .filter((item) => !item.elevationCm)
+        .map((item) => {
+          const d = resolveItemDef(item);
+          return d
+            ? {
+                x: item.x,
+                y: item.y,
+                widthCm: d.widthCm,
+                depthCm: d.depthCm,
+                rotationDeg: item.rotationDeg || 0,
+                furnitureTypeId: item.furnitureTypeId,
+              }
+            : null;
+        })
+        .filter(Boolean);
+      const spot = findFreePosition(catalogDef, others, room.widthCm, room.depthCm, room.outline, {
+        x: targetX,
+        y: targetY,
+      });
+      targetX = spot.x;
+      targetY = spot.y;
+    }
 
     // Strictly clamp within room boundaries
     const clamped = clampInsideRoom(
