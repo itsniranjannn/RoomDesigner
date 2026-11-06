@@ -165,3 +165,13 @@ if (process.env.PHOTO_FIXTURES) {
       `  ${f.ok ? 'ok  ' : f.info ? 'info' : 'FAIL'} ${f.name.padEnd(22)} expect ${f.expect.padEnd(8)} got ${f.got} ${f.note || ''}`
     );
 }
+
+{
+  // How honest is the dialog's "Looks like / not sure" signal? Accuracy by the agreement the dialog sees.
+  const buckets = [0, 0.3, 0.45, 0.6, 0.75, 1.01];
+  console.log('accuracy by the dialog confidence (agreement) for single photos and room photos');
+  for (let i = 0; i + 1 < buckets.length; i++) {
+    const list = rows.filter((r) => ['single', 'lifestyle'].includes(r.sc.kind) && r.run.candidates && r.run.candidates.agreement >= buckets[i] && r.run.candidates.agreement < buckets[i + 1]);
+    console.log(`  ${buckets[i].toFixed(2)}-${Math.min(1, buckets[i + 1]).toFixed(2)}  n=${String(list.length).padStart(3)}  right ${pct(list.filter((r) => r.sc.ok).length, list.length)}  in choices ${pct(list.filter((r) => r.sc.top3).length, list.length)}`);
+  }
+}

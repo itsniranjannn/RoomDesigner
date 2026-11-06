@@ -1197,7 +1197,7 @@ export function PhotoModelModal({ onClose }) {
   // When the cut-out is rough or the photo fits several kinds of furniture about equally, say so plainly instead of
   // presenting a guess as a finding
   const roughCut = Boolean(design && segmented[activeView] && segmented[activeView].quality < 0.5);
-  const unsure = Boolean(design && candidates && (candidates.agreement < 0.45 || roughCut));
+  const unsure = Boolean(design && candidates && (candidates.agreement < 0.6 || roughCut));
   useEffect(() => {
     if (unsure) setDetailsOpen(true);
   }, [unsure]);
