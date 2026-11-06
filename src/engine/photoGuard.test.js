@@ -1,16 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { segmentObject, maskCoverage } from './hull.js';
-import {
-  detectSheetViews,
-  assignSheetViews,
-  cropSheetView,
-  chooseSideSlot,
-  prepareCrop,
-  estimateProportions,
-  estimatePartialProportions,
-} from './sheet.js';
-import { withMirroredSides } from './design.js';
-import { buildViews, designFromViews } from './photoPipeline.js';
+import { build, fromSheet } from './photoTestKit.js';
 import {
   bedPhoto,
   sofaPhoto,
@@ -31,49 +20,6 @@ import {
 const hex = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
 const near = (h, rgb, tol = 40) => hex(h).every((c, i) => Math.abs(c - rgb[i]) <= tol);
 
-/** What the dialog does with photos in slots: cut out, mirror a lone side, build views, read the design. */
-function build(slotPhotos, { tolerance = 16, forceType } = {}) {
-  let photos = {};
-  for (const [slot, p] of Object.entries(slotPhotos)) photos[slot] = { ...p };
-  if (Boolean(photos.left) !== Boolean(photos.right)) photos = withMirroredSides(photos);
-  const cuts = {};
-  const cutouts = {};
-  for (const [slot, p] of Object.entries(photos)) {
-    const mask = segmentObject(p.rgba, p.width, p.height, tolerance);
-    cuts[slot] = { mask, coverage: maskCoverage(mask) };
-    cutouts[slot] = { mask, width: p.width, height: p.height };
-  }
-  const views = buildViews(photos, cuts, tolerance);
-  return designFromViews(views, {
-    dims: { widthCm: 80, depthCm: 50, heightCm: 80 },
-    forceType,
-    ratios: estimateProportions(cutouts),
-    partial: estimatePartialProportions(cutouts),
-  });
-}
-
-/** A product sheet through detection, view roles and crops, as the dialog's sheet splitter does. */
-function fromSheet(sheet) {
-  const detection = detectSheetViews(sheet.rgba, sheet.width, sheet.height);
-  const slots = assignSheetViews(detection.views);
-  const crops = detection.views.map((v) =>
-    cropSheetView(sheet.rgba, sheet.width, sheet.height, detection, v)
-  );
-  const side = slots.indexOf('right');
-  if (side >= 0) {
-    const get = (slot) => {
-      const i = slots.indexOf(slot);
-      return i >= 0 ? prepareCrop(crops[i]) : null;
-    };
-    slots[side] = chooseSideSlot({ front: get('front'), top: get('top'), side: get('right') });
-  }
-  const photos = {};
-  detection.views.forEach((v, i) => {
-    if (slots[i] && !photos[slots[i]]) photos[slots[i]] = crops[i];
-  });
-  return { slots, photos, detection };
-}
-
 describe('a bed sheet (front, side, plan and three-quarter views)', () => {
   const sheet = productSheet(['front', 'side', 'top', 'threeQuarter'].map((v) => bedPhoto(v)));
 
@@ -89,7 +35,7 @@ describe('a bed sheet (front, side, plan and three-quarter views)', () => {
   });
 
   it('builds a bed with its headboard, pillows, bolster and colours', () => {
-    const { design, dims } = build(fromSheet(sheet).photos);
+    const { design, dims } = build(fromSheet(sheet).photos, { sheet: true });
     expect(design.type).toBe('bed');
     expect(design.traits.head).toBe('panel');
     expect(design.traits.legs).toBe(0);
@@ -183,7 +129,7 @@ describe('sofas and chairs are not mistaken for beds', () => {
   it('builds a sofa from its sheet views and from one front picture', () => {
     const sheet = productSheet([sofaPhoto('front'), sofaPhoto('side'), sofaPhoto('top')]);
     const { photos } = fromSheet(sheet);
-    expect(build(photos).design.type).toBe('sofa');
+    expect(build(photos, { sheet: true }).design.type).toBe('sofa');
     const lone = build({ front: sofaPhoto('front') });
     expect(lone.design.type).toBe('sofa');
     expect(near(lone.design.palette.body, SOFA_COLORS.body, 40)).toBe(true);
