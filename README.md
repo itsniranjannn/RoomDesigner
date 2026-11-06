@@ -15,6 +15,8 @@ Plan a room or a whole flat on a 2D plan, check that the furniture fits, and wal
 - **Room designer** with a 2D plan and a live 3D view of the same room, 101 furniture pieces (modern and Nepali), doors and windows.
 - **Flat designer**: draw walls, get rooms automatically, or start from Studio, 1BHK, 2BHK or 3BHK presets.
 - **Checks as you place**: collisions, door swings, blocked windows and cramped walking gaps.
+- **Services and Plan checks** (room editor): mark sockets, switches, lights, TV points, water, drains, gas, radiators and air conditioners on the plan (wall points snap to the nearest wall). Plan checks then looks at door swings, walking routes, space in front of units, wheelchair turning space and whether the TV, bed, desk and appliances have a socket, and whether sinks, toilets and machines have water and a drain.
+- **Service links**: dashed lines join each sink, stove, TV, fridge and so on to the nearest water, drain, gas or socket point it relies on. Green is within reach, red is too far (with a "no water nearby" tag), amber means no point of that kind is marked. Links are faint until you select a piece (or a point), then bold. The switch **Show service links** is in the Plan checks panel; the exported PNG and PDF draw the links with a key when it is on. The panels have a button to sit on either side of the plan. The flat designer has no service points yet.
 - **Export** the floor plan as PNG or PDF, the 3D view as a PNG (twice the screen size, with a title strip), or the design as JSON, or share the whole design as a link. File names carry the design name and the date.
 - **Local and offline**: stored in IndexedDB, installable as a PWA.
 
