@@ -7,12 +7,14 @@ const [root, file, maxDim = "1000"] = process.argv.slice(2);
 const kit = await import(pathToFileURL(path.join(root, 'src/engine/photoTestKit.js')).href);
 const st = await import(pathToFileURL(path.join(root, 'src/engine/stacked.js')).href);
 let img = shrink(decodePng(file), Number(maxDim));
-const part = process.argv[5];
+const part = process.argv[5] === '' ? undefined : process.argv[5];
 if (part !== undefined) {
   const det = st.detectStackedPhotos(img.rgba, img.width, img.height);
   img = st.cropRegion(img.rgba, img.width, det.parts[Number(part)]);
 }
-const { cut, pieces } = kit.buildScene(img);
+const crop = process.env.CROP ? (([x0,y0,x1,y1])=>({x0,y0,x1,y1}))(process.env.CROP.split(',').map(Number)) : null;
+const strokes = process.env.STROKES ? JSON.parse(process.env.STROKES) : {};
+const { cut, pieces } = kit.buildScene(img, { crop, keep: strokes.keep, remove: strokes.remove });
 import { writePng } from './pngout.js';
 if (process.argv[6]) {
   const o = new Uint8ClampedArray(img.rgba);
