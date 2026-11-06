@@ -82,7 +82,7 @@ export const SHORT_LABEL = {
 
 /** Colour slots each type exposes (label shown to the user), in palette order. */
 /** Colour slots only some pieces use: shown and saved only when the photos gave them a colour. */
-export const OPTIONAL_SLOTS = new Set(['panel', 'frame', 'trim', 'scatter']);
+export const OPTIONAL_SLOTS = new Set(['panel', 'frame', 'trim', 'scatter', 'door']);
 
 export const PALETTE_SLOTS = {
   bed: [
@@ -169,7 +169,11 @@ export const PALETTE_SLOTS = {
     ['accent', 'Drawers'],
     ['leg', 'Legs'],
   ],
-  wardrobe: [['body', 'Body']],
+  wardrobe: [
+    ['body', 'Body'],
+    ['door', 'Doors'],
+    ['trim', 'Handles'],
+  ],
   bookshelf: [['body', 'Body']],
   cabinet: [
     ['body', 'Body'],
@@ -1892,6 +1896,8 @@ export function sanitizeDesign(raw) {
     const crest = Math.round(num(t.crest, 0, 2, 0));
     if (crest) traits.crest = crest;
     if (t.tiers) traits.tiers = 1;
+    // A tube metal frame (head and foot rails), side guard rails and castors
+    for (const key of ['metal', 'rails', 'casters']) if (t[key]) traits[key] = 1;
   } else if (raw.type === 'corner-sofa') {
     traits.side = oneOf(t.side, ['left', 'right'], 'right');
     traits.seats = Math.round(num(t.seats, 1, 4, 2));
@@ -1900,8 +1906,10 @@ export function sanitizeDesign(raw) {
     traits.taper = t.taper ? 1 : 0;
   } else if (raw.type === 'tub-chair') {
     traits.plan = oneOf(t.plan, ['round', 'bucket'], 'round');
-    traits.base = oneOf(t.base, ['feet', 'legs', 'pedestal'], 'feet');
+    traits.base = oneOf(t.base, ['feet', 'legs', 'pedestal', 'metal'], 'feet');
     traits.tufted = t.tufted ? 1 : 0;
+    // A shell whose sides slope down toward the front, wrapping round the seat
+    if (t.wrap) traits.wrap = 1;
   } else if (raw.type === 'ottoman') {
     traits.shape = oneOf(t.shape, ['square', 'round'], 'square');
     traits.tufted = t.tufted ? 1 : 0;
@@ -1934,6 +1942,9 @@ export function sanitizeDesign(raw) {
     traits.tufted = t.tufted ? 1 : 0;
     traits.taper = t.taper ? 1 : 0;
     traits.longSeat = t.longSeat ? 1 : 0; // older designs have none: separate seat cushions
+    // Vertical channel tufting and stepped (terraced) arms, kept only when present
+    if (t.chan) traits.chan = 1;
+    if (t.step) traits.step = 1;
     if (t.frame || t.cane) {
       traits.frame = t.frame === 2 ? 2 : 1;
       for (const key of ['trim', 'cane', 'pat', 'cab']) if (t[key]) traits[key] = 1;
@@ -1944,6 +1955,7 @@ export function sanitizeDesign(raw) {
     traits.roll = t.roll ? 1 : 0;
     traits.tufted = t.tufted ? 1 : 0;
     traits.taper = t.taper ? 1 : 0;
+    if (t.chan) traits.chan = 1;
     if (t.frame || t.cane) {
       traits.frame = t.frame === 2 ? 2 : 1;
       for (const key of ['trim', 'cane', 'pat', 'cab']) if (t[key]) traits[key] = 1;
@@ -1953,6 +1965,17 @@ export function sanitizeDesign(raw) {
     traits.slats = Math.round(num(t.slats, 2, 5, 3));
   } else if (raw.type === 'wardrobe') {
     traits.doors = Math.round(num(t.doors, 1, 6, 2));
+    // 1 a full-height mirror door, 2 an oval mirror set in a door
+    const mirror = Math.round(num(t.mirror, 0, 2, 0));
+    if (mirror) traits.mirror = mirror;
+    const drawers = Math.round(num(t.drawers, 0, 4, 0));
+    if (drawers) {
+      traits.drawers = drawers;
+      traits.dside = oneOf(t.dside, ['full', 'left', 'right'], 'full');
+    }
+    if (t.handle) traits.handle = oneOf(t.handle, ['bar', 'knob', 'ring'], 'bar');
+    // A built-in wall unit: a row of top cupboards, an open niche with a mirror and counter, fluted doors
+    for (const key of ['upper', 'niche', 'fluted']) if (t[key]) traits[key] = 1;
   } else if (raw.type === 'bookshelf') {
     traits.shelves = Math.round(num(t.shelves, 2, 8, 4));
   } else if (raw.type === 'nightstand') {
@@ -1966,6 +1989,17 @@ export function sanitizeDesign(raw) {
     const topH = Math.round(num(t.topH, 2, 8, 3.5) * 2) / 2;
     if (topH !== 3.5) traits.topH = topH;
     if (raw.type === 'coffee-table') for (const key of ['trim', 'cab']) if (t[key]) traits[key] = 1;
+    if (raw.type === 'desk') {
+      // Drawer pedestal, the kind of base and a modesty panel, kept only when not the plain four legs
+      const ped = oneOf(t.ped, ['none', 'left', 'right', 'both'], 'none');
+      if (ped !== 'none') {
+        traits.ped = ped;
+        traits.drawers = Math.round(num(t.drawers, 1, 4, 3));
+      }
+      const base = oneOf(t.base, ['legs', 'sled', 'panel'], 'legs');
+      if (base !== 'legs') traits.base = base;
+      if (t.modesty) traits.modesty = 1;
+    }
   }
   return { v: 1, type: raw.type, palette, traits };
 }
