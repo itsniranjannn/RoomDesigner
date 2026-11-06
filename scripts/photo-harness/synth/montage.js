@@ -3,9 +3,10 @@ import { buildCase } from './corpus.js';
 import { writePng } from '../pngout.js';
 const [out, kind, view, seed, types] = process.argv.slice(2);
 const list = types.split(',');
-const cases = list.map((type) =>
-  buildCase({ kind, type, seed: Number(seed), view: view === '-' ? undefined : view })
-);
+const cases = list.map((t) => {
+  const [type, sd] = t.split('@');
+  return buildCase({ kind, type, seed: Number(sd || seed), view: view === '-' ? undefined : view });
+});
 const cw = Math.max(...cases.map((c) => c.img.width));
 const ch = Math.max(...cases.map((c) => c.img.height));
 const cols = Math.min(4, cases.length);

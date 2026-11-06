@@ -256,7 +256,6 @@ export function renderModel(model, cam = {}) {
   };
   const glass = [];
   for (const p of model.polys) {
-    const nx = p.n[0] * c + p.n[1] * s;
     const ny = -p.n[0] * s + p.n[1] * c;
     const nz = p.n[2];
     // facing the camera? camera looks along (0, cp, -sp)

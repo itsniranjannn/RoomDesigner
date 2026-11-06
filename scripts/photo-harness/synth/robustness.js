@@ -5,7 +5,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { corpusSpecs, ALL_TYPES } from './corpus.js';
-import { runCase, score } from './evaluate.js';
+import { runParallel, runFixtures } from './evaluate.js';
+import { decodePng, shrink } from '../png.js';
 import { writePng } from '../pngout.js';
 import { setRuleTrust } from '../../../src/engine/design.js';
 if (process.env.RULE_TRUST) setRuleTrust(Number(process.env.RULE_TRUST));
@@ -34,22 +35,22 @@ if (opt('level'))
 const dump = opt('dump');
 if (dump) fs.mkdirSync(dump, { recursive: true });
 
-const rows = [];
 const t0 = Date.now();
-for (const spec of specs) {
-  const run = runCase(spec);
-  const sc = score(run);
-  rows.push({ run, sc });
-  if (dump && !sc.ok) {
-    const c = run.case;
-    writePng(
-      path.join(dump, `${spec.kind}-${spec.type}-${spec.seed}-as-${sc.got || 'error'}.png`),
-      c.img.rgba,
-      c.img.width,
-      c.img.height
-    );
-  }
-}
+const rows = await runParallel(specs, { keepPhotos: Boolean(dump) });
+if (dump)
+  for (const { run, sc } of rows)
+    if (!sc.ok) {
+      const c = run.photo;
+      writePng(
+        path.join(
+          dump,
+          `${run.spec.kind}-${run.spec.type}-${run.spec.seed}-as-${sc.got || 'error'}.png`
+        ),
+        new Uint8ClampedArray(c.rgba),
+        c.width,
+        c.height
+      );
+    }
 const pct = (a, b) => (b ? `${Math.round((100 * a) / b)}%` : '-');
 const group = (key) => {
   const m = new Map();
@@ -134,3 +135,33 @@ if (args.includes('--fails'))
         `  FAIL ${run.spec.id} truth ${sc.type} got ${sc.got || sc.error} cands ${run.candidates?.list}`
       );
 if (opt('json')) fs.writeFileSync(opt('json'), JSON.stringify(rows.map((r) => r.sc)));
+{
+  const life = rows.filter((r) => r.run.kind === 'lifestyle' && r.run.matches);
+  const mainIou = life.map((r) => {
+    const m = r.run.matches.find((x) => x.truth?.main);
+    return {
+      r,
+      iou: m ? m.iou : 0,
+      first: r.run.matches[0]?.truth?.main ? r.run.matches[0].iou : 0,
+    };
+  });
+  const good = mainIou.filter((x) => x.first >= 0.7);
+  console.log(
+    `lifestyle cut: largest piece is the main one with IoU>=0.7 in ${pct(good.length, life.length)}; ` +
+      `main piece found by any piece (IoU>=0.7) ${pct(mainIou.filter((x) => x.iou >= 0.7).length, life.length)}; ` +
+      `type right when the cut is good ${pct(good.filter((x) => x.r.sc.ok).length, good.length)} (${good.length})`
+  );
+}
+
+if (process.env.PHOTO_FIXTURES) {
+  const dirIn = process.env.PHOTO_FIXTURES;
+  console.log('real fixtures (PHOTO_FIXTURES)');
+  for (const f of runFixtures(dirIn, {
+    decodePng,
+    shrink,
+    exists: (n) => fs.existsSync(path.join(dirIn, n)),
+  }))
+    console.log(
+      `  ${f.ok ? 'ok  ' : f.info ? 'info' : 'FAIL'} ${f.name.padEnd(22)} expect ${f.expect.padEnd(8)} got ${f.got} ${f.note || ''}`
+    );
+}

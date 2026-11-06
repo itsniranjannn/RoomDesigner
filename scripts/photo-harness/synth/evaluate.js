@@ -3,6 +3,8 @@
  * Runs corpus cases through the same steps the Create from photos dialog runs and scores them against the ground
  * truth. Shared by the CLI (robustness.js) and the vitest guard (src/engine/photoCorpus.test.js).
  */
+import os from 'node:os';
+import { Worker } from 'node:worker_threads';
 import { buildCase } from './corpus.js';
 import {
   fitBackground,
@@ -32,10 +34,14 @@ void typeCandidates;
 const DIMS = { widthCm: 80, depthCm: 50, heightCm: 80 };
 
 /** The dialog's analysis of one photo in the front slot: cut-out, pieces, then each piece read as a design. */
-export function analysePhoto(photo, { allPieces = false } = {}) {
+export function analysePhoto(photo, { allPieces = false, crop = null } = {}) {
   const noisy = fitBackground(photo.rgba, photo.width, photo.height).noise > 1.5;
   const tolerance = noisy ? 60 : 16;
-  const cut = extractForeground(photo.rgba, photo.width, photo.height, { tolerance, mode: 'auto' });
+  const cut = extractForeground(photo.rgba, photo.width, photo.height, {
+    tolerance,
+    mode: 'auto',
+    crop,
+  });
   const scene = cut.mode === 'scene';
   const read = (mask) => {
     const views = buildViews({ front: photo }, { front: { mask, scene } }, tolerance);
@@ -199,4 +205,101 @@ export function score(run) {
     if (tr.pillows) s.traits.pillows = Math.abs((dt.pillows ?? 0) - Math.min(tr.pillows, 4)) <= 1;
   }
   return s;
+}
+
+/**
+ * Runs specs across worker threads (the pipeline is plain JS, so cores help linearly).
+ * @returns {Promise<Array<{run: object, sc: object}>>} in the order of the specs
+ */
+export async function runParallel(
+  specs,
+  {
+    workers = Math.max(1, Math.min(8, (os.availableParallelism?.() ?? 4) - 1)),
+    keepPhotos = false,
+  } = {}
+) {
+  const n = Math.min(workers, specs.length);
+  const slices = Array.from({ length: n }, () => []);
+  specs.forEach((s, i) => slices[i % n].push({ s, i }));
+  const results = new Array(specs.length);
+  await Promise.all(
+    slices.map(
+      (slice) =>
+        new Promise((resolve, reject) => {
+          const w = new Worker(new URL('./worker.js', import.meta.url), {
+            workerData: { specs: slice.map((x) => x.s), keepPhotos },
+          });
+          w.once('message', (rows) => {
+            rows.forEach((r, k) => (results[slice[k].i] = r));
+            resolve();
+          });
+          w.once('error', reject);
+        })
+    )
+  );
+  return results;
+}
+
+/**
+ * The user's real photographs as extra cases, when a folder of them is given (PHOTO_FIXTURES): 5.png (bed sheet),
+ * 8.png (loveseat sheet), 10.png (lounge chair sheet), new-bed.png (two stacked photos of a carved bed),
+ * new-teal.png (teal sofa and two cane armchairs) and new-sofa.png (ornate sofa set), each with the type it must give.
+ * @returns {Array<{ name: string, expect: string, got: string|null, ok: boolean, note?: string }>}
+ */
+export function runFixtures(dir, { decodePng, shrink, exists }) {
+  const out = [];
+  const sheetCase = (name, expectType) => {
+    if (!exists(name)) return;
+    try {
+      const img = shrink(decodePng(`${dir}/${name}`), 1800);
+      const s = fromSheet(img);
+      const small = Object.fromEntries(
+        Object.entries(s.photos).map(([k, p]) => [k, { ...shrink(p, 480), fromSheet: true }])
+      );
+      const r = build(small, { sheet: true });
+      out.push({ name, expect: expectType, got: r.design.type, ok: r.design.type === expectType });
+    } catch (err) {
+      out.push({ name, expect: expectType, got: null, ok: false, note: err.message });
+    }
+  };
+  sheetCase('5.png', 'bed');
+  sheetCase('8.png', 'sofa');
+  sheetCase('10.png', 'lounge');
+  // A room photo: read automatically, and as the dialog reads it once the user has cropped to the piece
+  const sceneCase = (name, expectType, { edge = 480, crop = null, stacked = false } = {}) => {
+    if (!exists(name)) return;
+    const label = crop ? name + ' (cropped)' : stacked ? name + ' (split)' : name + ' (auto)';
+    try {
+      let img = shrink(decodePng(`${dir}/${name}`), edge);
+      if (stacked) {
+        const found = detectStackedPhotos(img.rgba, img.width, img.height);
+        if (!found) throw new Error('no stacked photos found');
+        const part = cropRegion(img.rgba, img.width, found.parts[0]);
+        img = shrink({ rgba: part.rgba, width: part.width, height: part.height }, 480);
+      }
+      const a = analysePhoto(img, { allPieces: true, crop });
+      const types = a.pieces.map((p) => p.design?.type);
+      out.push({
+        name: label,
+        expect: expectType,
+        got: types[0] ?? null,
+        ok: types.includes(expectType),
+        note: types.join(','),
+        info: !crop && !stacked,
+      });
+    } catch (err) {
+      out.push({ name: label, expect: expectType, got: null, ok: false, note: err.message });
+    }
+  };
+  sceneCase('new-teal.png', 'sofa');
+  sceneCase('new-teal.png', 'sofa', {
+    edge: 480,
+    crop: { x0: 0.255, y0: 0.47, x1: 0.72, y1: 0.8 },
+  });
+  sceneCase('new-teal.png', 'armchair', {
+    edge: 480,
+    crop: { x0: 0, y0: 0.5, x1: 0.28, y1: 0.85 },
+  });
+  sceneCase('new-bed.png', 'bed', { edge: 1000, stacked: true });
+  return out;
 }

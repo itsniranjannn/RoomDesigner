@@ -40,12 +40,13 @@ export function build(slotPhotos, { tolerance, sheet = false, forceType } = {}) 
   const dims = ratios
     ? dimensionsFromProportions(ratios, 'widthCm', 80)
     : { widthCm: 80, depthCm: 50, heightCm: 80 };
-  return designFromViews(views, {
-    dims,
-    forceType,
-    ratios,
-    partial: estimatePartialProportions(cutouts),
-  });
+  const partial = estimatePartialProportions(cutouts);
+  return {
+    ...designFromViews(views, { dims, forceType, ratios, partial }),
+    views,
+    partial,
+    dims0: dims,
+  };
 }
 
 /** A product sheet through detection, view roles and crops, as the dialog's sheet splitter does. */
