@@ -14,7 +14,8 @@ import {
   dimensionsFromProportions,
 } from './sheet.js';
 import { withMirroredSides } from './design.js';
-import { buildViews, designFromViews } from './photoPipeline.js';
+import { buildViews, designFromViews, pieceMask } from './photoPipeline.js';
+import { extractForeground } from './foreground.js';
 
 /** What the dialog does with photos in slots: cut out, mirror a lone side, build views, read the design. */
 export function build(slotPhotos, { tolerance, sheet = false, forceType } = {}) {
@@ -67,4 +68,30 @@ export function fromSheet(sheet) {
     if (slots[i] && !photos[slots[i]]) photos[slots[i]] = crops[i];
   });
   return { slots, photos, detection };
+}
+
+/**
+ * A photo taken in a room: cut out with the scene cut-out, then each separate piece read as a front photo of its
+ * own, the way the dialog does it.
+ * @returns {{ cut: object, pieces: Array<{ design: object, dims: object|null, candidates: object }> }}
+ */
+export function buildScene(photo, { mode = 'scene', crop = null, keep, remove, forceType } = {}) {
+  const cut = extractForeground(photo.rgba, photo.width, photo.height, {
+    mode,
+    crop,
+    keep,
+    remove,
+  });
+  const pieces = cut.pieces.map((_, i) => {
+    const mask = pieceMask(cut, i);
+    const views = buildViews({ front: photo }, { front: { mask, scene: cut.mode === 'scene' } }, 16);
+    return designFromViews(views, {
+      dims: { widthCm: 80, depthCm: 50, heightCm: 80 },
+      forceType,
+      partial: estimatePartialProportions({
+        front: { mask, width: photo.width, height: photo.height },
+      }),
+    });
+  });
+  return { cut, pieces };
 }

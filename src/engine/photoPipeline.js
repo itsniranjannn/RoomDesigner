@@ -9,6 +9,7 @@
 import { normalizeView, segmentObject } from './hull.js';
 import { dimensionsFromProportions } from './sheet.js';
 import {
+  DESIGN_TYPES,
   buildDesign,
   typeCandidates,
   inferDimensions,
@@ -34,9 +35,13 @@ export function buildViews(photos, cuts, tolerance, labelOf = (slot) => slot) {
       throw new Error(
         `No object found in the ${labelOf(slot).toLowerCase()} photo. Try a plainer background.`
       );
+    // A cut-out of a real room has no plain backdrop to read gaps from: its own mask is the open one
+    const openMask = cuts[slot].scene
+      ? cuts[slot].mask
+      : segmentObject(photo.rgba, photo.width, photo.height, tolerance, { keepGaps: true });
     const open = normalizeView(
       photo.rgba,
-      segmentObject(photo.rgba, photo.width, photo.height, tolerance, { keepGaps: true }),
+      openMask,
       photo.width,
       photo.height,
       VIEW_GRID
@@ -80,4 +85,63 @@ export function designFromViews(views, options) {
   }
   const candidates = typeCandidates(views, dims, sizeEdited, hints, result.type);
   return { design: result, dims: nextDims, candidates };
+}
+
+/** The mask of one separate piece found by extractForeground (pieces are numbered largest first). */
+export function pieceMask(cut, index) {
+  const piece = cut.pieces[index];
+  if (!piece) return null;
+  const out = new Uint8Array(cut.mask.length);
+  for (let p = 0; p < out.length; p++) if (cut.pieceLabels[p] === piece.id) out[p] = 1;
+  return out;
+}
+
+/** A friendly name for a piece read from a photo ("3-seater sofa", "armchair", "coffee table"). */
+export function pieceLabel(design) {
+  const label = DESIGN_TYPES.find((t) => t.id === design.type)?.label || 'furniture';
+  if (design.type === 'sofa') {
+    const seats = design.traits?.seats || 3;
+    return seats <= 1 ? 'armchair' : seats === 2 ? 'loveseat' : `${seats}-seater sofa`;
+  }
+  return design.type === 'lounge' ? 'lounge chair' : label.toLowerCase();
+}
+
+/**
+ * Pieces of a photo that are copies of each other (the pair of armchairs): about the same shape and size and
+ * the same colours. Returns groups of piece indexes, each group building once with a count.
+ * @param {{rgba: Uint8ClampedArray, width: number}} photo
+ * @param {{ pieces: Array<{area:number, box:{width:number,height:number}}>, pieceLabels: Int32Array }} cut
+ * @param {number[]} indexes the pieces to group
+ */
+export function groupPieces(photo, cut, indexes) {
+  const stats = indexes.map((i) => {
+    const piece = cut.pieces[i];
+    const sum = [0, 0, 0];
+    let n = 0;
+    for (let p = 0; p < cut.pieceLabels.length; p += 3)
+      if (cut.pieceLabels[p] === piece.id) {
+        for (let c = 0; c < 3; c++) sum[c] += photo.rgba[p * 4 + c];
+        n++;
+      }
+    return {
+      i,
+      aspect: piece.box.width / piece.box.height,
+      area: piece.area,
+      mean: sum.map((v) => v / Math.max(1, n)),
+    };
+  });
+  const groups = [];
+  for (const s of stats) {
+    const home = groups.find((g) => {
+      const t = g.stat;
+      return (
+        Math.abs(Math.log(s.aspect / t.aspect)) < 0.18 &&
+        Math.abs(Math.log(s.area / t.area)) < 0.3 &&
+        Math.hypot(s.mean[0] - t.mean[0], s.mean[1] - t.mean[1], s.mean[2] - t.mean[2]) < 40
+      );
+    });
+    if (home) home.indexes.push(s.i);
+    else groups.push({ stat: s, indexes: [s.i] });
+  }
+  return groups.map((g) => ({ indexes: g.indexes, count: g.indexes.length }));
 }

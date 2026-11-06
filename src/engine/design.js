@@ -972,8 +972,13 @@ function bedOutline(view, aspect, kind) {
   const narrow = narrowTopFraction(view);
   if (narrow < 0.4) return false;
   if (measureTraits({ front: view }).gapFrac > 0.3) return false; // clear space under it: a chair or table
-  const top = rowWidthFractions(view).slice(0, Math.max(2, Math.round(view.size * 0.12)));
-  const headW = top.reduce((a, b) => a + b, 0) / top.length;
+  const rows = rowWidthFractions(view);
+  const mean = (part) => part.reduce((a, b) => a + b, 0) / Math.max(1, part.length);
+  // An arched or scrolled crest is narrow at the very top: read the headboard where its body is
+  const headW = Math.max(
+    mean(rows.slice(0, Math.max(2, Math.round(view.size * 0.12)))),
+    mean(rows.slice(Math.round(view.size * 0.2), Math.round(view.size * 0.34)))
+  );
   if (kind === 'front') return headW >= 0.4 && (aspect == null || aspect >= 0.85);
   return aspect == null || aspect >= 1.45;
 }
