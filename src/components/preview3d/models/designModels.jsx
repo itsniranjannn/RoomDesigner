@@ -25,6 +25,13 @@ import {
   StoolDesign,
   Headboard,
 } from './designShapes.jsx';
+import {
+  ClassicHeadboard,
+  SleighFootboard,
+  BunFeet,
+  ClassicSeat,
+  ClassicTable,
+} from './classicShapes.jsx';
 
 /** Distance between two hex colours (0-441). */
 function colourDistance(a, b) {
@@ -62,13 +69,16 @@ export function effectivePalette(design, mainColor) {
 export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
   const hb = 0.1;
   const legs = !!traits.legs && !traits.skirt;
-  const footH = legs ? 0.1 : 0;
+  const bun = traits.legs === 2 && legs;
+  const footH = legs ? (bun ? 0.13 : 0.1) : 0;
+  const classicHead = !!traits.crest || !!traits.framed;
   const mattressH = 0.22;
   const bodyTop = (traits.bodyFrac ?? 0.55) * heightM;
   const frameH = clamp(bodyTop - mattressH - 0.06, 0.16 + footH, 0.45);
   const mattressTop = frameH + mattressH;
   const footboard = !!traits.foot;
-  const footT = footboard ? 0.06 : 0;
+  const sleigh = traits.foot === 2;
+  const footT = footboard ? (sleigh ? 0.09 : 0.06) : 0;
   const mattressD = depthM - hb - 0.02 - footT;
   const mattressZ = hb / 2 + 0.01 - footT / 2;
   const head = palette.body;
@@ -133,7 +143,9 @@ export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
         roughness={0.9}
         castShadow={false}
       />
-      {legs ? (
+      {bun ? (
+        <BunFeet widthM={widthM} depthM={depthM} color={shade(base, -0.05)} radius={0.065} />
+      ) : legs ? (
         corners(widthM, depthM, 0.07).map(([x, z], i) => (
           <Cyl
             key={i}
@@ -168,17 +180,43 @@ export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
       )}
 
       {/* Tall headboard in the style, width and colour read from the photos */}
-      <Headboard
-        style={traits.head ?? (traits.channels ? 'channel' : 'panel')}
-        widthM={headWidth}
-        depthM={depthM}
-        heightM={heightM}
-        footH={footH}
-        mattressTop={mattressTop}
-        hb={hb}
-        body={head}
-      />
-      {footboard && (
+      {classicHead ? (
+        <ClassicHeadboard
+          widthM={headWidth}
+          depthM={depthM}
+          heightM={heightM}
+          footH={footH}
+          mattressTop={mattressTop}
+          hb={hb}
+          wood={head}
+          panel={palette.panel || shade(head, -0.18)}
+          crest={traits.crest || 0}
+          tufted={traits.head === 'tufted'}
+          framed={!!traits.framed}
+        />
+      ) : (
+        <Headboard
+          style={traits.head ?? (traits.channels ? 'channel' : 'panel')}
+          widthM={headWidth}
+          depthM={depthM}
+          heightM={heightM}
+          footH={footH}
+          mattressTop={mattressTop}
+          hb={hb}
+          body={head}
+        />
+      )}
+      {footboard && sleigh && (
+        <SleighFootboard
+          widthM={widthM + 0.02}
+          z={depthM / 2 - footT / 2}
+          footH={footH}
+          topY={mattressTop + 0.14}
+          thick={footT}
+          wood={base}
+        />
+      )}
+      {footboard && !sleigh && (
         <Pad
           position={[0, footH + (mattressTop + 0.1 - footH) / 2, depthM / 2 - footT / 2]}
           size={[widthM + 0.02, mattressTop + 0.1 - footH, footT]}
@@ -303,6 +341,32 @@ function StorageDrawers({ widthM, depthM, z, frameH, footH, color }) {
   );
 }
 
+/** Props for the classic (exposed-frame) seat from a sofa or armchair record. */
+function classicSeat(palette, traits, widthM, depthM, heightM, defaultSeats) {
+  const armchair = defaultSeats === 1;
+  return {
+    widthM,
+    depthM,
+    heightM,
+    seats: traits.seats || defaultSeats,
+    armRatio: traits.arm ?? (armchair ? 0.17 : 0.1),
+    wood: palette.frame || palette.leg || '#4b2e1b',
+    fabric: palette.body,
+    cushion: palette.cushion || palette.body,
+    trim: traits.trim ? palette.trim || '#c9a24a' : null,
+    scatterColor: palette.scatter,
+    scatter: traits.scat ?? (armchair ? 1 : widthM > 1.5 ? 2 : 0),
+    frame: traits.frame || 1,
+    legs: traits.cab ? 'cabriole' : 'tapered',
+    cane: !!traits.cane,
+    roll: !!traits.roll,
+    tufted: !!traits.tufted,
+    pattern: !!traits.pat,
+    seatH: armchair ? 0.42 : 0.44,
+    armH: armchair ? 0.58 : 0.62,
+  };
+}
+
 /** Photo-made piece from its design record: a catalog model parameterised by the photos. */
 export function DesignModel({ def, design, widthM, depthM, heightM, mainColor }) {
   const palette = effectivePalette(design, mainColor);
@@ -336,35 +400,41 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       );
       break;
     case 'sofa':
-      model = (
-        <Upholstered
-          {...common}
-          armRatio={traits.arm ?? 0.1}
-          seats={traits.seats || 3}
-          roughness={0.85}
-          scatter={widthM > 1.5}
-          roll={!!traits.roll}
-          tufted={!!traits.tufted}
-          taper={!!traits.taper}
-          longSeat={!!traits.longSeat}
-        />
-      );
+      model =
+        traits.frame || traits.cane ? (
+          <ClassicSeat {...classicSeat(palette, traits, widthM, depthM, heightM, 3)} />
+        ) : (
+          <Upholstered
+            {...common}
+            armRatio={traits.arm ?? 0.1}
+            seats={traits.seats || 3}
+            roughness={0.85}
+            scatter={widthM > 1.5}
+            roll={!!traits.roll}
+            tufted={!!traits.tufted}
+            taper={!!traits.taper}
+            longSeat={!!traits.longSeat}
+          />
+        );
       break;
     case 'armchair':
-      model = (
-        <Upholstered
-          {...common}
-          armRatio={traits.arm ?? 0.17}
-          seats={1}
-          seatH={0.42}
-          armH={0.58}
-          roughness={0.7}
-          scatter
-          roll={!!traits.roll}
-          tufted={!!traits.tufted}
-          taper={!!traits.taper}
-        />
-      );
+      model =
+        traits.frame || traits.cane ? (
+          <ClassicSeat {...classicSeat(palette, traits, widthM, depthM, heightM, 1)} />
+        ) : (
+          <Upholstered
+            {...common}
+            armRatio={traits.arm ?? 0.17}
+            seats={1}
+            seatH={0.42}
+            armH={0.58}
+            roughness={0.7}
+            scatter
+            roll={!!traits.roll}
+            tufted={!!traits.tufted}
+            taper={!!traits.taper}
+          />
+        );
       break;
     case 'lounge':
       model = (
@@ -431,7 +501,20 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       model = <TableRoundModel {...common} />;
       break;
     case 'coffee-table':
-      model = <CoffeeTableModel {...common} />;
+      model =
+        traits.trim || traits.cab ? (
+          <ClassicTable
+            widthM={widthM}
+            depthM={depthM}
+            heightM={heightM}
+            topColor={palette.body}
+            wood={palette.frame || shade(palette.body, -0.08)}
+            trim={palette.trim}
+            legs={traits.cab ? 'cabriole' : 'turned'}
+          />
+        ) : (
+          <CoffeeTableModel {...common} />
+        );
       break;
     case 'desk':
       model = <DeskModel {...common} />;
