@@ -11,6 +11,7 @@ import { SPACE_KINDS, stairRect, stairGeometry, stairFootprint, stairTargetIndex
 import { openingsOf, openWallsOf, levelSolidEdges, entranceOf } from './flatPlan.js';
 import { hasOutline, outlineEdges, pointOnEdge, polygonArea } from './roomShape.js';
 import { SERVICE_KINDS, doorGeometry, servicesOf, windowLeaves } from './planning.js';
+import { LINK_STATUS_LABELS, computeServiceLinks } from './serviceLinks.js';
 import {
   CELL,
   analyzeRuns,
@@ -62,7 +63,17 @@ const grow = (box, other) => ({
  * Stacks the title block, scale bar and key under a drawing and returns the sheet frame.
  * `content` is the drawing's bounding box in plan coordinates.
  */
-function frameSheet({ content, k, title, legend, legendTitle, kinds, serviceKinds, measure }) {
+function frameSheet({
+  content,
+  k,
+  title,
+  legend,
+  legendTitle,
+  kinds,
+  serviceKinds,
+  linkStatuses,
+  measure,
+}) {
   const build = (scale) => {
     const margin = 30 * k;
     const contentW = content.x1 - content.x0;
@@ -146,6 +157,29 @@ function frameSheet({ content, k, title, legend, legendTitle, kinds, serviceKind
       y += 2 * k + font * 1.6 + (row + 1) * rowH + 4 * k;
     }
 
+    // Service links: a dashed sample line and what its colour means
+    let linkKey = null;
+    if (linkStatuses && linkStatuses.length > 0) {
+      const font = 8.6 * k;
+      const rowH = font * 1.9;
+      const lineW = font * 3;
+      let x = 0;
+      let row = 0;
+      const entries = [];
+      for (const status of linkStatuses) {
+        const label = LINK_STATUS_LABELS[status];
+        const w = lineW + measure(label, font, 500, SANS) + font * 1.2;
+        if (x > 0 && x + w > innerW) {
+          x = 0;
+          row++;
+        }
+        entries.push({ status, label, w, x: margin + x, row });
+        x += w + font * 0.8;
+      }
+      linkKey = { font, entries, y: y + 2 * k, rowH, lineW, title: 'Service links' };
+      y += 2 * k + font * 1.6 + (row + 1) * rowH + 4 * k;
+    }
+
     const blockH = 46 * k;
     const titleY = y + 6 * k;
     const text = titleBlockText({ ...title, scale });
@@ -181,6 +215,7 @@ function frameSheet({ content, k, title, legend, legendTitle, kinds, serviceKind
       key,
       kindKey,
       serviceKey,
+      linkKey,
       titleBlock,
       scale,
     };
@@ -220,7 +255,10 @@ function resolveOpening(item, type, outlined = false) {
  * Sheet for one room: walls with the doors and windows, every piece of furniture with its
  * name or a numbered key entry, the two overall dimensions and a title block.
  */
-export function buildRoomSheet(room, { measure = estimateMeasure, date = new Date() } = {}) {
+export function buildRoomSheet(
+  room,
+  { measure = estimateMeasure, date = new Date(), links: withLinks = true } = {}
+) {
   const W = room.widthCm || 500;
   const D = room.depthCm || 400;
   const k = clamp(Math.max(W, D) / 420, 1, 4);
@@ -250,6 +288,9 @@ export function buildRoomSheet(room, { measure = estimateMeasure, date = new Dat
     if (services.some((sv) => sv.kind === kind))
       serviceKinds.push({ kind, label: SERVICE_KINDS[kind].label });
   }
+
+  const links = withLinks ? computeServiceLinks(room) : [];
+  const linkStatuses = ['ok', 'far', 'missing'].filter((st) => links.some((l) => l.status === st));
 
   const pieces = [];
   for (const item of room.placedFurniture || []) {
@@ -322,12 +363,14 @@ export function buildRoomSheet(room, { measure = estimateMeasure, date = new Dat
     legend,
     legendTitle: 'Key to numbered pieces',
     serviceKinds,
+    linkStatuses,
     measure,
   });
 
   return {
     kind: 'room',
     services,
+    links,
     ...frame,
     room: { W, D, wall },
     outline: outlined ? { points: room.outline, edges } : null,

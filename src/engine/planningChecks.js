@@ -49,10 +49,10 @@ export const SEVERITY_LABELS = { error: 'Fix this', warning: 'Worth a look', inf
 
 const startsAny = (id, prefixes) => prefixes.some((p) => id.startsWith(p));
 
-const isTv = (id) => startsAny(id, ['tv-']) && id !== 'tv-unit-low';
-const isBed = (id) => startsAny(id, ['bed-']) && id !== 'bed-pillow';
-const isDesk = (id) => ['desk-executive', 'desk-l-shaped', 'standing-desk'].includes(id);
-const POWERED_APPLIANCES = new Set([
+export const isTv = (id) => startsAny(id, ['tv-']) && id !== 'tv-unit-low';
+export const isBed = (id) => startsAny(id, ['bed-']) && id !== 'bed-pillow';
+export const isDesk = (id) => ['desk-executive', 'desk-l-shaped', 'standing-desk'].includes(id);
+export const POWERED_APPLIANCES = new Set([
   'kitchen-fridge',
   'dishwasher',
   'oven-unit',
@@ -60,7 +60,7 @@ const POWERED_APPLIANCES = new Set([
   'washing-machine',
   'water-heater',
 ]);
-const WATER_PIECES = new Set([
+export const WATER_PIECES = new Set([
   'sink-unit',
   'wash-basin',
   'bath-vanity',
@@ -72,7 +72,7 @@ const WATER_PIECES = new Set([
   'dishwasher',
   'water-heater',
 ]);
-const DRAIN_PIECES = new Set([
+export const DRAIN_PIECES = new Set([
   'sink-unit',
   'wash-basin',
   'bath-vanity',
@@ -102,7 +102,7 @@ const FRONT_CLEARANCE = {
   'bath-vanity': [60, 90],
 };
 
-const typeId = (entry) => entry.item.furnitureTypeId || entry.def.id || '';
+export const typeId = (entry) => entry.item.furnitureTypeId || entry.def.id || '';
 
 // ---------- gathering pieces ----------
 

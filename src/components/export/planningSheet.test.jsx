@@ -42,6 +42,27 @@ describe('exported plan with planning details', () => {
     expect(svg).not.toContain('>Services<');
   });
 
+  it('draws service links with a key, and can leave them out', () => {
+    const r = room({
+      placedFurniture: [
+        { id: 'sk', furnitureTypeId: 'sink-unit', x: 200, y: 40, rotationDeg: 0 },
+        { id: 'wm', furnitureTypeId: 'washing-machine', x: 380, y: 250, rotationDeg: 0 },
+      ],
+    });
+    const svg = draw(r);
+    expect(svg).not.toContain('var(--');
+    expect(svg).not.toContain('NaN');
+    expect(svg).toContain('Service links');
+    expect(svg).toContain('Within reach');
+    expect(svg).toContain('data-link-status="far"');
+    expect(svg).toContain('no water nearby');
+    const off = renderToStaticMarkup(
+      <PlanSheet model={buildRoomSheet(r, { links: false })} width={1600} height={1200} />
+    );
+    expect(off).not.toContain('Service links');
+    expect(off).not.toContain('data-link-status');
+  });
+
   it('puts the door hinge on the chosen side and draws the window leaves', () => {
     const model = buildRoomSheet(room());
     expect(model.doors[0].geom.hinge.x).toBe(140);

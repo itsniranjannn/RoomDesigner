@@ -5,6 +5,7 @@ import { SPACE_KINDS } from '../../engine/flat.js';
 import { SANS, SERIF } from '../../engine/exportLayout.js';
 import { SERVICE_KINDS } from '../../engine/planning.js';
 import { PlacedService, ServiceGlyph } from '../canvas/serviceSymbols.jsx';
+import { LINK_COLORS, ServiceLinkLines } from '../canvas/ServiceLinkLines.jsx';
 
 /**
  * PlanSheets.jsx
@@ -195,6 +196,44 @@ function ServicePoints({ services }) {
       {services.map((sv) => (
         <PlacedService key={sv.id} kind={sv.kind} x={sv.x} y={sv.y} rotationDeg={sv.rotationDeg} />
       ))}
+    </g>
+  );
+}
+
+function ServiceLinks({ links, k }) {
+  if (!links || links.length === 0) return null;
+  return <ServiceLinkLines links={links} k={k} fontFamily={SANS} />;
+}
+
+function LinkKey({ model }) {
+  const { linkKey } = model;
+  if (!linkKey) return null;
+  const font = linkKey.font;
+  return (
+    <g fontFamily={SANS} fontSize={font}>
+      <text x={model.margin} y={linkKey.y + font} fontWeight="700" fill={INK}>
+        {linkKey.title}
+      </text>
+      {linkKey.entries.map((e) => {
+        const cy = linkKey.y + font * 1.6 + e.row * linkKey.rowH + linkKey.rowH * 0.5;
+        return (
+          <g key={e.status}>
+            <line
+              x1={e.x}
+              y1={cy}
+              x2={e.x + linkKey.lineW * 0.8}
+              y2={cy}
+              stroke={LINK_COLORS[e.status]}
+              strokeWidth={font * 0.24}
+              strokeDasharray={`${font * 0.7} ${font * 0.45}`}
+              strokeLinecap="round"
+            />
+            <text x={e.x + linkKey.lineW} y={cy + font * 0.34} fill={INK}>
+              {e.label}
+            </text>
+          </g>
+        );
+      })}
     </g>
   );
 }
@@ -754,6 +793,7 @@ function OutlineDrawing({ model }) {
         ) : null
       )}
       <Furniture pieces={model.pieces} />
+      <ServiceLinks links={model.links} k={model.k} />
       <ServicePoints services={model.services} />
       <PieceLabels labels={model.labels} font={model.labelFont} k={model.k} />
       <DimensionLines
@@ -793,6 +833,7 @@ function RoomDrawing({ model }) {
         <RoomDoor key={door.id} door={door} W={W} D={D} wall={wall} />
       ))}
       <Furniture pieces={model.pieces} />
+      <ServiceLinks links={model.links} k={model.k} />
       <ServicePoints services={model.services} />
       <PieceLabels labels={model.labels} font={model.labelFont} k={model.k} />
       <DimensionLines
@@ -1138,6 +1179,7 @@ export function PlanSheet({ model, width, height }) {
       <PieceKey model={model} />
       <KindKey model={model} />
       <ServiceKey model={model} />
+      <LinkKey model={model} />
       <TitleBlock tb={model.titleBlock} />
     </svg>
   );
