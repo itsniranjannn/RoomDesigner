@@ -379,7 +379,7 @@ function isDomed(front) {
  */
 export function classifyType(traits, dims, sizeKnown = true) {
   const { widthCm: w, depthCm: d, heightCm: h } = dims;
-  const { rise, gapFrac, round, lShape, domed } = traits;
+  const { rise, gapFrac, round, lShape } = traits;
   const backed = rise >= 1.25;
   const open = gapFrac > 0.3; // clear space under it: legs
   const wh = w / h;
@@ -390,7 +390,8 @@ export function classifyType(traits, dims, sizeKnown = true) {
     if (dh >= 1.5) return 'bed';
     // A round plan, or a rounded outline when there is no plan photo: a tub chair
     const squarish = Math.abs(w - d) <= 0.22 * Math.max(w, d);
-    if (squarish && wh <= 1.3 && (round || (domed && !traits.hasTop))) return 'tub-chair';
+    // Only a round plan view is proof enough: rounded arms alone would turn armchairs into tubs
+    if (squarish && wh <= 1.3 && round) return 'tub-chair';
     return w / d >= 1.45 ? 'sofa' : 'armchair';
   }
   if (backed && open) {
@@ -416,7 +417,8 @@ export function classifyType(traits, dims, sizeKnown = true) {
   if (tall) return thin ? 'bookshelf' : 'wardrobe';
   // Deep, long and low with a back and arms all round: a daybed
   const daybedShape = w / d >= 1.7 && w / d <= 2.9 && dh >= 0.8 && dh <= 1.6;
-  if (daybedShape && gapFrac <= 0.3 && (!sizeKnown || h <= 105)) return 'daybed';
+  // A daybed is only taken from a size the user entered: from proportions alone it is a sofa (offered as a choice)
+  if (daybedShape && gapFrac <= 0.3 && sizeKnown && h <= 105) return 'daybed';
   // Low and squarish with no back: an ottoman or pouf
   const stoutLow = sizeKnown
     ? h <= 50 && h / w <= 0.95 && w <= 110 && w / d <= 1.9 && w / d >= 0.5
@@ -827,6 +829,79 @@ function stoolDetails(F, T, dims) {
   return out;
 }
 
+// ---------- beds: a tall narrow headboard over a wide low body ----------
+
+/** Per row of the view: how wide the object is, as a fraction of its widest row. */
+function rowWidthFractions(view) {
+  const s = view.size;
+  const widths = [];
+  for (let y = 0; y < s; y++) {
+    let n = 0;
+    for (let x = 0; x < s; x++) n += view.mask[y * s + x];
+    widths.push(n);
+  }
+  const widest = Math.max(1, ...widths);
+  return widths.map((n) => n / widest);
+}
+
+/**
+ * How much of the height, counted from the top, is clearly narrower than the widest part. A bed has a
+ * headboard that stands well over a wider mattress or duvet, from the front, the side and in between; the
+ * back of a sofa, chair or armchair gives way to arms or a seat much sooner.
+ */
+export function narrowTopFraction(view, limit = 0.86) {
+  if (!view) return 0;
+  const rows = rowWidthFractions(view);
+  const first = rows.findIndex((w) => w > 0.02);
+  if (first < 0) return 0;
+  let last = rows.length - 1;
+  while (last > first && rows[last] <= 0.02) last--;
+  let n = 0;
+  for (let y = first; y <= last && rows[y] <= limit; y++) n++;
+  return n / (last - first + 1);
+}
+
+/**
+ * Signs that a single outline is a bed: a headboard that is a good part of the height and stands over a
+ * wide body, with the body solid down to the floor (or on short feet), seen from the front, the side or three
+ * quarters. Needs the photo's own width to height ratio (the views are stretched to a square).
+ * @param {number|null|undefined} aspect width of the piece divided by its height in the photo
+ * @param {'front'|'side'} kind
+ */
+function bedOutline(view, aspect, kind) {
+  if (!view) return false;
+  const narrow = narrowTopFraction(view);
+  if (narrow < 0.4) return false;
+  if (measureTraits({ front: view }).gapFrac > 0.3) return false; // clear space under it: a chair or table
+  const top = rowWidthFractions(view).slice(0, Math.max(2, Math.round(view.size * 0.12)));
+  const headW = top.reduce((a, b) => a + b, 0) / top.length;
+  if (kind === 'front') return headW >= 0.4 && (aspect == null || aspect >= 0.85);
+  return aspect == null || aspect >= 1.45;
+}
+
+/**
+ * Is the piece a bed? True when any of the photos shows the headboard-over-mattress outline, or the plan view
+ * is bed-shaped (taller than wide) while no other photo says otherwise.
+ * @param {{widthPerHeight?: number|null, depthPerHeight?: number|null, widthPerDepth?: number|null}} hints
+ */
+export function looksLikeBed(views, hints = {}, dims = null) {
+  const front = views.front || views.back;
+  const side = views.left || views.right;
+  // The photo's own proportions when known, else those of the size in hand
+  const wph = hints.widthPerHeight ?? (dims ? dims.widthCm / dims.heightCm : null);
+  const dph = hints.depthPerHeight ?? (dims ? dims.depthCm / dims.heightCm : null);
+  if (front && bedOutline(front, wph, 'front')) return true;
+  if (side && bedOutline(side, dph, 'side')) return true;
+  // A plan view alone: a bed is the one big piece that is longer than it is wide, solid corner to corner
+  if (views.top && !front && !side) {
+    const wd = hints.widthPerDepth ?? (dims ? dims.widthCm / dims.depthCm : null);
+    const fill = fillOf(views.top, [0, 0, 1, 1]) ?? 0;
+    if (wd != null && wd >= 0.55 && wd <= 0.97 && fill >= 0.8 && !detectLShape(views.top))
+      return true;
+  }
+  return false;
+}
+
 // ---------- one photo: guessing from the front view alone ----------
 
 /**
@@ -835,6 +910,7 @@ function stoolDetails(F, T, dims) {
  * @param {number} wh the width of the piece divided by its height, from the photo
  */
 export function classifyFromFront(front, wh) {
+  if (bedOutline(front, wh, 'front')) return 'bed';
   const { gapFrac, slabFrac } = measureTraits({ front });
   const open = gapFrac > 0.3; // clear space under it: legs
   if (open) {
@@ -850,7 +926,6 @@ export function classifyFromFront(front, wh) {
   }
   const seatSeam = findLines(front, 'y', [0.25, 0.3, 0.75, 0.8]).length >= 1;
   const soft = rolledArms(front)?.roll || tuftedBack(front) || seatSeam;
-  if (soft && wh >= 0.85 && wh <= 1.35 && isDomed(front)) return 'tub-chair';
   if (soft && wh >= 0.85 && wh <= 3.4) return wh >= 1.45 ? 'sofa' : 'armchair';
   if (wh <= 0.9) {
     const shelves = findLines(front, 'y', [0.12, 0.03, 0.88, 0.97], 5).length;
@@ -1064,17 +1139,45 @@ function paletteFor(type, views) {
   return palette;
 }
 
-/** The detected type for the views, sizes and measured traits (what buildDesign uses when none is forced). */
+/**
+ * The detected type for the views, sizes and measured traits (what buildDesign uses when none is forced).
+ * A bed is recognised first, from its outline in any photo, so a headboard standing over a long mattress is
+ * never taken for a sofa, a daybed or a cabinet whatever the view.
+ */
 function pickType(views, traits, dims, sizeKnown, hints) {
   const lone = views.front || views.back;
+  const side = views.left || views.right;
+  if (!traits.lShape && looksLikeBed(views, hints, dims)) return 'bed';
   const frontOnly = lone && !views.left && !views.right && !views.top;
   if (frontOnly)
     return classifyFromFront(lone, hints.widthPerHeight || dims.widthCm / dims.heightCm);
-  if (!lone && !views.top && (views.left || views.right)) {
+  if (!lone && !views.top && side) {
     // Only a side view: its width is unknown, so assume the usual for a piece that deep
-    return classifyType(traits, { ...dims, widthCm: dims.depthCm * 1.25 }, false);
+    const dph = hints.depthPerHeight;
+    const known = dph ? { heightCm: 100, depthCm: dph * 100 } : dims;
+    return classifyType(traits, { ...known, widthCm: known.depthCm * 1.25 }, false);
   }
+  if (!lone && !side && views.top) return classifyFromTop(views.top, hints.widthPerDepth, traits);
   return classifyType(traits, dims, sizeKnown);
+}
+
+/**
+ * Best guess from a plan view alone: round, L-shaped, long and narrow, deep and narrow or squarish. A guess
+ * only; the app offers the other likely types beside it.
+ * @param {number|null|undefined} wd width of the piece divided by its depth in the photo
+ */
+export function classifyFromTop(top, wd, traits = measureTraits({ top })) {
+  const ratio = wd || 1;
+  if (traits.lShape) return 'corner-sofa';
+  if (traits.round && ratio > 0.8 && ratio < 1.25) return 'table-round';
+  if (ratio <= 0.97 && ratio >= 0.55 && (fillOf(top, [0, 0, 1, 1]) ?? 0) >= 0.8) return 'bed';
+  // Arms at the ends show as a change of colour or texture; a table top is one surface
+  const edge = pickColor(top, [0.02, 0.3, 0.07, 0.85]);
+  const inner = pickColor(top, [0.2, 0.5, 0.8, 0.85]);
+  const armed = edge && inner && colourGap(edge, inner) > 14;
+  if (ratio >= 2.2 || (ratio >= 1.45 && armed)) return 'sofa';
+  if (ratio >= 1.7) return 'table';
+  return ratio >= 0.8 && ratio <= 1.25 ? 'armchair' : 'table';
 }
 
 /** Types most often mistaken for each other, in order of likelihood: pads out the "Looks like" choices. */

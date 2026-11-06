@@ -360,7 +360,15 @@ export function assignSheetViews(views) {
   const Fb = views[best.f].box;
   const Sb = views[best.s].box;
   // A real side view is shaped differently from the front; without that the 'top' is just another side
-  if (best && topPart(Fb, Sb, views[best.t].box) < 0.3 && ratio(Fb.w / Fb.h, Sb.w / Sb.h) > 0.12) {
+  const Tb = views[best.t].box;
+  const cost = topPart(Fb, Sb, Tb);
+  // A plan view of a long piece (a bed) differs from the others in shape, so a looser fit is accepted for it
+  const planShaped =
+    cost < 0.5 &&
+    ratio(Tb.w / Tb.h, Fb.w / Fb.h) > 0.3 &&
+    ratio(Tb.w / Tb.h, Sb.w / Sb.h) > 0.3 &&
+    ratio(Fb.h, Sb.h) < 0.12;
+  if (best && (cost < 0.3 || planShaped) && ratio(Fb.w / Fb.h, Sb.w / Sb.h) > 0.12) {
     out[best.f] = 'front';
     out[best.s] = 'right';
     out[best.t] = 'top';

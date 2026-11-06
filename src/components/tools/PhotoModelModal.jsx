@@ -979,7 +979,7 @@ export function PhotoModelModal({ onClose }) {
           if (open) norm.open = open.mask;
           views[slot.id] = norm;
         }
-        const hints = { widthPerHeight: partial.widthPerHeight };
+        const hints = { ...partial };
         let result = buildDesign(views, dims, forceType || undefined, sizeEdited, hints);
         // Photos give proportions, not size: until a real size is entered, use the type's usual one.
         // What the photos cannot show (the depth, from a lone front photo) is the usual for the type too
