@@ -130,6 +130,13 @@ describe('one picture of a bed, from any side', () => {
     });
   }
 
+  it('does not squash a bed photographed from three quarters into the picture shape', () => {
+    // That picture is about twice as wide as tall, but the bed is not: it keeps the usual bed height
+    const { dims } = build({ front: bedPhoto('threeQuarter') });
+    expect(dims.heightCm).toBeGreaterThanOrEqual(95);
+    expect(build({ front: bedPhoto('front') }).dims.heightCm).toBeLessThan(130);
+  });
+
   it('also finds the bed when the side picture is faced the other way', () => {
     expect(build({ left: bedPhoto('side') }).design.type).toBe('bed');
   });
