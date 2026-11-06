@@ -979,6 +979,25 @@ function bedOutline(view, aspect, kind) {
 }
 
 /**
+ * A photo taken from an angle rather than straight on: the top of the piece sits well to one side (a bed
+ * photographed from three quarters has its headboard at the back left or right). Its width to height ratio is
+ * then not the piece's, so it should not set the size.
+ */
+export function isObliqueView(view) {
+  if (!view) return false;
+  const s = view.size;
+  let sum = 0;
+  let n = 0;
+  for (let y = 0; y < Math.round(s * 0.25); y++)
+    for (let x = 0; x < s; x++)
+      if (view.mask[y * s + x]) {
+        sum += x / s;
+        n++;
+      }
+  return n > 0 && Math.abs(sum / n - 0.5) > 0.12;
+}
+
+/**
  * Is the piece a bed? True when any of the photos shows the headboard-over-mattress outline, or the plan view
  * is bed-shaped (taller than wide) while no other photo says otherwise.
  * @param {{widthPerHeight?: number|null, depthPerHeight?: number|null, widthPerDepth?: number|null}} hints
@@ -1178,6 +1197,30 @@ function sideRegion(side, part, rows) {
   return [a, rows[0], b, rows[1]];
 }
 
+/**
+ * Two colours that look like different cloth, leather or wood rather than one fabric in light and shadow: the
+ * hue differs, or one is far darker or lighter than the other (a shaded arm is only a little darker).
+ */
+function differentMaterial(a, b) {
+  const hue = (hex) => {
+    const [r, g, bl] = hexRgb(hex).map((v) => v / 255);
+    const max = Math.max(r, g, bl);
+    const min = Math.min(r, g, bl);
+    if (max - min < 0.05) return null; // grey: no hue
+    const d = max - min;
+    const h = max === r ? ((g - bl) / d + 6) % 6 : max === g ? (bl - r) / d + 2 : (r - g) / d + 4;
+    return h / 6;
+  };
+  const [ha, hb] = [hue(a), hue(b)];
+  if (ha !== null && hb !== null) {
+    const dh = Math.abs(ha - hb);
+    if (Math.min(dh, 1 - dh) > 0.06) return true;
+  }
+  const [la, lb] = [luma(hexRgb(a)), luma(hexRgb(b))];
+  const ratio = la / Math.max(1, lb);
+  return ratio < 0.5 || ratio > 2;
+}
+
 function paletteFor(type, views) {
   const F = views.front || views.back || views.right || views.left;
   const T = views.top;
@@ -1251,7 +1294,7 @@ function paletteFor(type, views) {
       .filter(Boolean)
       .map(hexRgb);
     const arm = arms.length ? toHex(mean(arms)) : null;
-    palette.arm = arm && colourGap(arm, palette.body) > 22 ? arm : palette.body;
+    palette.arm = arm && differentMaterial(arm, palette.body) ? arm : palette.body;
   } else if (type === 'chair' || type === 'stool') {
     palette.body = pickColor(F, [0.15, 0.05, 0.85, 0.4]) || all;
     palette.cushion = pickColor(T, [0.2, 0.2, 0.8, 0.8]) || palette.body;

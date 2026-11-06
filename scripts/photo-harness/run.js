@@ -78,26 +78,37 @@ for (const [slot, p] of Object.entries(photos)) {
 const ratios = sheet.estimateProportions(cut);
 const partial = sheet.estimatePartialProportions ? sheet.estimatePartialProportions(cut) : {};
 let dims = { widthCm: 80, depthCm: 50, heightCm: 80 };
-if (ratios) dims = sheet.dimensionsFromProportions(ratios, 'widthCm', dims.widthCm);
-const hints = { ...partial };
-let result = design.buildDesign(views, dims, undefined, false, hints);
-if (design.TYPICAL_WIDTH_CM[result.type]) {
-  const fit = (w) =>
-    ratios
-      ? sheet.dimensionsFromProportions(ratios, 'widthCm', w)
-      : design.inferDimensions(result.type, partial, w);
-  let next = fit(design.TYPICAL_WIDTH_CM[result.type]);
-  if (result.type === 'sofa') {
-    const seats = design.buildDesign(views, next, 'sofa', true, hints).traits.seats;
-    if (seats <= 2) next = fit(80 + seats * 35);
+let result;
+const pipeline = await imp('photoPipeline.js').catch(() => null);
+if (pipeline) {
+  // The same steps the dialog runs
+  const r = pipeline.designFromViews(views, { dims, ratios, partial });
+  result = r.design;
+  if (r.dims) dims = r.dims;
+  out.candidates = r.candidates;
+} else {
+  // Older checkouts have no shared pipeline: the dialog's own steps, as they were
+  if (ratios) dims = sheet.dimensionsFromProportions(ratios, 'widthCm', dims.widthCm);
+  const hints = { ...partial };
+  result = design.buildDesign(views, dims, undefined, false, hints);
+  if (design.TYPICAL_WIDTH_CM[result.type]) {
+    const fit = (w) =>
+      ratios
+        ? sheet.dimensionsFromProportions(ratios, 'widthCm', w)
+        : design.inferDimensions(result.type, partial, w);
+    let next = fit(design.TYPICAL_WIDTH_CM[result.type]);
+    if (result.type === 'sofa') {
+      const seats = design.buildDesign(views, next, 'sofa', true, hints).traits.seats;
+      if (seats <= 2) next = fit(80 + seats * 35);
+    }
+    dims = next;
+    result = design.buildDesign(views, next, result.type, true, hints);
   }
-  dims = next;
-  result = design.buildDesign(views, next, result.type, true, hints);
+  if (design.typeCandidates)
+    out.candidates = design.typeCandidates(views, dims, false, hints, result.type);
 }
 out.dims = dims;
 out.tolerance = tolerance;
 out.design = result;
 out.proportions = ratios;
-if (design.typeCandidates)
-  out.candidates = design.typeCandidates(views, dims, false, hints, result.type);
 console.log(JSON.stringify(out));

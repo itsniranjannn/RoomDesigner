@@ -8,7 +8,13 @@
 
 import { normalizeView, segmentObject } from './hull.js';
 import { dimensionsFromProportions } from './sheet.js';
-import { buildDesign, typeCandidates, inferDimensions, TYPICAL_WIDTH_CM } from './design.js';
+import {
+  buildDesign,
+  typeCandidates,
+  inferDimensions,
+  isObliqueView,
+  TYPICAL_WIDTH_CM,
+} from './design.js';
 
 export const VIEW_GRID = 96;
 
@@ -55,10 +61,14 @@ export function designFromViews(views, options) {
   let result = buildDesign(views, dims, forceType || undefined, sizeEdited, hints);
   let nextDims = null;
   if (!sizeEdited && TYPICAL_WIDTH_CM[result.type]) {
+    // A bed photographed from three quarters is not as wide as it is tall in the picture: keep its usual height
+    const oblique =
+      result.type === 'bed' && Object.keys(views).length === 1 && isObliqueView(views.front);
+    const sizing = oblique ? { ...partial, widthPerHeight: null } : partial;
     const fit = (width) =>
       ratios
         ? dimensionsFromProportions(ratios, 'widthCm', width)
-        : inferDimensions(result.type, partial, width);
+        : inferDimensions(result.type, sizing, width);
     let next = fit(TYPICAL_WIDTH_CM[result.type]);
     if (result.type === 'sofa') {
       // Count the seats at a full sofa width first; a one or two seater is then narrower

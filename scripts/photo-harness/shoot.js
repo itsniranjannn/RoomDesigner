@@ -54,9 +54,13 @@ if (mode === 'sheet') {
 const build = dialog.getByRole('button', { name: /Build 3D model|Rebuild model/ });
 await build.click();
 await dialog.getByRole('button', { name: 'Save to My furniture' }).isEnabled();
-await page.waitForFunction(() => /Detected:|Looks like a|Best guess from one photo:/.test(document.body.innerText), null, {
-  timeout: 60000,
-});
+await page.waitForFunction(
+  () => /Detected:|Looks like a|Best guess from one photo:/.test(document.body.innerText),
+  null,
+  {
+    timeout: 60000,
+  }
+);
 await page.waitForTimeout(2500);
 const text = await dialog.innerText();
 const m = text.match(/(Detected:|Looks like a|Best guess from one photo:)[^\n]*\n?[^\n]*/);
