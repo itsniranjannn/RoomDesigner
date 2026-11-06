@@ -47,6 +47,65 @@ function solve3(m, b) {
 }
 
 /**
+ * A vignette or a spotlight makes the backdrop fall off toward the corners, which a plane cannot follow: fit a
+ * quadratic surface to the border samples instead (robustly, dropping samples an object covers), and keep it only
+ * when it models the border clearly better.
+ */
+function quadraticBackground(samples, plane) {
+  const terms = (x, y) => [1, x, y, x * x, x * y, y * y];
+  const solve = (list) => {
+    const n = 6;
+    const m = Array.from({ length: n }, () => new Array(n).fill(0));
+    const rhs = [0, 1, 2].map(() => new Array(n).fill(0));
+    for (const s of list) {
+      const t = terms(s.x, s.y);
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) m[i][j] += t[i] * t[j];
+        for (let c = 0; c < 3; c++) rhs[c][i] += t[i] * s.c[c];
+      }
+    }
+    for (let i = 0; i < n; i++) m[i][i] += 1e-6;
+    return rhs.map((r) => {
+      const a = m.map((row, i) => [...row, r[i]]);
+      for (let c = 0; c < n; c++) {
+        let p = c;
+        for (let r2 = c + 1; r2 < n; r2++) if (Math.abs(a[r2][c]) > Math.abs(a[p][c])) p = r2;
+        if (Math.abs(a[p][c]) < 1e-12) return null;
+        [a[c], a[p]] = [a[p], a[c]];
+        for (let r2 = 0; r2 < n; r2++) {
+          if (r2 === c) continue;
+          const f = a[r2][c] / a[c][c];
+          for (let k = c; k <= n; k++) a[r2][k] -= f * a[c][k];
+        }
+      }
+      return a.map((row, i) => row[n] / row[i]);
+    });
+  };
+  const predict = (coef, x, y) =>
+    coef.map((c) => c.reduce((acc, v, i) => acc + v * terms(x, y)[i], 0));
+  const resid = (coef, s) => {
+    const p = predict(coef, s.x, s.y);
+    return Math.hypot(s.c[0] - p[0], s.c[1] - p[1], s.c[2] - p[2]);
+  };
+  let kept = samples;
+  let coef = solve(kept);
+  for (let pass = 0; pass < 3 && coef && !coef.some((c) => !c); pass++) {
+    const res = kept.map((s) => resid(coef, s)).sort((a, b) => a - b);
+    const cut = Math.max(14, 2.5 * res[Math.floor(res.length / 2)]);
+    const next = samples.filter((s) => resid(coef, s) <= cut);
+    if (next.length < 24) break;
+    kept = next;
+    coef = solve(kept) || coef;
+  }
+  if (!coef || coef.some((c) => !c)) return plane;
+  let sq = 0;
+  for (const s of kept) sq += resid(coef, s) ** 2;
+  const noise = Math.sqrt(sq / Math.max(1, kept.length));
+  if (noise > plane.noise * 0.6) return plane;
+  return { at: (x, y) => predict(coef, x, y), noise };
+}
+
+/**
  * Models the background as a plane (per colour channel) fitted to a band of pixels along the photo border,
  * so soft vignettes and gentle gradients do not leak into the object. Samples that disagree (an object
  * touching the border) are dropped and the plane refitted.
@@ -74,6 +133,7 @@ export function fitBackground(rgba, width, height) {
     }
   }
 
+  const everySample = () => samples.slice();
   const fit = (list) => {
     const m = [
       [0, 0, 0],
@@ -104,6 +164,7 @@ export function fitBackground(rgba, width, height) {
   // Start from the median border colour so an object touching the border cannot drag the fit away
   const median = (ch) =>
     samples.map((s) => s.c[ch]).sort((a, b) => a - b)[Math.floor(samples.length / 2)];
+  const allSamples = everySample();
   const base = [median(0), median(1), median(2)];
   let kept = samples.filter(
     (s) => Math.hypot(s.c[0] - base[0], s.c[1] - base[1], s.c[2] - base[2]) <= 45
@@ -127,7 +188,8 @@ export function fitBackground(rgba, width, height) {
   let sq = 0;
   for (const s of samples) sq += residual(coef, s) ** 2;
   const noise = Math.sqrt(sq / Math.max(1, samples.length));
-  return { at: (x, y) => predict(coef, x, y), noise };
+  const plane = { at: (x, y) => predict(coef, x, y), noise };
+  return noise > 7 ? quadraticBackground(allSamples, plane) : plane;
 }
 
 function boxFilter(mask, width, height, radius, mode) {

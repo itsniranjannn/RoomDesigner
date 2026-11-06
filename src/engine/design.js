@@ -10,6 +10,8 @@
  * { mask, rgb, size }, one per slot (front, back, left, right, top).
  */
 
+import { rankFront } from './frontModel.js';
+
 export const DESIGN_TYPES = [
   { id: 'bed', label: 'Bed' },
   { id: 'daybed', label: 'Daybed' },
@@ -180,6 +182,11 @@ export const PALETTE_SLOTS = {
   ],
 };
 
+/** How likely the trained ranking must find the rules' answer for the rules to stand (0-1). */
+export let RULE_TRUST = 0.3;
+export const setRuleTrust = (v) => {
+  RULE_TRUST = v;
+};
 const TYPE_IDS = new Set(DESIGN_TYPES.map((t) => t.id));
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const FALLBACK = {
@@ -1368,8 +1375,14 @@ function pickType(views, traits, dims, sizeKnown, hints) {
   const side = views.left || views.right;
   if (!traits.lShape && looksLikeBed(views, hints, dims)) return 'bed';
   const frontOnly = lone && !views.left && !views.right && !views.top;
-  if (frontOnly)
-    return classifyFromFront(lone, hints.widthPerHeight || dims.widthCm / dims.heightCm);
+  if (frontOnly) {
+    const wh = hints.widthPerHeight || dims.widthCm / dims.heightCm;
+    const rules = classifyFromFront(lone, wh);
+    const ranked = rankFront(lone, wh);
+    // The hand-written rules stay in charge unless the trained ranking finds their answer implausible
+    if (!ranked || (ranked.prob[rules] ?? 0) >= RULE_TRUST * ranked.p) return rules;
+    return ranked.top;
+  }
   if (!lone && !views.top && side) {
     // Only a side view: its width is unknown, so assume the usual for a piece that deep
     const dph = hints.depthPerHeight;
@@ -1431,6 +1444,12 @@ const NEIGHBORS = {
 export function typeCandidates(views, dims, sizeKnown = true, hints = {}, chosen = null) {
   const traits = measureTraits(views);
   const primary = TYPE_IDS.has(chosen) ? chosen : pickType(views, traits, dims, sizeKnown, hints);
+  // One photo and nothing else: the trained ranking of the silhouette adds its own list and certainty
+  const lone = views.front || views.back;
+  const ranking =
+    lone && !views.left && !views.right && !views.top
+      ? rankFront(lone, hints.widthPerHeight || dims.widthCm / dims.heightCm)
+      : null;
   const votes = new Map([[primary, 1]]);
   let total = 1;
   const tally = (type) => {
@@ -1469,7 +1488,16 @@ export function typeCandidates(views, dims, sizeKnown = true, hints = {}, chosen
   const ranked = [...votes.entries()].sort((a, b) => b[1] - a[1]).map(([t]) => t);
   const list = [primary, ...ranked.filter((t) => t !== primary)];
   for (const n of NEIGHBORS[primary] || []) if (!list.includes(n)) list.push(n);
-  return { list: list.slice(0, 3), agreement: (votes.get(primary) || 1) / total };
+  const agreement = (votes.get(primary) || 1) / total;
+  if (ranking) {
+    const byProb = Object.keys(ranking.prob).sort((x, y) => ranking.prob[y] - ranking.prob[x]);
+    const second = byProb.find((t) => t !== primary);
+    return {
+      list: [...new Set([primary, second, ...list])].slice(0, 3),
+      agreement: (agreement + (ranking.prob[primary] ?? 0.1)) / 2,
+    };
+  }
+  return { list: list.slice(0, 3), agreement };
 }
 
 /**
