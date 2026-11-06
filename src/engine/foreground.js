@@ -422,6 +422,64 @@ function minCut(n, source, sink, edges) {
   return Array.from(level, (l) => l >= 0);
 }
 
+/**
+ * Region growing from brush strokes: starting at the marked pixels, take neighbours whose colour is within reach of
+ * the colours under the strokes (a mixture fitted to them, widened a little), so one stroke across a sofa takes in
+ * the whole upholstered body up to its edges.
+ * @returns {Uint8Array} 1 for grown pixels (the marked ones included)
+ */
+function growFromStrokes(planes, w, h, marks, reach = 2.4) {
+  const n = w * h;
+  const samples = [];
+  const stride = Math.max(1, Math.floor(marks.reduce((a, v) => a + v, 0) / 600));
+  let seen = 0;
+  for (let p = 0; p < n; p++)
+    if (marks[p] && seen++ % stride === 0)
+      samples.push({ c: [planes.L[p], planes.A[p], planes.B[p]], w: 1 });
+  if (!samples.length) return new Uint8Array(n);
+  const mix = fitMixture(samples, 4);
+  const near = (p) => {
+    for (const g of mix) {
+      const d = Math.hypot(
+        planes.L[p] - g.mean[0],
+        planes.A[p] - g.mean[1],
+        planes.B[p] - g.mean[2]
+      );
+      if (d <= Math.max(9, Math.sqrt(g.v) * reach)) return true;
+    }
+    return false;
+  };
+  const out = new Uint8Array(n);
+  const stack = [];
+  for (let p = 0; p < n; p++)
+    if (marks[p]) {
+      out[p] = 1;
+      stack.push(p);
+    }
+  while (stack.length) {
+    const p = stack.pop();
+    const x = p % w;
+    for (const q of [
+      x > 0 ? p - 1 : -1,
+      x < w - 1 ? p + 1 : -1,
+      p >= w ? p - w : -1,
+      p < n - w ? p + w : -1,
+    ]) {
+      if (q < 0 || out[q]) continue;
+      // do not climb over a strong edge
+      const step = Math.hypot(
+        planes.L[p] - planes.L[q],
+        planes.A[p] - planes.A[q],
+        planes.B[p] - planes.B[q]
+      );
+      if (step > 14 || !near(q)) continue;
+      out[q] = 1;
+      stack.push(q);
+    }
+  }
+  return out;
+}
+
 // ---------- the scene cut ----------
 
 function otsu(values, weights) {
@@ -558,7 +616,7 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
   const bigOf = (i) => {
     if (!wallRule) return 0;
     const chroma = Math.hypot(col[i][1], col[i][2]);
-    const plain = Math.min(1, Math.max(0, (32 - chroma) / 12));
+    const plain = Math.min(1, Math.max(0, (20 - chroma) / 8));
     return Math.min(1, Math.max(0, (wideArea[i] - 0.12) / 0.07)) * plain;
   };
   const bgGeo = Array.from(bndCon, (b, i) => Math.max(1 - Math.exp(-(b * b) / 2), 0.95 * bigOf(i)));
@@ -581,7 +639,18 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
     const hf = y1 - y0;
     towers[i] = hf >= 0.4 && wf <= 0.32 && hf / wf >= 2.2 ? 1 : 0;
   }
+  const region = hints.region;
+  const inFrac = new Float64Array(count);
+  const coreFrac = new Float64Array(count);
+  if (region)
+    for (let p = 0; p < n; p++) {
+      const k = labels[p];
+      if (region.inside[p]) inFrac[k] += 1 / area[k];
+      if (region.core[p]) coreFrac[k] += 1 / area[k];
+    }
   const bgProb = Array.from(bndCon, (b, i) => {
+    // With a crop the prior comes from the box: outside it is surroundings, the middle of it is the piece
+    if (region) return Math.min(1, Math.max(0, 1 - 0.5 * inFrac[i] - 0.45 * coreFrac[i]));
     const big = bigOf(i);
     // the subject of a listing photo often runs off the border, but it is the thing in the middle
     const middle = Math.exp(-(((cx[i] - 0.5) / 0.3) ** 2 + ((cy[i] - 0.52) / 0.32) ** 2) / 2);
@@ -622,7 +691,9 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
   const values = Array.from(saliency, (s) => s / peak);
   const cutoff = Math.min(0.5, Math.max(0.12, otsu(values, area)));
   // seeds: clearly inside the picture and not wall or floor; the cut then spreads them by colour
-  let isFg = values.map((v, i) => v >= cutoff || (bgProb[i] < 0.3 && v >= cutoff * 0.35));
+  let isFg = region
+    ? Array.from({ length: count }, (_, i) => coreFrac[i] > 0.5)
+    : values.map((v, i) => v >= cutoff || (bgProb[i] < 0.3 && v >= cutoff * 0.35));
   for (let i = 0; i < count; i++) {
     if (hintFg[i] > 0.25 * area[i]) isFg[i] = true;
     if (hintBg[i] > 0.25 * area[i] && hintFg[i] < hintBg[i]) isFg[i] = false;
@@ -726,6 +797,15 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
         }
     }
   }
+  // Strokes decide: what grows from "keep" strokes is the piece, what grows from "remove" strokes is not
+  if (hints.fg) {
+    const grown = growFromStrokes(planes, w, h, hints.fg);
+    for (let p = 0; p < n; p++) if (grown[p]) mask[p] = 1;
+  }
+  if (hints.bg) {
+    const grown = growFromStrokes(planes, w, h, hints.bg, 1.8);
+    for (let p = 0; p < n; p++) if (grown[p] && !hints.fg?.[p]) mask[p] = 0;
+  }
   const sal = new Float32Array(n);
   const bgp = new Float32Array(n);
   for (let p = 0; p < n; p++) {
@@ -776,7 +856,7 @@ function distanceInside(mask, w, h) {
  * transform in which two basins merge when the pass between them is at least `ratio` of the smaller one's depth.
  * @returns {Int32Array} labels, 0 = not object, 1.. = pieces
  */
-export function splitPieces(mask, w, h, ratio = 0.62) {
+export function splitPieces(mask, w, h, ratio = 0.5) {
   const dist = distanceInside(mask, w, h);
   // smooth a little so one noisy ridge does not make two peaks
   const sm = new Float32Array(dist.length);
@@ -870,7 +950,7 @@ export function splitPieces(mask, w, h, ratio = 0.62) {
       const a = Math.floor(key / 4096);
       const b = key % 4096;
       const score = len / Math.sqrt(Math.min(area.get(a), area.get(b)));
-      if (score >= 0.55 && (!worst || score > worst.score)) worst = { a, b, score };
+      if (score >= 0.7 && (!worst || score > worst.score)) worst = { a, b, score };
     }
     if (!worst) break;
     for (let p = 0; p < out.length; p++) if (out[p] === worst.b) out[p] = worst.a;
@@ -1115,51 +1195,74 @@ export function extractForeground(rgba, width, height, options = {}) {
   }
   const fgHint = keep.length ? paintStrokes(keep, width, height) : null;
   const bgHint = remove.length ? paintStrokes(remove, width, height) : null;
-  const subHint = (hint) => {
-    if (!hint || !cropped) return hint;
-    const o = new Uint8Array(cw * ch);
-    for (let y = 0; y < ch; y++)
-      for (let x = 0; x < cw; x++) o[y * cw + x] = hint[(y + y0) * width + x + x0];
-    return o;
-  };
   const edited = Boolean(fgHint || bgHint);
   const plain = mode === 'plain' || (mode === 'auto' && backdropIsPlain(sub, cw, ch).plain);
   let used = plain ? 'plain' : 'scene';
   let mask;
   let smallSplit = null;
+  let sceneFull = false;
   if (plain && !edited) {
     mask = segmentObject(sub, cw, ch, tolerance);
   } else {
-    // the scene cut works on a small copy; the result is scaled back up
-    const small = shrinkRgba(sub, cw, ch, ANALYSIS_EDGE);
-    const shrinkHint = (hint) =>
-      hint ? resizeMask(subHint(hint) || hint, cw, ch, small.width, small.height) : undefined;
+    // the scene cut works on a small copy of the whole photo; the result is scaled back up. A crop is not cut
+    // off: it tells the cut where the piece is (everything outside it is surroundings, and teaches what they look like)
+    const small = shrinkRgba(rgba, width, height, ANALYSIS_EDGE);
+    const sw = small.width;
+    const sh = small.height;
+    const shrinkHint = (hint) => (hint ? resizeMask(hint, width, height, sw, sh) : undefined);
     const hints = { fg: shrinkHint(fgHint), bg: shrinkHint(bgHint) };
     // a stroke can vanish when scaled down: dilate it a pixel so it still counts
-    if (hints.fg) hints.fg = morph(hints.fg, small.width, small.height, 1, true);
-    if (hints.bg) hints.bg = morph(hints.bg, small.width, small.height, 1, true);
+    if (hints.fg) hints.fg = morph(hints.fg, sw, sh, 1, true);
+    if (hints.bg) hints.bg = morph(hints.bg, sw, sh, 1, true);
+    let inside = null;
+    if (crop && cropped) {
+      const rect = (grow) => {
+        const out = new Uint8Array(sw * sh);
+        const mx = grow * (crop.x1 - crop.x0);
+        const my = grow * (crop.y1 - crop.y0);
+        for (let y = 0; y < sh; y++)
+          for (let x = 0; x < sw; x++) {
+            const fx = (x + 0.5) / sw;
+            const fy = (y + 0.5) / sh;
+            if (
+              fx >= crop.x0 + mx &&
+              fx <= crop.x1 - mx &&
+              fy >= crop.y0 + my &&
+              fy <= crop.y1 - my
+            )
+              out[y * sw + x] = 1;
+          }
+        return out;
+      };
+      inside = rect(0);
+      hints.region = { inside, core: rect(0.22) };
+    }
     // Two readings of the room: with and without "a big evenly coloured region is wall". The one whose outline
     // follows more of the picture's own edges and looks more like a piece of furniture wins.
     let best = null;
-    for (const wallRule of [true, false]) {
+    for (const wallRule of inside ? [false] : [true, false]) {
       const cutA = sceneCut(small, hints, { wallRule });
-      const tidyA = tidy(cutA.mask, small.width, small.height, hints);
-      const score = candidateScore(small.rgba, tidyA.mask, small.width, small.height);
+      if (inside) for (let p = 0; p < cutA.mask.length; p++) if (!inside[p]) cutA.mask[p] = 0;
+      const tidyA = tidy(cutA.mask, sw, sh, hints);
+      const score = candidateScore(small.rgba, tidyA.mask, sw, sh);
       if (!best || score > best.score) best = { cut: cutA, tidy: tidyA, score };
     }
     const tidy1 = best.tidy;
-    mask = resizeMask(tidy1.mask, small.width, small.height, cw, ch);
+    mask = resizeMask(tidy1.mask, sw, sh, width, height);
     smallSplit = {
-      labels: splitPieces(tidy1.mask, small.width, small.height),
-      w: small.width,
-      h: small.height,
-      cw,
-      ch,
+      labels: splitPieces(tidy1.mask, sw, sh),
+      w: sw,
+      h: sh,
+      cw: width,
+      ch: height,
+      ox: 0,
+      oy: 0,
     };
+    sceneFull = true;
     used = 'scene';
   }
   let full = mask;
-  if (cropped) {
+  if (cropped && !sceneFull) {
     full = new Uint8Array(width * height);
     for (let y = 0; y < ch; y++)
       for (let x = 0; x < cw; x++) full[(y + y0) * width + x + x0] = mask[y * cw + x];
@@ -1174,11 +1277,11 @@ export function extractForeground(rgba, width, height, options = {}) {
     // pieces were separated at analysis size; carry the labels to the photo (nearest), inside the final mask
     const sp = smallSplit;
     labels = new Int32Array(width * height);
-    for (let y = 0; y < ch; y++)
-      for (let x = 0; x < cw; x++) {
-        if (!mask[y * cw + x]) continue;
-        const sx = Math.min(sp.w - 1, Math.floor(((x + 0.5) * sp.w) / cw));
-        const sy = Math.min(sp.h - 1, Math.floor(((y + 0.5) * sp.h) / ch));
+    for (let y = 0; y < sp.ch; y++)
+      for (let x = 0; x < sp.cw; x++) {
+        if (!mask[y * sp.cw + x]) continue;
+        const sx = Math.min(sp.w - 1, Math.floor(((x + 0.5) * sp.w) / sp.cw));
+        const sy = Math.min(sp.h - 1, Math.floor(((y + 0.5) * sp.h) / sp.ch));
         let id = sp.labels[sy * sp.w + sx];
         if (!id) {
           // an edge pixel just outside the small mask: take the nearest label around
@@ -1190,7 +1293,7 @@ export function extractForeground(rgba, width, height, options = {}) {
                 if (xx >= 0 && yy >= 0 && xx < sp.w && yy < sp.h) id = sp.labels[yy * sp.w + xx];
               }
         }
-        labels[(y + y0) * width + x + x0] = id;
+        labels[(y + sp.oy) * width + x + sp.ox] = id;
       }
     list = [];
     const stats = new Map();

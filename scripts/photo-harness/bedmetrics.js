@@ -15,3 +15,4 @@ const s = v.size; const rows = [];
 for (let y = 0; y < s; y += 6) { let n = 0; for (let x = 0; x < s; x++) n += v.mask[y * s + x]; rows.push(n); }
 console.log(rows.join(' '));
 console.log(d.looksLikeBed({ front: v }, { widthPerHeight: cut.pieces[0].box.width / cut.pieces[0].box.height }));
+console.log('crest', JSON.stringify(d.crestOf(v)), 'head', JSON.stringify(d.bedHead(v)));

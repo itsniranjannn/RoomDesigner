@@ -986,11 +986,16 @@ function bedOutline(view, aspect, kind) {
   if (measureTraits({ front: view }).gapFrac > 0.3) return false; // clear space under it: a chair or table
   const rows = rowWidthFractions(view);
   const mean = (part) => part.reduce((a, b) => a + b, 0) / Math.max(1, part.length);
-  // An arched or scrolled crest is narrow at the very top: read the headboard where its body is
-  const headW = Math.max(
-    mean(rows.slice(0, Math.max(2, Math.round(view.size * 0.12)))),
-    mean(rows.slice(Math.round(view.size * 0.2), Math.round(view.size * 0.34)))
-  );
+  // An arched or scrolled crest is narrow at the very top: read the headboard where its body is. A very wide
+  // outline (a sofa with a carved crest) is not read that way: beds seen from the front are not that wide
+  const topMean = mean(rows.slice(0, Math.max(2, Math.round(view.size * 0.12))));
+  const headW =
+    aspect != null && aspect > 2.05
+      ? topMean
+      : Math.max(
+          topMean,
+          mean(rows.slice(Math.round(view.size * 0.2), Math.round(view.size * 0.34)))
+        );
   if (kind === 'front') return headW >= 0.4 && (aspect == null || aspect >= 0.85);
   return aspect == null || aspect >= 1.45;
 }
@@ -1026,6 +1031,12 @@ export function looksLikeBed(views, hints = {}, dims = null) {
   const wph = hints.widthPerHeight ?? (dims ? dims.widthCm / dims.heightCm : null);
   const dph = hints.depthPerHeight ?? (dims ? dims.depthCm / dims.heightCm : null);
   if (front && bedOutline(front, wph, 'front')) return true;
+  // A carved, buttoned headboard rising in the middle of a piece that is not wider than a bed is one: a lifestyle
+  // photo shows side tables and a rug that blur the outline, but not this
+  if (front && (wph == null || wph <= 1.9)) {
+    const head = bedHead(front);
+    if (head && head.crest && head.buttoned && head.framed) return true;
+  }
   if (side && bedOutline(side, dph, 'side')) return true;
   // A plan view alone: a bed is the one big piece that is longer than it is wide, solid corner to corner
   if (views.top && !front && !side) {
@@ -1543,13 +1554,13 @@ function smoothProfile(prof) {
  * has none), and whether the rise is one smooth arch or has scrolls (several bumps).
  * @returns {{ crest: 0|1|2, span: [number, number], peak: number, shoulder: number } | null}
  */
-function crestOf(view) {
+export function crestOf(view) {
   const s = view.size;
   const prof = smoothProfile(topProfile(view));
   const max = Math.max(...prof);
   if (max < 0.3) return null;
   const c = Math.round(s / 2);
-  const thr = max * 0.55;
+  const thr = max * 0.7;
   let a = c;
   let b = c;
   while (a > 0 && prof[a - 1] >= thr) a--;
@@ -1576,7 +1587,7 @@ function crestOf(view) {
  * A carved or framed headboard: its crest, the wood of the frame and the panel set in it (leather, cloth), and
  * whether the panel is buttoned. Null when the view shows no such headboard.
  */
-function bedHead(F) {
+export function bedHead(F) {
   if (!F) return null;
   const info = crestOf(F);
   if (!info) return null;
@@ -1601,8 +1612,7 @@ function bedHead(F) {
     panel &&
     wood &&
     woodLike(hexRgbSafe(wood)) &&
-    colourGap(panel, wood) > 14 &&
-    (buttoned || info.crest)
+    ((colourGap(panel, wood) > 14 && (buttoned || info.crest)) || (buttoned && info.crest > 0))
   );
   return {
     crest: info.crest,
