@@ -1673,7 +1673,7 @@ export function bedHead(F) {
  * Exposed wood on an upholstered sofa or armchair, and what goes with it: the frame colour, carved crest, gold
  * trim, cane side panels, scatter cushions and patterned cloth. Null for plain upholstery on feet.
  */
-function seatClassic(F, body) {
+function seatClassic(F, body, type) {
   if (!F || !body) return null;
   const bodyRgb = hexRgbSafe(body);
   const band = regionPixels(F, 0.12, 0.66, 0.88, 0.9, true);
@@ -1711,9 +1711,12 @@ function seatClassic(F, body) {
     out.cane = share >= 0.3 && colourGap(toHex(mean(caney)), body) > 30;
     if (out.cane) out.caneColor = toHex(mean(caney));
   }
+  // A cane-sided chair has a plain wood frame: its cushions rise above the rail but nothing is carved
+  if (out.cane) out.frame = 1;
   // Scatter cushions: seams across the upper back show one cushion per seat plus the loose ones in front
   const seams = findLines(F, 'x', [0.15, 0.3, 0.85, 0.52], 3).length;
-  out.scat = Math.max(0, Math.min(4, seams + 1));
+  // (Only a carved set is dressed with several; a plain framed sofa shows just its own back cushions.)
+  out.scat = out.frame === 2 ? Math.max(2, Math.min(4, seams + 1)) : type === 'armchair' ? 1 : 0;
   // Printed cloth varies a lot within a small region
   const cloth = regionPixels(F, 0.25, 0.3, 0.75, 0.6, true).map(luma);
   if (cloth.length > 40) {
@@ -1748,7 +1751,7 @@ function classicExtras(type, views, palette, traits = {}) {
       if (measureTraits({ front: F }).gapFrac > 0.05) out.traits.legs = 2;
     }
   } else if (type === 'sofa' || type === 'armchair') {
-    const seat = seatClassic(F, palette.body);
+    const seat = seatClassic(F, palette.body, type);
     if (seat) {
       out.traits.frame = seat.frame;
       if (seat.trim) out.traits.trim = 1;
@@ -1763,6 +1766,25 @@ function classicExtras(type, views, palette, traits = {}) {
       if (seat.trim) out.palette.trim = seat.trim;
       for (const key of ['body', 'cushion', 'arm'])
         if (palette[key]) out.palette[key] = liftTone(palette[key]);
+      if (seat.cane) {
+        // The cloth of a cane chair is its cushions: read it from what is neither wood nor cane
+        const cloth = regionPixels(F, 0.05, 0.05, 0.95, 0.7, true).filter((c) => {
+          const [h, sat, v] = hsv(c);
+          const caney = h >= 26 && h <= 54 && sat >= 0.2 && sat <= 0.62 && v >= 0.55;
+          return !woodLike(c) && !caney;
+        });
+        if (cloth.length > 15) {
+          // the cushion colour is the richer part of what is left; deep shadow between the rails is not
+          const chroma = (c) => Math.max(...c) - Math.min(...c);
+          const rich = [...cloth]
+            .sort((a, b) => chroma(b) - chroma(a))
+            .slice(0, Math.ceil(cloth.length * 0.4));
+          const tone = liftTone(toHex(mean(rich)));
+          out.palette.body = tone;
+          out.palette.cushion = tone;
+          out.palette.arm = tone;
+        }
+      }
     }
   } else if (type === 'coffee-table') {
     const gold = goldTrim(F);
