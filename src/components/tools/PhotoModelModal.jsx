@@ -942,6 +942,7 @@ export function PhotoModelModal({ onClose }) {
   const [cutMode, setCutMode] = useState('auto'); // 'auto' | 'plain' | 'scene'
   const [edits, setEdits] = useState({}); // slot -> { crop, keep, remove } from the cut-out fixer
   const [fixSlot, setFixSlot] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [activePiece, setActivePiece] = useState({}); // slot -> index of the piece being built
   const [picked, setPicked] = useState({}); // slot -> piece indexes ticked to save together
   const [splitInfo, setSplitInfo] = useState(null); // { slot, original, parts } after a stacked picture was split
@@ -1193,6 +1194,13 @@ export function PhotoModelModal({ onClose }) {
       photoAspect: targetAspect,
     };
   }, [probe, activeView, allPhotos, segmented]);
+  // When the cut-out is rough or the photo fits several kinds of furniture about equally, say so plainly instead of
+  // presenting a guess as a finding
+  const roughCut = Boolean(design && segmented[activeView] && segmented[activeView].quality < 0.5);
+  const unsure = Boolean(design && candidates && (candidates.agreement < 0.45 || roughCut));
+  useEffect(() => {
+    if (unsure) setDetailsOpen(true);
+  }, [unsure]);
   const weakSlots = Object.entries(segmented).filter(
     ([slot, s]) => photos[slot] && (s.coverage < 0.03 || s.coverage > 0.92)
   );
@@ -2063,8 +2071,37 @@ export function PhotoModelModal({ onClose }) {
                     </>
                   )}
                 </p>
+                {unsure && (
+                  <div className={local.unsure} role="status">
+                    <p className={local.unsureText}>
+                      <strong>Not sure about this one.</strong>{' '}
+                      {roughCut
+                        ? 'The cut-out looks rough, so the shape may be read wrongly. '
+                        : 'The photo fits more than one kind of furniture. '}
+                      Pick the closest type below, fix the cut-out, or change the details until the
+                      model matches.
+                    </p>
+                    <div className={local.unsureActions}>
+                      <button
+                        type="button"
+                        className={local.linkBtn}
+                        onClick={() => setFixSlot(activeView)}
+                      >
+                        Crop or paint the cut-out
+                      </button>
+                      <button
+                        type="button"
+                        className={local.linkBtn}
+                        onClick={() => setDetailsOpen(true)}
+                      >
+                        Show the detail controls
+                      </button>
+                    </div>
+                  </div>
+                )}
                 {candidates &&
-                  (detectionConfidence(Object.keys(photos)) !== 'good' ||
+                  (unsure ||
+                    detectionConfidence(Object.keys(photos)) !== 'good' ||
                     candidates.agreement < 0.75) && (
                     <div className={local.chips} role="group" aria-label="Looks like">
                       <span>Looks like:</span>
@@ -2111,7 +2148,11 @@ export function PhotoModelModal({ onClose }) {
                     ' The size is the usual one for this type: enter the real width above.'}
                 </p>
               </div>
-              <details className={local.details}>
+              <details
+                className={local.details}
+                open={detailsOpen}
+                onToggle={(e) => setDetailsOpen(e.currentTarget.open)}
+              >
                 <summary>Adjust details</summary>
                 <div className={local.detailsBody}>
                   <p className={local.note}>

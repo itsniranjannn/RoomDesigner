@@ -43,7 +43,97 @@ export const FEATURE_NAMES = [
   'seamH',
   'see',
   'topNarrow',
+  'sym',
+  'layers',
+  'light',
+  'lightY',
+  'wood',
+  'darkLow',
+  'topBump',
 ];
+
+const lumaOf = (r, g, b) => 0.299 * r + 0.587 * g + 0.114 * b;
+
+/** Colour cues: layers down the middle, very light cloth, wood tones, dark feet. */
+function colourCues(view) {
+  const s = view.size;
+  let n = 0;
+  let light = 0;
+  let lightY = 0;
+  let wood = 0;
+  let darkLow = 0;
+  let lowN = 0;
+  const rows = [];
+  for (let y = 0; y < s; y++) {
+    let sr = 0;
+    let sg = 0;
+    let sb = 0;
+    let k = 0;
+    for (let x = 0; x < s; x++) {
+      const p = y * s + x;
+      if (!view.mask[p]) continue;
+      const r = view.rgb[p * 3];
+      const g = view.rgb[p * 3 + 1];
+      const b = view.rgb[p * 3 + 2];
+      n++;
+      const mx = Math.max(r, g, b);
+      const mn = Math.min(r, g, b);
+      const luma = lumaOf(r, g, b);
+      if (luma > 200 && (mx - mn) / Math.max(1, mx) < 0.14) {
+        light++;
+        lightY += y / s;
+      }
+      // brown, orange and tan: stained wood (hue about 8-48 degrees, moderately saturated)
+      if (mx > 40 && mx - mn > 0.3 * mx) {
+        const d = mx - mn;
+        let h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        h = (h * 60 + 360) % 360;
+        if (h >= 8 && h <= 48 && (mx - mn) / mx <= 0.9) wood++;
+      }
+      if (y > s * 0.7) {
+        lowN++;
+        if (luma < 55) darkLow++;
+      }
+      if (x > s * 0.3 && x < s * 0.7) {
+        sr += r;
+        sg += g;
+        sb += b;
+        k++;
+      }
+    }
+    rows.push(k > 3 ? [sr / k, sg / k, sb / k] : null);
+  }
+  // distinct colour layers down the centre: headboard, pillows, duvet, sheet, base
+  let layers = 0;
+  let ref = null;
+  let run = 0;
+  for (const c of rows) {
+    if (!c) continue;
+    if (!ref) {
+      ref = c;
+      continue;
+    }
+    const d = Math.hypot(c[0] - ref[0], c[1] - ref[1], c[2] - ref[2]);
+    if (d > 38) {
+      run++;
+      if (run >= 3) {
+        layers++;
+        ref = c;
+        run = 0;
+      }
+    } else {
+      run = 0;
+      ref = ref.map((v, i) => v * 0.8 + c[i] * 0.2);
+    }
+  }
+  return {
+    layers: Math.min(8, layers),
+    light: n ? light / n : 0,
+    lightY: light ? lightY / light : 0.5,
+    wood: n ? wood / n : 0,
+    darkLow: lowN ? darkLow / lowN : 0,
+  };
+}
 
 /**
  * Cue values for a front-ish view.
@@ -93,6 +183,28 @@ export function frontFeatures(view, wh) {
   const seamsH = findLines(view, 'y', [0.12, 0.1, 0.88, 0.9], 5).length;
   const see = view.open ? region(0.1, 0.1, 0.9, 0.9, view.open) : region(0.1, 0.1, 0.9, 0.9);
   const w = BANDS.map((b) => band(count, b));
+  const colour = colourCues(view);
+  // left-right symmetry of the outline: a straight-on picture mirrors onto itself, a three-quarter one does not
+  let both = 0;
+  let either = 0;
+  for (let y = 0; y < s; y++)
+    for (let x = 0; x < s; x++) {
+      const a = view.mask[y * s + x];
+      const b = view.mask[y * s + (s - 1 - x)];
+      both += a & b;
+      either += a | b;
+    }
+  // how much the middle of the top edge stands above its shoulders (a crest, a headboard, a back)
+  const topAt = (x) => {
+    for (let y = 0; y < s; y++) if (view.mask[y * s + x]) return y / s;
+    return 1;
+  };
+  const mid = Math.min(
+    topAt(Math.floor(s * 0.45)),
+    topAt(Math.floor(s * 0.5)),
+    topAt(Math.floor(s * 0.55))
+  );
+  const shoulder = (topAt(Math.floor(s * 0.12)) + topAt(Math.floor(s * 0.88))) / 2;
   return [
     Math.log(Math.min(6, Math.max(0.15, wh))),
     Math.min(0.9, traits.gapFrac),
@@ -109,6 +221,13 @@ export function frontFeatures(view, wh) {
     Math.min(6, seamsH),
     see,
     Math.max(0, w[3] - w[0]),
+    either ? both / either : 0,
+    colour.layers,
+    colour.light,
+    colour.lightY,
+    colour.wood,
+    colour.darkLow,
+    Math.max(0, shoulder - mid),
   ];
 }
 
@@ -120,6 +239,8 @@ export function frontFeatures(view, wh) {
 export function scoreFront(features, model = FRONT_MODEL) {
   const types = Object.keys(model.types || {}).filter((t) => model.types[t].clusters);
   if (!types.length) return null;
+  // a model trained on other cues (an old data file) cannot score these
+  if ((model.features?.length ?? features.length) !== features.length) return null;
   const scale = model.scale || features.map(() => 1);
   const logs = {};
   for (const t of types) {
@@ -128,6 +249,7 @@ export function scoreFront(features, model = FRONT_MODEL) {
     for (const c of model.types[t].clusters) {
       let ll = Math.log(c.w);
       for (let i = 0; i < features.length; i++) {
+        if (!Number.isFinite(features[i])) continue; // a cue this photo set cannot show
         const sd = Math.max(0.14 * scale[i], c.s[i]) * (model.widen ?? 1.3);
         const z = (features[i] - c.m[i]) / sd;
         // a heavy-tailed penalty, so one odd cue cannot rule a type out
@@ -149,6 +271,59 @@ export function scoreFront(features, model = FRONT_MODEL) {
   for (const t of types) prob[t] /= sum;
   const ranked = types.sort((x, y) => logs[y] - logs[x]);
   return { ranked, prob };
+}
+
+export const MULTI_NAMES = [...FEATURE_NAMES, 'logDph', 'logRise', 'bodyFrac', 'round', 'lShape'];
+
+/**
+ * Cues for a front view together with what other photos add: how deep the piece is (from a side or plan view),
+ * how much a back or headboard rises (side view) and whether the plan is round or L-shaped. A cue the photos
+ * cannot show is NaN and is left out of the scoring.
+ */
+export function multiFeatures(views, hints, traits) {
+  const front = views.front || views.back;
+  if (!front) return null;
+  const wph = hints.widthPerHeight || 1;
+  const base = frontFeatures(front, wph);
+  const side = views.left || views.right;
+  let dph = hints.depthPerHeight;
+  if (!dph && hints.widthPerDepth && hints.widthPerHeight)
+    dph = hints.widthPerHeight / hints.widthPerDepth;
+  return [
+    ...base,
+    dph ? Math.log(Math.min(6, Math.max(0.15, dph))) : NaN,
+    side ? Math.log(Math.min(4, Math.max(0.6, traits.rise))) : NaN,
+    side ? traits.bodyFrac : NaN,
+    views.top ? (traits.round ? 1 : 0) : NaN,
+    views.top ? (traits.lShape ? 1 : 0) : NaN,
+  ];
+}
+
+/** The proportions the photos fix: from their own cut-outs when known, else from the size in hand. */
+export function knownProportions(views, hints, dims) {
+  const side = views.left || views.right;
+  return {
+    widthPerHeight: hints.widthPerHeight ?? dims.widthCm / dims.heightCm,
+    depthPerHeight: hints.depthPerHeight ?? (side ? dims.depthCm / dims.heightCm : null),
+    widthPerDepth: hints.widthPerDepth ?? (views.top ? dims.widthCm / dims.depthCm : null),
+  };
+}
+
+/** Types ranked when more than the front photo is known. */
+export function rankMulti(views, hints, traits) {
+  const model = FRONT_MODEL.multi;
+  if (!model) return null;
+  const f = multiFeatures(views, hints, traits);
+  if (!f) return null;
+  const scored = scoreFront(f, model);
+  return scored
+    ? {
+        list: scored.ranked.slice(0, 3),
+        top: scored.ranked[0],
+        p: scored.prob[scored.ranked[0]],
+        prob: scored.prob,
+      }
+    : null;
 }
 
 /** Types ranked for a front view: best first, with the probability of the first. */

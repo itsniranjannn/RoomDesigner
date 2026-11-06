@@ -1168,6 +1168,83 @@ export function paintStrokes(strokes, width, height) {
 }
 
 /**
+ * Takes a rug off the foot of a piece. A rug under furniture is wider than the piece, so the bottom rows of its
+ * cut-out are wider than the body: pixels there that have the colour of the extra width (the rug) are removed,
+ * while darker legs and feet stay.
+ */
+export function trimRug(mask, rgba, w, h) {
+  const { labels, list } = components(mask, w, h);
+  const out = Uint8Array.from(mask);
+  let changed = false;
+  for (const c of list) {
+    const { box } = c;
+    if (box.height < h * 0.12 || c.area < w * h * 0.02) continue;
+    const span = new Int32Array(box.height);
+    const lo = new Int32Array(box.height);
+    const hi = new Int32Array(box.height);
+    for (let y = 0; y < box.height; y++) {
+      let a = -1;
+      let b = -1;
+      for (let x = box.minX; x <= box.maxX; x++)
+        if (labels[(box.minY + y) * w + x] === c.id) {
+          if (a < 0) a = x;
+          b = x;
+        }
+      lo[y] = a;
+      hi[y] = b;
+      span[y] = a < 0 ? 0 : b - a + 1;
+    }
+    const mid = Array.from(
+      span.slice(Math.floor(box.height * 0.3), Math.ceil(box.height * 0.65))
+    ).sort((p, q) => p - q);
+    const core = mid[Math.floor(mid.length / 2)];
+    if (!core) continue;
+    // the rug: bottom rows wider than the body
+    const rows = [];
+    for (let y = Math.floor(box.height * 0.55); y < box.height; y++)
+      if (span[y] > core * 1.12) rows.push(y);
+    if (rows.length < 3 || rows.length > box.height * 0.45) continue;
+    const coreLo = lo[Math.floor(box.height * 0.5)];
+    const coreHi = hi[Math.floor(box.height * 0.5)];
+    const sum = [0, 0, 0];
+    let n = 0;
+    for (const y of rows)
+      for (let x = lo[y]; x <= hi[y]; x++) {
+        if (x >= coreLo - 1 && x <= coreHi + 1) continue;
+        const p = (box.minY + y) * w + x;
+        if (labels[p] !== c.id) continue;
+        for (let k = 0; k < 3; k++) sum[k] += rgba[p * 4 + k];
+        n++;
+      }
+    if (n < 12) continue;
+    const rug = sum.map((v) => v / n);
+    const first = Math.min(...rows);
+    for (let y = first; y < box.height; y++)
+      for (let x = lo[y]; x <= hi[y]; x++) {
+        const p = (box.minY + y) * w + x;
+        if (labels[p] !== c.id) continue;
+        const d = Math.hypot(
+          rgba[p * 4] - rug[0],
+          rgba[p * 4 + 1] - rug[1],
+          rgba[p * 4 + 2] - rug[2]
+        );
+        if (d < 30) {
+          out[p] = 0;
+          changed = true;
+        }
+      }
+  }
+  if (!changed) return mask;
+  // a sliver of rug left on its own is not a piece: keep what is joined to something big
+  const re = components(out, w, h);
+  const final = new Uint8Array(w * h);
+  for (const c of re.list)
+    if (c.area >= w * h * 0.004)
+      for (let p = 0; p < final.length; p++) if (re.labels[p] === c.id) final[p] = 1;
+  return final;
+}
+
+/**
  * Drops a contact shadow from a colour-keyed cut: a wide, low band at the foot of the piece whose pixels are
  * the backdrop's own colour only darker (same chromaticity, 40-93% as bright). A pale or grey piece has the
  * same hue as a white backdrop but is tall and has edges, so only a thin band along the bottom is removed.
@@ -1302,7 +1379,10 @@ export function extractForeground(rgba, width, height, options = {}) {
       const score = candidateScore(small.rgba, tidyA.mask, sw, sh);
       if (!best || score > best.score) best = { cut: cutA, tidy: tidyA, score };
     }
-    const tidy1 = best.tidy;
+    const tidy1 = {
+      ...best.tidy,
+      mask: edited ? best.tidy.mask : trimRug(best.tidy.mask, small.rgba, sw, sh),
+    };
     mask = resizeMask(tidy1.mask, sw, sh, width, height);
     smallSplit = {
       labels: splitPieces(tidy1.mask, sw, sh),

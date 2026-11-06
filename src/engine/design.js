@@ -10,7 +10,7 @@
  * { mask, rgb, size }, one per slot (front, back, left, right, top).
  */
 
-import { rankFront } from './frontModel.js';
+import { rankFront, rankMulti, knownProportions } from './frontModel.js';
 
 export const DESIGN_TYPES = [
   { id: 'bed', label: 'Bed' },
@@ -183,9 +183,16 @@ export const PALETTE_SLOTS = {
 };
 
 /** How likely the trained ranking must find the rules' answer for the rules to stand (0-1). */
-export let RULE_TRUST = 0.3;
+export let RULE_TRUST = 0.15;
+/** The same for several photos, where the rules have more to go on (side depth, plan shape). */
+/** The ranking only overrules the rules when it is at least this sure of its own first choice. */
+export const MIN_SURE = 0.3;
+export const BED_VETO = 0.03;
+export const MIN_SURE_MULTI = 0.55;
+export let MULTI_TRUST = 0.1;
 export const setRuleTrust = (v) => {
   RULE_TRUST = v;
+  MULTI_TRUST = v / 5;
 };
 const TYPE_IDS = new Set(DESIGN_TYPES.map((t) => t.id));
 const HEX = /^#[0-9a-fA-F]{6}$/;
@@ -1373,8 +1380,14 @@ function paletteFor(type, views) {
 function pickType(views, traits, dims, sizeKnown, hints) {
   const lone = views.front || views.back;
   const side = views.left || views.right;
-  if (!traits.lShape && looksLikeBed(views, hints, dims)) return 'bed';
   const frontOnly = lone && !views.left && !views.right && !views.top;
+  if (!traits.lShape && looksLikeBed(views, hints, dims)) {
+    // One photo: a bed outline the trained ranking finds very unlikely (a sideboard with a rug, say) is not taken
+    const check = frontOnly
+      ? rankFront(lone, hints.widthPerHeight || dims.widthCm / dims.heightCm)
+      : null;
+    if (!check || check.p < MIN_SURE || (check.prob.bed ?? 0) >= BED_VETO * check.p) return 'bed';
+  }
   if (frontOnly) {
     const wh = hints.widthPerHeight || dims.widthCm / dims.heightCm;
     const rules = classifyFromFront(lone, wh);
@@ -1390,7 +1403,15 @@ function pickType(views, traits, dims, sizeKnown, hints) {
     return classifyType(traits, { ...known, widthCm: known.depthCm * 1.25 }, false);
   }
   if (!lone && !side && views.top) return classifyFromTop(views.top, hints.widthPerDepth, traits);
-  return classifyType(traits, dims, sizeKnown);
+  const rules = classifyType(traits, dims, sizeKnown);
+  // Several photos: the trained ranking checks the rules' answer against all that the photos show
+  // (a plan view that is round or L-shaped is direct evidence the ranking cannot overrule)
+  if (lone && !traits.round && !traits.lShape) {
+    const ranked = rankMulti(views, knownProportions(views, hints, dims), traits);
+    if (ranked && ranked.p >= MIN_SURE_MULTI && (ranked.prob[rules] ?? 0) < MULTI_TRUST * ranked.p)
+      return ranked.top;
+  }
+  return rules;
 }
 
 /**
