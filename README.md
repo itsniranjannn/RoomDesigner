@@ -158,6 +158,10 @@ Locally the installed Chrome is used (`channel: 'chrome'`), so nothing is downlo
 
 The first-run tour is switched off in the tests. To switch it off by hand, open the app with `?tour=0` or set `localStorage['rd.tour.disabled'] = '1'`.
 
+### Photo fidelity guard
+
+`src/engine/photoGuard.test.js` runs synthetic bed, sofa, armchair and table pictures (drawn in code by `src/engine/testPhotos.js`, no real photos) through the same pipeline the Create from photos dialog uses (`src/engine/photoPipeline.js`) and fails when a bed from any single view, or from a product sheet, stops being detected as a bed, or loses its headboard, pillow or color details. To compare real pictures between two commits, use `scripts/photo-harness/`: `run.js` prints the detected design for a picture in node (point it at a checkout or a `git worktree` of an older commit), and `shoot.js` drives the dialog in Chrome against a `vite preview` and saves screenshots of the 3D preview.
+
 ### Error reporting and the tour
 
 - **Local error log.** Uncaught errors, unhandled promise rejections and error-screen catches are kept in a rolling log of the last 50 (`src/utils/errorLog.js`, `localStorage` key `rd.errorLog`) with the app version, route (never the share data) and browser. Room contents are never recorded and nothing is sent anywhere. The error screen has **Copy error details**; **Keyboard shortcuts** has a **Diagnostics** section with **Copy** and **Clear**. To forward errors to a real service later, set `window.__ROOM_STUDIO_ERROR_HOOK__ = (entry) => ...`.
