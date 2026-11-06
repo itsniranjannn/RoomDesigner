@@ -1,5 +1,14 @@
 import React, { useMemo } from 'react';
-import { AlertCircle, AlertTriangle, CheckCircle2, Info, RotateCw, Trash2, X } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeftRight,
+  CheckCircle2,
+  Info,
+  RotateCw,
+  Trash2,
+  X,
+} from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { usePlanningStore } from '../../store/planningStore.js';
 import {
@@ -19,18 +28,38 @@ import styles from './PlanningPanels.module.css';
 const stop = { onClick: (e) => e.stopPropagation(), onPointerDown: (e) => e.stopPropagation() };
 
 function PanelShell({ title, label, onClose, children }) {
+  const side = usePlanningStore((s) => s.panelSide);
+  const setPanelSide = usePlanningStore((s) => s.setPanelSide);
+  const other = side === 'left' ? 'right' : 'left';
   return (
-    <section className={styles.panel} role="dialog" aria-label={label || title} {...stop}>
+    <section
+      className={`${styles.panel} ${side === 'left' ? styles.panelLeft : ''}`}
+      role="dialog"
+      aria-label={label || title}
+      {...stop}
+    >
       <header className={styles.header}>
         <h2 className={styles.title}>{title}</h2>
-        <button
-          type="button"
-          className={styles.close}
-          onClick={onClose}
-          aria-label={`Close ${title}`}
-        >
-          <X size={16} aria-hidden="true" />
-        </button>
+        <div className={styles.headerActions}>
+          {/* The panel can cover the wall you want to work on, so it can sit on either side */}
+          <button
+            type="button"
+            className={styles.side}
+            onClick={() => setPanelSide(other)}
+            aria-label={`Move panel to the ${other}`}
+            title={`Move panel to the ${other}`}
+          >
+            <ArrowLeftRight size={16} aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className={styles.close}
+            onClick={onClose}
+            aria-label={`Close ${title}`}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        </div>
       </header>
       <div className={styles.body}>{children}</div>
     </section>

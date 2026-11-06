@@ -10,6 +10,8 @@ import { create } from 'zustand';
 export const usePlanningStore = create((set, get) => ({
   // 'services' | 'checks' | null: one floating panel at a time
   panel: null,
+  // Which side of the plan the floating panel sits on ('right' | 'left')
+  panelSide: 'right',
   // Kind of service point the next click on the plan places (null: just selecting)
   placeKind: null,
   selectedServiceId: null,
@@ -45,6 +47,7 @@ export const usePlanningStore = create((set, get) => ({
   setAccessible: (accessible) => set({ accessible: !!accessible }),
   setShowTurning: (showTurning) => set({ showTurning: !!showTurning }),
   setShowServices: (showServices) => set({ showServices: !!showServices }),
+  setPanelSide: (panelSide) => set({ panelSide: panelSide === 'left' ? 'left' : 'right' }),
   setShowLinks: (showLinks) => set({ showLinks: !!showLinks }),
 
   // Escape: step back one level (stop placing, then deselect). True when something changed.

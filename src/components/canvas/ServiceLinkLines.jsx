@@ -17,8 +17,8 @@ function LinkTag({ link, row, k, emphasized, dim, fontFamily }) {
   const font = 8.5 * k;
   const w = link.tag.length * font * 0.54 + font * 1.2;
   const h = font * 1.55;
-  const x = link.center.x;
-  const y = link.center.y - h * 0.5 + (row - 0.5) * (h + k * 1.5);
+  const x = link.tagAt.x;
+  const y = link.tagAt.y + row * (h + k * 1.5);
   return (
     <g opacity={emphasized ? 1 : dim} data-link-tag={link.need}>
       <rect
