@@ -249,6 +249,27 @@ test.describe('create furniture from photos', () => {
     await expect(catalog.getByRole('button', { name: 'My furniture', exact: true })).toBeVisible();
   });
 
+  test('says plainly when it is not sure, and offers the choices, the cut-out and the details', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await createRoomFromPreset(page);
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await catalog.getByRole('button', { name: /Create from photos/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
+    const png = await makeArmchairPng(page);
+    await dialog
+      .getByLabel('Front photo', { exact: true })
+      .setInputFiles({ name: 'armchair.png', mimeType: 'image/png', buffer: png });
+    await dialog.getByRole('button', { name: /Build 3D model|Rebuild model/ }).click();
+    const notice = dialog.getByRole('status').filter({ hasText: 'Not sure about this one' });
+    await expect(notice).toBeVisible({ timeout: 45_000 });
+    await expect(notice.getByRole('button', { name: 'Crop or paint the cut-out' })).toBeVisible();
+    await expect(dialog.getByRole('group', { name: 'Looks like' })).toBeVisible();
+    // the detail controls are open without a click
+    await expect(dialog.getByText('Read from your photos.').first()).toBeVisible();
+  });
+
   test('detects a bed from a generated bed sheet and shows its adjustable details', async ({
     page,
   }) => {
