@@ -6,7 +6,7 @@
  * A link is
  *   { id, itemId, name, need, status: 'ok' | 'far' | 'missing', reachCm, distanceCm | null,
  *     serviceId | null, from: {x, y} | null (the service point), to: {x, y} (on the piece),
- *     center: {x, y} (the piece), tag: string | null }
+ *     center: {x, y} (the piece), tagAt: {x, y}, tag: string | null }
  *
  * `ok`: a matching point is within reach. `far`: the nearest one is out of reach.
  * `missing`: the room has points of that group but none of this kind.
@@ -124,6 +124,8 @@ export function computeServiceLinks(room) {
         need,
         reachCm,
         center,
+        // Where a tag sits: just under the piece, clear of its number badge
+        tagAt: { x: center.x, y: Math.min(piece.aabb.maxY + 3, (room.depthCm || 0) - 14) },
       };
       if (!best) {
         links.push({

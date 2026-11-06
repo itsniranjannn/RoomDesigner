@@ -14,6 +14,17 @@
   box-shadow: var(--shadow-pop);
 }
 
+.panelLeft {
+  right: auto;
+  left: 68px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .header {
   display: flex;
   align-items: center;
@@ -29,7 +40,8 @@
   font-weight: 500;
 }
 
-.close {
+.close,
+.side {
   display: grid;
   place-items: center;
   width: 28px;
@@ -38,11 +50,13 @@
   border-radius: var(--radius-sm);
 }
 
-.close:hover {
+.close:hover,
+.side:hover {
   background: var(--color-linen-surface);
 }
 
 .close:focus-visible,
+.side:focus-visible,
 .kind:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
@@ -262,7 +276,12 @@
 }
 
 @media (max-width: 640px) {
-  .panel {
+  .side {
+    display: none;
+  }
+
+  .panel,
+  .panelLeft {
     top: auto;
     right: var(--space-3);
     bottom: 48px;
