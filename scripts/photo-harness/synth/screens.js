@@ -13,7 +13,18 @@ const types = only ? only.split(',') : ALL_TYPES;
 const browser = await chromium.launch({ channel: 'chrome' });
 const report = [];
 for (const type of types) {
-  const view = ['bed', 'sofa', 'corner-sofa', 'daybed', 'armchair', 'tub-chair', 'lounge', 'ottoman'].includes(type) ? 'three' : 'front';
+  const view = [
+    'bed',
+    'sofa',
+    'corner-sofa',
+    'daybed',
+    'armchair',
+    'tub-chair',
+    'lounge',
+    'ottoman',
+  ].includes(type)
+    ? 'three'
+    : 'front';
   const c = buildCase({ kind: 'single', type, seed: 3, view, level: 'clean', bg: 'white' });
   const file = path.join(outDir, `_input-${type}.png`);
   writePng(file, c.img.rgba, c.img.width, c.img.height);
@@ -32,13 +43,24 @@ for (const type of types) {
     await dialog.getByLabel('Front photo', { exact: true }).setInputFiles(file);
     const build = dialog.getByRole('button', { name: /Build 3D model|Rebuild model/ });
     await build.click();
-    await dialog.getByRole('button', { name: 'Save to My furniture' }).waitFor({ state: 'visible' });
+    await dialog
+      .getByRole('button', { name: 'Save to My furniture' })
+      .waitFor({ state: 'visible' });
     await page.waitForTimeout(4000);
-    const line = await dialog.getByText(/Detected:|Looks like a|Best guess from one photo:/).first().innerText().catch(() => '');
+    const line = await dialog
+      .getByText(/Detected:|Looks like a|Best guess from one photo:/)
+      .first()
+      .innerText()
+      .catch(() => '');
     const unsure = await dialog.getByText('Not sure about this one').count();
     await dialog.screenshot({ path: path.join(outDir, `${type}.png`) });
     report.push({ type, detected: line.split('\n')[0], unsure: unsure > 0 });
-    console.log(type.padEnd(13), '->', line.split('\n')[0], unsure ? '(not sure notice shown)' : '');
+    console.log(
+      type.padEnd(13),
+      '->',
+      line.split('\n')[0],
+      unsure ? '(not sure notice shown)' : ''
+    );
   } catch (err) {
     console.log(type, 'ERROR', err.message.split('\n')[0]);
     await page.screenshot({ path: path.join(outDir, `${type}-error.png`) }).catch(() => {});
