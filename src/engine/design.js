@@ -1010,7 +1010,10 @@ function bedOutline(view, aspect, kind) {
           topMean,
           mean(rows.slice(Math.round(view.size * 0.2), Math.round(view.size * 0.34)))
         );
-  if (kind === 'front') return headW >= 0.4 && (aspect == null || aspect >= 0.85);
+  // A bed seen from the front is at most about two and a half times as wide as tall: wider is a sofa whose back
+  // sits between its arms
+  if (kind === 'front')
+    return headW >= 0.4 && (aspect == null || (aspect >= 0.85 && aspect <= 2.4));
   return aspect == null || aspect >= 1.45;
 }
 
