@@ -39,13 +39,7 @@ export function buildViews(photos, cuts, tolerance, labelOf = (slot) => slot) {
     const openMask = cuts[slot].scene
       ? cuts[slot].mask
       : segmentObject(photo.rgba, photo.width, photo.height, tolerance, { keepGaps: true });
-    const open = normalizeView(
-      photo.rgba,
-      openMask,
-      photo.width,
-      photo.height,
-      VIEW_GRID
-    );
+    const open = normalizeView(photo.rgba, openMask, photo.width, photo.height, VIEW_GRID);
     if (open) norm.open = open.mask;
     views[slot] = norm;
   }

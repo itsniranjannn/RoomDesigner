@@ -562,11 +562,34 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
     return Math.min(1, Math.max(0, (wideArea[i] - 0.12) / 0.07)) * plain;
   };
   const bgGeo = Array.from(bndCon, (b, i) => Math.max(1 - Math.exp(-(b * b) / 2), 0.95 * bigOf(i)));
+  // A colour region that is tall and narrow and runs most of the picture's height is a wall panel, a door or a
+  // curtain, not furniture
+  const towers = new Float64Array(count);
+  for (let i = 0; i < count; i++) {
+    let x0 = 1,
+      x1 = 0,
+      y0 = 1,
+      y1 = 0;
+    for (let j = 0; j < count; j++)
+      if (geo[i * count + j] < 12) {
+        x0 = Math.min(x0, cx[j]);
+        x1 = Math.max(x1, cx[j]);
+        y0 = Math.min(y0, cy[j]);
+        y1 = Math.max(y1, cy[j]);
+      }
+    const wf = Math.max(0.05, x1 - x0);
+    const hf = y1 - y0;
+    towers[i] = hf >= 0.4 && wf <= 0.32 && hf / wf >= 2.2 ? 1 : 0;
+  }
   const bgProb = Array.from(bndCon, (b, i) => {
     const big = bigOf(i);
     // the subject of a listing photo often runs off the border, but it is the thing in the middle
     const middle = Math.exp(-(((cx[i] - 0.5) / 0.3) ** 2 + ((cy[i] - 0.52) / 0.32) ** 2) / 2);
-    return Math.max((1 - Math.exp(-(b * b) / 2)) * (1 - 0.75 * middle), 0.95 * big);
+    return Math.max(
+      (1 - Math.exp(-(b * b) / 2)) * (1 - 0.75 * middle),
+      0.95 * big,
+      0.92 * towers[i]
+    );
   });
 
   // contrast against what the surroundings look like

@@ -29,7 +29,9 @@ function lineStats(rgba, width, height, axis) {
       n++;
     }
     const mean = sum.map((v) => v / n);
-    const sd = Math.sqrt(Math.max(0, (sq[0] + sq[1] + sq[2]) / n - (mean[0] ** 2 + mean[1] ** 2 + mean[2] ** 2)));
+    const sd = Math.sqrt(
+      Math.max(0, (sq[0] + sq[1] + sq[2]) / n - (mean[0] ** 2 + mean[1] ** 2 + mean[2] ** 2))
+    );
     out.push({ mean, sd });
   }
   return out;
@@ -141,7 +143,10 @@ export function detectStackedPhotos(rgba, width, height) {
 export function cropRegion(rgba, width, box) {
   const out = new Uint8ClampedArray(box.w * box.h * 4);
   for (let y = 0; y < box.h; y++)
-    out.set(rgba.subarray(((box.y + y) * width + box.x) * 4, ((box.y + y) * width + box.x + box.w) * 4), y * box.w * 4);
+    out.set(
+      rgba.subarray(((box.y + y) * width + box.x) * 4, ((box.y + y) * width + box.x + box.w) * 4),
+      y * box.w * 4
+    );
   return { rgba: out, width: box.w, height: box.h };
 }
 

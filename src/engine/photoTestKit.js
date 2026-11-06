@@ -84,7 +84,11 @@ export function buildScene(photo, { mode = 'scene', crop = null, keep, remove, f
   });
   const pieces = cut.pieces.map((_, i) => {
     const mask = pieceMask(cut, i);
-    const views = buildViews({ front: photo }, { front: { mask, scene: cut.mode === 'scene' } }, 16);
+    const views = buildViews(
+      { front: photo },
+      { front: { mask, scene: cut.mode === 'scene' } },
+      16
+    );
     return designFromViews(views, {
       dims: { widthCm: 80, depthCm: 50, heightCm: 80 },
       forceType,

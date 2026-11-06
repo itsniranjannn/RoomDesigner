@@ -14,6 +14,8 @@ import {
   Minus,
   Plus,
   Crosshair,
+  Scissors,
+  Undo2,
 } from 'lucide-react';
 import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
@@ -33,7 +35,6 @@ import {
 } from '../../engine/sheet.js';
 import {
   VIEW_SLOTS,
-  segmentObject,
   normalizeView,
   maskCoverage,
   proportionWarnings,
@@ -45,6 +46,7 @@ import { CustomMeshModel } from '../preview3d/models/customMesh.jsx';
 import {
   DESIGN_TYPES,
   PALETTE_SLOTS,
+  OPTIONAL_SLOTS,
   SHORT_LABEL,
   designMainColor,
   detectionConfidence,
@@ -61,7 +63,16 @@ import {
   matchPhotoDims,
   silhouetteFromRender,
 } from '../../engine/photoFit.js';
-import { buildViews, designFromViews } from '../../engine/photoPipeline.js';
+import {
+  buildViews,
+  designFromViews,
+  pieceMask,
+  pieceLabel,
+  groupPieces,
+} from '../../engine/photoPipeline.js';
+import { extractForeground, backdropIsPlain } from '../../engine/foreground.js';
+import { detectStackedPhotos, cropRegion, symmetryScores } from '../../engine/stacked.js';
+import { CutoutFixer, NO_EDITS } from './CutoutFixer.jsx';
 import { CaptureGuide, SLOT_HINTS, guideSeen, markGuideSeen } from './PhotoGuide.jsx';
 import local from './PhotoModelModal.module.css';
 
@@ -136,6 +147,55 @@ const TOP_THICKNESS = {
     [6, 'Thick slab'],
   ],
 };
+const CLASSIC_SEAT = [
+  {
+    key: 'frame',
+    label: 'Wood frame',
+    fallback: 0,
+    options: [
+      [0, 'None (cloth to the feet)'],
+      [1, 'Exposed wood frame'],
+      [2, 'Carved frame with a crest'],
+    ],
+  },
+  {
+    key: 'cane',
+    label: 'Side panels',
+    fallback: 0,
+    options: [
+      [0, 'Upholstered'],
+      [1, 'Cane weave'],
+    ],
+  },
+  {
+    key: 'cab',
+    label: 'Legs',
+    fallback: 0,
+    options: [
+      [0, 'Straight or tapered'],
+      [1, 'Curved (cabriole)'],
+    ],
+  },
+  {
+    key: 'trim',
+    label: 'Trim',
+    fallback: 0,
+    options: [
+      [0, 'None'],
+      [1, 'Gold carving and trim'],
+    ],
+  },
+  { key: 'scat', label: 'Scatter cushions', fallback: 0, options: range(0, 4) },
+  {
+    key: 'pat',
+    label: 'Cloth',
+    fallback: 0,
+    options: [
+      [0, 'Plain'],
+      [1, 'Floral pattern'],
+    ],
+  },
+];
 const UPHOLSTERY = [
   {
     key: 'roll',
@@ -176,6 +236,7 @@ const TRAIT_CONTROLS = {
       options: [
         [0, 'Solid base'],
         [1, 'On short feet'],
+        [2, 'On round bun feet'],
       ],
     },
     {
@@ -188,6 +249,35 @@ const TRAIT_CONTROLS = {
         ['channel', 'Channel stitched'],
         ['tufted', 'Tufted'],
         ['slat', 'Slatted'],
+      ],
+    },
+    {
+      key: 'crest',
+      label: 'Headboard top',
+      fallback: 0,
+      options: [
+        [0, 'Straight'],
+        [1, 'Arched crest'],
+        [2, 'Carved scroll crest'],
+      ],
+    },
+    {
+      key: 'framed',
+      label: 'Headboard frame',
+      fallback: 0,
+      options: [
+        [0, 'No frame'],
+        [1, 'Wood frame around the panel'],
+      ],
+    },
+    {
+      key: 'foot',
+      label: 'Footboard',
+      fallback: 0,
+      options: [
+        [0, 'None'],
+        [1, 'Straight'],
+        [2, 'Curved sleigh'],
       ],
     },
     {
@@ -433,10 +523,12 @@ const TRAIT_CONTROLS = {
     },
     { key: 'arm', label: 'Arms', fallback: 0.1, options: ARMS },
     ...UPHOLSTERY,
+    ...CLASSIC_SEAT,
   ],
   armchair: [
     { key: 'arm', label: 'Arms', fallback: 0.17, options: [...ARMS, [0.17, 'Chunky']] },
     ...UPHOLSTERY,
+    ...CLASSIC_SEAT,
   ],
   lounge: [{ key: 'slats', label: 'Back rails', fallback: 3, options: range(2, 5) }],
   chair: [
@@ -452,7 +544,27 @@ const TRAIT_CONTROLS = {
     },
   ],
   table: [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }, TOP_THICKNESS],
-  'coffee-table': [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
+  'coffee-table': [
+    { key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS },
+    {
+      key: 'cab',
+      label: 'Carved legs',
+      fallback: 0,
+      options: [
+        [0, 'As above'],
+        [1, 'Curved (cabriole)'],
+      ],
+    },
+    {
+      key: 'trim',
+      label: 'Trim',
+      fallback: 0,
+      options: [
+        [0, 'None'],
+        [1, 'Gold carving and trim'],
+      ],
+    },
+  ],
   desk: [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
   wardrobe: [{ key: 'doors', label: 'Doors', fallback: 2, options: range(1, 6) }],
   bookshelf: [{ key: 'shelves', label: 'Compartments', fallback: 4, options: range(2, 8) }],
@@ -836,6 +948,13 @@ export function PhotoModelModal({ onClose }) {
   const [guideOpen, setGuideOpen] = useState(() => !guideSeen()); // shown the first time it is opened
   const [candidates, setCandidates] = useState(null); // { list, agreement } of likely types
   const [probe, setProbe] = useState(null); // the model's silhouette from the active photo angle
+  const [cutMode, setCutMode] = useState('auto'); // 'auto' | 'plain' | 'scene'
+  const [edits, setEdits] = useState({}); // slot -> { crop, keep, remove } from the cut-out fixer
+  const [fixSlot, setFixSlot] = useState(null);
+  const [activePiece, setActivePiece] = useState({}); // slot -> index of the piece being built
+  const [picked, setPicked] = useState({}); // slot -> piece indexes ticked to save together
+  const [splitInfo, setSplitInfo] = useState(null); // { slot, original, parts } after a stacked picture was split
+  const [placeAll, setPlaceAll] = useState(false);
   const inputs = useRef({});
   const sheetInput = useRef(null);
   const dimsRef = useRef(dims);
@@ -848,14 +967,44 @@ export function PhotoModelModal({ onClose }) {
     [photos, mirror, lonelySide]
   );
 
-  const segmented = useMemo(() => {
+  // The cut-out of each photo: a plain backdrop is keyed out by colour; a photo taken in a room goes through the
+  // scene cut (see engine/foreground.js). Crop and brush strokes from the fixer apply on top.
+  const cuts = useMemo(() => {
     const out = {};
     for (const [slot, photo] of Object.entries(allPhotos)) {
-      const mask = segmentObject(photo.rgba, photo.width, photo.height, tolerance);
-      out[slot] = { mask, coverage: maskCoverage(mask) };
+      const e = edits[slot] || NO_EDITS;
+      out[slot] = extractForeground(photo.rgba, photo.width, photo.height, {
+        tolerance,
+        mode: cutMode,
+        crop: e.crop,
+        keep: e.keep,
+        remove: e.remove,
+      });
     }
     return out;
-  }, [allPhotos, tolerance]);
+  }, [allPhotos, tolerance, cutMode, edits]);
+
+  // What is built from each photo: the whole cut-out, or the one piece chosen when it holds several
+  const segmented = useMemo(() => {
+    const out = {};
+    for (const [slot, cut] of Object.entries(cuts)) {
+      const scene = cut.mode === 'scene';
+      let mask = cut.mask;
+      if (scene && cut.pieces.length > 0) {
+        const index = Math.min(activePiece[slot] ?? 0, cut.pieces.length - 1);
+        mask = pieceMask(cut, index);
+      }
+      out[slot] = {
+        mask,
+        coverage: maskCoverage(mask),
+        quality: cut.quality,
+        scene,
+        pieces: scene ? cut.pieces : [],
+        cut,
+      };
+    }
+    return out;
+  }, [cuts, activePiece]);
 
   // A clean backdrop (a studio shot on white) can use a fine threshold, which keeps white and pale pieces;
   // a noisy one (a phone photo) needs a coarser one
@@ -878,19 +1027,78 @@ export function PhotoModelModal({ onClose }) {
     if (!file) return;
     setMessage(null);
     try {
-      const img = await readImage(file, PHOTO_MAX);
-      setPhotos((prev) => ({ ...prev, [slot]: img }));
+      // Read at a size the stacked-photo check can use; the photo itself is kept at PHOTO_MAX
+      const big = await readImage(file, SHEET_MAX);
+      const stacked = detectStackedPhotos(big.rgba, big.width, big.height);
+      const plain = backdropIsPlain(big.rgba, big.width, big.height).plain;
+      // A product sheet on white has its own splitter; photos with busy backgrounds are split here
+      if (stacked && !plain && stacked.similarity >= 0.35) {
+        const crops = stacked.parts.map((part) => cropRegion(big.rgba, big.width, part));
+        const imgs = crops.map((c) => ({
+          ...imageFromPixels(c.rgba, c.width, c.height, PHOTO_MAX),
+          fromSheet: true,
+        }));
+        // The straight-on view is the most left-right symmetric outline
+        const masks = imgs.map((img) => {
+          const cut = extractForeground(img.rgba, img.width, img.height, { mode: 'scene' });
+          return cut.pieces.length ? pieceMask(cut, 0) : cut.mask;
+        });
+        const sym = symmetryScores(masks, imgs);
+        const frontIdx = sym.indexOf(Math.max(...sym));
+        const parts = imgs.map((img, i) => ({
+          img,
+          label:
+            i === frontIdx
+              ? 'Front view'
+              : sym[i] >= 0.8
+                ? 'Another front view'
+                : 'Three-quarter view',
+        }));
+        const original = await readImage(file, PHOTO_MAX);
+        setSplitInfo({ slot, original, parts, used: frontIdx });
+        setPhotos((prev) => ({ ...prev, [slot]: imgs[frontIdx] }));
+        setEdits((prev) => ({ ...prev, [slot]: NO_EDITS }));
+        setActivePiece((prev) => ({ ...prev, [slot]: 0 }));
+        return;
+      }
+      setSplitInfo((cur) => (cur?.slot === slot ? null : cur));
+      setPhotos((prev) => ({
+        ...prev,
+        [slot]: imageFromPixels(big.rgba, big.width, big.height, PHOTO_MAX),
+      }));
+      setEdits((prev) => ({ ...prev, [slot]: NO_EDITS }));
+      setActivePiece((prev) => ({ ...prev, [slot]: 0 }));
     } catch (err) {
       setMessage({ kind: 'error', text: err.message });
     }
   };
 
-  const removePhoto = (slot) =>
+  const chooseSplitPart = (index) => {
+    if (!splitInfo) return;
+    setPhotos((prev) => ({ ...prev, [splitInfo.slot]: splitInfo.parts[index].img }));
+    setEdits((prev) => ({ ...prev, [splitInfo.slot]: NO_EDITS }));
+    setActivePiece((prev) => ({ ...prev, [splitInfo.slot]: 0 }));
+    setSplitInfo({ ...splitInfo, used: index });
+  };
+
+  const undoSplit = () => {
+    if (!splitInfo) return;
+    setPhotos((prev) => ({ ...prev, [splitInfo.slot]: splitInfo.original }));
+    setEdits((prev) => ({ ...prev, [splitInfo.slot]: NO_EDITS }));
+    setActivePiece((prev) => ({ ...prev, [splitInfo.slot]: 0 }));
+    setSplitInfo(null);
+  };
+
+  const removePhoto = (slot) => {
     setPhotos((prev) => {
       const next = { ...prev };
       delete next[slot];
       return next;
     });
+    setEdits((prev) => ({ ...prev, [slot]: NO_EDITS }));
+    setFixSlot((cur) => (cur === slot ? null : cur));
+    setSplitInfo((cur) => (cur?.slot === slot ? null : cur));
+  };
 
   const photoCount = Object.keys(photos).length;
   const shownViews = VIEW_SLOTS.filter((slot) => allPhotos[slot.id]).map((slot) => slot.id);
@@ -937,6 +1145,44 @@ export function PhotoModelModal({ onClose }) {
   );
   const flagged = new Set(qualityItems.map((q) => q.slot));
   const handleSilhouette = useCallback((result) => setProbe(result), []);
+  // The pieces of the photo being looked at, with a thumbnail and a name each (what each would be built as)
+  const pieceCards = useMemo(() => {
+    const seg = segmented[activeView];
+    const photo = allPhotos[activeView];
+    if (!seg || !photo || seg.pieces.length < 2) return [];
+    const groups = groupPieces(
+      photo,
+      seg.cut,
+      seg.pieces.slice(0, 6).map((_, i) => i)
+    );
+    const copies = new Map();
+    for (const g of groups) copies.set(g.indexes[0], g.count);
+    return seg.pieces.slice(0, 6).map((piece, i) => {
+      const mask = pieceMask(seg.cut, i);
+      const cutImg = cutoutImage(photo.rgba, mask, photo.width, photo.height, 96);
+      let name = 'furniture';
+      try {
+        const views = buildViews({ front: photo }, { front: { mask, scene: true } }, tolerance);
+        name = pieceLabel(
+          designFromViews(views, {
+            dims: { widthCm: 80, depthCm: 50, heightCm: 80 },
+            partial: estimatePartialProportions({
+              front: { mask, width: photo.width, height: photo.height },
+            }),
+          }).design
+        );
+      } catch {
+        // a sliver too small to read: it keeps the generic name and cannot be ticked usefully
+      }
+      return {
+        index: i,
+        name,
+        thumb: cutImg ? rgbaToDataUrl(cutImg.rgba, cutImg.width, cutImg.height) : null,
+        copies: copies.get(i) || 1,
+        isCopy: ![...copies.keys()].includes(i),
+      };
+    });
+  }, [segmented, activeView, allPhotos, tolerance]);
   // How closely the model's outline matches the cut-out of the photo being compared
   const fit = useMemo(() => {
     const photo = allPhotos[activeView];
@@ -1063,13 +1309,7 @@ export function PhotoModelModal({ onClose }) {
         setTypeOpen(false);
         setViewChoice((v) => (shownViews.includes(v) ? v : shownViews[0]));
         if (!nameTouched.current) {
-          const label =
-            result.type === 'lounge'
-              ? 'lounge chair'
-              : result.type === 'sofa' && result.traits.seats <= 2
-                ? 'loveseat'
-                : DESIGN_TYPES.find((t) => t.id === result.type)?.label || 'furniture';
-          setName(`My ${label.toLowerCase()}`);
+          setName(`My ${pieceLabel(result)}`);
         }
       } catch (err) {
         setDesign(null);
@@ -1084,6 +1324,13 @@ export function PhotoModelModal({ onClose }) {
     setDesign((d) => ({ ...d, palette: { ...d.palette, [key]: value } }));
   const setTrait = (key, value) =>
     setDesign((d) => ({ ...d, traits: { ...d.traits, [key]: value } }));
+
+  const tickedCount = Object.entries(picked).reduce(
+    (n, [slot, list]) => n + (segmented[slot]?.pieces.length > 1 ? list.length : 0),
+    0
+  );
+  const saveLabel =
+    tickedCount > 0 ? `Save ${tickedCount + 1} pieces to My furniture` : 'Save to My furniture';
 
   const handleSave = async () => {
     if (!design) return;
@@ -1110,9 +1357,57 @@ export function PhotoModelModal({ onClose }) {
       const cut = cutoutImage(photo.rgba, segmented[thumbSlot].mask, photo.width, photo.height);
       if (cut) thumb = squareThumb(cut);
     }
+    // The other pieces ticked in a photo with several: built the same way, each saved as its own item. Copies of
+    // the same piece (two armchairs) are saved once and placed as many times as there are copies.
+    const extras = [];
+    let activeCount = 1;
+    const sceneSlot = ['front', 'right', 'left', 'back', 'top'].find(
+      (id) => allPhotos[id] && segmented[id]?.pieces.length > 1
+    );
+    if (sceneSlot) {
+      const seg = segmented[sceneSlot];
+      const photo = allPhotos[sceneSlot];
+      const activeIndex = Math.min(activePiece[sceneSlot] ?? 0, seg.pieces.length - 1);
+      const ticked = (picked[sceneSlot] || []).filter(
+        (i) => i !== activeIndex && i < seg.pieces.length
+      );
+      const groups = groupPieces(photo, seg.cut, [activeIndex, ...ticked]);
+      for (const g of groups) {
+        if (g.indexes.includes(activeIndex)) {
+          activeCount = g.count;
+          continue;
+        }
+        try {
+          const mask = pieceMask(seg.cut, g.indexes[0]);
+          const views = buildViews({ front: photo }, { front: { mask, scene: true } }, tolerance);
+          const built = designFromViews(views, {
+            dims: { widthCm: 80, depthCm: 50, heightCm: 80 },
+            partial: estimatePartialProportions({
+              front: { mask, width: photo.width, height: photo.height },
+            }),
+          });
+          const cutImg = cutoutImage(photo.rgba, mask, photo.width, photo.height);
+          extras.push({
+            id: `custom-${Date.now().toString(36)}${extras.length}`,
+            name: `My ${pieceLabel(built.design)}`,
+            category: 'custom',
+            shapeType: 'custom-mesh',
+            ...(built.dims || { widthCm: 80, depthCm: 50, heightCm: 80 }),
+            color: designMainColor(built.design),
+            design: built.design,
+            thumb: cutImg ? squareThumb(cutImg) : undefined,
+            count: g.count,
+          });
+        } catch {
+          // a piece too small to read is skipped
+        }
+      }
+    }
+    const placed = [];
     try {
+      const mainId = `custom-${Date.now().toString(36)}`;
       await addCustomFurniture({
-        id: `custom-${Date.now().toString(36)}`,
+        id: mainId,
         name: name.trim() || 'My furniture',
         category: 'custom',
         shapeType: 'custom-mesh',
@@ -1125,9 +1420,26 @@ export function PhotoModelModal({ onClose }) {
         topOutline,
         thumb,
       });
+      placed.push([mainId, activeCount]);
+      for (const item of extras) {
+        const { count, ...def } = item;
+        await addCustomFurniture(def);
+        placed.push([def.id, count]);
+      }
     } catch {
       setMessage({ kind: 'error', text: 'This piece could not be saved on this device.' });
       return;
+    }
+    if (placeAll) {
+      const { addFurniture } = useRoomStore.getState();
+      for (const [id, count] of placed)
+        for (let k = 0; k < count; k++) {
+          try {
+            addFurniture(id);
+          } catch {
+            // no room open: the pieces are in My furniture
+          }
+        }
     }
     onClose();
   };
@@ -1180,7 +1492,7 @@ export function PhotoModelModal({ onClose }) {
             onClick={handleSave}
             disabled={!design}
           >
-            Save to My furniture
+            {saveLabel}
           </Button>
         </>
       }
@@ -1430,6 +1742,131 @@ export function PhotoModelModal({ onClose }) {
                 </span>
               </label>
             )}
+            {splitInfo && photos[splitInfo.slot] && (
+              <div className={local.splitBanner} role="status">
+                <p className={local.note}>
+                  <strong>One picture, several views.</strong> That picture held{' '}
+                  {splitInfo.parts.length} photos of the same piece, so it was split into views. The{' '}
+                  {splitInfo.parts[splitInfo.used].label.toLowerCase()} is used for the shape; the
+                  others are listed below.
+                </p>
+                <ul className={local.splitList} aria-label="Views found in the picture">
+                  {splitInfo.parts.map((part, i) => (
+                    <li key={i} className={local.splitItem}>
+                      <img src={part.img.thumbUrl} alt={part.label} />
+                      <span>{part.label}</span>
+                      {i === splitInfo.used ? (
+                        <span className={local.sectionNote}>In use</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className={local.linkBtn}
+                          onClick={() => chooseSplitPart(i)}
+                        >
+                          Use this one
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+                <Button variant="ghost" size="small" icon={<Undo2 size={14} />} onClick={undoSplit}>
+                  Undo the split
+                </Button>
+              </div>
+            )}
+            {photoCount > 0 && segmented[activeView] && (
+              <div className={local.fixRow}>
+                <Button
+                  variant="secondary"
+                  size="small"
+                  icon={<Scissors size={14} />}
+                  onClick={() => setFixSlot((cur) => (cur ? null : activeView))}
+                  aria-expanded={Boolean(fixSlot)}
+                >
+                  Fix the cut-out
+                </Button>
+                <span className={local.sectionNote}>
+                  {segmented[activeView].quality < 0.6
+                    ? 'The cut-out of the ' +
+                      VIEW_LABEL[activeView].toLowerCase() +
+                      ' photo looks rough: crop to the piece or paint over what is wrong.'
+                    : 'Crop to the piece or paint over anything the cut-out got wrong.'}
+                </span>
+              </div>
+            )}
+            {fixSlot && allPhotos[fixSlot] && segmented[fixSlot] && (
+              <CutoutFixer
+                photo={allPhotos[fixSlot]}
+                mask={segmented[fixSlot].cut.mask}
+                edits={edits[fixSlot] || NO_EDITS}
+                onChange={(next) => setEdits((prev) => ({ ...prev, [fixSlot]: next }))}
+                onClose={() => setFixSlot(null)}
+                label={VIEW_LABEL[fixSlot].toLowerCase()}
+              />
+            )}
+            {pieceCards.length > 0 && (
+              <div className={local.pieces} role="group" aria-label="Pieces found in this photo">
+                <p className={local.note}>
+                  <strong>This photo has {pieceCards.length} pieces.</strong> Pick the one to build
+                  and check, and tick the others to save them as separate furniture too. Copies of
+                  the same piece are saved once.
+                </p>
+                <ul className={local.pieceList}>
+                  {pieceCards.map((card) => {
+                    const ticked = (picked[activeView] || []).includes(card.index);
+                    return (
+                      <li key={card.index} className={local.pieceItem}>
+                        <button
+                          type="button"
+                          className={local.pieceBtn}
+                          aria-pressed={(activePiece[activeView] ?? 0) === card.index}
+                          aria-label={`Build the ${card.name}`}
+                          onClick={() =>
+                            setActivePiece((prev) => ({ ...prev, [activeView]: card.index }))
+                          }
+                        >
+                          {card.thumb && <img src={card.thumb} alt="" />}
+                        </button>
+                        <span className={local.pieceName}>
+                          {card.name}
+                          {card.copies > 1 && (
+                            <strong className={local.copies}> x{card.copies}</strong>
+                          )}
+                          {card.isCopy && ' (a copy)'}
+                        </span>
+                        {(activePiece[activeView] ?? 0) !== card.index && (
+                          <label className={local.check}>
+                            <input
+                              type="checkbox"
+                              checked={ticked}
+                              onChange={(e) =>
+                                setPicked((prev) => {
+                                  const cur = new Set(prev[activeView] || []);
+                                  if (e.target.checked) cur.add(card.index);
+                                  else cur.delete(card.index);
+                                  return { ...prev, [activeView]: [...cur] };
+                                })
+                              }
+                            />
+                            <span>Also save</span>
+                          </label>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+                <label className={local.check}>
+                  <input
+                    type="checkbox"
+                    checked={placeAll}
+                    onChange={(e) => setPlaceAll(e.target.checked)}
+                  />
+                  <span>
+                    Also place the saved pieces in my room (copies as many times as shown).
+                  </span>
+                </label>
+              </div>
+            )}
             {photoCount === 1 && (
               <p className={local.note}>
                 With one photo the depth and shape are inferred from the usual proportions of this
@@ -1438,17 +1875,34 @@ export function PhotoModelModal({ onClose }) {
             )}
           </div>
 
-          <RangeField
-            label="Background removal"
-            min={15}
-            max={160}
-            value={tolerance}
-            onChange={(v) => {
-              toleranceTouched.current = true;
-              setTolerance(v);
-            }}
-            hint="Works best with a plain, evenly lit background. Raise it if background stays visible; lower it if parts of the piece disappear."
-          />
+          {photoCount > 0 && (
+            <label className={local.designRow}>
+              <span>Photo background</span>
+              <select
+                className={local.select}
+                value={cutMode}
+                aria-label="Photo background"
+                onChange={(e) => setCutMode(e.target.value)}
+              >
+                <option value="auto">Detect automatically</option>
+                <option value="plain">Plain backdrop (white or one colour)</option>
+                <option value="scene">A room or busy scene</option>
+              </select>
+            </label>
+          )}
+          {(photoCount === 0 || Object.values(segmented).some((c) => !c.scene)) && (
+            <RangeField
+              label="Background removal"
+              min={15}
+              max={160}
+              value={tolerance}
+              onChange={(v) => {
+                toleranceTouched.current = true;
+                setTolerance(v);
+              }}
+              hint="Works best with a plain, evenly lit background. Raise it if background stays visible; lower it if parts of the piece disappear."
+            />
+          )}
         </div>
 
         <div className={local.right}>
@@ -1700,17 +2154,19 @@ export function PhotoModelModal({ onClose }) {
                     role="group"
                     aria-label="Colours found in the photos"
                   >
-                    {(PALETTE_SLOTS[design.type] || []).map(([key, label]) => (
-                      <label key={key} className={local.paletteItem}>
-                        <input
-                          type="color"
-                          value={design.palette[key] || '#888888'}
-                          aria-label={label}
-                          onChange={(e) => setPaletteColour(key, e.target.value)}
-                        />
-                        <span>{label}</span>
-                      </label>
-                    ))}
+                    {(PALETTE_SLOTS[design.type] || [])
+                      .filter(([key]) => !OPTIONAL_SLOTS.has(key) || design.palette[key])
+                      .map(([key, label]) => (
+                        <label key={key} className={local.paletteItem}>
+                          <input
+                            type="color"
+                            value={design.palette[key] || '#888888'}
+                            aria-label={label}
+                            onChange={(e) => setPaletteColour(key, e.target.value)}
+                          />
+                          <span>{label}</span>
+                        </label>
+                      ))}
                   </div>
                 </div>
               </details>

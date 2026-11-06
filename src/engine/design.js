@@ -79,6 +79,9 @@ export const SHORT_LABEL = {
 };
 
 /** Colour slots each type exposes (label shown to the user), in palette order. */
+/** Colour slots only some pieces use: shown and saved only when the photos gave them a colour. */
+export const OPTIONAL_SLOTS = new Set(['panel', 'frame', 'trim', 'scatter']);
+
 export const PALETTE_SLOTS = {
   bed: [
     ['body', 'Headboard'],
@@ -86,6 +89,7 @@ export const PALETTE_SLOTS = {
     ['accent', 'Duvet'],
     ['sheet', 'Sheet and mattress'],
     ['pillow', 'Pillows'],
+    ['panel', 'Headboard panel'],
   ],
   daybed: [
     ['body', 'Frame'],
@@ -97,6 +101,9 @@ export const PALETTE_SLOTS = {
     ['arm', 'Arms'],
     ['cushion', 'Cushions'],
     ['leg', 'Feet'],
+    ['frame', 'Wood frame'],
+    ['trim', 'Gold trim'],
+    ['scatter', 'Scatter cushions'],
   ],
   'corner-sofa': [
     ['body', 'Body'],
@@ -121,6 +128,9 @@ export const PALETTE_SLOTS = {
     ['arm', 'Arms'],
     ['cushion', 'Cushions'],
     ['leg', 'Feet'],
+    ['frame', 'Wood frame'],
+    ['trim', 'Gold trim'],
+    ['scatter', 'Scatter cushions'],
   ],
   lounge: [
     ['body', 'Wood frame'],
@@ -149,6 +159,8 @@ export const PALETTE_SLOTS = {
     ['body', 'Top'],
     ['accent', 'Shelf'],
     ['leg', 'Legs'],
+    ['frame', 'Carved wood'],
+    ['trim', 'Gold trim'],
   ],
   desk: [
     ['body', 'Top'],
@@ -1461,6 +1473,236 @@ export function buildDesign(views, dims, forceType, sizeKnown = true, hints = {}
     out.traits.legs = traits.gapFrac > 0.08 ? 1 : 0;
   }
   Object.assign(out.traits, detectStructure(type, views, dims));
+  const extras = classicExtras(type, views, palette, out.traits);
+  Object.assign(out.palette, extras.palette);
+  Object.assign(out.traits, extras.traits);
+  return out;
+}
+
+// ---------- ornate and framed pieces (carved wood, leather panels, gold trim, cane) ----------
+
+const hexRgbSafe = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+
+/** Hue (0-360), HSV saturation and value (0-1) of an [r, g, b] colour. */
+function hsv([r, g, b]) {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const d = max - min;
+  let h = 0;
+  if (d > 0) {
+    if (max === r) h = ((g - b) / d) % 6;
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return [h, max ? d / max : 0, max / 255];
+}
+
+/** Warm brown of stained or polished wood (not grey, not a bright fabric). */
+function woodLike(rgb) {
+  const [h, s, v] = hsv(rgb);
+  return h >= 8 && h <= 48 && s >= 0.3 && s <= 0.9 && v >= 0.18 && v <= 0.85;
+}
+
+/** Gold or brass carving and trim: a saturated yellow, brighter than wood, more saturated than cream cloth. */
+function goldTrim(view) {
+  if (!view) return null;
+  const s = view.size;
+  const gold = [];
+  let count = 0;
+  for (let p = 0; p < s * s; p++) {
+    if (!view.mask[p]) continue;
+    count++;
+    const c = [view.rgb[p * 3], view.rgb[p * 3 + 1], view.rgb[p * 3 + 2]];
+    const [h, sat, v] = hsv(c);
+    if (h >= 36 && h <= 52 && sat >= 0.55 && v >= 0.55) gold.push(c);
+  }
+  return count && gold.length / count >= 0.012 ? toHex(mean(gold)) : null;
+}
+
+function smoothProfile(prof) {
+  const out = new Float32Array(prof.length);
+  for (let x = 0; x < prof.length; x++) {
+    let sum = 0;
+    let n = 0;
+    for (let d = -1; d <= 1; d++) {
+      const i = x + d;
+      if (i >= 0 && i < prof.length) {
+        sum += prof[i];
+        n++;
+      }
+    }
+    out[x] = sum / n;
+  }
+  return out;
+}
+
+/**
+ * The crest of a backrest or headboard from the outline: how much the middle stands above the shoulders (a flat top
+ * has none), and whether the rise is one smooth arch or has scrolls (several bumps).
+ * @returns {{ crest: 0|1|2, span: [number, number], peak: number, shoulder: number } | null}
+ */
+function crestOf(view) {
+  const s = view.size;
+  const prof = smoothProfile(topProfile(view));
+  const max = Math.max(...prof);
+  if (max < 0.3) return null;
+  const c = Math.round(s / 2);
+  const thr = max * 0.55;
+  let a = c;
+  let b = c;
+  while (a > 0 && prof[a - 1] >= thr) a--;
+  while (b < s - 1 && prof[b + 1] >= thr) b++;
+  const w = b - a + 1;
+  if (w < s * 0.25) return null;
+  const med = (lo, hi) =>
+    median(Array.from(prof.slice(Math.round(a + w * lo), Math.round(a + w * hi) + 1)));
+  const shoulder = (med(0.04, 0.2) + med(0.8, 0.96)) / 2;
+  const peak = Math.max(
+    ...Array.from(prof.slice(Math.round(a + w * 0.3), Math.round(a + w * 0.7) + 1))
+  );
+  let crest = 0;
+  if (peak - shoulder >= 0.07) {
+    let bumps = 0;
+    for (let x = Math.round(a + w * 0.15); x < Math.round(a + w * 0.85); x++)
+      if (prof[x] > prof[x - 2] + 0.012 && prof[x] >= prof[x + 2] + 0.012) bumps++;
+    crest = bumps >= 3 ? 2 : 1;
+  }
+  return { crest, span: [a, b], peak, shoulder };
+}
+
+/**
+ * A carved or framed headboard: its crest, the wood of the frame and the panel set in it (leather, cloth), and
+ * whether the panel is buttoned. Null when the view shows no such headboard.
+ */
+function bedHead(F) {
+  if (!F) return null;
+  const info = crestOf(F);
+  if (!info) return null;
+  const s = F.size;
+  const [a, b] = info.span;
+  const w = b - a + 1;
+  const wood = pickColor(F, [0.28, 0.66, 0.72, 0.84], 'light');
+  const x0 = (a + w * 0.3) / s;
+  const x1 = (a + w * 0.7) / s;
+  const y0 = 1 - info.peak + 0.12;
+  const panel = pickColor(F, [x0, y0, x1, y0 + 0.18]);
+  const buttoned = tuftedBack(F, [x0, y0, x1, y0 + 0.2]);
+  // The row at three quarters height: how wide the base of the bed is around the middle
+  const row = Math.round(s * 0.74);
+  let l = Math.round(s / 2);
+  let r = l;
+  while (l > 0 && F.mask[row * s + l - 1]) l--;
+  while (r < s - 1 && F.mask[row * s + r + 1]) r++;
+  const bodyW = (r - l + 1) / s;
+  // A wood frame: warm, saturated wood around a panel of another material (not a grey bed whose parts differ in tone)
+  const framed = Boolean(
+    panel &&
+    wood &&
+    woodLike(hexRgbSafe(wood)) &&
+    colourGap(panel, wood) > 14 &&
+    (buttoned || info.crest)
+  );
+  return {
+    crest: info.crest,
+    framed,
+    buttoned,
+    wood,
+    panel,
+    headW: bodyW > 0.3 ? w / s / bodyW : null,
+  };
+}
+
+/**
+ * Exposed wood on an upholstered sofa or armchair, and what goes with it: the frame colour, carved crest, gold
+ * trim, cane side panels, scatter cushions and patterned cloth. Null for plain upholstery on feet.
+ */
+function seatClassic(F, body) {
+  if (!F || !body) return null;
+  const bodyRgb = hexRgbSafe(body);
+  const band = regionPixels(F, 0.12, 0.66, 0.88, 0.9, true);
+  if (band.length < 20) return null;
+  const woods = band.filter(woodLike);
+  const woodFrac = woods.length / band.length;
+  const frameHex = woods.length ? toHex(mean(woods)) : null;
+  // The wood must be a clear band of its own along the base, in a different material from the cloth
+  const exposed = frameHex && woodFrac >= 0.3 && colourGap(frameHex, body) > 34;
+  const gold = goldTrim(F);
+  if (!exposed && !gold) return null;
+  const info = crestOf(F);
+  const out = { frame: info && info.crest ? 2 : 1, wood: frameHex || null, trim: gold };
+  // Cane: pale warm weave on the arms or sides, unlike the cloth
+  const side = [...regionPixels(F, 0.0, 0.5, 0.14, 0.88), ...regionPixels(F, 0.86, 0.5, 1.0, 0.88)];
+  if (side.length > 12) {
+    const m = mean(side);
+    const [h, sat, v] = hsv(m);
+    out.cane =
+      h >= 28 &&
+      h <= 52 &&
+      sat >= 0.22 &&
+      sat <= 0.55 &&
+      v >= 0.62 &&
+      colourGap(toHex(m), body) > 30;
+  }
+  // Scatter cushions: seams across the upper back show one cushion per seat plus the loose ones in front
+  const seams = findLines(F, 'x', [0.15, 0.3, 0.85, 0.52], 3).length;
+  out.scat = Math.max(0, Math.min(4, seams + 1));
+  // Printed cloth varies a lot within a small region
+  const cloth = regionPixels(F, 0.25, 0.3, 0.75, 0.6, true).map(luma);
+  if (cloth.length > 40) {
+    const mu = cloth.reduce((x, y) => x + y, 0) / cloth.length;
+    const sd = Math.sqrt(cloth.reduce((x, y) => x + (y - mu) ** 2, 0) / cloth.length);
+    out.pat = sd / Math.max(1, mu) > 0.14 && bodyRgb[0] > 90;
+  }
+  return out;
+}
+
+/** Palette and trait extras for ornate pieces, merged into a design record. Empty for plain ones. */
+function classicExtras(type, views, palette, traits = {}) {
+  const F = views.front || views.back || null;
+  const out = { palette: {}, traits: {} };
+  if (!F) return out;
+  if (type === 'bed') {
+    const head = bedHead(F);
+    if (head && (head.crest || head.framed)) {
+      out.traits.crest = head.crest;
+      if (head.framed) {
+        out.traits.framed = 1;
+        if (head.buttoned && traits.head !== 'slat') out.traits.head = 'tufted';
+        out.palette.body = head.wood;
+        out.palette.base = head.wood;
+        out.palette.panel = head.panel;
+      }
+      out.traits.foot = 2;
+      if (head.headW)
+        out.traits.headW = Math.round(Math.min(1.15, Math.max(0.7, head.headW)) * 20) / 20;
+      if (measureTraits({ front: F }).gapFrac > 0.05) out.traits.legs = 2;
+    }
+  } else if (type === 'sofa' || type === 'armchair') {
+    const seat = seatClassic(F, palette.body);
+    if (seat) {
+      out.traits.frame = seat.frame;
+      if (seat.trim) out.traits.trim = 1;
+      if (seat.cane) out.traits.cane = 1;
+      if (seat.pat) out.traits.pat = 1;
+      if (seat.trim && seat.frame === 2) out.traits.cab = 1;
+      out.traits.scat = seat.scat;
+      if (seat.wood) {
+        out.palette.frame = seat.wood;
+        out.palette.leg = seat.wood;
+      }
+      if (seat.trim) out.palette.trim = seat.trim;
+    }
+  } else if (type === 'coffee-table') {
+    const gold = goldTrim(F);
+    if (gold) {
+      out.traits.trim = 1;
+      out.traits.cab = 1;
+      out.palette.trim = gold;
+      out.palette.frame = palette.leg || shadeHex(palette.body, 0.9);
+    }
+  }
   return out;
 }
 
@@ -1490,7 +1732,7 @@ export function sanitizeDesign(raw) {
   if (raw.type === 'bed') {
     traits.pillows = Math.round(num(t.pillows, 1, 4, 2));
     traits.bodyFrac = num(t.bodyFrac, 0.25, 0.9, 0.55);
-    traits.legs = t.legs ? 1 : 0;
+    traits.legs = t.legs === 2 ? 2 : t.legs ? 1 : 0;
     // Older designs only knew channel stitching
     traits.head = oneOf(t.head, HEADBOARDS, t.channels ? 'channel' : 'panel');
     traits.channels = traits.head === 'channel' ? 1 : 0;
@@ -1501,7 +1743,10 @@ export function sanitizeDesign(raw) {
     const lumbar = t.lumbar === undefined ? traits.pillows >= 2 : Boolean(t.lumbar);
     if (lumbar !== traits.pillows >= 2) traits.lumbar = lumbar ? 1 : 0;
     if (t.fold === 0) traits.fold = 0;
-    for (const key of ['throw', 'foot', 'store', 'skirt']) if (t[key]) traits[key] = 1;
+    for (const key of ['throw', 'store', 'skirt', 'framed']) if (t[key]) traits[key] = 1;
+    if (t.foot) traits.foot = t.foot === 2 ? 2 : 1;
+    const crest = Math.round(num(t.crest, 0, 2, 0));
+    if (crest) traits.crest = crest;
     if (t.tiers) traits.tiers = 1;
   } else if (raw.type === 'corner-sofa') {
     traits.side = oneOf(t.side, ['left', 'right'], 'right');
@@ -1545,11 +1790,21 @@ export function sanitizeDesign(raw) {
     traits.tufted = t.tufted ? 1 : 0;
     traits.taper = t.taper ? 1 : 0;
     traits.longSeat = t.longSeat ? 1 : 0; // older designs have none: separate seat cushions
+    if (t.frame || t.cane) {
+      traits.frame = t.frame === 2 ? 2 : 1;
+      for (const key of ['trim', 'cane', 'pat', 'cab']) if (t[key]) traits[key] = 1;
+      traits.scat = Math.round(num(t.scat, 0, 4, 0));
+    }
   } else if (raw.type === 'armchair') {
     traits.arm = num(t.arm, 0.04, 0.22, 0.17);
     traits.roll = t.roll ? 1 : 0;
     traits.tufted = t.tufted ? 1 : 0;
     traits.taper = t.taper ? 1 : 0;
+    if (t.frame || t.cane) {
+      traits.frame = t.frame === 2 ? 2 : 1;
+      for (const key of ['trim', 'cane', 'pat', 'cab']) if (t[key]) traits[key] = 1;
+      traits.scat = Math.round(num(t.scat, 0, 4, 0));
+    }
   } else if (raw.type === 'lounge') {
     traits.slats = Math.round(num(t.slats, 2, 5, 3));
   } else if (raw.type === 'wardrobe') {
@@ -1566,6 +1821,7 @@ export function sanitizeDesign(raw) {
     // Top thickness in cm, kept only when it is not the usual 3.5, so older tables look as they did
     const topH = Math.round(num(t.topH, 2, 8, 3.5) * 2) / 2;
     if (topH !== 3.5) traits.topH = topH;
+    if (raw.type === 'coffee-table') for (const key of ['trim', 'cab']) if (t[key]) traits[key] = 1;
   }
   return { v: 1, type: raw.type, palette, traits };
 }

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   DESIGN_TYPES,
   PALETTE_SLOTS,
+  OPTIONAL_SLOTS,
   measureTraits,
   classifyType,
   buildDesign,
@@ -122,7 +123,8 @@ describe('building the design of a bed', () => {
   it('gives every type a palette with its slots filled in', () => {
     for (const { id } of DESIGN_TYPES) {
       const d = buildDesign(bedViews(), { widthCm: 120, depthCm: 80, heightCm: 80 }, id);
-      for (const [key] of PALETTE_SLOTS[id]) expect(d.palette[key]).toMatch(/^#[0-9a-f]{6}$/);
+      for (const [key] of PALETTE_SLOTS[id].filter(([k]) => !OPTIONAL_SLOTS.has(k)))
+        expect(d.palette[key]).toMatch(/^#[0-9a-f]{6}$/);
     }
   });
 
