@@ -207,12 +207,12 @@ const mean = (list) => {
 };
 
 /** Colours of object pixels inside a region given in 0-1 view fractions. */
-function regionPixels(view, x0, y0, x1, y1) {
+function regionPixels(view, x0, y0, x1, y1, closed = false) {
   if (!view) return [];
   const s = view.size;
   const out = [];
   // The mask with its gaps open, when there is one: colours of the piece, not of what shows through it
-  const mask = view.open || view.mask;
+  const mask = (!closed && view.open) || view.mask;
   for (let y = Math.floor(y0 * s); y < Math.ceil(y1 * s); y++) {
     for (let x = Math.floor(x0 * s); x < Math.ceil(x1 * s); x++) {
       const p = y * s + x;
@@ -223,12 +223,18 @@ function regionPixels(view, x0, y0, x1, y1) {
 }
 
 function pickColor(view, region, mode = 'mean') {
-  const px = regionPixels(view, ...region);
+  // Small light things (pillows, linen) are read from the whole cut-out: the open mask treats pale linen as gap
+  const px = regionPixels(view, ...region, mode === 'brightest' || mode === 'linen');
   if (px.length < 6) return null;
   if (mode === 'mean') return toHex(mean(px));
   px.sort((a, b) => luma(a) - luma(b));
-  const n = Math.max(3, Math.round(px.length * 0.4));
-  return toHex(mean(mode === 'light' ? px.slice(-n) : px.slice(0, n)));
+  // 'brightest' is for small light things (pillows against a dark headboard) that fill little of the region
+  const n = Math.max(3, Math.round(px.length * (mode === 'brightest' ? 0.15 : 0.4)));
+  return toHex(
+    mean(
+      mode === 'light' || mode === 'brightest' || mode === 'linen' ? px.slice(-n) : px.slice(0, n)
+    )
+  );
 }
 
 function objectMean(view) {
@@ -759,7 +765,7 @@ export function detectStructure(type, views, dims) {
       if (hw !== null) out.headW = Math.round(Math.min(1.15, Math.max(0.7, hw)) * 20) / 20;
     }
     // A bolster or euro pillow in front of the pillows shows as a second light band from above
-    if (views.top) out.lumbar = pillowBands(views.top) >= 2 ? 1 : 0;
+    if (views.top) out.lumbar = hasFrontPillows(views.top) ? 1 : 0;
     if (hasFootboard(views)) out.foot = 1;
   }
   return out;
@@ -808,27 +814,31 @@ function headboardWidth(F) {
   return head / ref;
 }
 
-/** Light pillows seen from above: how many separate light bands run down the middle of the bed's head end. */
-function pillowBands(top) {
-  if (!top) return 0;
+/**
+ * A bolster, euro pillow or second row of pillows in front of the main ones: seen from above it is a second
+ * light band down the middle of the bed's head end, set off by a shadow line (the first line, right under the
+ * headboard, is not counted).
+ */
+function hasFrontPillows(top) {
+  if (!top) return false;
   const s = top.size;
+  const first = Math.round(s * 0.06);
   const prof = [];
-  for (let y = Math.round(s * 0.06); y < Math.round(s * 0.5); y++) {
-    const px = regionPixels(top, 0.4, y / s, 0.6, (y + 1) / s);
+  for (let y = first; y < Math.round(s * 0.5); y++) {
+    const px = regionPixels(top, 0.4, y / s, 0.6, (y + 1) / s, true);
     prof.push(px.length ? mean(px.map((c) => [luma(c), 0, 0]))[0] : null);
   }
-  let dips = 0;
   for (let i = 3; i < prof.length - 3; i++) {
+    if ((first + i) / s < 0.17) continue;
     const v = prof[i];
     const a = prof[i - 3];
     const b = prof[i + 3];
     if (v === null || a === null || b === null) continue;
     let isMin = true;
     for (let j = i - 2; j <= i + 2; j++) if (prof[j] !== null && prof[j] < v) isMin = false;
-    if (isMin && Math.min(a, b) - v >= 22) dips++;
+    if (isMin && Math.min(a, b) - v >= 14) return true;
   }
-  // One dip is the shadow under the headboard; a second is a bolster or a row of pillows in front
-  return dips;
+  return false;
 }
 
 /** A footboard: the foot end of the side view stands up like the head end, not flat like the mattress. */
@@ -1146,6 +1156,21 @@ function countPillows(top, widthCm) {
   return Math.min(4, Math.max(byWidth, runs));
 }
 
+/**
+ * A region of a bed's side view by where it lies along the bed: near the headboard or toward the foot. The side
+ * photo may face either way, so the taller end is taken as the head.
+ * @param {'head'|'foot'} part
+ * @param {[number, number]} rows top and bottom of the region as fractions of the height
+ */
+function sideRegion(side, part, rows) {
+  if (!side) return [0, 0, 0, 0];
+  const p = Array.from(topProfile(side));
+  const tallLeft = Math.max(...slice(p, 0, 0.2)) >= Math.max(...slice(p, 0.8, 1));
+  const headSpan = part === 'head' ? [0.12, 0.45] : [0.55, 0.9];
+  const [a, b] = tallLeft ? headSpan : [1 - headSpan[1], 1 - headSpan[0]];
+  return [a, rows[0], b, rows[1]];
+}
+
 function paletteFor(type, views) {
   const F = views.front || views.back || views.right || views.left;
   const T = views.top;
@@ -1164,22 +1189,25 @@ function paletteFor(type, views) {
     palette.base = base && colourGap(base, palette.body) > 14 ? base : palette.body;
     // The duvet is used as photographed: no brightening, so the colour stays faithful
     // It is read from every view that shows it: the plan view alone sits in the shadow of the foot
+    const side = views.left || views.right;
     const seen = [
       pickColor(T, [0.2, 0.58, 0.8, 0.84]),
       pickColor(F, [0.2, 0.55, 0.8, 0.85]),
-      views.left ? pickColor(views.left, [0.5, 0.3, 0.9, 0.65]) : null,
-      views.right ? pickColor(views.right, [0.1, 0.3, 0.5, 0.65]) : null,
+      pickColor(side, sideRegion(side, 'foot', [0.4, 0.62])),
     ].filter(Boolean);
-    palette.accent = seen.length ? toHex(mean(seen.map(hexRgb))) : FALLBACK.accent;
+    // The middle reading, so a view that also shows sheet or pillow in the region does not pull it light
+    palette.accent = seen.length
+      ? toHex([0, 1, 2].map((k) => median(seen.map((h) => hexRgb(h)[k]))).map((v) => v))
+      : FALLBACK.accent;
     // White linen reads grey in the folds of a photo: the pillows and sheet are lifted toward what it is
     const pillowSeen =
-      pickColor(T, [0.2, 0.13, 0.8, 0.38], 'light') ||
-      pickColor(views.front || views.back, [0.3, 0.26, 0.7, 0.5], 'light') ||
-      pickColor(views.left || views.right, [0.1, 0.1, 0.45, 0.4], 'light');
+      pickColor(T, [0.2, 0.13, 0.8, 0.38], 'linen') ||
+      pickColor(views.front || views.back, [0.3, 0.26, 0.7, 0.5], 'brightest') ||
+      pickColor(side, sideRegion(side, 'head', [0.1, 0.4]), 'linen');
     palette.pillow = linen(pillowSeen || FALLBACK.pillow);
     const sheet =
-      pickColor(T, [0.25, 0.4, 0.75, 0.47], 'light') ||
-      pickColor(views.left || views.right, [0.3, 0.3, 0.5, 0.45], 'light');
+      pickColor(T, [0.25, 0.4, 0.75, 0.47], 'linen') ||
+      pickColor(side, sideRegion(side, 'head', [0.3, 0.45]), 'linen');
     palette.sheet = sheet ? linen(sheet) : palette.pillow;
   } else if (type === 'lounge') {
     // Cushions from the middle of the front view; the frame from the posts and rails at the sides

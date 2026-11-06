@@ -40,6 +40,28 @@ describe('plan symbols for photo shapes', () => {
     }
   });
 
+  it('draws a bed plan from its design: headboard, pillows, duvet and the chosen details', () => {
+    const base = { pillows: 2, bodyFrac: 0.5 };
+    const html = (traits, w = 160, d = 200) => plan('bed', { ...base, ...traits }, w, d);
+    const plain = html({});
+    expect(plain).not.toMatch(/NaN|Infinity/);
+    // pillows, a bolster, tiers, a narrower headboard, a footboard and a throw each change the drawing
+    const variants = [
+      { pillows: 3 },
+      { lumbar: 0 },
+      { tiers: 1 },
+      { headW: 0.75 },
+      { foot: 1 },
+      { throw: 1 },
+      { fold: 0 },
+    ].map((t) => html(t));
+    for (const v of variants) {
+      expect(v).not.toBe(plain);
+      expect(v).not.toMatch(/NaN|Infinity/);
+    }
+    expect(new Set([plain, ...variants]).size).toBe(variants.length + 1);
+  });
+
   it('draws an L for a corner sofa, with the chaise on the chosen side', () => {
     const right = cornerSofaPoints(260, 160, { side: 'right', seats: 2 });
     const left = cornerSofaPoints(260, 160, { side: 'left', seats: 2 });

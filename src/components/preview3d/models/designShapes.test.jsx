@@ -122,6 +122,48 @@ describe('shapes built from photos', () => {
     expect(render('bed', { pillows: 2, bodyFrac: 0.5 }, [1.6, 2, 1])).toBe(html.panel);
   });
 
+  it('shows the bed details read from the photos', () => {
+    const bed = (traits, pal = {}) => {
+      const html = renderToStaticMarkup(
+        <CustomMeshModel
+          def={{
+            design: {
+              v: 1,
+              type: 'bed',
+              palette: { ...palette, base: '#8a6a4a', sheet: '#eeeeee', ...pal },
+              traits: { pillows: 2, bodyFrac: 0.5, head: 'channel', ...traits },
+            },
+          }}
+          widthM={1.6}
+          depthM={2}
+          heightM={1}
+          mainColor="#aaa19a"
+        />
+      );
+      return html;
+    };
+    const plain = bed({});
+    for (const traits of [
+      { headW: 0.75 },
+      { tiers: 1 },
+      { lumbar: 0 },
+      { fold: 0 },
+      { throw: 1 },
+      { foot: 1 },
+      { store: 1 },
+      { skirt: 1 },
+      { legs: 1 },
+    ])
+      expect(bed(traits), JSON.stringify(traits)).not.toBe(plain);
+    expect(bed({ store: 1 })).toContain('name="bed-drawers"');
+    expect(bed({ skirt: 1 })).toContain('name="bed-skirt"');
+    expect(plain).not.toContain('name="bed-skirt"');
+    // The base, sheet and pillows take their own colours rather than the headboard's
+    expect(bed({}, { base: '#123456' })).not.toBe(plain);
+    expect(bed({}, { sheet: '#223344' })).not.toBe(plain);
+    expect(bed({}, { pillow: '#ffeeee' })).not.toBe(plain);
+  });
+
   it('keeps stools and cabinets from before these options on their original models', () => {
     expect(render('stool', {})).toContain('torusGeometry');
     expect(render('cabinet', {})).not.toBe(render('cabinet', { front: 'doors', n: 2, legs: 0 }));
