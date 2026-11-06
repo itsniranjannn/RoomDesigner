@@ -183,6 +183,80 @@ const TRAIT_CONTROLS = {
         ['slat', 'Slatted'],
       ],
     },
+    {
+      key: 'headW',
+      label: 'Headboard width',
+      fallback: 1,
+      options: [
+        [0.75, 'Narrow'],
+        [0.85, 'A little narrower than the bed'],
+        [1, 'As wide as the bed'],
+        [1.1, 'Wider than the bed'],
+      ],
+    },
+    {
+      key: 'tiers',
+      label: 'Pillow layout',
+      fallback: 0,
+      options: [
+        [0, 'One row'],
+        [1, 'Two tiers (square pillows behind)'],
+      ],
+    },
+    {
+      key: 'lumbar',
+      label: 'Bolster in front',
+      fallback: 1,
+      options: [
+        [0, 'None'],
+        [1, 'Bolster or small cushion'],
+      ],
+    },
+    {
+      key: 'fold',
+      label: 'Sheet at the head',
+      fallback: 1,
+      options: [
+        [1, 'Folded back over the duvet'],
+        [0, 'Tucked in'],
+      ],
+    },
+    {
+      key: 'throw',
+      label: 'Throw blanket',
+      fallback: 0,
+      options: [
+        [0, 'None'],
+        [1, 'Throw across the foot'],
+      ],
+    },
+    {
+      key: 'foot',
+      label: 'Footboard',
+      fallback: 0,
+      options: [
+        [0, 'None'],
+        [1, 'With a footboard'],
+      ],
+    },
+    {
+      key: 'store',
+      label: 'Storage',
+      fallback: 0,
+      options: [
+        [0, 'None'],
+        [1, 'Drawers in the base'],
+      ],
+    },
+    {
+      key: 'skirt',
+      label: 'Bed skirt',
+      fallback: 0,
+      options: [
+        [0, 'None'],
+        [1, 'Pleated skirt to the floor'],
+      ],
+    },
   ],
   'corner-sofa': [
     {

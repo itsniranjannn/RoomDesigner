@@ -81,8 +81,10 @@ export const SHORT_LABEL = {
 /** Colour slots each type exposes (label shown to the user), in palette order. */
 export const PALETTE_SLOTS = {
   bed: [
-    ['body', 'Frame and headboard'],
+    ['body', 'Headboard'],
+    ['base', 'Frame and base'],
     ['accent', 'Duvet'],
+    ['sheet', 'Sheet and mattress'],
     ['pillow', 'Pillows'],
   ],
   daybed: [
@@ -168,6 +170,8 @@ const TYPE_IDS = new Set(DESIGN_TYPES.map((t) => t.id));
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const FALLBACK = {
   body: '#8a7a6a',
+  base: '#8a7a6a',
+  sheet: '#f4f1ea',
   accent: '#b8aa98',
   pillow: '#f4f1ea',
   cushion: '#9a8b7a',
@@ -189,6 +193,12 @@ const luma = (c) => 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
 const shadeHex = (hex, k) => {
   const v = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
   return toHex(v.map((c) => c * k));
+};
+/** White or cream linen photographed in soft light looks darker than it is: lift it toward its real tone. */
+const linen = (hex) => {
+  const rgb = hexRgb(hex);
+  const chroma = Math.max(...rgb) - Math.min(...rgb);
+  return chroma < 40 && luma(rgb) > 150 ? shadeHex(hex, 1.1) : hex;
 };
 const mean = (list) => {
   const out = [0, 0, 0];
@@ -738,9 +748,19 @@ export function detectStructure(type, views, dims) {
       leg && dark && light && colourGap(dark, light) > 0.4 * Math.max(40, luma(hexRgb(leg)))
         ? 1
         : 0;
-  } else if (type === 'bed' && F) {
-    out.head = headboardStyle(F, views.left || views.right ? measureTraits(views).bodyFrac : 0.55);
-    out.channels = out.head === 'channel' ? 1 : 0;
+  } else if (type === 'bed') {
+    if (F) {
+      out.head = headboardStyle(
+        F,
+        views.left || views.right ? measureTraits(views).bodyFrac : 0.55
+      );
+      out.channels = out.head === 'channel' ? 1 : 0;
+      const hw = headboardWidth(F);
+      if (hw !== null) out.headW = Math.round(Math.min(1.15, Math.max(0.7, hw)) * 20) / 20;
+    }
+    // A bolster or euro pillow in front of the pillows shows as a second light band from above
+    if (views.top) out.lumbar = pillowBands(views.top) >= 2 ? 1 : 0;
+    if (hasFootboard(views)) out.foot = 1;
   }
   return out;
 }
@@ -759,6 +779,68 @@ function headboardStyle(F, bodyFrac) {
   if (tuftedBack(F, [0.15, 0.04, 0.85, 0.24])) return 'tufted';
   if (lines >= 2) return 'channel';
   return bodyFrac > 0.75 ? 'flat' : 'panel';
+}
+
+/**
+ * How much of the bed's width the headboard spans, from a straight-on front view (1 = as wide as the base).
+ * Null when the view is not square on, or when no headboard stands above the body.
+ */
+function headboardWidth(F) {
+  const s = F.size;
+  const rows = rowWidthFractions(F);
+  const avg = (a, b) => {
+    const part = rows.slice(Math.round(s * a), Math.round(s * b));
+    return part.length ? part.reduce((x, y) => x + y, 0) / part.length : 0;
+  };
+  const head = avg(0.04, 0.2);
+  const ref = avg(0.88, 1);
+  if (head < 0.4 || ref < 0.5) return null;
+  // Square on: the headboard sits in the middle of the view
+  let sum = 0;
+  let n = 0;
+  for (let y = Math.round(s * 0.04); y < Math.round(s * 0.2); y++)
+    for (let x = 0; x < s; x++)
+      if (F.mask[y * s + x]) {
+        sum += x / s;
+        n++;
+      }
+  if (!n || Math.abs(sum / n - 0.5) > 0.045) return null;
+  return head / ref;
+}
+
+/** Light pillows seen from above: how many separate light bands run down the middle of the bed's head end. */
+function pillowBands(top) {
+  if (!top) return 0;
+  const s = top.size;
+  const prof = [];
+  for (let y = Math.round(s * 0.06); y < Math.round(s * 0.5); y++) {
+    const px = regionPixels(top, 0.4, y / s, 0.6, (y + 1) / s);
+    prof.push(px.length ? mean(px.map((c) => [luma(c), 0, 0]))[0] : null);
+  }
+  let dips = 0;
+  for (let i = 3; i < prof.length - 3; i++) {
+    const v = prof[i];
+    const a = prof[i - 3];
+    const b = prof[i + 3];
+    if (v === null || a === null || b === null) continue;
+    let isMin = true;
+    for (let j = i - 2; j <= i + 2; j++) if (prof[j] !== null && prof[j] < v) isMin = false;
+    if (isMin && Math.min(a, b) - v >= 22) dips++;
+  }
+  // One dip is the shadow under the headboard; a second is a bolster or a row of pillows in front
+  return dips;
+}
+
+/** A footboard: the foot end of the side view stands up like the head end, not flat like the mattress. */
+function hasFootboard(views) {
+  const profile = depthProfile(views);
+  if (!profile) return false;
+  const p = Array.from(profile);
+  const lo = Math.max(...slice(p, 0, 0.08));
+  const hi = Math.max(...slice(p, 0.92, 1));
+  const mid = median(slice(p, 0.25, 0.75));
+  const lowEnd = Math.min(lo, hi);
+  return lowEnd >= 1.2 * mid && lowEnd >= 0.55 * Math.max(lo, hi);
 }
 
 /** What stands under a tub chair: short feet, slim legs or one central base. */
@@ -1073,6 +1155,13 @@ function paletteFor(type, views) {
     // Headboard seen from the foot: the upholstery colour; duvet and pillows from the plan view
     palette.body =
       pickColor(F, [0.2, 0.06, 0.8, 0.2]) || pickColor(T, [0.2, 0.0, 0.8, 0.08]) || all;
+    // The base is its own colour when it differs from the headboard (a grey headboard on a wooden frame)
+    const baseSeen = [
+      pickColor(views.front || views.back, [0.25, 0.9, 0.75, 0.985]),
+      pickColor(views.left || views.right, [0.2, 0.9, 0.8, 0.985]),
+    ].filter(Boolean);
+    const base = baseSeen.length ? toHex(mean(baseSeen.map(hexRgb))) : null;
+    palette.base = base && colourGap(base, palette.body) > 14 ? base : palette.body;
     // The duvet is used as photographed: no brightening, so the colour stays faithful
     // It is read from every view that shows it: the plan view alone sits in the shadow of the foot
     const seen = [
@@ -1082,7 +1171,16 @@ function paletteFor(type, views) {
       views.right ? pickColor(views.right, [0.1, 0.3, 0.5, 0.65]) : null,
     ].filter(Boolean);
     palette.accent = seen.length ? toHex(mean(seen.map(hexRgb))) : FALLBACK.accent;
-    palette.pillow = pickColor(T, [0.2, 0.13, 0.8, 0.38], 'light') || FALLBACK.pillow;
+    // White linen reads grey in the folds of a photo: the pillows and sheet are lifted toward what it is
+    const pillowSeen =
+      pickColor(T, [0.2, 0.13, 0.8, 0.38], 'light') ||
+      pickColor(views.front || views.back, [0.3, 0.26, 0.7, 0.5], 'light') ||
+      pickColor(views.left || views.right, [0.1, 0.1, 0.45, 0.4], 'light');
+    palette.pillow = linen(pillowSeen || FALLBACK.pillow);
+    const sheet =
+      pickColor(T, [0.25, 0.4, 0.75, 0.47], 'light') ||
+      pickColor(views.left || views.right, [0.3, 0.3, 0.5, 0.45], 'light');
+    palette.sheet = sheet ? linen(sheet) : palette.pillow;
   } else if (type === 'lounge') {
     // Cushions from the middle of the front view; the frame from the posts and rails at the sides
     palette.cushion = pickColor(F, [0.3, 0.1, 0.7, 0.35]) || all;
@@ -1291,7 +1389,7 @@ const num = (v, lo, hi, fallback) => {
 export function sanitizeDesign(raw) {
   if (!raw || typeof raw !== 'object' || !TYPE_IDS.has(raw.type)) return null;
   const palette = {};
-  for (const key of ['body', 'accent', 'pillow', 'cushion', 'leg']) {
+  for (const key of ['body', 'accent', 'pillow', 'cushion', 'leg', 'base', 'sheet']) {
     const v = raw.palette?.[key];
     if (typeof v === 'string' && HEX.test(v)) palette[key] = v.toLowerCase();
   }
@@ -1305,6 +1403,15 @@ export function sanitizeDesign(raw) {
     // Older designs only knew channel stitching
     traits.head = oneOf(t.head, HEADBOARDS, t.channels ? 'channel' : 'panel');
     traits.channels = traits.head === 'channel' ? 1 : 0;
+    // Details beyond the basics are kept only when they differ from the usual, so records stay small and
+    // older beds look as they did
+    const headW = num(t.headW, 0.7, 1.15, 1);
+    if (headW !== 1) traits.headW = Math.round(headW * 20) / 20;
+    const lumbar = t.lumbar === undefined ? traits.pillows >= 2 : Boolean(t.lumbar);
+    if (lumbar !== traits.pillows >= 2) traits.lumbar = lumbar ? 1 : 0;
+    if (t.fold === 0) traits.fold = 0;
+    for (const key of ['throw', 'foot', 'store', 'skirt']) if (t[key]) traits[key] = 1;
+    if (t.tiers) traits.tiers = 1;
   } else if (raw.type === 'corner-sofa') {
     traits.side = oneOf(t.side, ['left', 'right'], 'right');
     traits.seats = Math.round(num(t.seats, 1, 4, 2));

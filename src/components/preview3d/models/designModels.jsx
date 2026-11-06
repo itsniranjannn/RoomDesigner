@@ -54,57 +54,81 @@ export function effectivePalette(design, mainColor) {
   return out;
 }
 
-/** Upholstered platform bed: padded base and tall headboard, mattress, duvet and pillows. */
+/**
+ * Upholstered bed from its design record: headboard (style, width, colour), base (solid, on feet, storage
+ * drawers or skirted), footboard, mattress with its sheet, duvet with fold-back and throw, and the pillows
+ * (a row or two tiers, with or without a bolster in front).
+ */
 export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
   const hb = 0.1;
-  const legs = !!traits.legs;
+  const legs = !!traits.legs && !traits.skirt;
   const footH = legs ? 0.1 : 0;
   const mattressH = 0.22;
   const bodyTop = (traits.bodyFrac ?? 0.55) * heightM;
   const frameH = clamp(bodyTop - mattressH - 0.06, 0.16 + footH, 0.45);
   const mattressTop = frameH + mattressH;
-  const mattressD = depthM - hb - 0.02;
-  const mattressZ = hb / 2 + 0.01;
-  const body = palette.body;
-  const linen = palette.pillow ? shade(palette.pillow, 0.02) : '#F4F1EA';
+  const footboard = !!traits.foot;
+  const footT = footboard ? 0.06 : 0;
+  const mattressD = depthM - hb - 0.02 - footT;
+  const mattressZ = hb / 2 + 0.01 - footT / 2;
+  const head = palette.body;
+  const base = palette.base || head;
+  const pillowColor = palette.pillow ? shade(palette.pillow, 0.02) : '#F4F1EA';
+  const sheet = palette.sheet || pillowColor;
   const duvet = palette.accent || '#b8aa98';
-  const edge = shade(body, -0.1);
+  const edge = shade(base, -0.1);
   const n = clamp(Math.round(traits.pillows ?? 2), 1, 4);
-  const pillowZ = -depthM / 2 + hb + 0.22;
+  const lumbarOn = traits.lumbar === undefined ? n >= 2 : !!traits.lumbar;
+  const tiers = !!traits.tiers;
+  const headWidth = widthM * clamp(traits.headW ?? 1, 0.7, 1.15);
+  const pillowZ = -depthM / 2 + hb + (tiers ? 0.26 : 0.22);
   const pillowW = Math.min(0.75, (widthM * 0.9) / n - 0.03);
-  const sleepers = Array.from({ length: n }, (_, i) => {
-    const x = (i - (n - 1) / 2) * (pillowW + 0.04);
-    const size = [pillowW, 0.13, 0.4];
-    const rotation = [0.22, 0, 0];
-    return {
-      key: `p${i}`,
-      size,
-      rotation,
-      position: [x, pillowRestY(size, rotation, mattressTop), pillowZ],
-    };
+  const lay = (key, size, rotation, x, z) => ({
+    key,
+    size,
+    rotation,
+    position: [x, pillowRestY(size, rotation, mattressTop), z],
   });
-  const lumbar = (() => {
-    const size = [Math.min(0.55, widthM * 0.3), 0.1, 0.24];
-    const rotation = [0.3, 0, 0];
-    return {
-      size,
-      rotation,
-      position: [0, pillowRestY(size, rotation, mattressTop), pillowZ + 0.26],
-    };
-  })();
+  const back = Array.from({ length: n }, (_, i) => {
+    const x = (i - (n - 1) / 2) * (pillowW + 0.04);
+    // Two tiers: the back row stands up as square euro pillows
+    return tiers
+      ? lay(`p${i}`, [pillowW * 0.92, 0.16, 0.5], [0.5, 0, 0], x, pillowZ)
+      : lay(`p${i}`, [pillowW, 0.13, 0.4], [0.22, 0, 0], x, pillowZ);
+  });
+  const front = tiers
+    ? Array.from({ length: n }, (_, i) =>
+        lay(
+          `f${i}`,
+          [pillowW * 0.78, 0.11, 0.3],
+          [0.2, 0, 0],
+          (i - (n - 1) / 2) * (pillowW * 0.78 + 0.05),
+          pillowZ + 0.32
+        )
+      )
+    : [];
+  const lumbar = lay(
+    'lumbar',
+    [Math.min(0.55, widthM * 0.3), 0.1, 0.24],
+    [0.3, 0, 0],
+    0,
+    pillowZ + (tiers ? 0.55 : 0.26)
+  );
+  const sideLen = depthM - hb - footT;
+  const baseZ = hb / 2 - footT / 2;
   return (
     <group>
       {/* Padded base, with a recessed shadow gap above the floor (or short feet) */}
       <Pad
-        position={[0, footH + (frameH - footH) / 2 + 0.01, hb / 2]}
-        size={[widthM, frameH - footH - 0.02, depthM - hb]}
+        position={[0, footH + (frameH - footH) / 2 + 0.01, baseZ]}
+        size={[widthM, frameH - footH - 0.02, sideLen]}
         radius={0.035}
-        color={body}
+        color={base}
         roughness={0.92}
       />
       <Box
-        position={[0, frameH - 0.03, hb / 2]}
-        size={[widthM + 0.004, 0.006, depthM - hb + 0.004]}
+        position={[0, frameH - 0.03, baseZ]}
+        size={[widthM + 0.004, 0.006, sideLen + 0.004]}
         color={edge}
         roughness={0.9}
         castShadow={false}
@@ -117,58 +141,163 @@ export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
             radiusTop={0.03}
             radiusBottom={0.02}
             height={footH}
-            color={shade(body, -0.3)}
+            color={shade(base, -0.3)}
             roughness={0.55}
             segments={12}
           />
         ))
+      ) : traits.skirt ? (
+        <BedSkirt widthM={widthM} depthM={sideLen} z={baseZ} height={frameH} color={base} />
       ) : (
         <Box
-          position={[0, 0.02, hb / 2]}
-          size={[widthM - 0.1, 0.04, depthM - hb - 0.1]}
+          position={[0, 0.02, baseZ]}
+          size={[widthM - 0.1, 0.04, sideLen - 0.1]}
           color="#1B1714"
           roughness={0.95}
         />
       )}
+      {traits.store && !traits.skirt && (
+        <StorageDrawers
+          widthM={widthM}
+          depthM={sideLen}
+          z={baseZ}
+          frameH={frameH}
+          footH={footH}
+          color={base}
+        />
+      )}
 
-      {/* Tall headboard, the full width of the bed, in the style read from the photos */}
+      {/* Tall headboard in the style, width and colour read from the photos */}
       <Headboard
         style={traits.head ?? (traits.channels ? 'channel' : 'panel')}
-        widthM={widthM}
+        widthM={headWidth}
         depthM={depthM}
         heightM={heightM}
         footH={footH}
         mattressTop={mattressTop}
         hb={hb}
-        body={body}
+        body={head}
       />
+      {footboard && (
+        <Pad
+          position={[0, footH + (mattressTop + 0.1 - footH) / 2, depthM / 2 - footT / 2]}
+          size={[widthM + 0.02, mattressTop + 0.1 - footH, footT]}
+          radius={0.03}
+          color={head}
+          roughness={0.92}
+        />
+      )}
 
-      <Mattress widthM={widthM} depthM={mattressD} y={frameH} z={mattressZ} fabricColor={linen} />
+      <Mattress widthM={widthM} depthM={mattressD} y={frameH} z={mattressZ} fabricColor={sheet} />
       <Duvet
         widthM={widthM}
         mattressTop={mattressTop}
         z0={mattressZ - mattressD / 2 + mattressD * 0.4}
         z1={mattressZ + mattressD / 2 - 0.005}
         accentColor={duvet}
-        fabricColor={linen}
-        throwBlanket={false}
+        fabricColor={sheet}
+        throwBlanket={!!traits.throw}
+        fold={traits.fold !== 0}
       />
-      {sleepers.map((p) => (
+      {[...back, ...front].map((p) => (
         <Pillow
           key={p.key}
           position={p.position}
           size={p.size}
-          color={linen}
+          color={pillowColor}
           rotation={p.rotation}
         />
       ))}
-      {n >= 2 && (
+      {lumbarOn && (
         <Pillow
           position={lumbar.position}
           size={lumbar.size}
-          color={linen}
+          color={pillowColor}
           rotation={lumbar.rotation}
         />
+      )}
+    </group>
+  );
+}
+
+/** A skirt of gathered fabric hanging from the mattress base to the floor, with its pleats. */
+function BedSkirt({ widthM, depthM, z, height, color }) {
+  const line = shade(color, -0.12);
+  const pleatsX = Math.max(4, Math.round(widthM / 0.16));
+  const pleatsZ = Math.max(6, Math.round(depthM / 0.16));
+  return (
+    <group name="bed-skirt">
+      <Box
+        position={[0, height / 2 - 0.01, z]}
+        size={[widthM + 0.02, height - 0.02, depthM + 0.02]}
+        color={color}
+        roughness={0.98}
+      />
+      {Array.from({ length: pleatsX - 1 }).map((_, i) => (
+        <Box
+          key={`f${i}`}
+          position={[
+            -widthM / 2 + (widthM * (i + 1)) / pleatsX,
+            height / 2 - 0.01,
+            z + depthM / 2 + 0.012,
+          ]}
+          size={[0.006, height - 0.04, 0.004]}
+          color={line}
+          castShadow={false}
+        />
+      ))}
+      {[-1, 1].flatMap((s) =>
+        Array.from({ length: pleatsZ - 1 }).map((_, i) => (
+          <Box
+            key={`s${s}-${i}`}
+            position={[
+              (s * (widthM + 0.02)) / 2 + s * 0.002,
+              height / 2 - 0.01,
+              z - depthM / 2 + (depthM * (i + 1)) / pleatsZ,
+            ]}
+            size={[0.004, height - 0.04, 0.006]}
+            color={line}
+            castShadow={false}
+          />
+        ))
+      )}
+    </group>
+  );
+}
+
+/** Drawer fronts with pulls along both sides of the base (storage bed). */
+function StorageDrawers({ widthM, depthM, z, frameH, footH, color }) {
+  const h = Math.max(0.08, frameH - footH - 0.1);
+  const len = depthM * 0.4;
+  const groove = shade(color, -0.2);
+  return (
+    <group name="bed-drawers">
+      {[-1, 1].flatMap((s) =>
+        [-1, 1].map((k) => (
+          <group
+            key={`${s}${k}`}
+            position={[(s * widthM) / 2, footH + frameH / 2 - 0.02, z + k * depthM * 0.23]}
+          >
+            <Box
+              position={[s * 0.003, 0, 0]}
+              size={[0.008, h, len]}
+              color={shade(color, 0.04)}
+              castShadow={false}
+            />
+            <Box
+              position={[s * 0.006, 0, 0]}
+              size={[0.004, 0.012, len * 0.35]}
+              color="#C4A869"
+              castShadow={false}
+            />
+            <Box
+              position={[s * 0.004, -h / 2 - 0.004, 0]}
+              size={[0.006, 0.004, len]}
+              color={groove}
+              castShadow={false}
+            />
+          </group>
+        ))
       )}
     </group>
   );
