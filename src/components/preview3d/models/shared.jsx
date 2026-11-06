@@ -155,7 +155,12 @@ export function clamp(value, lo, hi) {
 
 /** A colour nudged lighter (positive) or darker (negative) in lightness. */
 export function shade(color, amount) {
-  return new THREE.Color(color).offsetHSL(0, 0, amount).getStyle();
+  const c = new THREE.Color(color);
+  const hsl = c.getHSL({ h: 0, s: 0, l: 0 });
+  // Lightness is in linear space, so a dark colour minus a fixed amount would go pure black: keep a
+  // fraction of it, so a dark teal cushion stays teal
+  const l = amount < 0 ? Math.max(hsl.l + amount, hsl.l * 0.5) : Math.min(1, hsl.l + amount);
+  return c.setHSL(hsl.h, hsl.s, l).getStyle();
 }
 
 /** Sphere for knobs, buttons, finials and rounded detail. */

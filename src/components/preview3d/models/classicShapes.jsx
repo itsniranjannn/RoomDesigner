@@ -8,7 +8,7 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { RoundedBox } from '@react-three/drei';
-import { Box, Pad, Cyl, Ball, Pillow, shade, clamp } from './shared.jsx';
+import { Box, Pad, Cyl, Ball, Pillow, leaningPillow, shade, clamp } from './shared.jsx';
 
 const GOLD = '#c9a24a';
 
@@ -133,6 +133,18 @@ export function headboardOutline(width, shoulderY, peakY, crest, y0 = 0) {
   return pts;
 }
 
+/**
+ * The two small ornaments each side of the centre of a carved bed headboard (x, y, radius, y is world height):
+ * 5 cm under the peak, but never higher than the crest outline at their x, so none stands clear of the wood.
+ */
+export function headboardOrnaments(outline, peakY) {
+  return [-1, 1].map((s) => {
+    const x = s * 0.09;
+    const r = 0.022;
+    return { x, y: Math.min(peakY - 0.06, outlineTopAt(outline, x) - r - 0.015), r };
+  });
+}
+
 function ExtrudedOutline({ points, depth, position, color, roughness = 0.5, bevel = 0.012 }) {
   const geometry = useMemo(() => {
     const shape = new THREE.Shape(points.map(([x, y]) => new THREE.Vector2(x, y)));
@@ -219,6 +231,7 @@ export function ClassicHeadboard({
     return out;
   }, [tufted, widthM, border, crest, shoulderY, heightM, mattressTop]);
   const zFace = -depthM / 2 + hb + 0.012;
+  const ornaments = useMemo(() => headboardOrnaments(frame, heightM), [frame, heightM]);
   return (
     <group name="headboard">
       <ExtrudedOutline
@@ -272,11 +285,11 @@ export function ClassicHeadboard({
             color={wood}
             roughness={0.4}
           />
-          {[-1, 1].map((s) => (
+          {ornaments.map((o) => (
             <Ball
-              key={s}
-              position={[s * 0.09, -0.05, 0]}
-              radius={0.022}
+              key={o.x}
+              position={[o.x, o.y - (heightM - 0.01), 0]}
+              radius={o.r}
               scale={[1.2, 1, 0.6]}
               color={shade(wood, 0.05)}
               roughness={0.4}
@@ -489,27 +502,84 @@ export function CanePanel({ position, size, rotation, cane = '#d8bf8e', frame = 
   );
 }
 
-/** Scatter cushions leaning on the back of a seat, in their own colour. */
-export function ScatterCushions({ count, widthM, y, z, size = 0.38, color, accent }) {
-  const n = clamp(Math.round(count), 0, 6);
+/** Height of the top edge of an outline at x (the highest point of the shape there). */
+export function outlineTopAt(points, x) {
+  let best = -Infinity;
+  for (let i = 0; i < points.length; i++) {
+    const [x1, y1] = points[i];
+    const [x2, y2] = points[(i + 1) % points.length];
+    if (x1 === x2) {
+      if (Math.abs(x1 - x) < 1e-6) best = Math.max(best, y1, y2);
+      continue;
+    }
+    if ((x - x1) * (x - x2) <= 0) best = Math.max(best, y1 + ((y2 - y1) * (x - x1)) / (x2 - x1));
+  }
+  return best;
+}
+
+/**
+ * Where scatter cushions go on a seat: each rests on the seat and touches the tilted back cushion face
+ * (`plane`), so it never floats or pokes through; fewer and smaller on a narrow seat.
+ */
+export function scatterLayout({ count, widthM, seatTop, plane, size = 0.38 }) {
+  const w = clamp(Math.min(size, widthM - 0.02), 0.12, 0.45);
+  const n = clamp(Math.min(Math.round(count), Math.max(1, Math.floor(widthM / (w * 0.8)))), 0, 6);
+  const room = Math.max(0, widthM / 2 - w / 2 - 0.03);
+  const items = Array.from({ length: n }).map((_, i) => {
+    const x = n === 1 ? -room * 0.6 : -room + (2 * room * i) / (n - 1);
+    const sg = i % 2 ? 1 : -1;
+    return leaningPillow({
+      size: [w, w * 0.4, w],
+      lean: 1.15 + (i % 2) * 0.06,
+      yaw: sg * 0.14,
+      x,
+      seatTop,
+      planePoint: plane.point,
+      planeNormal: plane.normal,
+    });
+  });
+  return { w, n, items };
+}
+
+/** Scatter cushions leaning on the loose back cushions of a seat, in their own colour. */
+export function ScatterCushions({ count, widthM, seatTop, plane, size = 0.38, color, accent }) {
+  const { w, n, items } = useMemo(
+    () => scatterLayout({ count, widthM, seatTop, plane, size }),
+    [count, widthM, seatTop, plane, size]
+  );
   if (!n) return null;
   return (
     <group name="scatter">
-      {Array.from({ length: n }).map((_, i) => {
-        const x = n === 1 ? 0 : -widthM * 0.34 + (widthM * 0.68 * i) / (n - 1);
-        const tilt = (i % 2 ? -1 : 1) * 0.08;
-        return (
-          <Pillow
-            key={i}
-            position={[x, y + size * 0.42, z]}
-            size={[size, 0.12, size * 0.92]}
-            color={i % 2 && accent ? accent : color}
-            rotation={[-1.05, tilt, tilt * 0.6]}
-          />
-        );
-      })}
+      {items.map((p, i) => (
+        <Pillow
+          key={i}
+          position={p.position}
+          rotation={p.rotation}
+          size={[w, w * 0.4, w]}
+          color={i % 2 && accent ? accent : color}
+        />
+      ))}
     </group>
   );
+}
+
+/** Front face of the loose back cushions of a classic seat (tilted 0.2 rad): scatter cushions lean on it. */
+export function classicBackPlane({ seatH, heightM, depthM, backT }) {
+  const cy = seatH + (heightM - seatH - 0.1) / 2;
+  const cz = -depthM / 2 + backT + 0.07;
+  const normal = [0, Math.sin(0.2), Math.cos(0.2)];
+  return { point: [0, cy + normal[1] * 0.065, cz + normal[2] * 0.065], normal };
+}
+
+/** Outline of the carved crest rim of a classic sofa back, with where its two side finials sit (x, y, radius). */
+export function classicCrestRim({ widthM, heightM, footH }) {
+  const sideTop = footH + (heightM - footH) * 0.74;
+  const rim = headboardOutline(widthM - 0.01, sideTop + 0.01, heightM, 1, sideTop - 0.05);
+  const finials = [-1, 1].map((s) => {
+    const x = s * widthM * 0.3;
+    return { x, y: outlineTopAt(rim, x) + 0.012, r: 0.032 * 0.7 };
+  });
+  return { rim, finials, sideTop };
 }
 
 /**
@@ -545,15 +615,23 @@ export function ClassicSeat({
   const seatW = innerW / Math.max(1, seats);
   const caned = !!cane;
   const trimOn = !!trim;
+  // Cane-arm posts run from the base rail right up under the arm rail (no gap, nothing poking above it)
+  const postBottom = footH - 0.01;
+  const postTop = armH - 0.04;
   const upholsteryTop = heightM - (frame === 2 ? 0.05 : 0.02);
-  const sideTop = footH + (heightM - footH) * 0.74;
+  const {
+    rim: crestRim,
+    finials,
+    sideTop,
+  } = useMemo(() => classicCrestRim({ widthM, heightM, footH }), [widthM, heightM, footH]);
   const crestShape = useMemo(
     () => headboardOutline(widthM - 0.04, sideTop - 0.01, heightM - 0.03, 1, sideTop - 0.05),
     [widthM, heightM, sideTop]
   );
-  const crestRim = useMemo(
-    () => headboardOutline(widthM - 0.01, sideTop + 0.01, heightM, 1, sideTop - 0.05),
-    [widthM, heightM, sideTop]
+  // Front face of the loose back cushions (tilted 0.2 rad), which scatter cushions lean on
+  const backPlane = useMemo(
+    () => classicBackPlane({ seatH, heightM, depthM, backT }),
+    [seatH, heightM, depthM, backT]
   );
   return (
     <group name="classic-seat">
@@ -610,14 +688,14 @@ export function ClassicSeat({
               roughness={0.42}
             />
             <Box
-              position={[s * (widthM / 2 - 0.02), (footH + armH) / 2 - 0.04, depthM / 2 - 0.03]}
-              size={[0.04, armH - footH - 0.06, 0.04]}
+              position={[s * (widthM / 2 - 0.02), (postBottom + postTop) / 2, depthM / 2 - 0.03]}
+              size={[0.04, postTop - postBottom, 0.04]}
               color={wood}
               roughness={0.42}
             />
             <Box
-              position={[s * (widthM / 2 - 0.02), (footH + armH) / 2 - 0.04, -depthM / 2 + backT]}
-              size={[0.04, armH - footH - 0.06, 0.04]}
+              position={[s * (widthM / 2 - 0.02), (postBottom + postTop) / 2, -depthM / 2 + backT]}
+              size={[0.04, postTop - postBottom, 0.04]}
               color={wood}
               roughness={0.42}
             />
@@ -726,10 +804,10 @@ export function ClassicSeat({
               metalness={0.6}
             />
           )}
-          {[-1, 1].map((s) => (
+          {finials.map((f, i) => (
             <Ball
-              key={s}
-              position={[s * widthM * 0.3, 0.012, 0]}
+              key={i}
+              position={[f.x, f.y - heightM, 0]}
               radius={0.032}
               scale={[1.6, 0.7, 0.6]}
               color={shade(wood, 0.03)}
@@ -800,11 +878,11 @@ export function ClassicSeat({
       <ScatterCushions
         count={scatter}
         widthM={innerW}
-        y={seatH}
-        z={-depthM / 2 + backT + 0.26}
+        seatTop={seatH}
+        plane={backPlane}
         size={clamp(seatW * 0.5, 0.3, 0.45)}
         color={scatterColor || cushion}
-        accent={scatterColor ? shade(scatterColor, -0.08) : null}
+        accent={scatterColor ? new THREE.Color(scatterColor).multiplyScalar(0.8).getStyle() : null}
       />
     </group>
   );
