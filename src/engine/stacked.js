@@ -96,7 +96,13 @@ export function detectStackedPhotos(rgba, width, height) {
   for (const axis of ['y', 'x']) {
     const length = axis === 'y' ? height : width;
     const stats = lineStats(rgba, width, height, axis);
-    const runs = plainRuns(stats);
+    // A gutter is white or black (or a flat grey frame), not a flat patch of wall or floor
+    const runs = plainRuns(stats).filter(([a, b]) => {
+      const m = stats[Math.floor((a + b) / 2)].mean;
+      const spread = Math.max(...m) - Math.min(...m);
+      const lum = (m[0] + m[1] + m[2]) / 3;
+      return spread < 14 && (lum > 225 || lum < 30);
+    });
     const minGap = Math.max(2, Math.round(length * 0.004));
     // cuts between photos; plain runs at either end are just margins
     const spans = [];

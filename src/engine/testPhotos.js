@@ -241,3 +241,52 @@ export function productSheet(views, width = 640, height = 470) {
   if (three) s.paste(three, 330, 250);
   return s;
 }
+
+/**
+ * A photo taken in a room, for the scene cut-out: a lit wall with a picture frame, a darker floor with a rug, and
+ * furniture standing on it, plus a plant and a lamp as clutter. `layout` picks what is in the picture: a teal sofa
+ * between two copies of an armchair with a gap between them, or a wooden bed with a tall headboard.
+ * @param {'sofaAndChairs'|'bedroomBed'} layout
+ */
+export function lifestyleScene(layout = 'sofaAndChairs') {
+  const w = 480;
+  const h = 400;
+  const s = surface(w, h, [214, 200, 184]);
+  s.rect(0, 0, w, 250, [208, 192, 172]);
+  s.rect(0, 0, 40, 250, [190, 172, 150]);
+  s.rect(170, 40, 120, 90, [90, 78, 70]);
+  s.rect(176, 46, 108, 78, [170, 150, 120]);
+  s.rect(0, 250, w, 150, [118, 102, 92]);
+  s.rect(60, 330, 360, 60, [180, 160, 140]);
+  if (layout === 'sofaAndChairs') {
+    s.rect(150, 200, 180, 70, [34, 98, 96]);
+    s.rect(138, 218, 24, 62, [30, 88, 86]);
+    s.rect(318, 218, 24, 62, [30, 88, 86]);
+    s.rect(150, 256, 180, 24, [40, 112, 108]);
+    s.rect(146, 278, 188, 8, [110, 70, 40]);
+    s.rect(150, 286, 8, 20, [90, 56, 30]);
+    s.rect(322, 286, 8, 20, [90, 56, 30]);
+    const chair = (x) => {
+      s.rect(x, 226, 62, 44, [36, 100, 98]);
+      s.rect(x - 6, 246, 12, 40, [120, 80, 50]);
+      s.rect(x + 56, 246, 12, 40, [120, 80, 50]);
+      s.rect(x, 262, 62, 20, [44, 116, 112]);
+      s.rect(x - 4, 284, 8, 24, [90, 56, 30]);
+      s.rect(x + 58, 284, 8, 24, [90, 56, 30]);
+    };
+    chair(62);
+    chair(358);
+    s.ellipse(18, 190, 18, 40, [60, 110, 50]);
+    s.rect(14, 190, 8, 70, [100, 70, 40]);
+    s.rect(446, 130, 6, 120, [60, 56, 52]);
+    s.ellipse(449, 126, 16, 12, [236, 220, 170]);
+  } else {
+    s.rect(130, 60, 220, 120, [150, 76, 40]);
+    s.rect(150, 80, 180, 80, [120, 60, 36]);
+    s.rect(140, 160, 200, 40, [232, 226, 214]);
+    s.rect(118, 196, 244, 70, [146, 74, 40]);
+    s.rect(124, 266, 22, 22, [100, 50, 26]);
+    s.rect(334, 266, 22, 22, [100, 50, 26]);
+  }
+  return s;
+}

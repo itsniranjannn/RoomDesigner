@@ -63,7 +63,10 @@ export function designFromViews(views, options) {
     // A bed photographed from three quarters is not as wide as it is tall in the picture: keep its usual height
     const oblique =
       result.type === 'bed' && Object.keys(views).length === 1 && isObliqueView(views.front);
-    const sizing = oblique ? { ...partial, widthPerHeight: null } : partial;
+    let sizing = oblique ? { ...partial, widthPerHeight: null } : partial;
+    // A carved bed in a bedroom photo has its side tables in the outline, which widens it by about a fifth
+    if (result.type === 'bed' && result.traits.crest && sizing.widthPerHeight)
+      sizing = { ...sizing, widthPerHeight: sizing.widthPerHeight * 0.82 };
     const fit = (width) =>
       ratios
         ? dimensionsFromProportions(ratios, 'widthCm', width)

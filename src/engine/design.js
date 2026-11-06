@@ -1035,7 +1035,16 @@ export function looksLikeBed(views, hints = {}, dims = null) {
   // photo shows side tables and a rug that blur the outline, but not this
   if (front && (wph == null || wph <= 1.9)) {
     const head = bedHead(front);
-    if (head && head.crest && head.buttoned && head.framed) return true;
+    if (
+      head &&
+      head.crest &&
+      head.buttoned &&
+      head.framed &&
+      head.headW &&
+      head.headW <= 1.2 &&
+      head.footWood >= 0.78
+    )
+      return true;
   }
   if (side && bedOutline(side, dph, 'side')) return true;
   // A plan view alone: a bed is the one big piece that is longer than it is wide, solid corner to corner
@@ -1072,7 +1081,7 @@ export function classifyFromFront(front, wh) {
   }
   const seatSeam = findLines(front, 'y', [0.25, 0.3, 0.75, 0.8]).length >= 1;
   const soft = rolledArms(front)?.roll || tuftedBack(front) || seatSeam;
-  if (soft && wh >= 0.85 && wh <= 3.4) return wh >= 1.45 ? 'sofa' : 'armchair';
+  if (soft && wh >= 0.85 && wh <= 3.4) return wh >= 1.32 ? 'sofa' : 'armchair';
   if (wh <= 0.9) {
     const shelves = findLines(front, 'y', [0.12, 0.03, 0.88, 0.97], 5).length;
     const seeThrough = front.open && (fillOf(front, [0.1, 0.1, 0.9, 0.9], true) ?? 1) < 0.72;
@@ -1527,9 +1536,9 @@ function goldTrim(view) {
     count++;
     const c = [view.rgb[p * 3], view.rgb[p * 3 + 1], view.rgb[p * 3 + 2]];
     const [h, sat, v] = hsv(c);
-    if (h >= 36 && h <= 52 && sat >= 0.55 && v >= 0.55) gold.push(c);
+    if (h >= 36 && h <= 54 && sat >= 0.5 && v >= 0.55) gold.push(c);
   }
-  return count && gold.length / count >= 0.012 ? toHex(mean(gold)) : null;
+  return count && gold.length / count >= 0.006 ? toHex(mean(gold)) : null;
 }
 
 function smoothProfile(prof) {
@@ -1600,6 +1609,12 @@ export function bedHead(F) {
   const y0 = 1 - info.peak + 0.12;
   const panel = pickColor(F, [x0, y0, x1, y0 + 0.18]);
   const buttoned = tuftedBack(F, [x0, y0, x1, y0 + 0.2]);
+  // Leather is one even tone with buttons; printed cloth varies much more across the same area
+  const lum = regionPixels(F, x0, y0, x1, y0 + 0.18, true).map(luma);
+  const mu = lum.reduce((a, b) => a + b, 0) / Math.max(1, lum.length);
+  const variance =
+    Math.sqrt(lum.reduce((a, b) => a + (b - mu) ** 2, 0) / Math.max(1, lum.length)) /
+    Math.max(1, mu);
   // The row at three quarters height: how wide the base of the bed is around the middle
   const row = Math.round(s * 0.74);
   let l = Math.round(s / 2);
@@ -1608,6 +1623,9 @@ export function bedHead(F) {
   while (r < s - 1 && F.mask[row * s + r + 1]) r++;
   const bodyW = (r - l + 1) / s;
   // A wood frame: warm, saturated wood around a panel of another material (not a grey bed whose parts differ in tone)
+  // A bed's foot end is a wide wooden board; a sofa's lower half is cloth (seat cushions, arms) above a wood rail
+  const lower = regionPixels(F, 0.12, 0.66, 0.88, 0.86, true);
+  const footWood = lower.length ? lower.filter(woodLike).length / lower.length : 0;
   const framed = Boolean(
     panel &&
     wood &&
@@ -1618,6 +1636,8 @@ export function bedHead(F) {
     crest: info.crest,
     framed,
     buttoned,
+    variance,
+    footWood,
     wood,
     panel,
     headW: bodyW > 0.3 ? w / s / bodyW : null,
@@ -1635,25 +1655,36 @@ function seatClassic(F, body) {
   if (band.length < 20) return null;
   const woods = band.filter(woodLike);
   const woodFrac = woods.length / band.length;
-  const frameHex = woods.length ? toHex(mean(woods)) : null;
+  // The frame's own colour is its darker half (highlights on a glossy rail and cane or cloth near it are lighter)
+  const woodsDark = [...woods]
+    .sort((a, b) => luma(a) - luma(b))
+    .slice(0, Math.ceil(woods.length / 2));
+  const frameHex = woodsDark.length ? toHex(mean(woodsDark)) : null;
   // The wood must be a clear band of its own along the base, in a different material from the cloth
   const exposed = frameHex && woodFrac >= 0.3 && colourGap(frameHex, body) > 34;
-  const gold = goldTrim(F);
-  if (!exposed && !gold) return null;
+  let gold = goldTrim(F);
   const info = crestOf(F);
+  // Carving this fine does not survive a small view: a carved crest on gold brocade comes with gilded carving
+  if (!gold && exposed && info && info.crest) {
+    const [h, sat, v] = hsv(bodyRgb);
+    if (h >= 28 && h <= 54 && sat >= 0.25 && v >= 0.6) gold = '#c9a24a';
+  }
+  if (!exposed && !gold) return null;
   const out = { frame: info && info.crest ? 2 : 1, wood: frameHex || null, trim: gold };
-  // Cane: pale warm weave on the arms or sides, unlike the cloth
-  const side = [...regionPixels(F, 0.0, 0.5, 0.14, 0.88), ...regionPixels(F, 0.86, 0.5, 1.0, 0.88)];
+  // Cane: pale warm weave on the arms or sides, unlike the cloth. Counted per pixel: the weave sits between
+  // dark rails, so a mean colour over the side would hide it
+  const side = [
+    ...regionPixels(F, 0.0, 0.45, 0.2, 0.9, true),
+    ...regionPixels(F, 0.8, 0.45, 1.0, 0.9, true),
+  ];
   if (side.length > 12) {
-    const m = mean(side);
-    const [h, sat, v] = hsv(m);
-    out.cane =
-      h >= 28 &&
-      h <= 52 &&
-      sat >= 0.22 &&
-      sat <= 0.55 &&
-      v >= 0.62 &&
-      colourGap(toHex(m), body) > 30;
+    const caney = side.filter((c) => {
+      const [h, sat, v] = hsv(c);
+      return h >= 26 && h <= 54 && sat >= 0.2 && sat <= 0.62 && v >= 0.55;
+    });
+    const share = caney.length / side.length;
+    out.cane = share >= 0.3 && colourGap(toHex(mean(caney)), body) > 30;
+    if (out.cane) out.caneColor = toHex(mean(caney));
   }
   // Scatter cushions: seams across the upper back show one cushion per seat plus the loose ones in front
   const seams = findLines(F, 'x', [0.15, 0.3, 0.85, 0.52], 3).length;

@@ -276,8 +276,8 @@ const TRAIT_CONTROLS = {
       fallback: 0,
       options: [
         [0, 'None'],
-        [1, 'Straight'],
-        [2, 'Curved sleigh'],
+        [1, 'With a straight footboard'],
+        [2, 'Curved sleigh footboard'],
       ],
     },
     {
@@ -325,15 +325,6 @@ const TRAIT_CONTROLS = {
       options: [
         [0, 'None'],
         [1, 'Throw across the foot'],
-      ],
-    },
-    {
-      key: 'foot',
-      label: 'Footboard',
-      fallback: 0,
-      options: [
-        [0, 'None'],
-        [1, 'With a footboard'],
       ],
     },
     {
