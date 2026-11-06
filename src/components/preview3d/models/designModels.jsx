@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { Box, Pad, Cyl, Pillow, pillowRestY, shade, clamp, corners } from './shared.jsx';
 import { Mattress, Duvet } from './bed.jsx';
 import { Upholstered, ChairModel, BarStoolModel, LoungeChairModel } from './seating.jsx';
+import { ChannelSeat } from './channelSeat.jsx';
 import {
   LeggedTable,
   TableRoundModel,
@@ -15,6 +16,7 @@ import {
   NightstandModel,
 } from './tables.jsx';
 import { WardrobeModel, BookshelfModel, SideboardModel } from './storage.jsx';
+import { WardrobeDesign, DeskDesign } from './designCasework.jsx';
 import {
   CornerSofaDesign,
   TubChairDesign,
@@ -24,7 +26,16 @@ import {
   SideboardDesign,
   StoolDesign,
   Headboard,
+  metalFinish,
 } from './designShapes.jsx';
+import {
+  CASTER_H,
+  MetalBedFrame,
+  GuardRails,
+  Caster,
+  postCorners,
+  BedBaseDrawers,
+} from './metalBed.jsx';
 import {
   ClassicHeadboard,
   SleighFootboard,
@@ -62,15 +73,20 @@ export function effectivePalette(design, mainColor) {
 }
 
 /**
- * Upholstered bed from its design record: headboard (style, width, colour), base (solid, on feet, storage
- * drawers or skirted), footboard, mattress with its sheet, duvet with fold-back and throw, and the pillows
- * (a row or two tiers, with or without a bolster in front).
+ * Bed from its design record: headboard (style, width, colour), base (solid, on feet, storage drawers or
+ * skirted), footboard, mattress with its sheet, duvet with fold-back and throw, and the pillows (a row or two
+ * tiers, with or without a bolster in front). A tube metal bed has bent head and foot rails with spindles
+ * instead of the upholstered headboard and base; guard rails and castors can go on either kind.
  */
 export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
-  const hb = 0.1;
-  const legs = !!traits.legs && !traits.skirt;
+  const metal = !!traits.metal;
+  const hb = metal ? 0.05 : 0.1;
+  const legs = !metal && !!traits.legs && !traits.skirt;
   const bun = traits.legs === 2 && legs;
-  const footH = legs ? (bun ? 0.13 : 0.1) : 0;
+  // Castors lift the whole bed; a skirt down to the floor would hide them, so it has none
+  const casterH = traits.casters && (metal || !traits.skirt) ? CASTER_H : 0;
+  const legH = legs ? (bun ? 0.13 : 0.1) : 0;
+  const footH = legH + casterH;
   const classicHead = !!traits.crest || !!traits.framed;
   const mattressH = 0.22;
   const bodyTop = (traits.bodyFrac ?? 0.55) * heightM;
@@ -78,7 +94,7 @@ export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
   const mattressTop = frameH + mattressH;
   const footboard = !!traits.foot;
   const sleigh = traits.foot === 2;
-  const footT = footboard ? (sleigh ? 0.09 : 0.06) : 0;
+  const footT = metal ? 0.04 : footboard ? (sleigh ? 0.09 : 0.06) : 0;
   const mattressD = depthM - hb - 0.02 - footT;
   const mattressZ = hb / 2 + 0.01 - footT / 2;
   const head = palette.body;
@@ -126,109 +142,151 @@ export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
   );
   const sideLen = depthM - hb - footT;
   const baseZ = hb / 2 - footT / 2;
+  // Storage drawers sit flush in a base a little narrower than the mattress, so their pulls stay inside
+  const store = !metal && !!traits.store && !traits.skirt;
+  const baseW = store ? widthM - 0.06 : widthM;
+  // A tube frame's box spring shows in its own colour when that is clearly not the metal's
+  const fabricBase = metal && palette.base && colourDistance(palette.body, palette.base) > 60;
+  // With guard rails the duvet is tucked in clear of the rail posts; on a tube frame it hangs inside the posts
+  const duvetW = traits.rails ? widthM - 0.06 : metal ? widthM - 0.03 : widthM;
+  const legsAndFeet = bun ? (
+    <BunFeet widthM={widthM} depthM={depthM} color={shade(base, -0.05)} radius={0.065} />
+  ) : legs ? (
+    corners(widthM, depthM, 0.07).map(([x, z], i) => (
+      <Cyl
+        key={i}
+        position={[x, legH / 2, z]}
+        radiusTop={0.03}
+        radiusBottom={0.02}
+        height={legH}
+        color={shade(base, -0.3)}
+        roughness={0.55}
+        segments={12}
+      />
+    ))
+  ) : traits.skirt ? (
+    <BedSkirt widthM={widthM} depthM={sideLen} z={baseZ} height={frameH} color={base} />
+  ) : (
+    <Box
+      position={[0, 0.02, baseZ]}
+      size={[widthM - 0.1, 0.04, sideLen - 0.1]}
+      color="#1B1714"
+      roughness={0.95}
+    />
+  );
+  const casterFinish = metalFinish(metal ? base : '#9a9c9e');
   return (
     <group>
-      {/* Padded base, with a recessed shadow gap above the floor (or short feet) */}
-      <Pad
-        position={[0, footH + (frameH - footH) / 2 + 0.01, baseZ]}
-        size={[widthM, frameH - footH - 0.02, sideLen]}
-        radius={0.035}
-        color={base}
-        roughness={0.92}
-      />
-      <Box
-        position={[0, frameH - 0.03, baseZ]}
-        size={[widthM + 0.004, 0.006, sideLen + 0.004]}
-        color={edge}
-        roughness={0.9}
-        castShadow={false}
-      />
-      {bun ? (
-        <BunFeet widthM={widthM} depthM={depthM} color={shade(base, -0.05)} radius={0.065} />
-      ) : legs ? (
-        corners(widthM, depthM, 0.07).map(([x, z], i) => (
-          <Cyl
-            key={i}
-            position={[x, footH / 2, z]}
-            radiusTop={0.03}
-            radiusBottom={0.02}
-            height={footH}
-            color={shade(base, -0.3)}
-            roughness={0.55}
-            segments={12}
-          />
-        ))
-      ) : traits.skirt ? (
-        <BedSkirt widthM={widthM} depthM={sideLen} z={baseZ} height={frameH} color={base} />
-      ) : (
-        <Box
-          position={[0, 0.02, baseZ]}
-          size={[widthM - 0.1, 0.04, sideLen - 0.1]}
-          color="#1B1714"
-          roughness={0.95}
-        />
-      )}
-      {traits.store && !traits.skirt && (
-        <StorageDrawers
+      {metal ? (
+        <MetalBedFrame
           widthM={widthM}
-          depthM={sideLen}
-          z={baseZ}
-          frameH={frameH}
-          footH={footH}
-          color={base}
-        />
-      )}
-
-      {/* Tall headboard in the style, width and colour read from the photos */}
-      {classicHead ? (
-        <ClassicHeadboard
-          widthM={headWidth}
           depthM={depthM}
           heightM={heightM}
-          footH={footH}
+          frameH={frameH}
           mattressTop={mattressTop}
-          hb={hb}
-          wood={head}
-          panel={palette.panel || shade(head, -0.18)}
-          crest={traits.crest || 0}
-          tufted={traits.head === 'tufted'}
-          framed={!!traits.framed}
+          footTop={footboard ? Math.max(mattressTop + 0.2, heightM * 0.82) : mattressTop + 0.16}
+          bottom={casterH}
+          color={base}
+          fabric={fabricBase ? head : null}
         />
       ) : (
-        <Headboard
-          style={traits.head ?? (traits.channels ? 'channel' : 'panel')}
-          widthM={headWidth}
+        <>
+          {/* Padded base, with a recessed shadow gap above the floor (or short feet) */}
+          <Pad
+            position={[0, footH + (frameH - footH) / 2 + 0.01, baseZ]}
+            size={[baseW, frameH - footH - 0.02, sideLen]}
+            radius={0.035}
+            color={base}
+            roughness={0.92}
+          />
+          <Box
+            position={[0, frameH - 0.03, baseZ]}
+            size={[baseW + 0.004, 0.006, sideLen + 0.004]}
+            color={edge}
+            roughness={0.9}
+            castShadow={false}
+          />
+          {casterH ? <group position={[0, casterH, 0]}>{legsAndFeet}</group> : legsAndFeet}
+          {store && (
+            <BedBaseDrawers
+              faceX={widthM / 2 - 0.022}
+              depthM={sideLen}
+              z={baseZ}
+              y0={footH + 0.03}
+              y1={frameH - 0.045}
+              color={base}
+            />
+          )}
+
+          {/* Tall headboard in the style, width and colour read from the photos */}
+          {classicHead ? (
+            <ClassicHeadboard
+              widthM={headWidth}
+              depthM={depthM}
+              heightM={heightM}
+              footH={footH}
+              mattressTop={mattressTop}
+              hb={hb}
+              wood={head}
+              panel={palette.panel || shade(head, -0.18)}
+              crest={traits.crest || 0}
+              tufted={traits.head === 'tufted'}
+              framed={!!traits.framed}
+            />
+          ) : (
+            <Headboard
+              style={traits.head ?? (traits.channels ? 'channel' : 'panel')}
+              widthM={headWidth}
+              depthM={depthM}
+              heightM={heightM}
+              footH={footH}
+              mattressTop={mattressTop}
+              hb={hb}
+              body={head}
+            />
+          )}
+          {footboard && sleigh && (
+            <SleighFootboard
+              widthM={widthM + 0.02}
+              z={depthM / 2 - footT / 2}
+              footH={footH}
+              topY={mattressTop + 0.14}
+              thick={footT}
+              wood={base}
+            />
+          )}
+          {footboard && !sleigh && (
+            <Pad
+              position={[0, footH + (mattressTop + 0.1 - footH) / 2, depthM / 2 - footT / 2]}
+              size={[widthM + 0.02, mattressTop + 0.1 - footH, footT]}
+              radius={0.03}
+              color={head}
+              roughness={0.92}
+            />
+          )}
+        </>
+      )}
+      {casterH > 0 &&
+        (metal ? postCorners(widthM, depthM) : corners(widthM, depthM, 0.07)).map(([x, z], i) => (
+          <Caster key={i} x={x} z={z} finish={casterFinish} />
+        ))}
+      {traits.rails && (
+        <GuardRails
+          widthM={widthM}
           depthM={depthM}
-          heightM={heightM}
-          footH={footH}
           mattressTop={mattressTop}
-          hb={hb}
-          body={head}
-        />
-      )}
-      {footboard && sleigh && (
-        <SleighFootboard
-          widthM={widthM + 0.02}
-          z={depthM / 2 - footT / 2}
-          footH={footH}
-          topY={mattressTop + 0.14}
-          thick={footT}
-          wood={base}
-        />
-      )}
-      {footboard && !sleigh && (
-        <Pad
-          position={[0, footH + (mattressTop + 0.1 - footH) / 2, depthM / 2 - footT / 2]}
-          size={[widthM + 0.02, mattressTop + 0.1 - footH, footT]}
-          radius={0.03}
-          color={head}
-          roughness={0.92}
+          base={
+            metal
+              ? frameH - (fabricBase ? clamp(frameH * 0.32, 0.08, 0.13) : 0) - 0.022
+              : frameH - 0.05
+          }
+          color={base}
         />
       )}
 
       <Mattress widthM={widthM} depthM={mattressD} y={frameH} z={mattressZ} fabricColor={sheet} />
       <Duvet
-        widthM={widthM}
+        widthM={duvetW}
         mattressTop={mattressTop}
         z0={mattressZ - mattressD / 2 + mattressD * 0.4}
         z1={mattressZ + mattressD / 2 - 0.005}
@@ -303,44 +361,6 @@ function BedSkirt({ widthM, depthM, z, height, color }) {
   );
 }
 
-/** Drawer fronts with pulls along both sides of the base (storage bed). */
-function StorageDrawers({ widthM, depthM, z, frameH, footH, color }) {
-  const h = Math.max(0.08, frameH - footH - 0.1);
-  const len = depthM * 0.4;
-  const groove = shade(color, -0.2);
-  return (
-    <group name="bed-drawers">
-      {[-1, 1].flatMap((s) =>
-        [-1, 1].map((k) => (
-          <group
-            key={`${s}${k}`}
-            position={[(s * widthM) / 2, footH + frameH / 2 - 0.02, z + k * depthM * 0.23]}
-          >
-            <Box
-              position={[s * 0.003, 0, 0]}
-              size={[0.008, h, len]}
-              color={shade(color, 0.04)}
-              castShadow={false}
-            />
-            <Box
-              position={[s * 0.006, 0, 0]}
-              size={[0.004, 0.012, len * 0.35]}
-              color="#C4A869"
-              castShadow={false}
-            />
-            <Box
-              position={[s * 0.004, -h / 2 - 0.004, 0]}
-              size={[0.006, 0.004, len]}
-              color={groove}
-              castShadow={false}
-            />
-          </group>
-        ))
-      )}
-    </group>
-  );
-}
-
 /** Props for the classic (exposed-frame) seat from a sofa or armchair record. */
 function classicSeat(palette, traits, widthM, depthM, heightM, defaultSeats) {
   const armchair = defaultSeats === 1;
@@ -366,6 +386,9 @@ function classicSeat(palette, traits, widthM, depthM, heightM, defaultSeats) {
     armH: armchair ? 0.58 : 0.62,
   };
 }
+
+/** Wardrobe details that only the photo-made wardrobe draws; without any of them it is the catalog one. */
+const WARDROBE_TRAITS = ['mirror', 'drawers', 'handle', 'upper', 'niche', 'fluted'];
 
 /** Photo-made piece from its design record: a catalog model parameterised by the photos. */
 export function DesignModel({ def, design, widthM, depthM, heightM, mainColor }) {
@@ -403,6 +426,15 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       model =
         traits.frame || traits.cane ? (
           <ClassicSeat {...classicSeat(palette, traits, widthM, depthM, heightM, 3)} />
+        ) : traits.chan ? (
+          <ChannelSeat
+            {...common}
+            armRatio={traits.arm ?? 0.1}
+            seats={traits.seats || 3}
+            longSeat={!!traits.longSeat}
+            step={!!traits.step}
+            taper={!!traits.taper}
+          />
         ) : (
           <Upholstered
             {...common}
@@ -414,6 +446,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
             tufted={!!traits.tufted}
             taper={!!traits.taper}
             longSeat={!!traits.longSeat}
+            stepArms={!!traits.step}
           />
         );
       break;
@@ -421,6 +454,15 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       model =
         traits.frame || traits.cane ? (
           <ClassicSeat {...classicSeat(palette, traits, widthM, depthM, heightM, 1)} />
+        ) : traits.chan ? (
+          <ChannelSeat
+            {...common}
+            armRatio={traits.arm ?? 0.17}
+            seats={1}
+            seatH={0.42}
+            armH={0.58}
+            taper={!!traits.taper}
+          />
         ) : (
           <Upholstered
             {...common}
@@ -517,10 +559,21 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
         );
       break;
     case 'desk':
-      model = <DeskModel {...common} />;
+      // Desks read before pedestals, sled or panel ends and modesty panels keep the catalog desk
+      model =
+        traits.ped || traits.base || traits.modesty ? (
+          <DeskDesign {...shape} legThick={traits.legFrac ? legThick : 0.05} />
+        ) : (
+          <DeskModel {...common} />
+        );
       break;
     case 'wardrobe':
-      model = <WardrobeModel {...common} doors={traits.doors} />;
+      model =
+        WARDROBE_TRAITS.some((k) => traits[k]) || palette.door || palette.trim ? (
+          <WardrobeDesign {...shape} />
+        ) : (
+          <WardrobeModel {...common} doors={traits.doors} />
+        );
       break;
     case 'bookshelf':
       model = <BookshelfModel {...common} shelves={traits.shelves} />;

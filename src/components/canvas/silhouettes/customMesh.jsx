@@ -1,5 +1,14 @@
 import { useId } from 'react';
 import { getFurnitureType } from '../../../data/furnitureCatalog.js';
+import {
+  stepTiers,
+  channelBackT,
+  WRAP_END,
+  guardRailSpans,
+  wardrobeLayout,
+  deskLayout,
+} from '../../preview3d/models/designLayout.js';
+import { SwingArc, BarHandle } from './parts.jsx';
 
 const OUTLINE = '#22180E';
 
@@ -100,6 +109,20 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
   const inner = widthCm - armW * 2;
   const roll = !!traits.roll;
   const longSeat = type === 'sofa' && !!traits.longSeat && seats > 1;
+  if (traits.chan)
+    return (
+      <ChannelSeatPlan
+        design={design}
+        widthCm={widthCm}
+        depthCm={depthCm}
+        hw={hw}
+        hd={hd}
+        color={color}
+        cushion={cushion}
+        seats={longSeat ? 1 : seats}
+        armW={armW}
+      />
+    );
   return (
     <g>
       <rect
@@ -170,6 +193,108 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
           strokeWidth="0.7"
         />
       ))}
+      {traits.step && <ArmTiers widthCm={widthCm} hd={hd} armW={armW} y0={-hd + 2} />}
+    </g>
+  );
+}
+
+/** Seams between the slabs of terraced arms, running front to back on both arms. */
+function ArmTiers({ widthCm, hd, armW, y0 }) {
+  const tiers = stepTiers({ armW: armW / 100, armH: 0.62, seatH: 0.44 });
+  const hw = widthCm / 2;
+  return (
+    <g name="arm-tiers">
+      {[-1, 1].flatMap((sg) =>
+        tiers.slice(1).map((t, k) => {
+          const x = sg * (hw - (t.off - t.w / 2) * 100);
+          return (
+            <line
+              key={`${sg}${k}`}
+              x1={x}
+              y1={y0}
+              x2={x}
+              y2={hd - 2}
+              stroke={LINE}
+              strokeWidth="0.7"
+            />
+          );
+        })
+      )}
+    </g>
+  );
+}
+
+/** Lines `step` apart across a span (channel seams), as x positions between a and b. */
+function seams(a, b, step) {
+  const n = Math.max(2, Math.round((b - a) / step));
+  return Array.from({ length: n - 1 }, (_, i) => a + ((b - a) * (i + 1)) / n);
+}
+
+/**
+ * Plan of a channel-tufted sofa or armchair: the back with its channels running up to the top edge, the seat
+ * channels running front to back, and the arms channelled over the top or terraced in slabs.
+ */
+function ChannelSeatPlan({ design, widthCm, depthCm, hw, hd, color, cushion, seats, armW }) {
+  const { traits = {} } = design;
+  const backT = channelBackT(depthCm / 100) * 100;
+  const inner = widthCm - armW * 2;
+  const seam = { stroke: LINE, strokeWidth: 0.6 };
+  const cw = inner / seats;
+  return (
+    <g name="channel-plan">
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={5}
+        fill={color}
+        stroke="#222222"
+        strokeWidth="1.2"
+      />
+      {/* Back: channels running up and over its top */}
+      {seams(-hw + 1, hw - 1, 10).map((x) => (
+        <line key={`b${x}`} x1={x} y1={-hd + 1} x2={x} y2={-hd + backT} {...seam} />
+      ))}
+      <line x1={-hw + armW} y1={-hd + backT} x2={hw - armW} y2={-hd + backT} {...seam} />
+      {Array.from({ length: seats }).map((_, i) => {
+        const x0 = -hw + armW + cw * i + (seats > 1 ? 0.6 : 0);
+        const x1 = x0 + cw - (seats > 1 ? 1.2 : 0);
+        return (
+          <g key={i}>
+            <rect
+              x={x0}
+              y={-hd + backT}
+              width={x1 - x0}
+              height={depthCm - backT - 1}
+              rx={3}
+              fill={cushion}
+              stroke={LINE}
+              strokeWidth="0.7"
+            />
+            {seams(x0, x1, 10).map((x) => (
+              <line key={x} x1={x} y1={-hd + backT + 1} x2={x} y2={hd - 1.5} {...seam} />
+            ))}
+          </g>
+        );
+      })}
+      {[-1, 1].map((sg) => (
+        <g key={sg}>
+          <line
+            x1={sg * (hw - armW)}
+            y1={-hd + backT}
+            x2={sg * (hw - armW)}
+            y2={hd - 1}
+            stroke={LINE}
+            strokeWidth="0.8"
+          />
+          {!traits.step &&
+            seams(hw - armW, hw, 10).map((x) => (
+              <line key={x} x1={sg * x} y1={-hd + backT + 1} x2={sg * x} y2={hd - 1.5} {...seam} />
+            ))}
+        </g>
+      ))}
+      {traits.step && <ArmTiers widthCm={widthCm} hd={hd} armW={armW} y0={-hd + backT} />}
     </g>
   );
 }
@@ -222,8 +347,10 @@ function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
   const duvet = palette.accent || '#a89a88';
   const n = Math.min(4, Math.max(1, Math.round(traits.pillows ?? 2)));
   const headW = widthCm * Math.min(1.15, Math.max(0.7, traits.headW ?? 1));
-  const headT = Math.min(14, depthCm * 0.07);
-  const footT = traits.foot ? Math.min(10, depthCm * 0.05) : 0;
+  // A tube metal frame shows as thin head and foot rails round a slim frame
+  const metal = !!traits.metal;
+  const headT = metal ? 3.2 : Math.min(14, depthCm * 0.07);
+  const footT = metal ? 3.2 : traits.foot ? Math.min(10, depthCm * 0.05) : 0;
   const inner = widthCm - 6;
   const pillowW = Math.min(75, inner / n - 4);
   const pillowH = traits.tiers ? 40 : 34;
@@ -235,26 +362,41 @@ function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
   const quilt = 'rgba(34,24,14,0.28)';
   return (
     <g>
-      <rect
-        x={-hw}
-        y={-hd + headT * 0.6}
-        width={widthCm}
-        height={depthCm - headT * 0.6}
-        rx={4}
-        fill={base}
-        stroke={OUTLINE}
-        strokeWidth="1.2"
-      />
-      <rect
-        x={-headW / 2}
-        y={-hd}
-        width={headW}
-        height={headT}
-        rx={3}
-        fill={head}
-        stroke={OUTLINE}
-        strokeWidth="1.2"
-      />
+      {metal ? (
+        <rect
+          x={-hw + 1}
+          y={-hd + 1}
+          width={widthCm - 2}
+          height={depthCm - 2}
+          rx={3}
+          fill="none"
+          stroke={base}
+          strokeWidth="2"
+        />
+      ) : (
+        <>
+          <rect
+            x={-hw}
+            y={-hd + headT * 0.6}
+            width={widthCm}
+            height={depthCm - headT * 0.6}
+            rx={4}
+            fill={base}
+            stroke={OUTLINE}
+            strokeWidth="1.2"
+          />
+          <rect
+            x={-headW / 2}
+            y={-hd}
+            width={headW}
+            height={headT}
+            rx={3}
+            fill={head}
+            stroke={OUTLINE}
+            strokeWidth="1.2"
+          />
+        </>
+      )}
       <rect
         x={-hw + 3}
         y={-hd + headT}
@@ -350,7 +492,7 @@ function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
           strokeWidth="0.8"
         />
       )}
-      {traits.foot && (
+      {traits.foot && !metal && (
         <rect
           x={-hw}
           y={hd - footT}
@@ -362,6 +504,126 @@ function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
           strokeWidth="1.2"
         />
       )}
+      {metal && <MetalEndsPlan widthCm={widthCm} hw={hw} hd={hd} t={headT} color={base} />}
+      {traits.rails && <GuardRailsPlan depthCm={depthCm} hw={hw} color={base} />}
+    </g>
+  );
+}
+
+/** Bent tube head and foot rails of a metal bed, with the corner posts. */
+function MetalEndsPlan({ widthCm, hw, hd, t, color }) {
+  return (
+    <g name="metal-ends">
+      {[-1, 1].map((sg) => (
+        <rect
+          key={sg}
+          x={-hw}
+          y={sg < 0 ? -hd : hd - t}
+          width={widthCm}
+          height={t}
+          rx={t / 2}
+          fill={color}
+          stroke={OUTLINE}
+          strokeWidth="0.6"
+        />
+      ))}
+      {[-1, 1].flatMap((sx) =>
+        [-1, 1].map((sy) => (
+          <circle
+            key={`${sx}${sy}`}
+            cx={sx * (hw - 2)}
+            cy={sy * (hd - 2)}
+            r={2}
+            fill={color}
+            stroke={OUTLINE}
+            strokeWidth="0.6"
+          />
+        ))
+      )}
+    </g>
+  );
+}
+
+/** Low guard rails along the long sides, where they stand (one nearer the head, one nearer the foot). */
+function GuardRailsPlan({ depthCm, hw, color }) {
+  return (
+    <g name="guard-rails">
+      {guardRailSpans(depthCm / 100).map(({ side, z0, z1 }) => (
+        <rect
+          key={side}
+          x={side * (hw - 1.1) - 1.1}
+          y={z0 * 100}
+          width={2.2}
+          height={(z1 - z0) * 100}
+          rx={1.1}
+          fill={color}
+          stroke={OUTLINE}
+          strokeWidth="0.5"
+        />
+      ))}
+    </g>
+  );
+}
+
+/** Points of an elliptical arc (angles from the back, -y, towards +x) as an SVG path fragment. */
+function arcPoints(rx, ry, a0, a1, steps = 28) {
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const a = a0 + ((a1 - a0) * i) / steps;
+    return `${(Math.sin(a) * rx).toFixed(2)} ${(-Math.cos(a) * ry).toFixed(2)}`;
+  });
+}
+
+/**
+ * Wrap-around tub chair from above: the round drum cushion pushed forward and the thick horseshoe shell round
+ * the back, its arms ending part way along the sides.
+ */
+function WrapTubPlan({ widthCm, depthCm, hw, hd, color, cushion }) {
+  const r = Math.min(widthCm, depthCm) / 2;
+  const t = Math.min(15, Math.max(7, r * 0.28));
+  const k = 1 - t / r;
+  const ox = hw;
+  const oy = hd;
+  const ix = hw * k;
+  const iy = hd * k;
+  const outer = arcPoints(ox, oy, -WRAP_END, WRAP_END);
+  const inner = arcPoints(ix, iy, WRAP_END, -WRAP_END);
+  // Rounded arm ends: half circles round the end of each arm, from the outer edge to the inner one (right)
+  // and back out again (left)
+  const end = (a, from) => {
+    const cx = Math.sin(a) * ((ox + ix) / 2);
+    const cy = -Math.cos(a) * ((oy + iy) / 2);
+    const rx = (ox - ix) / 2;
+    const ry = (oy - iy) / 2;
+    return Array.from({ length: 9 }, (_, i) => {
+      const b = from + (Math.PI * i) / 8;
+      return `${(cx + Math.sin(b) * rx).toFixed(2)} ${(cy - Math.cos(b) * ry).toFixed(2)}`;
+    });
+  };
+  const d = `M ${[
+    ...outer,
+    ...end(WRAP_END, WRAP_END),
+    ...inner,
+    ...end(-WRAP_END, -WRAP_END - Math.PI),
+  ].join(' L ')} Z`;
+  return (
+    <g name="wrap-plan">
+      <ellipse
+        cx={0}
+        cy={hd * 0.1}
+        rx={ix * 1.02}
+        ry={iy * 1.02}
+        fill={cushion}
+        stroke={OUTLINE}
+        strokeWidth="1"
+      />
+      <path d={d} fill={color} stroke={OUTLINE} strokeWidth="1.2" strokeLinejoin="round" />
+      <path
+        d={`M ${arcPoints((ox + ix) / 2, (oy + iy) / 2, -WRAP_END * 0.8, WRAP_END * 0.8).join(' L ')}`}
+        fill="none"
+        stroke={LINE}
+        strokeWidth="0.6"
+        strokeDasharray="3 2"
+      />
     </g>
   );
 }
@@ -427,6 +689,17 @@ function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
       </g>
     );
   }
+  if (type === 'tub-chair' && traits.wrap)
+    return (
+      <WrapTubPlan
+        widthCm={widthCm}
+        depthCm={depthCm}
+        hw={hw}
+        hd={hd}
+        color={color}
+        cushion={cushion}
+      />
+    );
   if (type === 'tub-chair' || type === 'ottoman' || type === 'stool') {
     const round =
       type === 'tub-chair'
@@ -605,6 +878,177 @@ function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
   );
 }
 
+/** Wardrobe details only the photo-made model draws; a record with none of them keeps the plain symbol. */
+const WARDROBE_TRAITS = ['mirror', 'drawers', 'handle', 'upper', 'niche', 'fluted'];
+
+/** Whether a wardrobe or desk record has details beyond the plain catalog piece. */
+export function hasCaseworkTraits(design) {
+  const t = design.traits || {};
+  const p = design.palette || {};
+  if (design.type === 'wardrobe') return WARDROBE_TRAITS.some((k) => t[k]) || !!p.door || !!p.trim;
+  if (design.type === 'desk') return !!(t.ped || t.base || t.modesty);
+  return false;
+}
+
+const HIDDEN = { fill: 'none', stroke: LINE, strokeWidth: 0.7, strokeDasharray: '3 2' };
+
+/**
+ * Wardrobe from above: the carcass with its doors along the front, a swing arc and handle for each, the
+ * mirror door picked out in glass blue, and an open niche drawn as the recess behind the front.
+ */
+function WardrobePlan({ design, widthCm, depthCm, hw, hd, color }) {
+  const { palette = {}, traits = {} } = design;
+  const same = !palette.body || String(palette.body).toLowerCase() === String(color).toLowerCase();
+  const door = same ? palette.door || color : color;
+  const handle = palette.trim || '#C4A869';
+  const L = wardrobeLayout({ widthM: widthCm / 100, heightM: 2.2, traits });
+  const front = 2.4;
+  const swing = Math.min(30, depthCm * 0.5);
+  return (
+    <g name="wardrobe-plan">
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={1.5}
+        fill={color}
+        stroke="#2B2117"
+        strokeWidth="1.3"
+      />
+      <line
+        x1={-hw + 2}
+        y1={-hd + 3}
+        x2={hw - 2}
+        y2={-hd + 3}
+        stroke="rgba(0,0,0,0.3)"
+        strokeWidth="0.6"
+      />
+      {L.niche && (
+        <rect
+          x={L.niche.x0 * 100}
+          y={-hd + 4}
+          width={(L.niche.x1 - L.niche.x0) * 100}
+          height={depthCm - 4 - front}
+          {...HIDDEN}
+        />
+      )}
+      {L.cols.map((c, i) => {
+        const x0 = (c.x - c.w / 2) * 100;
+        const w = c.w * 100;
+        const mirror = i === L.mirrorIdx;
+        const hinge = c.edge > 0 ? x0 : x0 + w;
+        return (
+          <g key={i}>
+            <rect
+              x={x0 + 0.3}
+              y={hd - front}
+              width={Math.max(0, w - 0.6)}
+              height={front}
+              fill={mirror ? '#CFE3EA' : door}
+              stroke={OUTLINE}
+              strokeWidth="0.5"
+            />
+            <SwingArc
+              x={hinge}
+              y={hd}
+              r={Math.min(w - 1, swing)}
+              openDown={false}
+              flip={c.edge < 0}
+            />
+            <BarHandle
+              x={c.edge > 0 ? x0 + w - 3.5 : x0 + 3.5}
+              y={hd - 1.8}
+              length={traits.handle === 'bar' ? 3 : 1.8}
+              horizontal={false}
+              color={handle}
+            />
+          </g>
+        );
+      })}
+    </g>
+  );
+}
+
+/**
+ * Desk from above: the top, with what holds it up drawn hidden (dashed) beneath it: drawer pedestals, sled
+ * runners or panel ends, legs and the modesty panel.
+ */
+function DeskPlan({ design, widthCm, depthCm, hw, hd, color }) {
+  const { traits = {} } = design;
+  const D = deskLayout({ widthM: widthCm / 100, depthM: depthCm / 100, heightM: 0.75, traits });
+  const pedD = depthCm - 8;
+  const pedY = -2 - pedD / 2;
+  return (
+    <g name="desk-plan">
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={2}
+        fill={color}
+        stroke="#3D2A1C"
+        strokeWidth="1.2"
+      />
+      {D.pedestals.map((p) => (
+        <g key={p.side}>
+          <rect x={(p.x - p.w / 2) * 100} y={pedY} width={p.w * 100} height={pedD} {...HIDDEN} />
+          {/* the drawer pulls, standing just proud of the pedestal front */}
+          <line
+            x1={(p.x - p.w * 0.18) * 100}
+            y1={pedY + pedD + 1.2}
+            x2={(p.x + p.w * 0.18) * 100}
+            y2={pedY + pedD + 1.2}
+            stroke={LINE}
+            strokeWidth="0.9"
+          />
+        </g>
+      ))}
+      {D.base === 'sled' &&
+        [-1, 1].map((sg) => (
+          <g key={sg}>
+            <line
+              x1={sg * D.endX * 100}
+              y1={-hd + 4}
+              x2={sg * D.endX * 100}
+              y2={hd - 4}
+              {...HIDDEN}
+              strokeWidth="1.4"
+            />
+            <rect x={sg * D.endX * 100 - 2.5} y={-hd + 8.5} width={5} height={3} {...HIDDEN} />
+          </g>
+        ))}
+      {D.base === 'panel' &&
+        [-1, 1].map((sg) => (
+          <rect
+            key={sg}
+            x={sg * D.endX * 100 - (D.endT * 100) / 2}
+            y={-hd + 2}
+            width={D.endT * 100}
+            height={depthCm - 5}
+            {...HIDDEN}
+          />
+        ))}
+      {D.legs.map(([x, z], i) => (
+        <rect key={i} x={x * 100 - 2.5} y={z * 100 - 2.5} width={5} height={5} {...HIDDEN} />
+      ))}
+      {traits.modesty ? (
+        <line x1={-hw + 8} y1={-hd + 5} x2={hw - 8} y2={-hd + 5} {...HIDDEN} strokeWidth="1.2" />
+      ) : null}
+      <line
+        x1={-hw + 4}
+        y1={hd - 3}
+        x2={hw - 4}
+        y2={hd - 3}
+        stroke={LINE}
+        strokeWidth="1.6"
+        strokeDasharray="4 3"
+      />
+    </g>
+  );
+}
+
 /** 2D plan symbols: customMesh. Coordinates are centered at (0, 0), widthCm x depthCm. */
 export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, isSwatch }) {
   const loops = item.topOutline;
@@ -706,6 +1150,20 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
   if (item.design && SHAPE_PLAN_TYPES.includes(item.design.type) && !loops?.length) {
     return (
       <ShapePlan
+        design={item.design}
+        widthCm={widthCm}
+        depthCm={depthCm}
+        hw={hw}
+        hd={hd}
+        color={color}
+      />
+    );
+  }
+
+  if (item.design && hasCaseworkTraits(item.design) && !loops?.length) {
+    const Plan = item.design.type === 'desk' ? DeskPlan : WardrobePlan;
+    return (
+      <Plan
         design={item.design}
         widthCm={widthCm}
         depthCm={depthCm}

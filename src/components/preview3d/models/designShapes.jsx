@@ -4,6 +4,7 @@
  * Drawers ...) and parameterised by the design record read from the photos (see engine/design.js).
  * Origin on the floor, centred on the footprint, the front towards +z.
  */
+import React from 'react';
 import * as THREE from 'three';
 import {
   Box,
@@ -19,6 +20,7 @@ import {
   BRASS,
 } from './shared.jsx';
 import { TuftedFace } from './seating.jsx';
+import { WRAP_END, wrapRise } from './designLayout.js';
 
 const DARK = '#171310';
 
@@ -168,80 +170,309 @@ export function CornerSofaDesign({ widthM, depthM, heightM, palette, traits }) {
   );
 }
 
-/** Round or bucket tub chair: a wrap-around shell, a seat cushion, feet, slim legs or a pedestal. */
+/**
+ * A thick, rolled tub-chair shell whose top slopes down from the back towards the front, wrapping round the
+ * seat: rounded-slab cross-sections swept round the back from -WRAP_END to WRAP_END (before the chair's plan
+ * scale), capped at the arm ends. Angles run from the back (-z) towards +x / -x.
+ */
+export function wrapShellGeometry({ r, t, y0, top, segments = 44 }) {
+  const ri = r - t;
+  const positions = [];
+  const index = [];
+  const ARC = 8;
+  const profile = (rise) => {
+    const yTop = Math.max(y0 + t * 0.55, y0 + (top - y0) * rise);
+    const yc = Math.max(y0 + 0.012, yTop - t / 2);
+    const rad = Math.min(t / 2, yTop - y0 - 0.006);
+    const c = Math.min(0.025, (yc - y0) * 0.5);
+    const outerBottom = r * 0.95;
+    const pts = [[ri, y0]];
+    pts.push([ri, yc]);
+    for (let k = 1; k < ARC; k++) {
+      const a = Math.PI - (Math.PI * k) / ARC;
+      pts.push([ri + t / 2 + (t / 2) * Math.cos(a), yc + rad * Math.sin(a)]);
+    }
+    pts.push([r, yc]);
+    pts.push([outerBottom + (r - outerBottom) * 0.3, y0 + c]);
+    pts.push([outerBottom - c * 0.4, y0]);
+    return pts;
+  };
+  const M = profile(1).length;
+  for (let i = 0; i <= segments; i++) {
+    const phi = -WRAP_END + (2 * WRAP_END * i) / segments;
+    const rise = wrapRise(phi / WRAP_END);
+    const sn = Math.sin(phi);
+    const cs = Math.cos(phi);
+    for (const [rho, y] of profile(rise)) positions.push(rho * sn, y, -rho * cs);
+  }
+  for (let i = 0; i < segments; i++) {
+    for (let k = 0; k < M; k++) {
+      const a = i * M + k;
+      const b = i * M + ((k + 1) % M);
+      index.push(a, a + M, b, b, a + M, b + M);
+    }
+  }
+  // Caps at the two arm ends, fanned from the middle of the section
+  for (const i of [0, segments]) {
+    const centre = positions.length / 3;
+    let cx = 0;
+    let cy = 0;
+    let cz = 0;
+    for (let k = 0; k < M; k++) {
+      cx += positions[(i * M + k) * 3] / M;
+      cy += positions[(i * M + k) * 3 + 1] / M;
+      cz += positions[(i * M + k) * 3 + 2] / M;
+    }
+    positions.push(cx, cy, cz);
+    for (let k = 0; k < M; k++) {
+      const a = i * M + k;
+      const b = i * M + ((k + 1) % M);
+      if (i === 0) index.push(centre, a, b);
+      else index.push(centre, b, a);
+    }
+  }
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geometry.setIndex(index);
+  geometry.computeVertexNormals();
+  // The top of the back must face up; flip the winding if it came out inside-out
+  const crest = (segments / 2) * M + Math.floor(ARC / 2) + 1;
+  if (geometry.attributes.normal.getY(crest) < 0) {
+    for (let k = 0; k < index.length; k += 3) {
+      const tmp = index[k + 1];
+      index[k + 1] = index[k + 2];
+      index[k + 2] = tmp;
+    }
+    geometry.setIndex(index);
+    geometry.computeVertexNormals();
+  }
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
+}
+
+/**
+ * Metal finish for a colour read from photos: light and mid greys read as chrome (lifted a little, since a
+ * photo of chrome looks grey), near-black as dark powder-coated steel, and anything coloured as painted metal.
+ */
+export function metalFinish(color) {
+  const hsl = new THREE.Color(color).getHSL({ h: 0, s: 0, l: 0 }, THREE.SRGBColorSpace);
+  if (hsl.s < 0.18 && hsl.l > 0.3)
+    return {
+      color: shade(color, Math.max(0, 0.25 - hsl.l * 0.25)),
+      roughness: 0.22,
+      metalness: 0.6,
+    };
+  if (hsl.s < 0.18) return { color: shade(color, 0.02), roughness: 0.42, metalness: 0.25 };
+  return { color, roughness: 0.32, metalness: 0.45 };
+}
+
+/** Thin metal legs of a tub chair (positions in the unscaled round plan): two at the back, two at the arm ends. */
+export function tubMetalLegs(r) {
+  const at = (deg, k) => {
+    const a = (deg * Math.PI) / 180;
+    return [Math.sin(a) * r * k, -Math.cos(a) * r * k];
+  };
+  return {
+    back: [at(-32, 0.86), at(32, 0.86)],
+    front: [at(-108, 0.84), at(108, 0.84)],
+  };
+}
+
+function WrapShell({ r, t, y0, top, color, scale }) {
+  const geometry = React.useMemo(() => wrapShellGeometry({ r, t, y0, top }), [r, t, y0, top]);
+  React.useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh name="wrap-shell" geometry={geometry} scale={scale} castShadow receiveShadow>
+      <meshStandardMaterial color={color} roughness={0.9} />
+    </mesh>
+  );
+}
+
+/** Seat cushion as a drum with rounded edges (a lathe), its bottom at y. */
+function DrumCushion({ radius, height, y, z, color, scale }) {
+  const geometry = React.useMemo(() => {
+    const c = Math.min(0.05, height * 0.3, radius * 0.3);
+    const pts = [new THREE.Vector2(0, 0)];
+    for (let k = 0; k <= 6; k++) {
+      const a = -Math.PI / 2 + ((Math.PI / 2) * k) / 6;
+      pts.push(new THREE.Vector2(radius - c + c * Math.cos(a), c + c * Math.sin(a)));
+    }
+    for (let k = 0; k <= 6; k++) {
+      const a = ((Math.PI / 2) * k) / 6;
+      pts.push(new THREE.Vector2(radius - c + c * Math.cos(a), height - c + c * Math.sin(a)));
+    }
+    pts.push(new THREE.Vector2(0, height));
+    return new THREE.LatheGeometry(pts, 40);
+  }, [radius, height]);
+  React.useEffect(() => () => geometry.dispose(), [geometry]);
+  return (
+    <mesh
+      name="seat-cushion"
+      geometry={geometry}
+      position={[0, y, z]}
+      scale={scale}
+      castShadow
+      receiveShadow
+    >
+      <meshStandardMaterial color={color} roughness={0.95} />
+    </mesh>
+  );
+}
+
+/**
+ * Round or bucket tub chair: a wrap-around shell, a seat cushion, feet, slim legs, a pedestal or thin metal
+ * legs. `wrap` makes the shell a thick roll sloping down from the back to the front round a drum cushion.
+ */
 export function TubChairDesign({ widthM, depthM, heightM, palette, traits }) {
   const body = palette.body;
   const cushion = palette.cushion || body;
   const legColor = palette.leg || '#2a2622';
   const bucket = traits.plan === 'bucket';
   const base = traits.base || 'feet';
-  const baseH = base === 'legs' ? 0.2 : base === 'pedestal' ? 0.14 : 0.07;
+  const metal = base === 'metal';
+  const baseH =
+    base === 'legs'
+      ? 0.2
+      : base === 'pedestal'
+        ? 0.14
+        : metal
+          ? clamp(heightM * 0.19, 0.1, 0.2)
+          : 0.07;
   const r = Math.min(widthM, depthM) / 2;
   const sx = widthM / 2 / r;
   const sz = depthM / 2 / r;
   const seatY = baseH + clamp(heightM * 0.22, 0.14, 0.24);
   const shellH = heightM - baseH;
   const inner = shade(cushion, -0.03);
+  const wrap = !!traits.wrap;
+  const t = clamp(r * 0.28, 0.07, 0.15);
+  const seatTop = clamp(heightM * 0.53, baseH + 0.18, baseH + 0.34);
+  const finish = metal ? metalFinish(legColor) : null;
+  const legs = metal ? tubMetalLegs(r) : null;
+  const rod = 0.009;
   return (
     <group>
-      {/* Outer shell: a full wrap for a round chair, a high back with lower arms for a bucket */}
-      <Wrap
-        radius={r}
-        radiusBottom={r * 0.88}
-        height={shellH}
-        y={baseH + shellH / 2}
-        arc={bucket ? Math.PI * 1.15 : Math.PI * 1.55}
-        color={body}
-        scale={[sx, 1, sz]}
-      />
-      {bucket && (
-        <Wrap
-          radius={r}
-          radiusBottom={r * 0.88}
-          height={shellH * 0.62}
-          y={baseH + (shellH * 0.62) / 2}
-          arc={Math.PI * 1.85}
-          color={body}
-          scale={[sx, 1, sz]}
-        />
-      )}
-      {/* Padded lining inside the wrap */}
-      <Wrap
-        radius={r * 0.93}
-        radiusBottom={r * 0.82}
-        height={shellH * 0.8}
-        y={baseH + (shellH * 0.8) / 2 + 0.06}
-        arc={Math.PI * (bucket ? 1.05 : 1.45)}
-        color={inner}
-        scale={[sx, 1, sz]}
-        roughness={0.95}
-      />
-      {/* Base of the bowl and seat cushion */}
-      <mesh position={[0, baseH + 0.07, 0]} scale={[sx, 1, sz]} castShadow receiveShadow>
-        <cylinderGeometry args={[r * 0.9, r * 0.84, 0.14, 40]} />
-        <meshStandardMaterial color={body} roughness={0.85} />
-      </mesh>
-      <mesh position={[0, seatY, 0.02]} scale={[sx, 1, sz]} castShadow receiveShadow>
-        <cylinderGeometry args={[r * 0.8, r * 0.8, 0.13, 40]} />
-        <meshStandardMaterial color={cushion} roughness={0.95} />
-      </mesh>
-      {traits.tufted
-        ? [-0.5, 0, 0.5].map((k) => (
-            <Ball
-              key={k}
-              position={[
-                Math.sin(Math.PI + k) * r * 0.9 * sx,
-                seatY + 0.2,
-                Math.cos(Math.PI + k) * r * 0.9 * sz,
-              ]}
-              radius={0.013}
-              color={shade(cushion, -0.18)}
-              segments={8}
-              castShadow={false}
+      {wrap ? (
+        <group name="wrap-chair">
+          <WrapShell r={r} t={t} y0={baseH} top={heightM} color={body} scale={[sx, 1, sz]} />
+          {/* Seat deck closing the bowl, and the drum cushion pushed forward inside the wrap */}
+          <mesh position={[0, baseH + 0.025, 0]} scale={[sx, 1, sz]} receiveShadow>
+            <cylinderGeometry args={[r - t + 0.01, r - t + 0.01, 0.05, 32]} />
+            <meshStandardMaterial color={shade(body, -0.08)} roughness={0.9} />
+          </mesh>
+          <DrumCushion
+            radius={(r - t) * 1.02}
+            height={seatTop - baseH - 0.004}
+            y={baseH + 0.004}
+            z={r * 0.1 * sz}
+            color={cushion}
+            scale={[sx, 1, sz]}
+          />
+        </group>
+      ) : (
+        <>
+          {/* Outer shell: a full wrap for a round chair, a high back with lower arms for a bucket */}
+          <Wrap
+            radius={r}
+            radiusBottom={r * 0.88}
+            height={shellH}
+            y={baseH + shellH / 2}
+            arc={bucket ? Math.PI * 1.15 : Math.PI * 1.55}
+            color={body}
+            scale={[sx, 1, sz]}
+          />
+          {bucket && (
+            <Wrap
+              radius={r}
+              radiusBottom={r * 0.88}
+              height={shellH * 0.62}
+              y={baseH + (shellH * 0.62) / 2}
+              arc={Math.PI * 1.85}
+              color={body}
+              scale={[sx, 1, sz]}
             />
-          ))
+          )}
+          {/* Padded lining inside the wrap */}
+          <Wrap
+            radius={r * 0.93}
+            radiusBottom={r * 0.82}
+            height={shellH * 0.8}
+            y={baseH + (shellH * 0.8) / 2 + 0.06}
+            arc={Math.PI * (bucket ? 1.05 : 1.45)}
+            color={inner}
+            scale={[sx, 1, sz]}
+            roughness={0.95}
+          />
+          {/* Base of the bowl and seat cushion */}
+          <mesh position={[0, baseH + 0.07, 0]} scale={[sx, 1, sz]} castShadow receiveShadow>
+            <cylinderGeometry args={[r * 0.9, r * 0.84, 0.14, 40]} />
+            <meshStandardMaterial color={body} roughness={0.85} />
+          </mesh>
+          <mesh position={[0, seatY, 0.02]} scale={[sx, 1, sz]} castShadow receiveShadow>
+            <cylinderGeometry args={[r * 0.8, r * 0.8, 0.13, 40]} />
+            <meshStandardMaterial color={cushion} roughness={0.95} />
+          </mesh>
+        </>
+      )}
+      {traits.tufted
+        ? [-0.5, 0, 0.5].map((k) => {
+            // On the inside of the shell: the lining of a plain chair, the roll of a wrap-around one
+            const rho = r - t - 0.004;
+            return (
+              <Ball
+                key={k}
+                position={
+                  wrap
+                    ? [
+                        Math.sin(Math.PI + k) * rho * sx,
+                        seatTop + (heightM - seatTop) * 0.45,
+                        Math.cos(Math.PI + k) * rho * sz,
+                      ]
+                    : [
+                        Math.sin(Math.PI + k) * r * 0.9 * sx,
+                        seatY + 0.2,
+                        Math.cos(Math.PI + k) * r * 0.9 * sz,
+                      ]
+                }
+                radius={0.013}
+                color={shade(cushion, -0.18)}
+                segments={8}
+                castShadow={false}
+              />
+            );
+          })
         : null}
-      {base === 'pedestal' ? (
+      {metal ? (
+        <group name="metal-legs">
+          {[...legs.back, ...legs.front].map(([x, z], i) => (
+            <Cyl
+              key={i}
+              position={[x * sx, baseH / 2, z * sz]}
+              radiusTop={rod}
+              height={baseH}
+              {...finish}
+              segments={10}
+            />
+          ))}
+          {/* Slim rails joining the legs under the seat: one each side, one across the back */}
+          {[0, 1].map((i) => (
+            <Strut
+              key={`s${i}`}
+              from={[legs.back[i][0] * sx, baseH - rod, legs.back[i][1] * sz]}
+              to={[legs.front[i][0] * sx, baseH - rod, legs.front[i][1] * sz]}
+              radius={rod * 0.8}
+              {...finish}
+            />
+          ))}
+          <Strut
+            from={[legs.back[0][0] * sx, baseH - rod, legs.back[0][1] * sz]}
+            to={[legs.back[1][0] * sx, baseH - rod, legs.back[1][1] * sz]}
+            radius={rod * 0.8}
+            {...finish}
+          />
+        </group>
+      ) : base === 'pedestal' ? (
         <>
           <Cyl
             position={[0, baseH / 2, 0]}

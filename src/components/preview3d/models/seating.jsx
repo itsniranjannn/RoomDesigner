@@ -16,6 +16,7 @@ import {
   EdgePiping,
   Buttons,
 } from './shared.jsx';
+import { SteppedArm } from './channelSeat.jsx';
 
 const FOOT_H = 0.1;
 const BACK_CUSHION_TILT = 0.22;
@@ -133,6 +134,7 @@ export function Upholstered({
   tufted = false,
   taper = false,
   longSeat = false,
+  stepArms = false,
 }) {
   const footH = taper ? 0.16 : FOOT_H;
   const armW = widthM * armRatio;
@@ -187,16 +189,33 @@ export function Upholstered({
         color={mainColor}
         roughness={roughness}
       />
-      {[-1, 1].map((s) => (
-        <Pad
-          key={s}
-          position={[s * (widthM / 2 - armW / 2), (footH + armH) / 2, 0]}
-          size={[armW, armH - footH, depthM]}
-          radius={roll ? Math.min(0.12, armW / 2.05) : Math.min(0.06, armW / 2.5)}
-          color={armColor}
-          roughness={roughness}
-        />
-      ))}
+      {[-1, 1].map((s) =>
+        stepArms ? (
+          // Terraced arms: slabs stepping down towards the seat
+          <SteppedArm
+            key={s}
+            side={s}
+            widthM={widthM}
+            armW={armW}
+            armH={armH}
+            seatH={seatH}
+            footH={footH}
+            z0={-depthM / 2}
+            z1={depthM / 2}
+            color={armColor}
+            roughness={roughness}
+          />
+        ) : (
+          <Pad
+            key={s}
+            position={[s * (widthM / 2 - armW / 2), (footH + armH) / 2, 0]}
+            size={[armW, armH - footH, depthM]}
+            radius={roll ? Math.min(0.12, armW / 2.05) : Math.min(0.06, armW / 2.5)}
+            color={armColor}
+            roughness={roughness}
+          />
+        )
+      )}
 
       {/* Seat cushions with welting, front seam and a base welt line: one per seat, or one long one */}
       {Array.from({ length: longSeat ? 1 : seats }).map((_, i) => {
