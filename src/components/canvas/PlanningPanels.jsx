@@ -197,6 +197,8 @@ export function PlanChecksPanel({ checks }) {
   const showTurning = usePlanningStore((s) => s.showTurning);
   const setAccessible = usePlanningStore((s) => s.setAccessible);
   const setShowTurning = usePlanningStore((s) => s.setShowTurning);
+  const showLinks = usePlanningStore((s) => s.showLinks);
+  const setShowLinks = usePlanningStore((s) => s.setShowLinks);
   const closePanel = usePlanningStore((s) => s.closePanel);
   const highlight = usePlanningStore((s) => s.highlight);
   const selectItem = useRoomStore((s) => s.selectItem);
@@ -246,6 +248,11 @@ export function PlanChecksPanel({ checks }) {
           onChange={setShowTurning}
           label="Show where a 150 cm circle fits"
         />
+        <Switch checked={showLinks} onChange={setShowLinks} label="Show service links" />
+        <p className={styles.muted}>
+          Dashed lines join sinks, stoves, TVs and other pieces to the nearest water, drain, gas or
+          socket point. Green is within reach, red is too far, amber means none is marked.
+        </p>
       </div>
 
       {groups.map((g) => (

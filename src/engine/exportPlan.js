@@ -100,9 +100,9 @@ async function render(model) {
 }
 
 /** Renders a room's sheet. Returns { model, svg, canvas, width, height }. */
-export async function renderRoomPlan(room, date = new Date()) {
+export async function renderRoomPlan(room, date = new Date(), { links = true } = {}) {
   if (!room) throw new Error('There is no room to export.');
-  return render(buildRoomSheet(room, { measure: createMeasure(), date }));
+  return render(buildRoomSheet(room, { measure: createMeasure(), date, links }));
 }
 
 /** Renders one floor of a flat. Returns { model, svg, canvas, width, height }. */
@@ -126,15 +126,15 @@ async function toPdf(rendered) {
   return new Blob([jpegToPdf(jpeg, width, height, layout)], { type: 'application/pdf' });
 }
 
-export async function exportRoomPlanAsPNG(room) {
-  const rendered = await renderRoomPlan(room);
+export async function exportRoomPlanAsPNG(room, options) {
+  const rendered = await renderRoomPlan(room, new Date(), options);
   const name = exportFileName(room.name, 'floorplan', 'png', 'Room', new Date());
   downloadBlob(await toPng(rendered), name);
   return name;
 }
 
-export async function exportRoomPlanAsPDF(room) {
-  const rendered = await renderRoomPlan(room);
+export async function exportRoomPlanAsPDF(room, options) {
+  const rendered = await renderRoomPlan(room, new Date(), options);
   const name = exportFileName(room.name, 'floorplan', 'pdf', 'Room', new Date());
   downloadBlob(await toPdf(rendered), name);
   return name;

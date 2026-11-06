@@ -8,6 +8,8 @@ import {
   servicesOf,
 } from '../../engine/planning.js';
 import { turningSpace } from '../../engine/planningChecks.js';
+import { computeServiceLinks } from '../../engine/serviceLinks.js';
+import { ServiceLinkLines } from './ServiceLinkLines.jsx';
 import { PlacedService, ServiceGlyph, glyphBox } from './serviceSymbols.jsx';
 import cursors from './Cursors.module.css';
 import styles from './PlanningLayer.module.css';
@@ -211,9 +213,15 @@ export function PlanningLayer({ room, svgRef, bounds, checks }) {
   const showTurning = usePlanningStore((s) => s.showTurning);
   const highlight = usePlanningStore((s) => s.highlight);
   const clearHighlight = usePlanningStore((s) => s.clearHighlight);
+  const showLinks = usePlanningStore((s) => s.showLinks);
   const showClearance = useRoomStore((s) => s.showClearance);
+  const selectedItemIds = useRoomStore((s) => s.selectedItemIds);
 
   const services = useMemo(() => servicesOf(room), [room]);
+  const links = useMemo(() => (showLinks ? computeServiceLinks(room) : []), [room, showLinks]);
+  const emphasized = (l) =>
+    selectedItemIds.includes(l.itemId) ||
+    (!!selectedServiceId && l.serviceId === selectedServiceId);
   const labels = useMemo(() => serviceLabels(services), [services]);
   const editing = panel === 'services';
   const lastKey = useRef(null);
@@ -234,6 +242,7 @@ export function PlanningLayer({ room, svgRef, bounds, checks }) {
       {showMarkers && checks && (
         <IssueMarkers issues={checks.issues} showAll={panel === 'checks'} />
       )}
+      {links.length > 0 && <ServiceLinkLines links={links} isEmphasized={emphasized} />}
       {visibleServices && (
         <g>
           {services.map((s) => (

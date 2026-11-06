@@ -21,6 +21,8 @@ export const usePlanningStore = create((set, get) => ({
   showTurning: false,
   // Draw the service points on the plan
   showServices: true,
+  // Draw dashed links from pieces to the service points they rely on
+  showLinks: true,
 
   openPanel: (panel) => {
     set({ panel, ...(panel === 'services' ? {} : { placeKind: null }) });
@@ -43,6 +45,7 @@ export const usePlanningStore = create((set, get) => ({
   setAccessible: (accessible) => set({ accessible: !!accessible }),
   setShowTurning: (showTurning) => set({ showTurning: !!showTurning }),
   setShowServices: (showServices) => set({ showServices: !!showServices }),
+  setShowLinks: (showLinks) => set({ showLinks: !!showLinks }),
 
   // Escape: step back one level (stop placing, then deselect). True when something changed.
   escape: () => {

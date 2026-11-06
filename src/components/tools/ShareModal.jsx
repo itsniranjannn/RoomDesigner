@@ -5,6 +5,7 @@ import { Button } from '../common/Button.jsx';
 import { TextField } from '../common/Field.jsx';
 import { Notice } from '../common/Notice.jsx';
 import { useRoomStore } from '../../store/roomStore.js';
+import { usePlanningStore } from '../../store/planningStore.js';
 import { encodeRoomToHash } from '../../engine/share.js';
 import {
   exportRoomPlanAsPNG,
@@ -60,7 +61,7 @@ export function ShareModal({ onClose }) {
       help: 'Top-down plan with each piece drawn as in the editor, door swings, windows, sizes and a key.',
       label: 'PNG',
       icon: <ImageIcon size={16} />,
-      run: () => exportRoomPlanAsPNG(room),
+      run: () => exportRoomPlanAsPNG(room, { links: usePlanningStore.getState().showLinks }),
     },
     {
       key: 'png3d',
@@ -78,7 +79,7 @@ export function ShareModal({ onClose }) {
       help: 'The same plan on a page, drawn to scale for printing.',
       label: 'PDF',
       icon: <FileText size={16} />,
-      run: () => exportRoomPlanAsPDF(room),
+      run: () => exportRoomPlanAsPDF(room, { links: usePlanningStore.getState().showLinks }),
     },
     {
       key: 'json',
