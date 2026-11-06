@@ -15,6 +15,7 @@ import {
   bedPhoto,
   sofaPhoto,
   armchairPhoto,
+  tablePhoto,
   productSheet,
   BED_COLORS,
   SOFA_COLORS,
@@ -194,6 +195,33 @@ describe('sofas and chairs are not mistaken for beds', () => {
       const { design } = build({ front: lone });
       expect(['daybed', 'corner-sofa', 'tub-chair', 'etagere']).not.toContain(design.type);
     }
+  });
+});
+
+describe('details beyond the bed', () => {
+  it('reads arms in another material than the body of a sofa', () => {
+    const front = sofaPhoto('front', { ...SOFA_COLORS, body: [200, 190, 170] });
+    // brown leather arms: repaint the two arm blocks
+    for (let y = 22; y < 84; y++)
+      for (let x = 4; x < 256; x++) {
+        const arm = x < 40 || x >= 220;
+        if (arm && y > 20) front.rgba.set([110, 60, 30, 255], (y * front.width + x) * 4);
+      }
+    const { design } = build({ front });
+    expect(design.type).toBe('sofa');
+    expect(near(design.palette.arm, [110, 60, 30], 40), `arm ${design.palette.arm}`).toBe(true);
+    // The same cloth all over keeps the arms the colour of the body
+    const same = build({ front: sofaPhoto('front') }).design;
+    expect(same.palette.arm).toBe(same.palette.body);
+  });
+
+  it('reads the thickness of a table top', () => {
+    const thin = build({ front: tablePhoto(4) }).design;
+    const thick = build({ front: tablePhoto(20) }).design;
+    expect(thin.type).toBe('table');
+    expect(thick.type).toBe('table');
+    expect(thick.traits.topH).toBeGreaterThan(thin.traits.topH);
+    expect(thin.traits.topH).toBeLessThanOrEqual(3);
   });
 });
 

@@ -315,6 +315,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
     mainColor: palette.body,
     subColor: palette.accent || shade(palette.body, -0.08),
     cushionColor: palette.cushion || palette.body,
+    armColor: palette.arm || palette.body,
     legColor: palette.leg || '#2a2622',
     handleColor: '#C4A869',
   };
@@ -416,7 +417,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
           widthM={widthM}
           depthM={depthM}
           heightM={heightM}
-          topH={0.035}
+          topH={(traits.topH ?? 3.5) / 100}
           topColor={palette.body}
           apronColor={common.subColor}
           legColor={common.legColor}
