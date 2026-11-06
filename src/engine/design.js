@@ -1519,6 +1519,31 @@ function hsv([r, g, b]) {
   return [h, max ? d / max : 0, max / 255];
 }
 
+/**
+ * Lit cloth, wood and leather look darker once drawn with the preview's lighting than in the photo they were read
+ * from: brings a colour back up in value (dark colours most) and keeps its hue and saturation.
+ */
+function liftTone(hex, k = 1.22) {
+  const [h, sat, v] = hsv(hexRgbSafe(hex));
+  const hi = Math.min(1, v < 0.35 ? v * (k + 0.2) : v * k);
+  const c = hi * sat;
+  const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+  const m = hi - c;
+  const [r, g, b] =
+    h < 60
+      ? [c, x, 0]
+      : h < 120
+        ? [x, c, 0]
+        : h < 180
+          ? [0, c, x]
+          : h < 240
+            ? [0, x, c]
+            : h < 300
+              ? [x, 0, c]
+              : [c, 0, x];
+  return toHex([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
+}
+
 /** Warm brown of stained or polished wood (not grey, not a bright fabric). */
 function woodLike(rgb) {
   const [h, s, v] = hsv(rgb);
@@ -1712,26 +1737,7 @@ function classicExtras(type, views, palette, traits = {}) {
         out.traits.framed = 1;
         if (head.buttoned && traits.head !== 'slat') out.traits.head = 'tufted';
         // Lit wood and leather look darker once drawn with the preview's lighting: lift them back to the photo's tone
-        const lift = (hex) => {
-          const [h, sat, v] = hsv(hexRgbSafe(hex));
-          const hi = Math.min(1, v * 1.22);
-          const c = hi * sat;
-          const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
-          const m = hi - c;
-          const [r, g, b] =
-            h < 60
-              ? [c, x, 0]
-              : h < 120
-                ? [x, c, 0]
-                : h < 180
-                  ? [0, c, x]
-                  : h < 240
-                    ? [0, x, c]
-                    : h < 300
-                      ? [x, 0, c]
-                      : [c, 0, x];
-          return toHex([(r + m) * 255, (g + m) * 255, (b + m) * 255]);
-        };
+        const lift = liftTone;
         out.palette.body = lift(head.wood);
         out.palette.base = lift(head.wood);
         out.palette.panel = lift(head.panel);
@@ -1755,6 +1761,8 @@ function classicExtras(type, views, palette, traits = {}) {
         out.palette.leg = seat.wood;
       }
       if (seat.trim) out.palette.trim = seat.trim;
+      for (const key of ['body', 'cushion', 'arm'])
+        if (palette[key]) out.palette[key] = liftTone(palette[key]);
     }
   } else if (type === 'coffee-table') {
     const gold = goldTrim(F);
