@@ -156,6 +156,66 @@ async function makeBedPng(page, only) {
   return Buffer.from(base64, 'base64');
 }
 
+/**
+ * A synthetic "photo" taken in a room, drawn on a canvas in the page: a wall with a picture frame, a floor, and
+ * furniture standing on it. `layout` is 'pieces' (a teal sofa with two identical armchairs apart from it) or 'bed'
+ * (a wooden bed with a tall headboard). With `stackedTwice`, two copies are stacked on a white gutter in one
+ * picture, as a listing shows two photos of the same piece. No real photos are used.
+ */
+async function makeRoomPng(page, layout, stackedTwice = false) {
+  const base64 = await page.evaluate(
+    ([kind, twice]) => {
+      const draw = (g, oy) => {
+        const r = (x, y, w, h, c) => {
+          g.fillStyle = c;
+          g.fillRect(x, y + oy, w, h);
+        };
+        r(0, 0, 480, 250, '#d0c0ac');
+        r(0, 0, 40, 250, '#beac96');
+        r(170, 40, 120, 90, '#5a4e46');
+        r(176, 46, 108, 78, '#aa9678');
+        r(0, 250, 480, 150, '#76665c');
+        r(60, 330, 360, 60, '#b4a08c');
+        if (kind === 'pieces') {
+          r(150, 200, 180, 70, '#226260');
+          r(138, 218, 24, 62, '#1e5856');
+          r(318, 218, 24, 62, '#1e5856');
+          r(150, 256, 180, 24, '#287470');
+          r(146, 278, 188, 8, '#6e4628');
+          r(150, 286, 8, 20, '#5a381e');
+          r(322, 286, 8, 20, '#5a381e');
+          for (const x of [62, 358]) {
+            r(x, 226, 62, 44, '#246462');
+            r(x - 6, 246, 12, 40, '#785032');
+            r(x + 56, 246, 12, 40, '#785032');
+            r(x, 262, 62, 20, '#2c7470');
+            r(x - 4, 284, 8, 24, '#5a381e');
+            r(x + 58, 284, 8, 24, '#5a381e');
+          }
+        } else {
+          r(130, 60, 220, 120, '#964c28');
+          r(150, 80, 180, 80, '#783c24');
+          r(140, 160, 200, 40, '#e8e2d6');
+          r(118, 196, 244, 70, '#924a28');
+          r(124, 266, 22, 22, '#64321a');
+          r(334, 266, 22, 22, '#64321a');
+        }
+      };
+      const canvas = document.createElement('canvas');
+      canvas.width = 480;
+      canvas.height = twice ? 808 : 400;
+      const g = canvas.getContext('2d');
+      g.fillStyle = '#ffffff';
+      g.fillRect(0, 0, canvas.width, canvas.height);
+      draw(g, 0);
+      if (twice) draw(g, 408);
+      return canvas.toDataURL('image/png').split(',')[1];
+    },
+    [layout, stackedTwice]
+  );
+  return Buffer.from(base64, 'base64');
+}
+
 test.describe('create furniture from photos', () => {
   test('builds a model from a generated photo and saves it to My furniture', async ({ page }) => {
     await openApp(page);
@@ -220,6 +280,108 @@ test.describe('create furniture from photos', () => {
     await dialog
       .getByRole('combobox', { name: 'Headboard width' })
       .selectOption({ label: 'As wide as the bed' });
+  });
+
+  test('finds the separate pieces in a photo taken in a room and saves several at once', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await createRoomFromPreset(page);
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await catalog.getByRole('button', { name: /Create from photos/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
+    await dialog.getByLabel('Front photo', { exact: true }).setInputFiles({
+      name: 'room.png',
+      mimeType: 'image/png',
+      buffer: await makeRoomPng(page, 'pieces'),
+    });
+
+    // The sofa and the two armchairs are offered as pieces; the identical armchairs come as one with a count
+    const pieces = dialog.getByRole('group', { name: 'Pieces found in this photo' });
+    await expect(pieces).toBeVisible({ timeout: 45_000 });
+    await expect(pieces).toContainText(/This photo has [3-9] pieces/);
+    await expect(pieces).toContainText('x2');
+
+    // Build the biggest piece, tick another one and save both as separate items
+    await dialog.getByRole('button', { name: /Build 3D model|Rebuild model/ }).click();
+    const save = dialog.getByRole('button', { name: /^Save/ });
+    await expect(save).toBeEnabled({ timeout: 45_000 });
+    await pieces.getByRole('checkbox', { name: 'Also save' }).first().check();
+    const saveTwo = dialog.getByRole('button', { name: /Save 2 pieces to My furniture/ });
+    await expect(saveTwo).toBeVisible();
+    await saveTwo.click();
+    await expect(dialog).toBeHidden();
+    const mine = catalog.getByRole('region', { name: 'My Furniture' });
+    await expect(mine.getByRole('button', { name: /^Add My / })).toHaveCount(2);
+  });
+
+  test('splits one picture that holds two photos of the same piece, and can undo it', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await createRoomFromPreset(page);
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await catalog.getByRole('button', { name: /Create from photos/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
+    await dialog.getByLabel('Front photo', { exact: true }).setInputFiles({
+      name: 'bed-listing.png',
+      mimeType: 'image/png',
+      buffer: await makeRoomPng(page, 'bed', true),
+    });
+    const notice = dialog.getByRole('status').filter({ hasText: 'One picture, several views' });
+    await expect(notice).toBeVisible({ timeout: 45_000 });
+    await expect(notice).toContainText('2 photos of the same piece');
+    await expect(
+      notice.getByRole('list', { name: 'Views found in the picture' }).getByRole('listitem')
+    ).toHaveCount(2);
+    // The front view alone is built, and it is a bed
+    await dialog.getByRole('button', { name: /Build 3D model|Rebuild model/ }).click();
+    await expect(dialog.getByText(/Best guess from one photo:/)).toContainText('Bed', {
+      timeout: 45_000,
+    });
+    // Undo puts the whole picture back as one photo
+    await notice.getByRole('button', { name: 'Undo the split' }).click();
+    await expect(
+      dialog.getByRole('status').filter({ hasText: 'One picture, several views' })
+    ).toHaveCount(0);
+  });
+
+  test('fixes the cut-out with a crop box and Keep and Remove brushes', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page);
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await catalog.getByRole('button', { name: /Create from photos/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
+    await dialog.getByLabel('Front photo', { exact: true }).setInputFiles({
+      name: 'room.png',
+      mimeType: 'image/png',
+      buffer: await makeRoomPng(page, 'pieces'),
+    });
+    await dialog.getByRole('button', { name: 'Fix the cut-out' }).click();
+    const fixer = dialog.getByRole('group', { name: /Fix the cut-out of the front photo/ });
+    await expect(fixer).toBeVisible({ timeout: 45_000 });
+    await expect(fixer.getByRole('radio', { name: 'Keep' })).toBeVisible();
+    await expect(fixer.getByRole('radio', { name: 'Remove' })).toBeVisible();
+    await fixer.getByRole('radio', { name: 'Crop to the piece' }).click();
+    const stage = fixer.getByRole('application');
+    await stage.scrollIntoViewIfNeeded();
+    const box = await stage.boundingBox();
+    await page.mouse.move(box.x + box.width * 0.28, box.y + box.height * 0.45);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * 0.72, box.y + box.height * 0.8, { steps: 6 });
+    await page.mouse.up();
+    await expect(fixer.getByRole('button', { name: 'Clear crop' })).toBeVisible();
+    await expect(fixer.getByRole('button', { name: 'Undo' })).toBeEnabled();
+    await fixer.getByRole('button', { name: 'Reset' }).click();
+    await expect(fixer.getByRole('button', { name: 'Clear crop' })).toHaveCount(0);
+    // A Remove stroke with the keyboard: arrow keys move the brush, Space paints
+    await fixer.getByRole('radio', { name: 'Remove' }).click();
+    await stage.focus();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Space');
+    await expect(fixer.getByRole('button', { name: 'Reset' })).toBeEnabled();
+    await fixer.getByRole('button', { name: 'Done' }).click();
+    await expect(fixer).toBeHidden();
   });
 
   for (const [view, slot] of [

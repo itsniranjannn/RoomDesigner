@@ -989,7 +989,7 @@ function tidy(mask, w, h, hints = {}) {
     const ribbon = b.height < h * 0.1 && b.width > b.height * 4 && hugsBorder && fill > 0.5;
     const hinted = hints.fg && hasHint(hints.fg, labels, c.id);
     // wall art and windows hang high in the picture; furniture stands on the floor, in the lower part
-    const high = c.box.maxY < h * 0.5 && c.area < biggest * 0.5;
+    const high = c.box.maxY < h * 0.5 && c.area < biggest;
     if (!hinted && (ribbon || high || c.area < total * 0.012 || c.area < biggest * 0.1)) continue;
     kept.push(c);
   }
