@@ -67,6 +67,10 @@ export function designFromViews(views, options) {
     // A carved bed in a bedroom photo has its side tables in the outline, which widens it by about a fifth
     if (result.type === 'bed' && result.traits.crest && sizing.widthPerHeight)
       sizing = { ...sizing, widthPerHeight: sizing.widthPerHeight * 0.82 };
+    // An ornate sofa photographed from a little to the side and above looks taller than it is: its back stands
+    // about a metre high whatever the photo's proportions say
+    if (result.type === 'sofa' && result.traits.frame && sizing.widthPerHeight)
+      sizing = { ...sizing, widthPerHeight: Math.max(sizing.widthPerHeight, 1.9) };
     const fit = (width) =>
       ratios
         ? dimensionsFromProportions(ratios, 'widthCm', width)

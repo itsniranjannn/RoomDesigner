@@ -354,7 +354,7 @@ function classicSeat(palette, traits, widthM, depthM, heightM, defaultSeats) {
     fabric: palette.body,
     cushion: palette.cushion || palette.body,
     trim: traits.trim ? palette.trim || '#c9a24a' : null,
-    scatterColor: palette.scatter,
+    scatterColor: palette.scatter || shade(palette.cushion || palette.body, 0.1),
     scatter: traits.scat ?? (armchair ? 1 : widthM > 1.5 ? 2 : 0),
     frame: traits.frame || 1,
     legs: traits.cab ? 'cabriole' : 'tapered',

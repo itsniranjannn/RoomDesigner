@@ -546,6 +546,15 @@ export function ClassicSeat({
   const caned = !!cane;
   const trimOn = !!trim;
   const upholsteryTop = heightM - (frame === 2 ? 0.05 : 0.02);
+  const sideTop = footH + (heightM - footH) * 0.74;
+  const crestShape = useMemo(
+    () => headboardOutline(widthM - 0.04, sideTop - 0.01, heightM - 0.03, 1, sideTop - 0.05),
+    [widthM, heightM, sideTop]
+  );
+  const crestRim = useMemo(
+    () => headboardOutline(widthM - 0.01, sideTop + 0.01, heightM, 1, sideTop - 0.05),
+    [widthM, heightM, sideTop]
+  );
   return (
     <group name="classic-seat">
       {/* base rail frame in wood */}
@@ -652,15 +661,45 @@ export function ClassicSeat({
         )
       )}
       {/* back: upholstered, with a carved wood top rail and crest when the frame is carved */}
-      <FPad
-        pattern={pattern}
-        position={[0, (footH + upholsteryTop) / 2 + 0.03, -depthM / 2 + backT / 2]}
-        size={[widthM - (caned ? 0.04 : 0), upholsteryTop - footH - 0.04, backT]}
-        radius={0.05}
-        color={fabric}
-        roughness={0.85}
-      />
-      {frame >= 1 && (
+      {frame === 2 ? (
+        <>
+          {/* a carved sofa: the back is lower at the sides and rises to a curved crest in the middle */}
+          <FPad
+            pattern={pattern}
+            position={[0, (footH + sideTop) / 2 + 0.03, -depthM / 2 + backT / 2]}
+            size={[widthM - 0.02, sideTop - footH - 0.04, backT]}
+            radius={0.05}
+            color={fabric}
+            roughness={0.85}
+          />
+          <ExtrudedOutline
+            points={crestShape}
+            depth={backT * 0.8}
+            bevel={0.01}
+            position={[0, 0, -depthM / 2 + backT / 2]}
+            color={fabric}
+            roughness={0.85}
+          />
+          <ExtrudedOutline
+            points={crestRim}
+            depth={backT * 0.96}
+            bevel={0.006}
+            position={[0, 0, -depthM / 2 + backT / 2 - 0.006]}
+            color={wood}
+            roughness={0.4}
+          />
+        </>
+      ) : (
+        <FPad
+          pattern={pattern}
+          position={[0, (footH + upholsteryTop) / 2 + 0.03, -depthM / 2 + backT / 2]}
+          size={[widthM - (caned ? 0.04 : 0), upholsteryTop - footH - 0.04, backT]}
+          radius={0.05}
+          color={fabric}
+          roughness={0.85}
+        />
+      )}
+      {frame === 1 && (
         <Box
           position={[0, heightM - 0.015, -depthM / 2 + backT / 2]}
           size={[widthM, 0.036, backT + 0.02]}
@@ -762,7 +801,7 @@ export function ClassicSeat({
         count={scatter}
         widthM={innerW}
         y={seatH}
-        z={-depthM / 2 + backT + 0.2}
+        z={-depthM / 2 + backT + 0.26}
         size={clamp(seatW * 0.5, 0.3, 0.45)}
         color={scatterColor || cushion}
         accent={scatterColor ? shade(scatterColor, -0.08) : null}
