@@ -1168,6 +1168,61 @@ export function paintStrokes(strokes, width, height) {
 }
 
 /**
+ * Drops a contact shadow from a colour-keyed cut: a wide, low band at the foot of the piece whose pixels are
+ * the backdrop's own colour only darker (same chromaticity, 40-93% as bright). A pale or grey piece has the
+ * same hue as a white backdrop but is tall and has edges, so only a thin band along the bottom is removed.
+ */
+export function dropShadow(rgba, mask, w, h) {
+  const box = maskBounds(mask, w, h);
+  if (!box) return mask;
+  const bg = fitBackground(rgba, w, h);
+  const cand = new Uint8Array(w * h);
+  const y0 = Math.floor(box.minY + box.height * 0.6);
+  let any = 0;
+  for (let y = y0; y <= box.maxY; y++)
+    for (let x = box.minX; x <= box.maxX; x++) {
+      const p = y * w + x;
+      if (!mask[p]) continue;
+      const [br, bgc, bb] = bg.at(x / w, y / h);
+      const n2 = br * br + bgc * bgc + bb * bb;
+      if (n2 < 3000) continue; // a dark backdrop has no visible shadow
+      const r = rgba[p * 4];
+      const g = rgba[p * 4 + 1];
+      const b = rgba[p * 4 + 2];
+      const k = (r * br + g * bgc + b * bb) / n2;
+      const off = Math.hypot(r - k * br, g - k * bgc, b - k * bb);
+      if (k >= 0.4 && k <= 0.93 && off < 20) {
+        cand[p] = 1;
+        any++;
+      }
+    }
+  if (!any) return mask;
+  const { labels, list } = components(cand, w, h);
+  const out = Uint8Array.from(mask);
+  let removed = false;
+  for (const c of list) {
+    const cw = c.box.width;
+    const ch = c.box.height;
+    if (
+      cw >= 2.2 * ch &&
+      ch <= box.height * 0.22 &&
+      cw >= box.width * 0.2 &&
+      c.box.maxY >= box.maxY - box.height * 0.12
+    ) {
+      for (let p = 0; p < labels.length; p++) if (labels[p] === c.id) out[p] = 0;
+      removed = true;
+    }
+  }
+  if (!removed) return mask;
+  // keep the largest piece left, as the colour cut does
+  const re = components(out, w, h);
+  const keep = re.list.sort((a, b) => b.area - a.area)[0];
+  const final = new Uint8Array(w * h);
+  if (keep) for (let p = 0; p < final.length; p++) if (re.labels[p] === keep.id) final[p] = 1;
+  return final;
+}
+
+/**
  * The cut-out of one photo.
  * @param {Uint8ClampedArray} rgba
  * @param {{ tolerance?: number, mode?: 'auto'|'plain'|'scene', crop?: {x0:number,y0:number,x1:number,y1:number}|null,
@@ -1202,7 +1257,7 @@ export function extractForeground(rgba, width, height, options = {}) {
   let smallSplit = null;
   let sceneFull = false;
   if (plain && !edited) {
-    mask = segmentObject(sub, cw, ch, tolerance);
+    mask = dropShadow(sub, segmentObject(sub, cw, ch, tolerance), cw, ch);
   } else {
     // the scene cut works on a small copy of the whole photo; the result is scaled back up. A crop is not cut
     // off: it tells the cut where the piece is (everything outside it is surroundings, and teaches what they look like)
