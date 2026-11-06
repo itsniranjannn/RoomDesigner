@@ -176,6 +176,7 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
 
 /** Types drawn on the plan from the design record alone (when there is no top photo to show). */
 const SHAPE_PLAN_TYPES = [
+  'bed',
   'corner-sofa',
   'tub-chair',
   'ottoman',
@@ -207,12 +208,174 @@ export function cornerSofaPoints(widthCm, depthCm, traits = {}) {
   return { points: out, chaise, mainD, armW, seats };
 }
 
+/**
+ * Plan of a photo-made bed from its design record: headboard (its width and colour), the sheet, pillows with a
+ * bolster or a second tier, the duvet with its folded-back sheet and throw, footboard and stitching lines.
+ */
+function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
+  const { palette = {}, traits = {} } = design;
+  const same = !palette.body || String(palette.body).toLowerCase() === String(color).toLowerCase();
+  const head = same ? palette.body || color : color;
+  const base = same ? palette.base || head : color;
+  const sheet = palette.sheet || palette.pillow || '#f1eee8';
+  const pillow = palette.pillow || '#f7f5f0';
+  const duvet = palette.accent || '#a89a88';
+  const n = Math.min(4, Math.max(1, Math.round(traits.pillows ?? 2)));
+  const headW = widthCm * Math.min(1.15, Math.max(0.7, traits.headW ?? 1));
+  const headT = Math.min(14, depthCm * 0.07);
+  const footT = traits.foot ? Math.min(10, depthCm * 0.05) : 0;
+  const inner = widthCm - 6;
+  const pillowW = Math.min(75, inner / n - 4);
+  const pillowH = traits.tiers ? 40 : 34;
+  const pillowY = -hd + headT + 4;
+  const duvetTop = -hd + depthCm * 0.38;
+  const duvetBottom = hd - footT - 1;
+  const lumbar = traits.lumbar === undefined ? n >= 2 : Boolean(traits.lumbar);
+  const quiltCols = Math.max(2, Math.round(inner / 40));
+  const quilt = 'rgba(34,24,14,0.28)';
+  return (
+    <g>
+      <rect
+        x={-hw}
+        y={-hd + headT * 0.6}
+        width={widthCm}
+        height={depthCm - headT * 0.6}
+        rx={4}
+        fill={base}
+        stroke={OUTLINE}
+        strokeWidth="1.2"
+      />
+      <rect
+        x={-headW / 2}
+        y={-hd}
+        width={headW}
+        height={headT}
+        rx={3}
+        fill={head}
+        stroke={OUTLINE}
+        strokeWidth="1.2"
+      />
+      <rect
+        x={-hw + 3}
+        y={-hd + headT}
+        width={inner}
+        height={depthCm - headT - footT - 2}
+        rx={3}
+        fill={sheet}
+        stroke={LINE}
+        strokeWidth="0.7"
+      />
+      {Array.from({ length: n }).map((_, i) => (
+        <rect
+          key={i}
+          x={(i - (n - 1) / 2) * (pillowW + 4) - pillowW / 2}
+          y={pillowY}
+          width={pillowW}
+          height={pillowH}
+          rx={8}
+          fill={pillow}
+          stroke={LINE}
+          strokeWidth="0.8"
+        />
+      ))}
+      {traits.tiers &&
+        Array.from({ length: n }).map((_, i) => (
+          <rect
+            key={`f${i}`}
+            x={(i - (n - 1) / 2) * (pillowW * 0.78 + 5) - (pillowW * 0.78) / 2}
+            y={pillowY + pillowH - 6}
+            width={pillowW * 0.78}
+            height={26}
+            rx={7}
+            fill={pillow}
+            stroke={LINE}
+            strokeWidth="0.8"
+          />
+        ))}
+      {lumbar && (
+        <rect
+          x={-Math.min(widthCm * 0.15, 28)}
+          y={pillowY + pillowH + (traits.tiers ? 20 : 2)}
+          width={Math.min(widthCm * 0.3, 56)}
+          height={20}
+          rx={9}
+          fill={pillow}
+          stroke={LINE}
+          strokeWidth="0.8"
+        />
+      )}
+      <rect
+        x={-hw + 1}
+        y={duvetTop}
+        width={widthCm - 2}
+        height={duvetBottom - duvetTop}
+        rx={5}
+        fill={duvet}
+        stroke={OUTLINE}
+        strokeWidth="1.1"
+      />
+      {traits.fold !== 0 && (
+        <rect
+          x={-hw + 2}
+          y={duvetTop}
+          width={widthCm - 4}
+          height={Math.min(16, depthCm * 0.08)}
+          rx={4}
+          fill={sheet}
+          stroke={LINE}
+          strokeWidth="0.7"
+        />
+      )}
+      {Array.from({ length: quiltCols - 1 }).map((_, i) => (
+        <line
+          key={i}
+          x1={-hw + 1 + ((widthCm - 2) * (i + 1)) / quiltCols}
+          y1={duvetTop + 20}
+          x2={-hw + 1 + ((widthCm - 2) * (i + 1)) / quiltCols}
+          y2={duvetBottom - 4}
+          stroke={quilt}
+          strokeWidth="0.8"
+        />
+      ))}
+      {traits.throw && (
+        <rect
+          x={-hw + 8}
+          y={duvetBottom - 38}
+          width={widthCm - 16}
+          height={30}
+          rx={3}
+          fill={duvet}
+          fillOpacity="0.6"
+          stroke={LINE}
+          strokeWidth="0.8"
+        />
+      )}
+      {traits.foot && (
+        <rect
+          x={-hw}
+          y={hd - footT}
+          width={widthCm}
+          height={footT}
+          rx={3}
+          fill={head}
+          stroke={OUTLINE}
+          strokeWidth="1.2"
+        />
+      )}
+    </g>
+  );
+}
+
 /** Plan drawn from the design record for the shapes that have no seating plan of their own. */
 function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
   const { type, palette = {}, traits = {} } = design;
   const same = !palette.body || String(palette.body).toLowerCase() === String(color).toLowerCase();
   const cushion = same ? palette.cushion || color : color;
   const stroke = { stroke: OUTLINE, strokeWidth: 1.2 };
+  if (type === 'bed')
+    return (
+      <BedPlan design={design} widthCm={widthCm} depthCm={depthCm} hw={hw} hd={hd} color={color} />
+    );
   if (type === 'corner-sofa') {
     const { points, chaise, mainD, armW, seats } = cornerSofaPoints(widthCm, depthCm, traits);
     const flip = traits.side === 'left' ? -1 : 1;

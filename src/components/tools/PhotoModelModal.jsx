@@ -46,11 +46,7 @@ import {
   DESIGN_TYPES,
   PALETTE_SLOTS,
   SHORT_LABEL,
-  TYPICAL_WIDTH_CM,
-  buildDesign,
-  typeCandidates,
   designMainColor,
-  inferDimensions,
   detectionConfidence,
   withMirroredSides,
 } from '../../engine/design.js';
@@ -65,6 +61,7 @@ import {
   matchPhotoDims,
   silhouetteFromRender,
 } from '../../engine/photoFit.js';
+import { buildViews, designFromViews } from '../../engine/photoPipeline.js';
 import { CaptureGuide, SLOT_HINTS, guideSeen, markGuideSeen } from './PhotoGuide.jsx';
 import local from './PhotoModelModal.module.css';
 
@@ -1027,54 +1024,32 @@ export function PhotoModelModal({ onClose }) {
     // Let the spinner paint before the analysis
     setTimeout(() => {
       try {
-        const views = {};
-        for (const slot of VIEW_SLOTS) {
-          const photo = allPhotos[slot.id];
-          if (!photo) continue;
-          const norm = normalizeView(
-            photo.rgba,
-            segmented[slot.id].mask,
-            photo.width,
-            photo.height,
-            96
-          );
-          if (!norm)
-            throw new Error(
-              `No object found in the ${slot.label.toLowerCase()} photo. Try a plainer background.`
-            );
-          // The same photo with its gaps left open, to read slatted backs
-          const open = normalizeView(
-            photo.rgba,
-            segmentObject(photo.rgba, photo.width, photo.height, tolerance, { keepGaps: true }),
-            photo.width,
-            photo.height,
-            96
-          );
-          if (open) norm.open = open.mask;
-          views[slot.id] = norm;
-        }
-        const hints = { ...partial };
-        let result = buildDesign(views, dims, forceType || undefined, sizeEdited, hints);
-        // Photos give proportions, not size: until a real size is entered, use the type's usual one.
-        // What the photos cannot show (the depth, from a lone front photo) is the usual for the type too
-        if (!sizeEdited && TYPICAL_WIDTH_CM[result.type]) {
-          const fit = (width) =>
-            ratios
-              ? dimensionsFromProportions(ratios, 'widthCm', width)
-              : inferDimensions(result.type, partial, width);
-          let next = fit(TYPICAL_WIDTH_CM[result.type]);
-          if (result.type === 'sofa') {
-            // Count the seats at a full sofa width first; a one or two seater is then narrower
-            const seats = buildDesign(views, next, result.type, true, hints).traits.seats;
-            if (seats <= 2) next = fit(80 + seats * 35);
-          }
+        const views = buildViews(
+          Object.fromEntries(
+            VIEW_SLOTS.filter((v) => allPhotos[v.id]).map((v) => [v.id, allPhotos[v.id]])
+          ),
+          segmented,
+          tolerance,
+          (slot) => VIEW_SLOTS.find((v) => v.id === slot)?.label || slot
+        );
+        const {
+          design: result,
+          dims: next,
+          candidates: likely,
+        } = designFromViews(views, {
+          dims,
+          sizeEdited,
+          forceType,
+          ratios,
+          partial,
+        });
+        if (next) {
           setDims(next);
           setAnchor('widthCm');
-          result = buildDesign(views, next, result.type, true, hints);
         }
         setDesign(result);
         // The likeliest types, for when the first guess is not steady or rests on few photos
-        setCandidates(typeCandidates(views, dims, sizeEdited, hints, result.type));
+        setCandidates(likely);
         setTypeOpen(false);
         setViewChoice((v) => (shownViews.includes(v) ? v : shownViews[0]));
         if (!nameTouched.current) {
