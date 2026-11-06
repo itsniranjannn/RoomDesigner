@@ -213,6 +213,20 @@ export function armchairPhoto(view, colors = CHAIR_COLORS) {
   return s;
 }
 
+/** A dining table seen from the front: a top of the given thickness (px) on four slim legs. */
+export function tablePhoto(thickness = 8, top = [190, 150, 105], leg = [120, 85, 55]) {
+  const s = surface(240, 130);
+  s.rect(6, 12, 228, thickness, top);
+  s.rect(16, 12 + thickness, 12, 100 - thickness, leg).rect(
+    212,
+    12 + thickness,
+    12,
+    100 - thickness,
+    leg
+  );
+  return s;
+}
+
 /**
  * A product sheet: the views of one piece laid out on a white page in two rows, front and side above, the
  * plan view and the three-quarter view below (the layout of a typical bed sheet).

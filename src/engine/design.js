@@ -94,6 +94,7 @@ export const PALETTE_SLOTS = {
   ],
   sofa: [
     ['body', 'Body'],
+    ['arm', 'Arms'],
     ['cushion', 'Cushions'],
     ['leg', 'Feet'],
   ],
@@ -117,6 +118,7 @@ export const PALETTE_SLOTS = {
   ],
   armchair: [
     ['body', 'Body'],
+    ['arm', 'Arms'],
     ['cushion', 'Cushions'],
     ['leg', 'Feet'],
   ],
@@ -170,6 +172,7 @@ const TYPE_IDS = new Set(DESIGN_TYPES.map((t) => t.id));
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const FALLBACK = {
   body: '#8a7a6a',
+  arm: '#8a7a6a',
   base: '#8a7a6a',
   sheet: '#f4f1ea',
   accent: '#b8aa98',
@@ -754,6 +757,10 @@ export function detectStructure(type, views, dims) {
       leg && dark && light && colourGap(dark, light) > 0.4 * Math.max(40, luma(hexRgb(leg)))
         ? 1
         : 0;
+    // The thickness of the top, from the rows that are as wide as the piece (a glass top is thin, a slab thick)
+    const slab = measureTraits({ front: F }).slabFrac;
+    if (slab > 0 && slab < 0.5)
+      out.topH = Math.round(Math.min(8, Math.max(2, slab * dims.heightCm)) * 2) / 2;
   } else if (type === 'bed') {
     if (F) {
       out.head = headboardStyle(
@@ -1239,6 +1246,12 @@ function paletteFor(type, views) {
     palette.cushion =
       pickColor(T, [0.25, 0.4, 0.75, 0.85]) || pickColor(F, [0.2, 0.5, 0.8, 0.75]) || palette.body;
     palette.leg = pickColor(F, [0.1, 0.94, 0.9, 1.0], 'dark') || FALLBACK.leg;
+    // Arms in a different cloth, leather or wood than the back are read from the ends of the front view
+    const arms = [pickColor(F, [0.01, 0.42, 0.06, 0.78]), pickColor(F, [0.94, 0.42, 0.99, 0.78])]
+      .filter(Boolean)
+      .map(hexRgb);
+    const arm = arms.length ? toHex(mean(arms)) : null;
+    palette.arm = arm && colourGap(arm, palette.body) > 22 ? arm : palette.body;
   } else if (type === 'chair' || type === 'stool') {
     palette.body = pickColor(F, [0.15, 0.05, 0.85, 0.4]) || all;
     palette.cushion = pickColor(T, [0.2, 0.2, 0.8, 0.8]) || palette.body;
@@ -1417,7 +1430,9 @@ const num = (v, lo, hi, fallback) => {
 export function sanitizeDesign(raw) {
   if (!raw || typeof raw !== 'object' || !TYPE_IDS.has(raw.type)) return null;
   const palette = {};
-  for (const key of ['body', 'accent', 'pillow', 'cushion', 'leg', 'base', 'sheet']) {
+  // Only the colours this type uses are kept, which keeps shared records short
+  const slots = new Set(['body', ...(PALETTE_SLOTS[raw.type] || []).map(([key]) => key)]);
+  for (const key of slots) {
     const v = raw.palette?.[key];
     if (typeof v === 'string' && HEX.test(v)) palette[key] = v.toLowerCase();
   }
@@ -1500,6 +1515,9 @@ export function sanitizeDesign(raw) {
   } else if (['table', 'coffee-table', 'desk'].includes(raw.type)) {
     traits.legFrac = num(t.legFrac, 0.02, 0.12, 0.05);
     traits.roundLegs = t.roundLegs ? 1 : 0;
+    // Top thickness in cm, kept only when it is not the usual 3.5, so older tables look as they did
+    const topH = Math.round(num(t.topH, 2, 8, 3.5) * 2) / 2;
+    if (topH !== 3.5) traits.topH = topH;
   }
   return { v: 1, type: raw.type, palette, traits };
 }

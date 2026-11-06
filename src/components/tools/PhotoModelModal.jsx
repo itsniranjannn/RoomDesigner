@@ -126,6 +126,16 @@ const TUFTED = {
     [1, 'Tufted with buttons'],
   ],
 };
+const TOP_THICKNESS = {
+  key: 'topH',
+  label: 'Top thickness',
+  fallback: 3.5,
+  options: [
+    [2, 'Thin (glass or veneer)'],
+    [3.5, 'Standard'],
+    [6, 'Thick slab'],
+  ],
+};
 const UPHOLSTERY = [
   {
     key: 'roll',
@@ -441,7 +451,7 @@ const TRAIT_CONTROLS = {
       ],
     },
   ],
-  table: [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
+  table: [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }, TOP_THICKNESS],
   'coffee-table': [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
   desk: [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
   wardrobe: [{ key: 'doors', label: 'Doors', fallback: 2, options: range(1, 6) }],

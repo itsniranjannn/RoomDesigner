@@ -163,7 +163,20 @@ describe('more furniture shapes', () => {
 describe('records of the new shapes', () => {
   const palette = { body: '#445566', accent: '#778899', cushion: '#998877', leg: '#222222' };
   const worst = {
-    bed: { pillows: 4, bodyFrac: 0.55, legs: 1, head: 'channel' },
+    bed: {
+      pillows: 4,
+      bodyFrac: 0.55,
+      legs: 1,
+      head: 'channel',
+      headW: 0.75,
+      lumbar: 0,
+      fold: 0,
+      throw: 1,
+      foot: 1,
+      store: 1,
+      skirt: 1,
+      tiers: 1,
+    },
     'corner-sofa': { side: 'right', seats: 4, arm: 0.08, tufted: 1, taper: 1 },
     'tub-chair': { plan: 'bucket', base: 'pedestal', tufted: 1 },
     ottoman: { shape: 'square', tufted: 1, feet: 'short' },
@@ -175,7 +188,18 @@ describe('records of the new shapes', () => {
 
   it('round-trips through storage and stays small enough for a share link', () => {
     for (const [type, traits] of Object.entries(worst)) {
-      const record = { v: 1, type, palette: { ...palette, pillow: '#f4f1ea' }, traits };
+      const record = {
+        v: 1,
+        type,
+        palette: {
+          ...palette,
+          pillow: '#f4f1ea',
+          base: '#8a6a4a',
+          sheet: '#eeeeee',
+          arm: '#664422',
+        },
+        traits,
+      };
       const clean = sanitizeDesign(JSON.parse(JSON.stringify(record)));
       expect(clean.type).toBe(type);
       for (const [key, value] of Object.entries(traits))

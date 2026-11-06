@@ -119,6 +119,7 @@ export function Upholstered({
   depthM,
   heightM,
   mainColor,
+  armColor = mainColor,
   cushionColor,
   legColor,
   armRatio,
@@ -192,7 +193,7 @@ export function Upholstered({
           position={[s * (widthM / 2 - armW / 2), (footH + armH) / 2, 0]}
           size={[armW, armH - footH, depthM]}
           radius={roll ? Math.min(0.12, armW / 2.05) : Math.min(0.06, armW / 2.5)}
-          color={mainColor}
+          color={armColor}
           roughness={roughness}
         />
       ))}
