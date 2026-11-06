@@ -95,7 +95,16 @@ export function Mattress({ widthM, depthM, y, z, fabricColor }) {
   );
 }
 
-export function Duvet({ widthM, mattressTop, z0, z1, accentColor, fabricColor, throwBlanket }) {
+export function Duvet({
+  widthM,
+  mattressTop,
+  z0,
+  z1,
+  accentColor,
+  fabricColor,
+  throwBlanket,
+  fold = true,
+}) {
   const d = z1 - z0;
   const w = widthM - 0.02;
   const line = shade(accentColor, -0.1);
@@ -120,13 +129,15 @@ export function Duvet({ widthM, mattressTop, z0, z1, accentColor, fabricColor, t
         color={line}
       />
       {/* Sheet turned back at the head end */}
-      <Pad
-        position={[0, mattressTop + 0.05, z0 + 0.07]}
-        size={[w + 0.005, 0.075, 0.16]}
-        radius={0.03}
-        color={fabricColor}
-        roughness={0.95}
-      />
+      {fold && (
+        <Pad
+          position={[0, mattressTop + 0.05, z0 + 0.07]}
+          size={[w + 0.005, 0.075, 0.16]}
+          radius={0.03}
+          color={fabricColor}
+          roughness={0.95}
+        />
+      )}
       {/* Drape over the side rails and foot */}
       {[-1, 1].map((s) => (
         <Pad
