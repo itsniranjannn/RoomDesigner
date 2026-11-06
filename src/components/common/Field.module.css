@@ -332,3 +332,11 @@
 .range:focus-visible::-moz-range-thumb {
   box-shadow: var(--focus-ring);
 }
+
+/* Touch screens: segmented buttons get a finger-sized target */
+@media (pointer: coarse) {
+  .segBtn {
+    min-height: 40px;
+    min-width: 44px;
+  }
+}
