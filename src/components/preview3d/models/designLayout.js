@@ -39,6 +39,11 @@ export function stepTiers({ armW, armH, seatH }) {
 /** How far round from the back (radians) a wrap-around tub chair shell reaches on each side. */
 export const WRAP_END = Math.PI * 0.62;
 
+/** Thickness of a wrap-around tub chair's rolled shell of radius `r`, never most of a small chair. */
+export function wrapThickness(r) {
+  return Math.min(clamp(r * 0.28, 0.07, 0.15), r * 0.45);
+}
+
 /** Height of a wrap-around shell's top edge (0 at the arm ends, 1 over the back), `u` = angle / WRAP_END. */
 export function wrapRise(u) {
   const a = Math.min(1, Math.abs(u));
@@ -157,11 +162,18 @@ export function deskLegThick(widthM, traits) {
   return traits.legFrac ? clamp(traits.legFrac * widthM, 0.03, 0.1) : 0.05;
 }
 
+/** Clear width a desk keeps for the knees between a full-height pedestal and whatever is beside it. */
+export const KNEE_SPACE = 0.45;
+/** Narrowest drawer pedestal (full height) and hanging drawer worth drawing. */
+const PEDESTAL_MIN = 0.2;
+const HANGING_MIN = 0.15;
+
 /**
  * Where a desk's supports go: the end frames, any pedestals and the legs, from its traits.
- * A pedestal leaves 50 cm of knee space when the desk is wide enough; on a narrower desk the pedestals share
- * half the clear width, and one that would be under 10 cm wide is left out (the desk keeps its legs instead).
- * A single drawer hangs under the top inside the legs.
+ * A full-height pedestal is about 30% of the desk wide, never leaving less than 45 cm for the knees between it
+ * and the other pedestal, legs or end; one that would be under 20 cm wide is left out and the desk keeps its legs.
+ * A single drawer hangs under the top inside the legs (at least 15 cm wide) and stops in front of a modesty panel.
+ * Each pedestal runs from z0 (back) to z1 (front).
  */
 export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 }) {
   const topT = (traits.topH ?? 3.5) / 100;
@@ -172,6 +184,7 @@ export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 })
   const endT = base === 'panel' ? 0.025 : base === 'sled' ? 0.05 : 0;
   const endX = widthM / 2 - 0.03 - endT / 2;
   const wanted = ped === 'both' ? [-1, 1] : ped === 'left' ? [-1] : ped === 'right' ? [1] : [];
+  const n = Math.max(1, wanted.length);
   const hanging = drawers === 1;
   // Outer side of a pedestal: inside the end frames, at the edge of the top, or (a hanging drawer) just inside
   // the inner face of the legs, which stand at the corners however the drawer is placed
@@ -181,17 +194,29 @@ export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 })
       : hanging
         ? widthM / 2 - 0.03 - legThick - 0.002
         : widthM / 2 - 0.02;
-  const pw = Math.min(
-    clamp(widthM * 0.3, 0.3, 0.45),
-    Math.max(widthM - 0.5, inner) / Math.max(1, wanted.length)
-  );
-  const sides = pw >= 0.1 ? wanted : [];
+  // Inner face of the legs or end frame at the other end of the desk
+  const support = base === 'legs' ? widthM / 2 - 0.03 - legThick : endX - endT / 2;
+  const preferred = clamp(widthM * 0.3, 0.3, 0.45);
+  const pw = hanging
+    ? Math.min(preferred, Math.max(widthM - 0.5, inner) / n)
+    : Math.min(
+        preferred,
+        (widthM - 0.5) / n,
+        n === 2 ? inner - KNEE_SPACE / 2 : inner + support - KNEE_SPACE
+      );
+  // Front and back of a pedestal box; a hanging drawer stops in front of the modesty panel
+  const z1 = depthM / 2 - 0.06;
+  const z0 = hanging && traits.modesty ? -depthM / 2 + 0.06 : -depthM / 2 + 0.02;
+  const fits = pw >= (hanging ? HANGING_MIN : PEDESTAL_MIN) && z1 - z0 >= 0.06;
+  const sides = fits ? wanted : [];
   const pedestals = sides.map((s) => ({
     side: s,
     x: s * (inner - pw / 2),
     w: pw,
     y0: hanging ? under - 0.16 : 0.035,
     y1: under - 0.004,
+    z0,
+    z1,
   }));
   // Legs stand at the corners of any side not carried by a full-height pedestal
   const legs =
@@ -200,7 +225,7 @@ export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 })
           ([x]) => hanging || !sides.includes(Math.sign(x))
         )
       : [];
-  return { topT, under, base, endT, endX, pedestals, legs, drawers, hanging };
+  return { topT, under, base, endT, endX, support, pedestals, legs, drawers, hanging };
 }
 
 /** Longest bar pull there is (the pull itself clamps to this). */
@@ -219,4 +244,34 @@ export function placeDoorHandle({ bottom, top, style, length, at = 1.05 }) {
   const lo = bottom + margin;
   const hi = top - margin;
   return { y: lo > hi ? (bottom + top) / 2 : clamp(at, lo, hi), length: len };
+}
+
+/** How far each handle reaches either side of its centre across a door, and how far in from the edge it sits. */
+const HANDLE_REACH = { bar: 0.0055, knob: 0.014, ring: 0.0197 };
+const HANDLE_INSET = { bar: 0.04, knob: 0.05, ring: 0.05 };
+
+/**
+ * Where a handle sits across a door `doorW` wide: its centre `inset` in from the handle edge (closer in on a
+ * narrow door), and the `stile` it needs there, which a mirror keeps clear of. Null when the door is too narrow
+ * for the handle at all.
+ */
+export function doorHandleSpot(style, doorW) {
+  const reach = HANDLE_REACH[style] ?? HANDLE_REACH.bar;
+  const inset = Math.min(HANDLE_INSET[style] ?? HANDLE_INSET.bar, doorW / 2);
+  if (inset - reach < 0.004) return null;
+  return { inset, stile: inset + reach + 0.012 };
+}
+
+/** Margin a door mirror keeps from the door's edge where there is no handle. */
+export const MIRROR_MARGIN = 0.035;
+
+/**
+ * The width a mirror may take across a door centred at `x`, `w` wide, with its handle (`spot`, or none) on side
+ * `edge`: clear of the handle's stile and of the margin on the other side. Null when too narrow for a mirror.
+ */
+export function mirrorSpan(x, w, edge, spot) {
+  const handleSide = spot ? spot.stile : MIRROR_MARGIN;
+  const width = w - handleSide - MIRROR_MARGIN;
+  if (width < 0.06) return null;
+  return { x: x + (edge * (MIRROR_MARGIN - handleSide)) / 2, w: width };
 }

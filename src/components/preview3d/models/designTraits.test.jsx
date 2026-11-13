@@ -116,7 +116,8 @@ const BASELINE = {
   'tub-pedestal': ['09a5be77c960ee5e', '67992faf2b3781c0'],
   'bed-plain': ['631f5c01711cdc92', '61edeb5a9916553d'],
   'bed-channel': ['833b5bca6ba73d3e', '718522023118a210'],
-  'bed-carved': ['da238db0297359a5', '25653fdc5e91b312'],
+  // the plan hash changed on purpose: a sleigh footboard is drawn in the base's wood, as the 3D draws it
+  'bed-carved': ['da238db0297359a5', '4311196288be3b52'],
   'bed-skirt': ['3dd42cfc08a65b11', '2feb32af3296aa78'],
   'wardrobe-2': ['aa7519fce68e2e64', '254d5dcfa81ede9f'],
   'wardrobe-3': ['f3cb6a2e0efb4670', '67a56b3fbf1025da'],
@@ -614,8 +615,9 @@ describe('detail layouts', () => {
     });
     expect(hanging.legs).toHaveLength(4);
     expect(hanging.pedestals[0].y0).toBeGreaterThan(0.4);
+    // Wide enough for two pedestals with knee room between them
     const both = deskLayout({
-      widthM: 0.8,
+      widthM: 1.4,
       depthM: 0.6,
       heightM: 0.75,
       traits: { ped: 'both', drawers: 4, base: 'panel' },

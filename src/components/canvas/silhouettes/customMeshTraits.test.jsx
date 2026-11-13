@@ -55,7 +55,7 @@ function points(html) {
 
 function expectInside(html, w, d, tol = 0.8) {
   expect(html).not.toMatch(/NaN|Infinity/);
-  expect(html).not.toMatch(/\s(width|height)="-/);
+  expect(html).not.toMatch(/\s(width|height|r|rx|ry)="-/);
   for (const [x, y] of points(html)) {
     expect(Math.abs(x)).toBeLessThanOrEqual(w / 2 + tol);
     expect(Math.abs(y)).toBeLessThanOrEqual(d / 2 + tol);

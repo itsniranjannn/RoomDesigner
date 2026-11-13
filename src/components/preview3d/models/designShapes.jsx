@@ -20,7 +20,7 @@ import {
   BRASS,
 } from './shared.jsx';
 import { TuftedFace } from './seating.jsx';
-import { WRAP_END, wrapRise } from './designLayout.js';
+import { WRAP_END, wrapRise, wrapThickness } from './designLayout.js';
 
 const DARK = '#171310';
 
@@ -346,7 +346,7 @@ export function TubChairDesign({ widthM, depthM, heightM, palette, traits }) {
   const shellH = heightM - baseH;
   const inner = shade(cushion, -0.03);
   const wrap = !!traits.wrap;
-  const t = clamp(r * 0.28, 0.07, 0.15);
+  const t = wrapThickness(r);
   const seatTop = clamp(heightM * 0.53, baseH + 0.18, baseH + 0.34);
   const finish = metal ? metalFinish(legColor) : null;
   const legs = metal ? tubMetalLegs(r) : null;

@@ -9,7 +9,13 @@ import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import { Box, Cyl, Pull, RoundKnob, clamp, shade, DARK_GAP, STEEL } from './shared.jsx';
 import { ChannelRibs, ribCentres } from './channels.jsx';
-import { wardrobeLayout, deskLayout, placeDoorHandle } from './designLayout.js';
+import {
+  wardrobeLayout,
+  deskLayout,
+  placeDoorHandle,
+  doorHandleSpot,
+  mirrorSpan,
+} from './designLayout.js';
 import { metalFinish } from './designShapes.jsx';
 
 /**
@@ -127,9 +133,12 @@ const DOOR_T = 0.018;
 // Carcass front sits back far enough that doors and handles stay inside the footprint
 const FRONT_INSET = 0.045;
 
-/** Round ring pull hanging from a small rose (faces +z). */
+/**
+ * Round ring pull hanging from a small rose (faces +z). The ring reaches 1.71 radii below the rose's centre,
+ * 0.61 above it and 1.16 to either side.
+ */
 export function RingPull({ position, radius = 0.017, color }) {
-  const r = clamp(radius, 0.01, 0.03);
+  const r = clamp(radius, 0.004, 0.03);
   const mat = { color, roughness: 0.25, metalness: 0.7 };
   return (
     <group name="handle" position={position}>
@@ -150,10 +159,10 @@ export function RingPull({ position, radius = 0.017, color }) {
   );
 }
 
-/** One handle in the chosen style on a front face whose surface is at z. */
-function Handle({ style, x, y, z, length, vertical = true, color }) {
-  if (style === 'knob') return <RoundKnob position={[x, y, z]} color={color} />;
-  if (style === 'ring') return <RingPull position={[x, y, z]} color={color} />;
+/** One handle in the chosen style on a front face whose surface is at z (`radius` sizes a knob or ring). */
+function Handle({ style, x, y, z, length, radius, vertical = true, color }) {
+  if (style === 'knob') return <RoundKnob position={[x, y, z]} radius={radius} color={color} />;
+  if (style === 'ring') return <RingPull position={[x, y, z]} radius={radius} color={color} />;
   return (
     <Pull
       position={[x, y, z]}
@@ -207,22 +216,53 @@ function OvalMirror({ x, y, w, h, z }) {
   );
 }
 
-/** Full mirror over a door face: glass with a narrow frame margin of the door showing round it. */
+/**
+ * Full mirror over a door face (glass `w` wide centred at x, from mirrorSpan, so it keeps clear of the handle's
+ * stile): the glass on a slightly larger backing plate, a narrow frame of the door showing round it.
+ */
 function FullMirror({ x, y0, y1, w, z, frame }) {
   const h = y1 - y0;
   return (
     <group name="wardrobe-mirror">
       <Box
         position={[x, y0 + h / 2, z + 0.0015]}
-        size={[w - 0.05, h - 0.05, 0.003]}
+        size={[w + 0.012, h - 0.05, 0.003]}
         color={frame}
         roughness={0.4}
         metalness={0.3}
         castShadow={false}
       />
-      <MirrorPane position={[x, y0 + h / 2, z + 0.0035]} size={[w - 0.07, h - 0.07, 0.003]} />
+      <MirrorPane position={[x, y0 + h / 2, z + 0.0035]} size={[w, h - 0.07, 0.003]} />
     </group>
   );
+}
+
+/**
+ * A drawer pull that fits its front (`fw` wide, from y0 to y1, ideally at height `at`): a bar no wider than the
+ * front (a knob when even the shortest bar is too wide), a knob or ring pull scaled down and moved up or down so
+ * all of it stays on a shallow front. Null when nothing fits.
+ */
+export function fitDrawerHandle(style, fw, y0, y1, at) {
+  const within = (lo, hi) => Math.min(hi, Math.max(lo, at));
+  let kind = style;
+  if (kind === 'bar') {
+    const length = Math.min(clamp(fw * 0.36, 0.08, 0.3), fw - 0.03);
+    if (length >= 0.04 && y1 - y0 >= 0.02)
+      return { style: kind, length, y: within(y0 + 0.0095, y1 - 0.0095) };
+    kind = 'knob';
+  }
+  if (kind === 'knob') {
+    const radius = Math.min(0.014, (y1 - y0 - 0.008) / 2, (fw - 0.008) / 2);
+    if (radius < 0.008) return null;
+    return { style: kind, radius, y: within(y0 + 0.004 + radius, y1 - 0.004 - radius) };
+  }
+  const radius = Math.min(0.017, (y1 - y0 - 0.008) / 2.32, (fw - 0.008) / 2.32);
+  if (radius < 0.004) return null;
+  return {
+    style: kind,
+    radius,
+    y: within(y0 + 0.004 + 1.71 * radius, y1 - 0.004 - 0.61 * radius),
+  };
 }
 
 /** Rows of drawer heights (fractions) for a stack of n drawers: equal, or a deep bottom one under shallow ones. */
@@ -255,20 +295,23 @@ function DrawerStack({
     const h = (y1 - y0) * f;
     for (let c = 0; c < cols; c++) {
       const cx = x0 + fw * (c + 0.5);
-      // A bar pull is never wider than its front; on a front too narrow for the shortest bar, a knob
-      const len = Math.min(clamp(fw * 0.36, 0.08, 0.3), fw - 0.03);
+      // The pull fits its front: never wider than it, never hanging off a shallow one
+      const fit = fitDrawerHandle(handle, fw, y, y + h, y + h * (h > 0.16 ? 0.62 : 0.5));
       items.push(
         <group key={`${r}-${c}`}>
           <Slab x={cx} y0={y} y1={y + h} w={fw} z={z} color={color} />
-          <Handle
-            style={handle === 'bar' && len < 0.04 ? 'knob' : handle}
-            x={cx}
-            y={y + h * (h > 0.16 ? 0.62 : 0.5)}
-            z={z + DOOR_T}
-            length={len}
-            vertical={false}
-            color={handleColor}
-          />
+          {fit && (
+            <Handle
+              style={fit.style}
+              x={cx}
+              y={fit.y}
+              z={z + DOOR_T}
+              length={fit.length}
+              radius={fit.radius}
+              vertical={false}
+              color={handleColor}
+            />
+          )}
         </group>
       );
     }
@@ -327,12 +370,21 @@ export function WardrobeDesign({ widthM, depthM, heightM, palette, traits }) {
     (flutedGroups[key] = flutedGroups[key] || { ...d, doors: [] }).doors.push(d);
   };
   const doors = L.cols.map((c, i) => {
-    const mirror = i === L.mirrorIdx ? traits.mirror : 0;
-    // A mirror door on a two-tone wardrobe keeps the body colour (a mirror set in a wood door)
-    const color = mirror === 2 && palette.door ? body : doorColor;
     const g = 0.002;
     const y0 = c.bottom + g;
     const y1 = c.top - g;
+    // The handle sits on a stile beside the glass, and a mirror that does not fit the door is left out
+    const spot = doorHandleSpot(handle, c.w);
+    const span = i === L.mirrorIdx ? mirrorSpan(c.x, c.w, c.edge, spot) : null;
+    const ovalW = span ? Math.min(c.w * 0.62, 0.42, span.w) : 0;
+    const mirror =
+      span && traits.mirror === 1 && y1 - y0 >= 0.15
+        ? 1
+        : span && traits.mirror === 2 && ovalW >= 0.06 && (y1 - y0) * 0.72 >= 0.1
+          ? 2
+          : 0;
+    // A mirror door on a two-tone wardrobe keeps the body colour (a mirror set in a wood door)
+    const color = mirror === 2 && palette.door ? body : doorColor;
     // With a row of top cupboards the fluting is on those (as on a built-in unit), otherwise on every door
     if (!mirror && !L.upperH)
       addFlute(`${y0.toFixed(3)}-${y1.toFixed(3)}`, { x: c.x, w: c.w, y0, y1 });
@@ -342,25 +394,27 @@ export function WardrobeDesign({ widthM, depthM, heightM, palette, traits }) {
       <group key={i} name="door">
         <Slab x={c.x} y0={y0} y1={y1} w={c.w} z={zc} color={color} />
         {mirror === 1 && (
-          <FullMirror x={c.x} y0={y0} y1={y1} w={c.w} z={zc + DOOR_T} frame={color} />
+          <FullMirror x={span.x} y0={y0} y1={y1} w={span.w} z={zc + DOOR_T} frame={color} />
         )}
         {mirror === 2 && (
           <OvalMirror
-            x={c.x - c.edge * c.w * 0.04}
+            x={span.x}
             y={(y0 + y1) / 2 + (y1 - y0) * 0.03}
-            w={Math.min(c.w * 0.62, 0.42)}
+            w={ovalW}
             h={(y1 - y0) * 0.72}
             z={zc + DOOR_T}
           />
         )}
-        <Handle
-          style={handle}
-          x={c.x + c.edge * (c.w / 2 - (handle === 'bar' ? 0.04 : 0.05))}
-          y={grip.y}
-          z={zc + DOOR_T}
-          length={grip.length}
-          color={handleColor}
-        />
+        {spot && (
+          <Handle
+            style={handle}
+            x={c.x + c.edge * (c.w / 2 - spot.inset)}
+            y={grip.y}
+            z={zc + DOOR_T}
+            length={grip.length}
+            color={handleColor}
+          />
+        )}
       </group>
     );
   });
@@ -370,17 +424,20 @@ export function WardrobeDesign({ widthM, depthM, heightM, palette, traits }) {
     addFlute('upper', { x: u.x, w: u.w, y0, y1 });
     const left = u.x < 0;
     const len = clamp(L.upperH * 0.42, 0.1, 0.24);
+    const spot = doorHandleSpot(handle, u.w);
     return (
       <group key={`u${i}`} name="upper-door">
         <Slab x={u.x} y0={y0} y1={y1} w={u.w} z={zc} color={doorColor} />
-        <Handle
-          style={handle}
-          x={u.x + (left ? 1 : -1) * (u.w / 2 - 0.04)}
-          y={y0 + (handle === 'bar' ? len / 2 + 0.05 : 0.07)}
-          z={zc + DOOR_T}
-          length={len}
-          color={handleColor}
-        />
+        {spot && (
+          <Handle
+            style={handle}
+            x={u.x + (left ? 1 : -1) * (u.w / 2 - spot.inset)}
+            y={y0 + (handle === 'bar' ? len / 2 + 0.05 : 0.07)}
+            z={zc + DOOR_T}
+            length={len}
+            color={handleColor}
+          />
+        )}
       </group>
     );
   });
@@ -522,10 +579,10 @@ export function WardrobeDesign({ widthM, depthM, heightM, palette, traits }) {
 }
 
 /** Drawer pedestal: carcass, drawer fronts (shallow ones over a deep file drawer) and bar pulls. */
-function Pedestal({ x, w, y0, y1, depthM, rows, color, carcass }) {
-  const d = depthM - 0.08;
-  const z = -0.02;
-  const front = z + d / 2;
+function Pedestal({ x, w, y0, y1, z0, z1, rows, color, carcass }) {
+  const d = z1 - z0;
+  const z = (z0 + z1) / 2;
+  const front = z1;
   return (
     <group name="pedestal">
       {y0 > 0.02 && y0 < 0.1 && (
@@ -664,7 +721,8 @@ export function DeskDesign({ widthM, depthM, heightM, palette, traits, legThick 
           w={p.w}
           y0={p.y0}
           y1={p.y1}
-          depthM={depthM}
+          z0={p.z0}
+          z1={p.z1}
           rows={D.drawers}
           color={drawerColor}
           carcass={shade(drawerColor, -0.04)}

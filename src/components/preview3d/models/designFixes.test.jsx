@@ -17,6 +17,7 @@ import {
   wardrobeLayout,
   placeDoorHandle,
   PULL_MAX,
+  KNEE_SPACE,
 } from './designLayout.js';
 import { effectivePalette } from './designPalette.js';
 import { glassOutline, sheenPolygons } from './designCasework.jsx';
@@ -132,19 +133,35 @@ describe('1. desks resized narrow keep sensible pedestals', () => {
       }
   });
 
-  it('lays out desks 1 m and wider exactly as before (full-height pedestals)', () => {
-    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  it('leaves room for the knees beside every full-height pedestal', () => {
     for (const traits of DESK_COMBOS.filter((t) => t.drawers > 1))
-      for (const widthM of [1.0, 1.1, 1.2, 1.4, 1.6, 2.0]) {
+      for (let cm = 40; cm <= 240; cm += 5) {
+        const widthM = cm / 100;
+        const legThick = deskLegThick(widthM, traits);
+        const D = deskLayout({ widthM, depthM: 0.6, heightM: 0.75, traits, legThick });
+        if (!D.pedestals.length) continue;
+        const at = `${JSON.stringify(traits)} at ${cm} cm`;
+        // the clear width between a pedestal and the pedestal, legs or end frame facing it
+        const [a, b] = D.pedestals;
+        const knee =
+          D.pedestals.length === 2
+            ? b.x - b.w / 2 - (a.x + a.w / 2)
+            : Math.abs(a.x) - a.w / 2 + D.support;
+        expect(knee, at).toBeGreaterThanOrEqual(KNEE_SPACE - 1e-9);
+        expect(a.w, at).toBeGreaterThanOrEqual(0.2);
+      }
+  });
+
+  it('keeps the pedestals of a roomy desk at 30% of its width', () => {
+    for (const traits of [
+      { ped: 'right', drawers: 3 },
+      { ped: 'left', drawers: 4, base: 'sled' },
+      { ped: 'both', drawers: 3 },
+    ])
+      for (const widthM of [1.4, 1.6, 2.0]) {
         const D = deskLayout({ widthM, depthM: 0.6, heightM: 0.75, traits });
-        const n = traits.ped === 'both' ? 2 : 1;
-        const endT = traits.base === 'panel' ? 0.025 : traits.base === 'sled' ? 0.05 : 0;
-        const inner = traits.base === 'legs' ? widthM / 2 - 0.02 : widthM / 2 - 0.03 - endT - 0.01;
-        const pw = Math.min(clamp(widthM * 0.3, 0.3, 0.45), (widthM - 0.5) / n);
-        for (const p of D.pedestals) {
-          expect(p.w).toBeCloseTo(pw, 12);
-          expect(p.x).toBeCloseTo(p.side * (inner - pw / 2), 12);
-        }
+        const want = Math.min(Math.max(widthM * 0.3, 0.3), 0.45);
+        for (const p of D.pedestals) expect(p.w).toBeCloseTo(want, 12);
       }
   });
 
@@ -180,7 +197,7 @@ describe('1. desks resized narrow keep sensible pedestals', () => {
           expect(all.max.x, at).toBeLessThanOrEqual(w / 2 + 1e-6);
           expect(all.max.z, at).toBeLessThanOrEqual(0.25 + 1e-6);
         });
-        expect(plan(design, size), at).not.toMatch(/\s(width|height|r)="-|NaN|Infinity/);
+        expect(plan(design, size), at).not.toMatch(/\s(width|height|r|rx|ry)="-|NaN|Infinity/);
       }
   });
 });
@@ -579,7 +596,7 @@ describe('extreme sizes', () => {
         expect(markup(design, s), at).not.toMatch(/NaN|Infinity/);
         const p = plan(design, s);
         expect(p, at).not.toMatch(/NaN|Infinity/);
-        expect(p, at).not.toMatch(/\s(width|height|r)="-/);
+        expect(p, at).not.toMatch(/\s(width|height|r|rx|ry)="-/);
       }
     }
   });

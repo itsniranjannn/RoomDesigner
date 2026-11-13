@@ -8,8 +8,11 @@ import {
   wardrobeLayout,
   deskLayout,
   deskLegThick,
+  wrapThickness,
+  doorHandleSpot,
+  mirrorSpan,
 } from '../../preview3d/models/designLayout.js';
-import { effectivePalette } from '../../preview3d/models/designPalette.js';
+import { effectivePalette, shadeColour } from '../../preview3d/models/designPalette.js';
 import { SwingArc, BarHandle } from './parts.jsx';
 
 const OUTLINE = '#22180E';
@@ -47,6 +50,8 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
   const classic = !!(traits.frame || traits.cane);
   const chan = !!traits.chan && !classic;
   const step = !!traits.step && !classic && type === 'sofa';
+  // Arms photographed in their own colour keep it, as on the 3D upholstered seat (a classic frame has none)
+  const armFill = !classic && design.palette?.arm ? eff.arm : null;
   if (type === 'lounge') {
     const bar = Math.max(4, widthCm * 0.07);
     const seatD = depthCm * 0.52;
@@ -136,6 +141,7 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
         seats={longSeat ? 1 : seats}
         armW={armW}
         step={step}
+        armFill={armFill}
       />
     );
   return (
@@ -150,6 +156,15 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
         stroke="#222222"
         strokeWidth="1.2"
       />
+      {armFill && (
+        <ArmFills
+          widthCm={widthCm}
+          depthCm={depthCm}
+          armW={armW}
+          rx={roll ? armW / 2 : 6}
+          fill={armFill}
+        />
+      )}
       <rect
         x={-hw + armW}
         y={-hd + 1}
@@ -213,6 +228,37 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
   );
 }
 
+/** Both arms in their own colour, with the seat's outline drawn again over them. */
+function ArmFills({ widthCm, depthCm, armW, rx, fill }) {
+  const hw = widthCm / 2;
+  const hd = depthCm / 2;
+  return (
+    <g name="arm-fills">
+      {[-1, 1].map((sg) => (
+        <rect
+          key={sg}
+          x={sg < 0 ? -hw : hw - armW}
+          y={-hd}
+          width={armW}
+          height={depthCm}
+          rx={Math.min(rx, armW / 2)}
+          fill={fill}
+        />
+      ))}
+      <rect
+        x={-hw}
+        y={-hd}
+        width={widthCm}
+        height={depthCm}
+        rx={rx}
+        fill="none"
+        stroke="#222222"
+        strokeWidth="1.2"
+      />
+    </g>
+  );
+}
+
 /** Seams between the slabs of terraced arms, running front to back on both arms. */
 function ArmTiers({ widthCm, hd, armW, y0 }) {
   const tiers = stepTiers({ armW: armW / 100, armH: 0.62, seatH: 0.44 });
@@ -249,7 +295,7 @@ function seams(a, b, step) {
  * Plan of a channel-tufted sofa or armchair: the back with its channels running up to the top edge, the seat
  * channels running front to back, and the arms channelled over the top or terraced in slabs.
  */
-function ChannelSeatPlan({ widthCm, depthCm, hw, hd, color, cushion, seats, armW, step }) {
+function ChannelSeatPlan({ widthCm, depthCm, hw, hd, color, cushion, seats, armW, step, armFill }) {
   const backT = channelBackT(depthCm / 100) * 100;
   const inner = widthCm - armW * 2;
   const seam = { stroke: LINE, strokeWidth: 0.6 };
@@ -266,6 +312,9 @@ function ChannelSeatPlan({ widthCm, depthCm, hw, hd, color, cushion, seats, armW
         stroke="#222222"
         strokeWidth="1.2"
       />
+      {armFill && (
+        <ArmFills widthCm={widthCm} depthCm={depthCm} armW={armW} rx={5} fill={armFill} />
+      )}
       {/* Back: channels running up and over its top */}
       {seams(-hw + 1, hw - 1, 10).map((x) => (
         <line key={`b${x}`} x1={x} y1={-hd + 1} x2={x} y2={-hd + backT} {...seam} />
@@ -316,6 +365,7 @@ function ChannelSeatPlan({ widthCm, depthCm, hw, hd, color, cushion, seats, armW
 /** Types drawn on the plan from the design record alone (when there is no top photo to show). */
 const SHAPE_PLAN_TYPES = [
   'bed',
+  'chair',
   'corner-sofa',
   'tub-chair',
   'ottoman',
@@ -498,7 +548,7 @@ function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
         <rect
           x={-hw + 8}
           y={duvetBottom - 38}
-          width={widthCm - 16}
+          width={Math.max(0, widthCm - 16)}
           height={30}
           rx={3}
           fill={duvet}
@@ -514,7 +564,7 @@ function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
           width={widthCm}
           height={footT}
           rx={3}
-          fill={head}
+          fill={traits.foot === 2 ? base : head}
           stroke={OUTLINE}
           strokeWidth="1.2"
         />
@@ -594,7 +644,7 @@ function arcPoints(rx, ry, a0, a1, steps = 28) {
  */
 function WrapTubPlan({ widthCm, depthCm, hw, hd, color, cushion }) {
   const r = Math.min(widthCm, depthCm) / 2;
-  const t = Math.min(15, Math.max(7, r * 0.28));
+  const t = wrapThickness(r / 100) * 100;
   const k = 1 - t / r;
   const ox = hw;
   const oy = hd;
@@ -643,6 +693,116 @@ function WrapTubPlan({ widthCm, depthCm, hw, hd, color, cushion }) {
   );
 }
 
+/**
+ * Dining chair from above: the seat covers the footprint in its own colour, with the back rail and the two
+ * back posts showing behind it in the frame's colour, as the 3D chair does.
+ */
+function ChairPlan({ design, widthCm, depthCm, hw, hd, palette }) {
+  const traits = design.traits || {};
+  const frame = palette.body;
+  const seat = palette.cushion || frame;
+  const post = Math.min(3.5, widthCm * 0.1, depthCm * 0.1);
+  const railD = Math.min(2.5, depthCm * 0.1);
+  return (
+    <g name="chair-plan">
+      <rect
+        x={-hw}
+        y={-hd + 1}
+        width={widthCm}
+        height={Math.max(0, depthCm - 2)}
+        rx={Math.min(3, widthCm * 0.1)}
+        fill={seat}
+        stroke={OUTLINE}
+        strokeWidth="1.2"
+      />
+      {/* the top rail across the back, and a slatted or open back drawn as a hairline */}
+      <rect
+        x={-hw + post}
+        y={-hd + 0.5}
+        width={Math.max(0, widthCm - post * 2)}
+        height={railD}
+        fill={frame}
+        stroke={LINE}
+        strokeWidth="0.5"
+      />
+      {traits.back === 'solid' && (
+        <line
+          x1={-hw + post}
+          y1={-hd + 0.5 + railD}
+          x2={hw - post}
+          y2={-hd + 0.5 + railD}
+          stroke={LINE}
+          strokeWidth="0.6"
+        />
+      )}
+      {[-1, 1].map((sg) => (
+        <rect
+          key={sg}
+          x={sg < 0 ? -hw + 0.5 : hw - post - 0.5}
+          y={-hd + 0.5}
+          width={post}
+          height={post}
+          fill={frame}
+          stroke={LINE}
+          strokeWidth="0.5"
+        />
+      ))}
+      <line
+        x1={-hw + 4}
+        y1={hd - 2.5}
+        x2={hw - 4}
+        y2={hd - 2.5}
+        stroke={LINE}
+        strokeWidth="1.6"
+        strokeDasharray="4 3"
+      />
+    </g>
+  );
+}
+
+/**
+ * Stool from above: all seat, in the seat's colour; the frame shows only as the low back rail (an arc round the
+ * back of a round seat, a bar across a square one) when there is one. Stools drawn before the seat and back
+ * options existed always had the back rail.
+ */
+function StoolPlan({ design, widthCm, depthCm, hw, hd, palette }) {
+  const traits = design.traits || {};
+  const round = traits.seat !== 'square';
+  const back = traits.seat === undefined || !!traits.back;
+  const seat = palette.cushion || palette.body;
+  const stroke = { stroke: OUTLINE, strokeWidth: 1.2 };
+  const tube = (traits.seat === undefined ? 0.028 : 0.032) * 100;
+  return (
+    <g name="stool-plan">
+      {round ? (
+        <ellipse cx={0} cy={0} rx={hw} ry={hd} fill={seat} {...stroke} />
+      ) : (
+        <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={6} fill={seat} {...stroke} />
+      )}
+      {back &&
+        (round ? (
+          <path
+            d={`M ${arcPoints(hw * 0.88, hd * 0.88, -Math.PI * 0.35, Math.PI * 0.35, 16).join(' L ')}`}
+            fill="none"
+            stroke={palette.body}
+            strokeWidth={Math.min(tube, Math.min(widthCm, depthCm) * 0.12)}
+            strokeLinecap="round"
+          />
+        ) : (
+          <rect
+            x={-hw + Math.min(2, widthCm * 0.1)}
+            y={-hd + Math.min(1.75, depthCm * 0.08)}
+            width={Math.max(0, widthCm - Math.min(4, widthCm * 0.2))}
+            height={Math.min(2.5, depthCm * 0.12)}
+            fill={palette.body}
+            stroke={LINE}
+            strokeWidth="0.5"
+          />
+        ))}
+    </g>
+  );
+}
+
 /** Plan drawn from the design record for the shapes that have no seating plan of their own. */
 function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
   const { type, traits = {} } = design;
@@ -668,14 +828,14 @@ function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
         />
         {Array.from({ length: seats }).map((_, i) => {
           const x0 = -hw + armW + (seatsW / seats) * i + 1.5;
-          const w = seatsW / seats - 3;
+          const w = Math.max(0, seatsW / seats - 3);
           return (
             <rect
               key={i}
               x={flip < 0 ? hw - armW - (seatsW / seats) * (i + 1) + 1.5 : x0}
               y={-hd + backT + 2}
               width={w}
-              height={mainD - backT - 4}
+              height={Math.max(0, mainD - backT - 4)}
               rx={4}
               fill={cushion}
               stroke={LINE}
@@ -686,8 +846,8 @@ function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
         <rect
           x={flip < 0 ? -hw + armW + 1.5 : hw - chaise + 1.5}
           y={-hd + mainD - 2}
-          width={chaise - armW - 3}
-          height={depthCm - mainD - 2 - 4}
+          width={Math.max(0, chaise - armW - 3)}
+          height={Math.max(0, depthCm - mainD - 2 - 4)}
           rx={4}
           fill={cushion}
           stroke={LINE}
@@ -715,13 +875,30 @@ function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
         cushion={cushion}
       />
     );
-  if (type === 'tub-chair' || type === 'ottoman' || type === 'stool') {
-    const round =
-      type === 'tub-chair'
-        ? traits.plan !== 'bucket'
-        : type === 'ottoman'
-          ? traits.shape === 'round'
-          : traits.seat !== 'square';
+  if (type === 'chair')
+    return (
+      <ChairPlan
+        design={design}
+        widthCm={widthCm}
+        depthCm={depthCm}
+        hw={hw}
+        hd={hd}
+        palette={palette}
+      />
+    );
+  if (type === 'stool')
+    return (
+      <StoolPlan
+        design={design}
+        widthCm={widthCm}
+        depthCm={depthCm}
+        hw={hw}
+        hd={hd}
+        palette={palette}
+      />
+    );
+  if (type === 'tub-chair' || type === 'ottoman') {
+    const round = type === 'tub-chair' ? traits.plan !== 'bucket' : traits.shape === 'round';
     const inset =
       type === 'tub-chair' ? Math.min(widthCm, depthCm) * 0.14 : Math.min(widthCm, depthCm) * 0.07;
     return (
@@ -788,8 +965,8 @@ function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
         <rect
           x={-hw + (ends ? rail : 2)}
           y={-hd + rail}
-          width={widthCm - (ends === 2 ? rail * 2 : ends ? rail + 2 : 4)}
-          height={depthCm - rail - 3}
+          width={Math.max(0, widthCm - (ends === 2 ? rail * 2 : ends ? rail + 2 : 4))}
+          height={Math.max(0, depthCm - rail - 3)}
           rx={4}
           fill={cushion}
           stroke={LINE}
@@ -864,11 +1041,14 @@ function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
       </g>
     );
   }
-  // Cabinet or sideboard: the top, with a tick for each door or drawer front
+  // Cabinet or sideboard: the top, with a tick for each door or drawer front. A sideboard drawn from photos has
+  // its top in the accent colour (or a shade lighter than the body), as in 3D
   const n = Math.min(5, Math.max(1, Math.round(traits.n ?? 2)));
+  const top =
+    traits.front === undefined ? color : palette.accent || shadeColour(palette.body, 0.04);
   return (
     <g>
-      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={color} {...stroke} />
+      <rect x={-hw} y={-hd} width={widthCm} height={depthCm} rx={2} fill={top} {...stroke} />
       {Array.from({ length: n - 1 }).map((_, i) => (
         <line
           key={i}
@@ -951,7 +1131,8 @@ function WardrobePlan({ design, widthCm, depthCm, hw, hd, color }) {
       {L.cols.map((c, i) => {
         const x0 = (c.x - c.w / 2) * 100;
         const w = c.w * 100;
-        const mirror = i === L.mirrorIdx;
+        const spot = doorHandleSpot(traits.handle || 'bar', c.w);
+        const mirror = i === L.mirrorIdx && !!mirrorSpan(c.x, c.w, c.edge, spot);
         const hinge = c.edge > 0 ? x0 : x0 + w;
         return (
           <g key={i}>
