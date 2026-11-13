@@ -216,6 +216,35 @@ async function makeRoomPng(page, layout, stackedTwice = false) {
   return Buffer.from(base64, 'base64');
 }
 
+/**
+ * A synthetic "photo" of a two-door wardrobe on a light grey backdrop: an oak carcass and left door, a white right
+ * door, two upright brass bar handles beside the middle seam and three drawers under the right door. No real
+ * photos are used.
+ */
+async function makeWardrobePng(page) {
+  const base64 = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 480;
+    const g = canvas.getContext('2d');
+    const r = (x, y, w, h, c) => {
+      g.fillStyle = c;
+      g.fillRect(x, y, w, h);
+    };
+    r(0, 0, 320, 480, '#cfcfcf');
+    r(60, 30, 200, 420, '#8a6a4a'); // carcass
+    r(66, 36, 90, 408, '#93724f'); // left door
+    r(162, 36, 92, 250, '#efefef'); // right door
+    for (const y of [292, 344, 396]) r(162, y, 92, 48, '#93724f'); // drawers
+    r(156, 36, 6, 408, '#4a3624'); // middle seam
+    r(146, 150, 5, 70, '#c9a24a'); // bar handles
+    r(167, 150, 5, 70, '#c9a24a');
+    for (const y of [314, 366, 418]) r(200, y, 16, 5, '#c9a24a');
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  return Buffer.from(base64, 'base64');
+}
+
 test.describe('create furniture from photos', () => {
   test('builds a model from a generated photo and saves it to My furniture', async ({ page }) => {
     await openApp(page);
@@ -403,6 +432,103 @@ test.describe('create furniture from photos', () => {
     await expect(fixer.getByRole('button', { name: 'Reset' })).toBeEnabled();
     await fixer.getByRole('button', { name: 'Done' }).click();
     await expect(fixer).toBeHidden();
+  });
+
+  test('reads a product sheet added as one photo: it is split into views', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page);
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await catalog.getByRole('button', { name: /Create from photos/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
+    // the whole sheet of views, dropped on the Front photo slot as one photo
+    await dialog.getByLabel('Front photo', { exact: true }).setInputFiles({
+      name: 'bed-sheet.png',
+      mimeType: 'image/png',
+      buffer: await makeBedPng(page),
+    });
+    const views = dialog.getByRole('group', { name: 'Views found in the picture' });
+    await expect(views).toBeVisible({ timeout: 45_000 });
+    await expect(views).toContainText('so it is read as views');
+    await expect(views.getByRole('button', { name: 'Use it as one photo' })).toBeVisible();
+    await views.getByRole('button', { name: 'Use these views' }).click();
+    await dialog.getByRole('button', { name: /Build 3D model|Rebuild model/ }).click();
+    await expect(dialog.getByText(/Detected:/)).toContainText('Detected: Bed', { timeout: 45_000 });
+  });
+
+  test('reads the doors, drawers, handles and door colour of a wardrobe', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page);
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await catalog.getByRole('button', { name: /Create from photos/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
+    await dialog.getByLabel('Front photo', { exact: true }).setInputFiles({
+      name: 'wardrobe.png',
+      mimeType: 'image/png',
+      buffer: await makeWardrobePng(page),
+    });
+    await dialog.getByRole('button', { name: /Build 3D model|Rebuild model/ }).click();
+    await expect(dialog.getByText(/Best guess from one photo:/)).toContainText('Wardrobe', {
+      timeout: 45_000,
+    });
+    await dialog.getByText('Adjust details').click();
+    const pick = (name) => dialog.getByRole('combobox', { name, exact: true });
+    await expect(pick('Doors')).toBeVisible();
+    await expect(pick('Drawers')).toHaveValue('3');
+    await expect(pick('Drawers under')).toHaveValue('right');
+    await expect(pick('Handles')).toHaveValue('bar');
+    for (const name of ['Mirror', 'Top cupboards', 'Middle', 'Door faces'])
+      await expect(pick(name)).toBeVisible();
+    // the white door is its own colour, and the brass handles theirs
+    const colours = dialog.getByRole('group', { name: 'Colours found in the photos' });
+    await expect(colours.getByLabel('Doors', { exact: true })).toBeVisible();
+    await expect(colours.getByLabel('Handles', { exact: true })).toBeVisible();
+    await pick('Mirror').selectOption({ label: 'Oval mirror in a door' });
+  });
+
+  test('offers the new details of every type to choose by hand', async ({ page }) => {
+    // the model is rebuilt for each of four types
+    test.slow();
+    await openApp(page);
+    await createRoomFromPreset(page);
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await catalog.getByRole('button', { name: /Create from photos/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
+    await dialog.getByLabel('Front photo', { exact: true }).setInputFiles({
+      name: 'wardrobe.png',
+      mimeType: 'image/png',
+      buffer: await makeWardrobePng(page),
+    });
+    await dialog.getByRole('button', { name: /Build 3D model|Rebuild model/ }).click();
+    await expect(dialog.getByRole('button', { name: 'More types' })).toBeVisible({
+      timeout: 45_000,
+    });
+    await dialog.getByText('Adjust details').click();
+    const pick = (name) => dialog.getByRole('combobox', { name, exact: true });
+    // (the type list closes once the model is rebuilt)
+    const chooseType = async (label) => {
+      await dialog.getByRole('button', { name: 'More types' }).click();
+      await dialog.getByRole('combobox', { name: 'Type of furniture' }).selectOption({ label });
+      await expect(dialog.getByRole('button', { name: 'More types' })).toBeVisible({
+        timeout: 45_000,
+      });
+    };
+    await chooseType('Desk');
+    for (const name of ['Drawer pedestal', 'Base', 'Front panel'])
+      await expect(pick(name)).toBeVisible();
+    // the drawer count is offered once there is a pedestal to hold them
+    await pick('Drawer pedestal').selectOption({ label: 'On the right' });
+    await expect(pick('Drawers in the pedestal')).toBeVisible();
+    await pick('Base').selectOption({ label: 'Metal sled (C-shaped) ends' });
+    await chooseType('Bed');
+    for (const name of ['Frame', 'Side rails', 'Wheels']) await expect(pick(name)).toBeVisible();
+    // a tube metal frame has no upholstered headboard to choose
+    await pick('Frame').selectOption({ label: 'Metal tubes' });
+    await expect(pick('Headboard')).toHaveCount(0);
+    await chooseType('Tub chair (round or bucket)');
+    await expect(pick('Base').locator('option', { hasText: 'Thin metal legs' })).toHaveCount(1);
+    await expect(pick('Sides')).toBeVisible();
+    await chooseType('Sofa');
+    for (const name of ['Stitching', 'Arm layers']) await expect(pick(name)).toBeVisible();
   });
 
   for (const [view, slot] of [

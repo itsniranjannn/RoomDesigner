@@ -24,11 +24,7 @@ import { Notice } from '../common/Notice.jsx';
 import { useRoomStore } from '../../store/roomStore.js';
 import { readImage, imageFromPixels } from '../../engine/image.js';
 import {
-  detectSheetViews,
   cropSheetView,
-  assignSheetViews,
-  chooseSideSlot,
-  prepareCrop,
   estimateProportions,
   estimatePartialProportions,
   dimensionsFromProportions,
@@ -51,6 +47,7 @@ import {
   designMainColor,
   detectionConfidence,
   withMirroredSides,
+  threeQuarterProportions,
 } from '../../engine/design.js';
 import {
   VIEW_AXES,
@@ -69,9 +66,10 @@ import {
   pieceMask,
   pieceLabel,
   groupPieces,
+  photoRoute,
+  sheetSlots,
 } from '../../engine/photoPipeline.js';
-import { extractForeground, backdropIsPlain } from '../../engine/foreground.js';
-import { detectStackedPhotos, cropRegion, symmetryScores } from '../../engine/stacked.js';
+import { extractForeground } from '../../engine/foreground.js';
 import { CutoutFixer, NO_EDITS } from './CutoutFixer.jsx';
 import { CaptureGuide, SLOT_HINTS, guideSeen, markGuideSeen } from './PhotoGuide.jsx';
 import local from './PhotoModelModal.module.css';
@@ -225,7 +223,30 @@ const UPHOLSTERY = [
     ],
   },
 ];
-/** Look-and-feel choices per type: the traits read from the photos, which the user can correct. */
+const CHANNELS = {
+  key: 'chan',
+  label: 'Stitching',
+  fallback: 0,
+  options: [
+    [0, 'Plain'],
+    [1, 'Upright channels'],
+  ],
+};
+const yesNo = (key, label, no, yes) => ({
+  key,
+  label,
+  fallback: 0,
+  options: [
+    [0, no],
+    [1, yes],
+  ],
+});
+/** A tube metal bed has no upholstered headboard: its headboard choices are not offered. */
+const upholsteredHead = (t) => !t.metal;
+/**
+ * Look-and-feel choices per type: the traits read from the photos, which the user can correct. A control with
+ * `when` is offered only when it applies (drawer choices once there are drawers).
+ */
 const TRAIT_CONTROLS = {
   bed: [
     { key: 'pillows', label: 'Pillows', fallback: 2, options: range(1, 4) },
@@ -241,6 +262,7 @@ const TRAIT_CONTROLS = {
     },
     {
       key: 'head',
+      when: upholsteredHead,
       label: 'Headboard',
       fallback: 'panel',
       options: [
@@ -253,6 +275,7 @@ const TRAIT_CONTROLS = {
     },
     {
       key: 'crest',
+      when: upholsteredHead,
       label: 'Headboard top',
       fallback: 0,
       options: [
@@ -263,6 +286,7 @@ const TRAIT_CONTROLS = {
     },
     {
       key: 'framed',
+      when: upholsteredHead,
       label: 'Headboard frame',
       fallback: 0,
       options: [
@@ -282,6 +306,7 @@ const TRAIT_CONTROLS = {
     },
     {
       key: 'headW',
+      when: upholsteredHead,
       label: 'Headboard width',
       fallback: 1,
       options: [
@@ -345,6 +370,9 @@ const TRAIT_CONTROLS = {
         [1, 'Pleated skirt to the floor'],
       ],
     },
+    yesNo('metal', 'Frame', 'Wood or upholstered', 'Metal tubes'),
+    yesNo('rails', 'Side rails', 'None', 'Guard rails along the sides'),
+    yesNo('casters', 'Wheels', 'None', 'Castors under the legs'),
   ],
   'corner-sofa': [
     {
@@ -378,9 +406,11 @@ const TRAIT_CONTROLS = {
       options: [
         ['feet', 'Short feet'],
         ['legs', 'Slim legs'],
+        ['metal', 'Thin metal legs'],
         ['pedestal', 'Swivel pedestal'],
       ],
     },
+    yesNo('wrap', 'Sides', 'Level all round', 'Sloping down to the front'),
     TUFTED,
   ],
   ottoman: [
@@ -514,11 +544,14 @@ const TRAIT_CONTROLS = {
     },
     { key: 'arm', label: 'Arms', fallback: 0.1, options: ARMS },
     ...UPHOLSTERY,
+    CHANNELS,
+    yesNo('step', 'Arm layers', 'One block', 'Stepped layers'),
     ...CLASSIC_SEAT,
   ],
   armchair: [
     { key: 'arm', label: 'Arms', fallback: 0.17, options: [...ARMS, [0.17, 'Chunky']] },
     ...UPHOLSTERY,
+    CHANNELS,
     ...CLASSIC_SEAT,
   ],
   lounge: [{ key: 'slats', label: 'Back rails', fallback: 3, options: range(2, 5) }],
@@ -556,8 +589,76 @@ const TRAIT_CONTROLS = {
       ],
     },
   ],
-  desk: [{ key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS }],
-  wardrobe: [{ key: 'doors', label: 'Doors', fallback: 2, options: range(1, 6) }],
+  desk: [
+    { key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS },
+    {
+      key: 'ped',
+      label: 'Drawer pedestal',
+      fallback: 'none',
+      options: [
+        ['none', 'None'],
+        ['left', 'On the left'],
+        ['right', 'On the right'],
+        ['both', 'On both sides'],
+      ],
+    },
+    {
+      key: 'drawers',
+      label: 'Drawers in the pedestal',
+      fallback: 3,
+      options: range(1, 4),
+      when: (t) => t.ped && t.ped !== 'none',
+    },
+    {
+      key: 'base',
+      label: 'Base',
+      fallback: 'legs',
+      options: [
+        ['legs', 'Four legs'],
+        ['sled', 'Metal sled (C-shaped) ends'],
+        ['panel', 'Solid panel ends'],
+      ],
+    },
+    yesNo('modesty', 'Front panel', 'Open', 'Modesty panel under the top'),
+  ],
+  wardrobe: [
+    { key: 'doors', label: 'Doors', fallback: 2, options: range(1, 6) },
+    {
+      key: 'mirror',
+      label: 'Mirror',
+      fallback: 0,
+      options: [
+        [0, 'None'],
+        [1, 'Full-height mirror door'],
+        [2, 'Oval mirror in a door'],
+      ],
+    },
+    { key: 'drawers', label: 'Drawers', fallback: 0, options: range(0, 4) },
+    {
+      key: 'dside',
+      when: (t) => t.drawers > 0,
+      label: 'Drawers under',
+      fallback: 'full',
+      options: [
+        ['full', 'The whole width'],
+        ['left', 'The left door'],
+        ['right', 'The right door'],
+      ],
+    },
+    {
+      key: 'handle',
+      label: 'Handles',
+      fallback: 'bar',
+      options: [
+        ['bar', 'Long bars'],
+        ['knob', 'Knobs'],
+        ['ring', 'Rings'],
+      ],
+    },
+    yesNo('upper', 'Top cupboards', 'None', 'A row of top cupboards'),
+    yesNo('niche', 'Middle', 'All doors', 'Open niche with mirror and counter'),
+    yesNo('fluted', 'Door faces', 'Flat', 'Fluted (fine upright grooves)'),
+  ],
   bookshelf: [{ key: 'shelves', label: 'Compartments', fallback: 4, options: range(2, 8) }],
   nightstand: [{ key: 'drawers', label: 'Drawers', fallback: 2, options: range(1, 4) }],
 };
@@ -939,6 +1040,7 @@ export function PhotoModelModal({ onClose }) {
   const [guideOpen, setGuideOpen] = useState(() => !guideSeen()); // shown the first time it is opened
   const [candidates, setCandidates] = useState(null); // { list, agreement } of likely types
   const [probe, setProbe] = useState(null); // the model's silhouette from the active photo angle
+  const [quarterPhoto, setQuarterPhoto] = useState(false); // the lone photo was read as a three-quarter view
   const [cutMode, setCutMode] = useState('auto'); // 'auto' | 'plain' | 'scene'
   const [edits, setEdits] = useState({}); // slot -> { crop, keep, remove } from the cut-out fixer
   const [fixSlot, setFixSlot] = useState(null);
@@ -971,6 +1073,7 @@ export function PhotoModelModal({ onClose }) {
         crop: e.crop,
         keep: e.keep,
         remove: e.remove,
+        framed: Boolean(photo.framed),
       });
     }
     return out;
@@ -1020,23 +1123,23 @@ export function PhotoModelModal({ onClose }) {
     setMessage(null);
     try {
       // Read at a size the stacked-photo check can use; the photo itself is kept at PHOTO_MAX
-      const big = await readImage(file, SHEET_MAX);
-      const stacked = detectStackedPhotos(big.rgba, big.width, big.height);
-      const plain = backdropIsPlain(big.rgba, big.width, big.height).plain;
-      // A product sheet on white has its own splitter; photos with busy backgrounds are split here
-      if (stacked && !plain && stacked.similarity >= 0.35) {
-        const crops = stacked.parts.map((part) => cropRegion(big.rgba, big.width, part));
-        const imgs = crops.map((c) => ({
+      const big = await readImage(file, SHEET_MAX, 'image/png');
+      // One picture that holds several photos (a listing collage) or several views on a plain backdrop (a
+      // product sheet) is split, as the sheet splitter would; any other picture is one photo
+      const route = photoRoute(big.rgba, big.width, big.height, { photoEdge: PHOTO_MAX });
+      if (route.kind === 'sheet') {
+        openSheet(big, slot);
+        return;
+      }
+      if (route.kind === 'stacked') {
+        const imgs = route.parts.map((c) => ({
           ...imageFromPixels(c.rgba, c.width, c.height, PHOTO_MAX),
           fromSheet: true,
+          // a photo of a listing collage: its piece fills the frame
+          framed: true,
         }));
-        // The straight-on view is the most left-right symmetric outline
-        const masks = imgs.map((img) => {
-          const cut = extractForeground(img.rgba, img.width, img.height, { mode: 'scene' });
-          return cut.pieces.length ? pieceMask(cut, 0) : cut.mask;
-        });
-        const sym = symmetryScores(masks, imgs);
-        const frontIdx = sym.indexOf(Math.max(...sym));
+        const frontIdx = route.used;
+        const { sym } = route;
         const parts = imgs.map((img, i) => ({
           img,
           label:
@@ -1205,42 +1308,49 @@ export function PhotoModelModal({ onClose }) {
     ([slot, s]) => photos[slot] && (s.coverage < 0.03 || s.coverage > 0.92)
   );
 
+  // The views of a sheet and the role of each (front, side, plan; a three-quarter view is left out unless it is
+  // all there is), as photoPipeline.sheetSlots proposes them. `fromPhoto`: the photo slot it was added to.
+  const openSheet = (img, fromPhoto = null) => {
+    const { detection, slots, quarter } = sheetSlots(img.rgba, img.width, img.height);
+    if (!detection.views.length || (!fromPhoto && detection.views.length < 2)) {
+      setMessage({
+        kind: 'error',
+        text: 'Only one object was found in that picture. Use the Add photo buttons for single photos.',
+      });
+      return;
+    }
+    setSheet({
+      rgba: img.rgba,
+      width: img.width,
+      height: img.height,
+      detection,
+      slots,
+      fromPhoto,
+      quarter,
+    });
+  };
+
   const loadSheet = async (file) => {
     if (!file) return;
     setMessage(null);
     try {
-      const img = await readImage(file, SHEET_MAX, 'image/png');
-      const detection = detectSheetViews(img.rgba, img.width, img.height);
-      if (detection.views.length < 2) {
-        setMessage({
-          kind: 'error',
-          text: 'Only one object was found in that picture. Use the Add photo buttons for single photos.',
-        });
-        return;
-      }
-      const slots = assignSheetViews(detection.views);
-      // Which side photo is which needs the other views: try both ways round and keep the better fit
-      const crops = detection.views.map((v) =>
-        cropSheetView(img.rgba, img.width, img.height, detection, v)
-      );
-      const prepared = (slot) => {
-        const i = slots.indexOf(slot);
-        return i >= 0 ? prepareCrop(crops[i]) : null;
-      };
-      const sideIndex = slots.indexOf('right');
-      if (sideIndex >= 0) {
-        const side = prepareCrop(crops[sideIndex]);
-        if (side)
-          slots[sideIndex] = chooseSideSlot({
-            front: prepared('front'),
-            top: prepared('top'),
-            side,
-          });
-      }
-      setSheet({ rgba: img.rgba, width: img.width, height: img.height, detection, slots });
+      openSheet(await readImage(file, SHEET_MAX, 'image/png'));
     } catch (err) {
       setMessage({ kind: 'error', text: err.message });
     }
+  };
+
+  // The whole picture in the slot it was added to, unsplit
+  const keepAsOnePhoto = () => {
+    if (!sheet?.fromPhoto) return;
+    const slot = sheet.fromPhoto;
+    setPhotos((prev) => ({
+      ...prev,
+      [slot]: imageFromPixels(sheet.rgba, sheet.width, sheet.height, PHOTO_MAX),
+    }));
+    setEdits((prev) => ({ ...prev, [slot]: NO_EDITS }));
+    setActivePiece((prev) => ({ ...prev, [slot]: 0 }));
+    setSheet(null);
   };
 
   const applySheet = () => {
@@ -1255,6 +1365,8 @@ export function PhotoModelModal({ onClose }) {
       next[slot] = {
         ...imageFromPixels(crop.rgba, crop.width, crop.height, PHOTO_MAX),
         fromSheet: true,
+        // a three-quarter view read as the front takes the proportions of all the sheet's such views
+        ...(sheet.quarter && slot === 'front' ? { quarter: sheet.quarter } : {}),
       };
     });
     if (Object.keys(next).length < 1) {
@@ -1303,6 +1415,7 @@ export function PhotoModelModal({ onClose }) {
           setAnchor('widthCm');
         }
         setDesign(result);
+        setQuarterPhoto(Boolean(threeQuarterProportions(views, partial, result.type)));
         // The likeliest types, for when the first guess is not steady or rests on few photos
         setCandidates(likely);
         setTypeOpen(false);
@@ -1600,8 +1713,11 @@ export function PhotoModelModal({ onClose }) {
                 aria-label="Views found in the picture"
               >
                 <p className={local.note}>
-                  Found {sheet.detection.views.length} views. Check what each one shows, then use
-                  them. A three-quarter view is not needed.
+                  {sheet.fromPhoto
+                    ? `That picture shows the piece ${sheet.detection.views.length > 1 ? `${sheet.detection.views.length} times` : 'beside a second picture'}, so it is read as views. `
+                    : `Found ${sheet.detection.views.length} views. `}
+                  Check what each one shows, then use them. A three-quarter view is read as one when
+                  it is the only view.
                 </p>
                 <div className={local.slots}>
                   {sheet.detection.views.map((v, i) => (
@@ -1637,6 +1753,11 @@ export function PhotoModelModal({ onClose }) {
                   <Button variant="ghost" size="small" onClick={() => setSheet(null)}>
                     Cancel
                   </Button>
+                  {sheet.fromPhoto && (
+                    <Button variant="ghost" size="small" onClick={keepAsOnePhoto}>
+                      Use it as one photo
+                    </Button>
+                  )}
                   <Button variant="primary" size="small" onClick={applySheet}>
                     Use these views
                   </Button>
@@ -2039,10 +2160,12 @@ export function PhotoModelModal({ onClose }) {
                     />
                   </div>
                   <p className={local.note}>
-                    {fitHint(activeView, fit.modelAspect, fit.photoAspect) ||
-                      (fit.score < 0.78
-                        ? 'The overall size agrees; the difference is in the details of the outline.'
-                        : 'The proportions agree with the photo.')}{' '}
+                    {quarterPhoto && activeView === 'front'
+                      ? 'This photo shows the piece from three quarters, so its outline also holds a side and will not match the straight-on model: the width, depth and height were read from it instead.'
+                      : fitHint(activeView, fit.modelAspect, fit.photoAspect) ||
+                        (fit.score < 0.78
+                          ? 'The overall size agrees; the difference is in the details of the outline.'
+                          : 'The proportions agree with the photo.')}{' '}
                     Turn on the overlay above to see the difference, and use the buttons to adjust
                     (hold Shift for 10 cm).
                   </p>
@@ -2159,28 +2282,32 @@ export function PhotoModelModal({ onClose }) {
                     Read from your photos. Change anything that looks off: the model updates as you
                     go.
                   </p>
-                  {(TRAIT_CONTROLS[design.type] || []).map((c) => (
-                    <label key={c.key} className={local.designRow}>
-                      <span>{c.label}</span>
-                      <select
-                        className={local.select}
-                        value={String(traitValue(design.traits[c.key], c))}
-                        aria-label={c.label}
-                        onChange={(e) =>
-                          setTrait(
-                            c.key,
-                            typeof c.fallback === 'number' ? Number(e.target.value) : e.target.value
-                          )
-                        }
-                      >
-                        {c.options.map(([value, text]) => (
-                          <option key={value} value={String(value)}>
-                            {text}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                  ))}
+                  {(TRAIT_CONTROLS[design.type] || [])
+                    .filter((c) => !c.when || c.when(design.traits))
+                    .map((c) => (
+                      <label key={c.key} className={local.designRow}>
+                        <span>{c.label}</span>
+                        <select
+                          className={local.select}
+                          value={String(traitValue(design.traits[c.key], c))}
+                          aria-label={c.label}
+                          onChange={(e) =>
+                            setTrait(
+                              c.key,
+                              typeof c.fallback === 'number'
+                                ? Number(e.target.value)
+                                : e.target.value
+                            )
+                          }
+                        >
+                          {c.options.map(([value, text]) => (
+                            <option key={value} value={String(value)}>
+                              {text}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    ))}
                   <div
                     className={local.palette}
                     role="group"
