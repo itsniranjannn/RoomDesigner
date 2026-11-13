@@ -324,10 +324,16 @@ const permutations = (n, k) => {
  * Guesses which detected view is front, side and top. A real piece has one height, one width and one
  * depth, so the right trio is the one whose boxes agree the most: front and side heights, front and top
  * widths, side and top depths. Reading order breaks ties (front, side, top, then a spare angle).
+ * With `looks` (what each view shows, see photoPipeline.sheetSlots) the content decides too: a three-quarter view
+ * is no front, side or plan view; a front is left-right symmetric; a plan view shows no legs; one picture far
+ * bigger than the rest is the main photo and the small ones are other colours or details.
  * @param {Array<{box: {w:number,h:number}}>} views in reading order
+ * @param {Array<{ sym: number, oblique: object|null, legs: number }>|null} [looks] per view
  * @returns {Array<'front'|'right'|'left'|'top'|null>} one slot per view; side views start as 'right'
  */
-export function assignSheetViews(views) {
+export function assignSheetViews(views, looks = null) {
+  if (looks && looks.length === views.length && views.length > 1)
+    return assignWithLooks(views, looks);
   const out = views.map(() => null);
   if (views.length === 0) return out;
   if (views.length === 1) {
@@ -417,6 +423,106 @@ export function assignSheetViews(views) {
   return out;
 }
 
+const logRatio = (a, b) => Math.abs(Math.log(a / b));
+const boxAspect = (b) => b.w / b.h;
+
+/**
+ * Front, side and plan views from their boxes, corrected by what they show (see assignSheetViews). The roles from
+ * the boxes stand unless the content says otherwise.
+ */
+function assignWithLooks(views, looks) {
+  const out = views.map(() => null);
+  const area = (i) => views[i].box.w * views[i].box.h;
+  const all = views.map((_, i) => i);
+  // One picture far bigger than all the others is the main photo: the small ones show other colours or details
+  const big = all.reduce((b, i) => (area(i) > area(b) ? i : b), 0);
+  if (all.every((i) => i === big || area(i) * 2.4 <= area(big))) {
+    out[big] = 'front';
+    return out;
+  }
+  const straight = all.filter((i) => !looks[i].oblique);
+  const oblique = all.filter((i) => looks[i].oblique);
+  // The three-quarter view that shows the front most squarely (the first one on a tie)
+  const bestOblique = () =>
+    oblique.reduce((b, i) => (looks[i].oblique.yaw < looks[b].oblique.yaw - 5 ? i : b), oblique[0]);
+  // Only three-quarter views (or one straight view that is not symmetric beside them, its V hidden by the
+  // feet): the squarest one is the photo to read, as a three-quarter view
+  if (
+    !straight.length ||
+    (straight.length === 1 && oblique.length && looks[straight[0]].sym < 0.8)
+  ) {
+    out[bestOblique()] = 'front';
+    return out;
+  }
+  if (straight.length === 1) {
+    out[straight[0]] = 'front';
+    return out;
+  }
+  // The roles from the boxes of the straight views; a three-quarter view never stands for a front, side or plan
+  const sub = assignSheetViews(straight.map((i) => views[i]));
+  straight.forEach((i, k) => (out[i] = sub[k]));
+  // A front is the most symmetric of the straight views: when the boxes chose a view clearly less symmetric than
+  // one left over (the long side of a bed beside its end), the symmetric one is the front. A plan view is no
+  // front however symmetric: it hides the legs the front shows
+  const f0 = out.indexOf('front');
+  if (f0 >= 0 && looks[f0].sym < 0.9) {
+    const spare = straight
+      .filter(
+        (i) =>
+          !out[i] &&
+          looks[i].sym >= Math.max(0.95, looks[f0].sym + 0.08) &&
+          !(looks[f0].legs > 0.1 && looks[i].legs < 0.04)
+      )
+      .sort((a, b) => looks[b].sym - looks[a].sym)[0];
+    if (spare !== undefined) {
+      out[spare] = 'front';
+      // the view taken for the side stays the side, unless it is as symmetric as a front (the other end of a
+      // bed): then the view first taken for the front, the long one, is the side
+      const r0 = out.indexOf('right');
+      if (r0 >= 0 && looks[r0].sym >= 0.9) {
+        out[r0] = null;
+        out[f0] = 'right';
+      } else out[f0] = r0 >= 0 ? null : 'right';
+      // a plan view is as wide as the front: one chosen to fit the first front may not fit this one
+      const t1 = out.indexOf('top');
+      if (t1 >= 0 && logRatio(views[t1].box.w, views[spare].box.w) > 0.25) out[t1] = null;
+    }
+  }
+  // A plan view seen as the front: the front shows legs that the plan view hides, and is symmetric
+  const f = out.indexOf('front');
+  const t = out.indexOf('top');
+  if (f >= 0 && t < 0 && looks[f].legs < 0.03) {
+    // (a seat seen from above is as wide as its front and less tall, with no feet under it)
+    const legged = straight.filter(
+      (i) =>
+        i !== f &&
+        looks[i].legs > 0.12 &&
+        looks[i].legs < 0.5 &&
+        looks[i].sym >= 0.9 &&
+        logRatio(views[i].box.h, views[f].box.h) < 0.25 &&
+        boxAspect(views[f].box) >= boxAspect(views[i].box) * 1.05
+    );
+    if (legged.length) {
+      const g = legged[0];
+      const was = out[g];
+      out[g] = 'front';
+      out[f] = 'top';
+      // the side is the remaining straight view that differs most from the front in shape
+      if (was === 'right' || !out.includes('right')) {
+        const rest = straight.filter((i) => !out[i] || out[i] === 'back' || out[i] === 'right');
+        let side = null;
+        for (const i of rest) {
+          if (i === g || i === f) continue;
+          const d = logRatio(boxAspect(views[i].box), boxAspect(views[g].box)) - looks[i].sym * 0.1;
+          if (side === null || d > side.d) side = { i, d };
+        }
+        for (const i of rest) if (out[i] === 'back' || out[i] === 'right') out[i] = null;
+        if (side) out[side.i] = 'right';
+      }
+    }
+  }
+  return out;
+}
 /** Volume the carved hull keeps for a set of views: a consistent set keeps more of the object. */
 function hullVolume(views) {
   const { occupancy } = carveVoxels(views, 24);

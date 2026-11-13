@@ -11,6 +11,8 @@
  */
 
 import { rankFront, rankMulti, knownProportions } from './frontModel.js';
+import { threeQuarter } from './oblique.js';
+import { detailTraits, findPulls } from './details.js';
 
 export const DESIGN_TYPES = [
   { id: 'bed', label: 'Bed' },
@@ -634,7 +636,7 @@ function tuftedBack(front, region = [0.2, 0.12, 0.8, 0.45]) {
   const lum = new Float32Array(s * s);
   for (let p = 0; p < s * s; p++)
     lum[p] = luma([front.rgb[p * 3], front.rgb[p * 3 + 1], front.rgb[p * 3 + 2]]);
-  let dimples = 0;
+  const dimples = [];
   const x0 = Math.floor(s * region[0]);
   const x1 = Math.ceil(s * region[2]);
   const y0 = Math.floor(s * region[1]);
@@ -665,9 +667,16 @@ function tuftedBack(front, region = [0.2, 0.12, 0.8, 0.45]) {
             isMin = false;
             break;
           }
-      if (isMin && ring / n - lum[p] > 9) dimples++;
+      if (isMin && ring / n - lum[p] > 9) dimples.push([x, y]);
     }
-  return dimples >= 4;
+  if (dimples.length < 4) return false;
+  // Buttons are spread over the back (rows of them, or wide apart); dark spots strung along one line close
+  // together are a crease (where a seat cushion meets the back), not buttons
+  const ys = dimples.map(([, y]) => y);
+  const xs = dimples.map(([x]) => x).sort((a, b) => a - b);
+  const gaps = xs.slice(1).map((x, i) => x - xs[i]);
+  const gap = gaps.sort((a, b) => a - b)[Math.floor(gaps.length / 2)];
+  return Math.max(...ys) - Math.min(...ys) >= s * 0.04 || gap >= s * 0.08;
 }
 
 /** Horizontal back rails seen from the back: bands of wood separated by gaps or cushion down the middle. */
@@ -1052,18 +1061,19 @@ export function looksLikeBed(views, hints = {}, dims = null) {
   const wph = hints.widthPerHeight ?? (dims ? dims.widthCm / dims.heightCm : null);
   const dph = hints.depthPerHeight ?? (dims ? dims.depthCm / dims.heightCm : null);
   if (front && bedOutline(front, wph, 'front')) return true;
-  // A carved, buttoned headboard rising in the middle of a piece that is not wider than a bed is one: a lifestyle
-  // photo shows side tables and a rug that blur the outline, but not this
+  // A framed headboard with a crest rising in the middle of a piece that is not wider than a bed is one when it is
+  // buttoned or stands behind a wooden footboard: a lifestyle photo shows side tables and a rug that blur the
+  // outline, but not this
   if (front && (wph == null || wph <= 1.9)) {
     const head = bedHead(front);
     if (
       head &&
       head.crest &&
-      head.buttoned &&
       head.framed &&
       head.headW &&
       head.headW <= 1.2 &&
-      head.footWood >= 0.78
+      // buttoned leather in the frame, or a footboard of wood all along the foot (a sofa's front is its seat)
+      ((head.buttoned && head.footWood >= 0.78) || head.footWood >= 0.92)
     )
       return true;
   }
@@ -1078,17 +1088,131 @@ export function looksLikeBed(views, hints = {}, dims = null) {
   return false;
 }
 
+/**
+ * A flat top over open space (tables and desks): the widest rows of the outline are a thin band at the very top,
+ * and below it, between the supports, the backdrop shows through (legs, a knee hole beside a drawer pedestal).
+ * Seen from three quarters the top shows as a band too, so the cue holds there as well.
+ * @returns {{ top: boolean, slab: number, open: number, pedestal: 'none'|'left'|'right'|'both' }}
+ */
+export function slabOver(view) {
+  const s = view.size;
+  const widths = [];
+  for (let y = 0; y < s; y++) {
+    let n = 0;
+    for (let x = 0; x < s; x++) n += view.mask[y * s + x];
+    widths.push(n / s);
+  }
+  const widest = Math.max(...widths);
+  const first = widths.findIndex((w) => w >= widest * 0.85);
+  // the top band: rows as wide as the widest (a top overhangs its base; a modesty panel set between the legs is
+  // a little narrower and is not part of it)
+  let a = widths.findIndex((w) => w >= widest * 0.95);
+  let last = a;
+  while (last + 1 < s && widths[last + 1] >= widest * 0.95) last++;
+  if (a > first + s * 0.06) a = first;
+  const slab = (last - a + 1) / s;
+  const y0 = Math.min(0.95, (last + 1) / s + 0.03);
+  const mask = view.open || view.mask;
+  // the space under the top, column by column: a solid run down to the floor is a pedestal or a panel
+  const cols = [];
+  for (let x = Math.round(s * 0.04); x < Math.round(s * 0.96); x++) {
+    let n = 0;
+    let t = 0;
+    for (let y = Math.round(y0 * s); y < Math.round(s * 0.97); y++) {
+      t++;
+      n += mask[y * s + x];
+    }
+    cols.push(t ? n / t : 1);
+  }
+  const open = cols.length ? 1 - cols.reduce((a, b) => a + b, 0) / cols.length : 0;
+  const solidShare = (a, b) => {
+    const part = cols.slice(Math.round(cols.length * a), Math.round(cols.length * b));
+    return part.length ? part.filter((v) => v >= 0.85).length / part.length : 0;
+  };
+  const left = solidShare(0, 0.4) >= 0.55;
+  const right = solidShare(0.6, 1) >= 0.55;
+  const pedestal = left && right ? 'both' : left ? 'left' : right ? 'right' : 'none';
+  return { top: first <= s * 0.1 && slab <= 0.34, slab, open, pedestal, first: first / s };
+}
+
+/**
+ * The proportions a lone photo gives when it is a three-quarter view: the piece's own width and depth over its
+ * height (a bed is longer than wide, so its longer face is its length). Null for a straight-on photo or several.
+ * @returns {{ widthPerHeight: number, depthPerHeight: number, yaw: number, pitch: number } | null}
+ */
+export function threeQuarterProportions(views, hints, type) {
+  const lone = views.front || views.back;
+  if (!lone || views.left || views.right || views.top || !hints.widthPerHeight) return null;
+  const q = loneQuarter(lone, hints.widthPerHeight);
+  if (!q) return null;
+  const lengthwise = type === 'bed';
+  // A reading from a photo is rough (perspective stretches the top and the near side): it is taken half way
+  // to the usual proportions of the type, and never far outside them
+  const keep = (v, usual) =>
+    Math.min(usual * 1.5, Math.max(usual / 1.5, Math.sqrt(Math.max(1e-3, v) * usual)));
+  const h = TYPICAL_HEIGHT_CM[type];
+  const wph = lengthwise ? q.shorter : q.longer;
+  const dph = lengthwise ? q.longer : q.shorter;
+  return {
+    widthPerHeight: h ? keep(wph, TYPICAL_WIDTH_CM[type] / h) : wph,
+    depthPerHeight: h ? keep(dph, TYPICAL_DEPTH_CM[type] / h) : dph,
+    yaw: q.yaw,
+    pitch: q.pitch,
+  };
+}
+
+/**
+ * A lone photo read as a three-quarter view (oblique.threeQuarter), with the face lengths averaged over all the
+ * three-quarter views of its sheet when it came from one (see photoPipeline.sheetQuarter).
+ */
+export function loneQuarter(view, aspect) {
+  const q = threeQuarter(view, aspect);
+  if (!q || !view.quarter) return q;
+  const { longer, shorter } = view.quarter;
+  return { ...q, longer, shorter, wph: longer, dph: shorter };
+}
+
 // ---------- one photo: guessing from the front view alone ----------
 
 /**
  * Best guess of the type from a front (or back) view and its width-to-height ratio only, for when no side or
  * top photo says how deep the piece is. Cruder than classifyType, so the app presents it as a guess.
  * @param {number} wh the width of the piece divided by its height, from the photo
+ * @param {object|null} [q] the photo read as a three-quarter view (oblique.threeQuarter): the piece's own width
+ *   over height is then known (used past the bed check, which knows beds from their outline as photographed),
+ *   and its depth too
  */
-export function classifyFromFront(front, wh) {
-  if (bedOutline(front, wh, 'front')) return 'bed';
+export function classifyFromFront(front, photoWh, q = null) {
+  if (bedOutline(front, photoWh, 'front')) return 'bed';
+  const wh = q ? q.wph : photoWh;
   const { gapFrac, slabFrac } = measureTraits({ front });
+  const flat = slabOver(front);
+  // A flat top over a knee hole with a solid drawer pedestal down one side: a desk
+  if (
+    flat.top &&
+    flat.open >= 0.2 &&
+    (flat.pedestal === 'left' || flat.pedestal === 'right') &&
+    wh >= 1.1 &&
+    wh <= 3.2
+  )
+    return 'desk';
   const open = gapFrac > 0.3; // clear space under it: legs
+  // A deep, solid body as tall as it is wide all the way from the top, on legs, with no back rising over it: an
+  // upholstered ottoman or bench (a lounge chair's back is narrower than its seat; a desk stands on taller legs)
+  if (open && gapFrac < 0.45 && slabFrac >= 0.45 && flat.first <= 0.06 && wh >= 0.9 && wh <= 2.2)
+    return 'ottoman';
+  // Seen from three quarters: a low piece much wider and deeper than it is tall, closed to the floor, is an
+  // ottoman or pouf (an armchair is about as tall as it is wide; a sideboard is shallow)
+  if (
+    q &&
+    !open &&
+    !flat.top &&
+    q.wph >= 1.3 &&
+    q.wph <= 2.6 &&
+    q.dph >= 1 &&
+    q.dph >= q.wph * 0.55
+  )
+    return 'ottoman';
   if (open) {
     if (wh <= 0.8) {
       // A back shows above the seat of a chair; a stool is a seat on legs
@@ -1102,7 +1226,38 @@ export function classifyFromFront(front, wh) {
   }
   const seatSeam = findLines(front, 'y', [0.25, 0.3, 0.75, 0.8]).length >= 1;
   const soft = rolledArms(front)?.roll || tuftedBack(front) || seatSeam;
-  if (soft && wh >= 0.85 && wh <= 3.4) return wh >= 1.32 ? 'sofa' : 'armchair';
+  // (a long sofa read from three quarters is its own length: up to about four times its height; and seating is
+  // deep, about as deep as it is tall, where a chest of drawers is shallow)
+  if (soft && wh >= 0.85 && wh <= (q ? 4.3 : 3.4) && (!q || q.dph >= 0.6))
+    return wh >= 1.32 ? 'sofa' : 'armchair';
+  // Upright bar handles (two or more) are doors: a tall or squarish case with them is a wardrobe, not shelving
+  // or a chest of drawers (whose pulls lie level)
+  if (wh <= 1.3 && front.fine) {
+    // (pulls are a few, all alike and spaced apart; the books on a shelf are many upright marks of every colour
+    // side by side, and the uprights between compartments run their full height)
+    const pulls = findPulls(front.fine).pulls;
+    const bars = pulls.filter(
+      (h) => h.kind === 'bar' && !h.across && h.x > 0.08 && h.x < 0.92 && h.size <= 0.2
+    );
+    const alike = bars.every((a) =>
+      bars.every((b) => Math.hypot(a.c[0] - b.c[0], a.c[1] - b.c[1], a.c[2] - b.c[2]) < 50)
+    );
+    const apart = bars.every((a) =>
+      bars.every((b) => a === b || Math.abs(a.x - b.x) >= 0.08 || Math.abs(a.y - b.y) >= 0.15)
+    );
+    // books stand in rows: four or more marks at one height, in several different colours
+    const books = pulls.some((a) => {
+      const row = pulls.filter((b) => Math.abs(a.y - b.y) < 0.04);
+      const hues = new Set(
+        row
+          .map((b) => hsv(b.c))
+          .filter(([, sat]) => sat >= 0.25)
+          .map(([h]) => Math.round(h / 60) % 6)
+      );
+      return row.length >= 4 && hues.size >= 3;
+    });
+    if (bars.length >= 2 && !books && alike && apart) return 'wardrobe';
+  }
   if (wh <= 0.9) {
     const shelves = findLines(front, 'y', [0.12, 0.03, 0.88, 0.97], 5).length;
     const seeThrough = front.open && (fillOf(front, [0.1, 0.1, 0.9, 0.9], true) ?? 1) < 0.72;
@@ -1237,7 +1392,9 @@ function countPillows(top, widthCm) {
     if (v >= cut && !inside) runs++;
     inside = v >= cut;
   }
-  return Math.min(4, Math.max(byWidth, runs));
+  // the pillows the plan view shows; the width only fills in when it shows none clearly (a wide bed is not given
+  // a third pillow it does not have)
+  return Math.min(4, runs >= 2 ? runs : Math.max(byWidth, runs));
 }
 
 /**
@@ -1397,7 +1554,10 @@ function pickType(views, traits, dims, sizeKnown, hints) {
   }
   if (frontOnly) {
     const wh = hints.widthPerHeight || dims.widthCm / dims.heightCm;
-    const rules = classifyFromFront(lone, wh);
+    // A three-quarter photo is read for the piece's own width and depth; the trained ranking learnt from the
+    // outlines as photographed, so it keeps the photo's own proportions
+    const q = loneQuarter(lone, wh);
+    const rules = classifyFromFront(lone, wh, q);
     const ranked = rankFront(lone, wh);
     // The hand-written rules stay in charge unless the trained ranking finds their answer implausible
     if (!ranked || (ranked.prob[rules] ?? 0) >= RULE_TRUST * ranked.p) return rules;
@@ -1552,6 +1712,15 @@ export function buildDesign(views, dims, forceType, sizeKnown = true, hints = {}
   const extras = classicExtras(type, views, palette, out.traits);
   Object.assign(out.palette, extras.palette);
   Object.assign(out.traits, extras.traits);
+  // Details beyond the shape: channels, stepped arms, metal legs, pedestals, mirrors, drawers, handles
+  const more = detailTraits(type, views, out.palette, hints);
+  Object.assign(out.palette, more.palette);
+  Object.assign(out.traits, more.traits);
+  // A tube metal bed has no upholstered headboard: the record keeps none of its traits (as sanitizeDesign)
+  if (type === 'bed' && out.traits.metal) {
+    for (const key of ['head', 'channels', 'headW', 'crest', 'framed']) delete out.traits[key];
+    delete out.palette.panel;
+  }
   return out;
 }
 
@@ -1764,7 +1933,11 @@ function seatClassic(F, body, type) {
       return h >= 26 && h <= 54 && sat >= 0.2 && sat <= 0.62 && v >= 0.55;
     });
     const share = caney.length / side.length;
-    out.cane = share >= 0.3 && colourGap(toHex(mean(caney)), body) > 30;
+    // (pale carved wood on the arms of a sofa with a carved crest is carving, not a cane panel)
+    out.cane =
+      share >= 0.3 &&
+      colourGap(toHex(mean(caney)), body) > 30 &&
+      !(type === 'sofa' && info && info.crest);
     if (out.cane) out.caneColor = toHex(mean(caney));
   }
   // A cane-sided chair has a plain wood frame: its cushions rise above the rail but nothing is carved
@@ -1813,7 +1986,8 @@ function classicExtras(type, views, palette, traits = {}) {
       if (seat.trim) out.traits.trim = 1;
       if (seat.cane) out.traits.cane = 1;
       if (seat.pat) out.traits.pat = 1;
-      if (seat.trim && seat.frame === 2) out.traits.cab = 1;
+      // a carved crest comes with carved cabriole legs, gilded or plain wood
+      if (seat.frame === 2) out.traits.cab = 1;
       out.traits.scat = seat.scat;
       if (seat.wood) {
         out.palette.frame = seat.wood;
@@ -1881,23 +2055,30 @@ export function sanitizeDesign(raw) {
     traits.pillows = Math.round(num(t.pillows, 1, 4, 2));
     traits.bodyFrac = num(t.bodyFrac, 0.25, 0.9, 0.55);
     traits.legs = t.legs === 2 ? 2 : t.legs ? 1 : 0;
-    // Older designs only knew channel stitching
-    traits.head = oneOf(t.head, HEADBOARDS, t.channels ? 'channel' : 'panel');
-    traits.channels = traits.head === 'channel' ? 1 : 0;
+    // A tube metal frame (bent head and foot rails) has no upholstered headboard: the headboard's style, width,
+    // crest, frame and panel colour mean nothing for it and are not kept
+    const metal = Boolean(t.metal);
+    if (!metal) {
+      // Older designs only knew channel stitching
+      traits.head = oneOf(t.head, HEADBOARDS, t.channels ? 'channel' : 'panel');
+      traits.channels = traits.head === 'channel' ? 1 : 0;
+    }
     // Details beyond the basics are kept only when they differ from the usual, so records stay small and
     // older beds look as they did
     const headW = num(t.headW, 0.7, 1.15, 1);
-    if (headW !== 1) traits.headW = Math.round(headW * 20) / 20;
+    if (headW !== 1 && !metal) traits.headW = Math.round(headW * 20) / 20;
     const lumbar = t.lumbar === undefined ? traits.pillows >= 2 : Boolean(t.lumbar);
     if (lumbar !== traits.pillows >= 2) traits.lumbar = lumbar ? 1 : 0;
     if (t.fold === 0) traits.fold = 0;
-    for (const key of ['throw', 'store', 'skirt', 'framed']) if (t[key]) traits[key] = 1;
+    for (const key of ['throw', 'store', 'skirt']) if (t[key]) traits[key] = 1;
+    if (t.framed && !metal) traits.framed = 1;
     if (t.foot) traits.foot = t.foot === 2 ? 2 : 1;
     const crest = Math.round(num(t.crest, 0, 2, 0));
-    if (crest) traits.crest = crest;
+    if (crest && !metal) traits.crest = crest;
     if (t.tiers) traits.tiers = 1;
     // A tube metal frame (head and foot rails), side guard rails and castors
     for (const key of ['metal', 'rails', 'casters']) if (t[key]) traits[key] = 1;
+    if (metal) delete palette.panel;
   } else if (raw.type === 'corner-sofa') {
     traits.side = oneOf(t.side, ['left', 'right'], 'right');
     traits.seats = Math.round(num(t.seats, 1, 4, 2));
@@ -1996,8 +2177,9 @@ export function sanitizeDesign(raw) {
         traits.ped = ped;
         traits.drawers = Math.round(num(t.drawers, 1, 4, 3));
       }
-      const base = oneOf(t.base, ['legs', 'sled', 'panel'], 'legs');
-      if (base !== 'legs') traits.base = base;
+      // A base read from a photo is kept as read, plain legs too (older records without one keep the old look)
+      const base = oneOf(t.base, ['legs', 'sled', 'panel'], null);
+      if (base) traits.base = base;
       if (t.modesty) traits.modesty = 1;
     }
   }

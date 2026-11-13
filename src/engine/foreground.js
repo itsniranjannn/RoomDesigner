@@ -964,6 +964,95 @@ export function splitPieces(mask, w, h, ratio = 0.5) {
   return out;
 }
 
+/**
+ * Splits off side tables standing beside a bed. A bedroom photo's cut-out often holds the bed and its nightstands
+ * as one blob: they touch along their whole height, so no neck separates them. Seen from the foot of the bed, the
+ * headboard is the tall middle of the outline, each nightstand a lower block at an end, and the nightstands stand
+ * further back than the foot of the bed, so their feet are clearly higher in the picture than its lowest edge. A
+ * sofa's arms are lower ends too, but they reach the floor where the sofa does, so they stay.
+ * @param {Int32Array} labels pieces from splitPieces (0 = not object)
+ * @returns {Int32Array} the labels with each such end given a label of its own
+ */
+export function splitFlanks(labels, w, h) {
+  const out = Int32Array.from(labels);
+  let next = 1;
+  for (const id of labels) if (id >= next) next = id + 1;
+  const ids = [...new Set(labels)].filter((id) => id > 0);
+  for (const id of ids) {
+    let minX = w;
+    let maxX = -1;
+    let minY = h;
+    let maxY = -1;
+    let area = 0;
+    for (let p = 0; p < labels.length; p++) {
+      if (labels[p] !== id) continue;
+      const x = p % w;
+      const y = (p - x) / w;
+      area++;
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    const pw = maxX - minX + 1;
+    const ph = maxY - minY + 1;
+    if (area < w * h * 0.03 || pw < ph * 1.1 || pw < 20) continue;
+    // the top of the outline, column by column
+    const top = new Int32Array(pw).fill(-1);
+    for (let x = minX; x <= maxX; x++)
+      for (let y = minY; y <= maxY; y++)
+        if (labels[y * w + x] === id) {
+          top[x - minX] = y;
+          break;
+        }
+    // the tall middle: the columns around the centre whose top is near the highest point
+    const highest = Math.min(...Array.from(top).filter((t) => t >= 0));
+    const tall = (i) => top[i] >= 0 && top[i] <= highest + ph * 0.3;
+    const mid = Math.floor(pw / 2);
+    if (!tall(mid)) continue;
+    let c0 = mid;
+    let c1 = mid;
+    while (c0 > 0 && tall(c0 - 1)) c0--;
+    while (c1 < pw - 1 && tall(c1 + 1)) c1++;
+    if ((c1 - c0 + 1) / pw < 0.4) continue;
+    for (const [from, to] of [
+      [0, c0],
+      [c1 + 1, pw],
+    ]) {
+      if ((to - from) / pw < 0.07 || (to - from) / pw > 0.32) continue;
+      // each end column's first solid run from its top: the side table (and what stands on it). Read in the
+      // outer part of the end, where the corner of the bed's foot (nearer the camera, lower) does not reach
+      const outer =
+        from === 0
+          ? [from, from + Math.ceil((to - from) * 0.45)]
+          : [to - Math.ceil((to - from) * 0.45), to];
+      const ends = [];
+      for (let i = outer[0]; i < outer[1]; i++) {
+        if (top[i] < 0) continue;
+        let y = top[i];
+        while (y + 1 <= maxY && labels[(y + 1) * w + minX + i] === id) y++;
+        ends.push(y);
+      }
+      if (ends.length < (outer[1] - outer[0]) * 0.6) continue;
+      ends.sort((a, b) => a - b);
+      const floor = ends[Math.floor(ends.length / 2)];
+      // the side table stands on the floor clearly above the bed's lowest edge, and is a sizeable block
+      if (maxY - floor < ph * 0.08 || floor - highest < ph * 0.3) continue;
+      let n = 0;
+      for (let i = from; i < to; i++)
+        for (let y = minY; y <= floor; y++) if (labels[y * w + minX + i] === id) n++;
+      if (n < area * 0.04) continue;
+      for (let i = from; i < to; i++)
+        for (let y = minY; y <= floor; y++) {
+          const p = y * w + minX + i;
+          if (labels[p] === id) out[p] = next;
+        }
+      next++;
+    }
+  }
+  return out;
+}
+
 // ---------- clean-up, pieces, quality ----------
 
 /**
@@ -1299,11 +1388,27 @@ export function dropShadow(rgba, mask, w, h) {
   return final;
 }
 
+/** A region prior covering the photo but for a thin margin: what a crop to the whole picture says. */
+function frameRegion(w, h) {
+  const rect = (m) => {
+    const out = new Uint8Array(w * h);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const fx = (x + 0.5) / w;
+        const fy = (y + 0.5) / h;
+        if (fx >= m && fx <= 1 - m && fy >= m && fy <= 1 - m) out[y * w + x] = 1;
+      }
+    return out;
+  };
+  return { inside: rect(0.03), core: rect(0.03 + 0.22 * 0.94) };
+}
+
 /**
  * The cut-out of one photo.
  * @param {Uint8ClampedArray} rgba
  * @param {{ tolerance?: number, mode?: 'auto'|'plain'|'scene', crop?: {x0:number,y0:number,x1:number,y1:number}|null,
- *   keep?: object[], remove?: object[] }} [options] crop in photo fractions, strokes as for paintStrokes
+ *   keep?: object[], remove?: object[], framed?: boolean }} [options] crop in photo fractions, strokes as for
+ *   paintStrokes; framed for one photo of a listing collage (its piece fills the frame)
  * @returns {{ mask: Uint8Array, quality: number, mode: 'plain'|'scene', pieces: Array<{id:number,area:number,box:object,cx:number,cy:number}>,
  *   pieceLabels: Int32Array, coverage: number }} masks are photo-sized; pieces describe the separate blobs, largest first
  */
@@ -1371,11 +1476,18 @@ export function extractForeground(rgba, width, height, options = {}) {
     }
     // Two readings of the room: with and without "a big evenly coloured region is wall". The one whose outline
     // follows more of the picture's own edges and looks more like a piece of furniture wins.
+    // A third reading for one photo of a listing collage, whose piece fills the frame (a pale sofa against a
+    // pale wall): the piece is taken to be what is inside the frame, the way a crop to the whole photo tells the
+    // cut, so a backdrop of nearly the piece's colour does not break it into fragments.
     let best = null;
-    for (const wallRule of inside ? [false] : [true, false]) {
-      const cutA = sceneCut(small, hints, { wallRule });
+    const readings = inside ? [{ wallRule: false }] : [{ wallRule: true }, { wallRule: false }];
+    if (!inside && !edited && options.framed) readings.push({ wallRule: false, framed: true });
+    for (const { wallRule, framed } of readings) {
+      const h = framed ? { ...hints, region: frameRegion(sw, sh) } : hints;
+      const cutA = sceneCut(small, h, { wallRule });
       if (inside) for (let p = 0; p < cutA.mask.length; p++) if (!inside[p]) cutA.mask[p] = 0;
       const tidyA = tidy(cutA.mask, sw, sh, hints);
+      // (the whole-frame reading is taken only when it looks more like a piece than the others)
       const score = candidateScore(small.rgba, tidyA.mask, sw, sh);
       if (!best || score > best.score) best = { cut: cutA, tidy: tidyA, score };
     }
@@ -1385,7 +1497,7 @@ export function extractForeground(rgba, width, height, options = {}) {
     };
     mask = resizeMask(tidy1.mask, sw, sh, width, height);
     smallSplit = {
-      labels: splitPieces(tidy1.mask, sw, sh),
+      labels: splitFlanks(splitPieces(tidy1.mask, sw, sh), sw, sh),
       w: sw,
       h: sh,
       cw: width,

@@ -86,6 +86,11 @@ function colorSignature(rgba, width, box) {
 
 const cosine = (a, b) => a.reduce((s, v, i) => s + v * b[i], 0);
 
+/** How alike the colours of two regions of a picture are, 0-1 (the same piece shows the same colours). */
+export function regionSimilarity(rgba, width, a, b) {
+  return cosine(colorSignature(rgba, width, a), colorSignature(rgba, width, b));
+}
+
 /**
  * Looks for a plain gutter splitting the picture into photos.
  * @returns {{ axis: 'x'|'y', parts: Array<{x:number,y:number,w:number,h:number}>, similarity: number } | null}
@@ -96,20 +101,45 @@ export function detectStackedPhotos(rgba, width, height) {
   for (const axis of ['y', 'x']) {
     const length = axis === 'y' ? height : width;
     const stats = lineStats(rgba, width, height, axis);
-    // A gutter is white or black (or a flat grey frame), not a flat patch of wall or floor
+    // A gutter is white or black (or a flat grey frame), not a flat patch of wall or floor. A collage of listing
+    // photos is often split by a hairline instead: one or two plain light lines, clearly lighter than the photos
+    // on both sides of them
+    const lumOf = (l) => (stats[l].mean[0] + stats[l].mean[1] + stats[l].mean[2]) / 3;
+    const hairline = ([a, b]) => {
+      if (b - a > 3 || a < 2 || b > length - 2) return false;
+      const m = stats[a].mean;
+      const lum = lumOf(a);
+      const around = (lumOf(a - 2) + lumOf(b + 1)) / 2;
+      return (
+        stats[a].sd <= 16 &&
+        lum >= 185 &&
+        Math.max(...m) - Math.min(...m) < 45 &&
+        lum >= lumOf(a - 2) + 25 &&
+        lum >= lumOf(Math.min(length - 1, b + 1)) + 25 &&
+        lum >= around + 30
+      );
+    };
     const runs = plainRuns(stats).filter(([a, b]) => {
       const m = stats[Math.floor((a + b) / 2)].mean;
       const spread = Math.max(...m) - Math.min(...m);
       const lum = (m[0] + m[1] + m[2]) / 3;
       return spread < 14 && (lum > 225 || lum < 30);
     });
-    const minGap = Math.max(2, Math.round(length * 0.004));
+    // hairlines that are not part of a wide gutter already
+    for (let l = 2; l < length - 2; l++) {
+      if (!hairline([l, l + 1]) || runs.some(([a, b]) => l >= a - 1 && l <= b)) continue;
+      const last = runs.find(([, b]) => b === l);
+      if (last) last[1] = l + 1;
+      else runs.push([l, l + 1]);
+    }
+    runs.sort((p, q) => p[0] - q[0]);
+    const minGap = (r) => (hairline(r) ? 1 : Math.max(2, Math.round(length * 0.004)));
     // cuts between photos; plain runs at either end are just margins
     const spans = [];
     let from = 0;
     const margin = (r) => r[0] <= length * 0.03 || r[1] >= length * 0.97;
     for (const r of runs) {
-      if (r[1] - r[0] < minGap) continue;
+      if (r[1] - r[0] < minGap(r)) continue;
       if (r[0] <= length * 0.03 && r[0] <= from + 1) {
         from = Math.max(from, r[1]);
         continue;
