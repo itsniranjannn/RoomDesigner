@@ -5,9 +5,11 @@
  * sled or panel ends and a modesty panel. Everything stays inside the footprint box.
  * Origin on the floor, centred on the footprint, the front towards +z.
  */
+import { useEffect, useMemo } from 'react';
+import * as THREE from 'three';
 import { Box, Cyl, Pull, RoundKnob, clamp, shade, DARK_GAP, STEEL } from './shared.jsx';
 import { ChannelRibs, ribCentres } from './channels.jsx';
-import { wardrobeLayout, deskLayout } from './designLayout.js';
+import { wardrobeLayout, deskLayout, placeDoorHandle } from './designLayout.js';
 import { metalFinish } from './designShapes.jsx';
 
 /**
@@ -22,6 +24,92 @@ export const MIRROR_GLASS = {
   emissiveIntensity: 0.42,
 };
 
+/** The part of a convex polygon (points [x, y]) on the side of a line where nx * x + ny * y <= c. */
+function clipHalfPlane(poly, nx, ny, c) {
+  const out = [];
+  for (let i = 0; i < poly.length; i++) {
+    const a = poly[i];
+    const b = poly[(i + 1) % poly.length];
+    const da = nx * a[0] + ny * a[1] - c;
+    const db = nx * b[0] + ny * b[1] - c;
+    if (da <= 0) out.push(a);
+    if ((da < 0 && db > 0) || (da > 0 && db < 0)) {
+      const t = da / (da - db);
+      out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+    }
+  }
+  return out;
+}
+
+/** Outline of a mirror's glass, anticlockwise: a rectangle, or an oval as a many-sided polygon inside it. */
+export function glassOutline(w, h, oval = false) {
+  if (oval)
+    return Array.from({ length: 48 }, (_, i) => {
+      const a = (i / 48) * Math.PI * 2;
+      return [(Math.cos(a) * w) / 2, (Math.sin(a) * h) / 2];
+    });
+  return [
+    [-w / 2, -h / 2],
+    [w / 2, -h / 2],
+    [w / 2, h / 2],
+    [-w / 2, h / 2],
+  ];
+}
+
+/**
+ * Two soft diagonal sheen streaks across a mirror's glass (`w` x `h`), each cut to the glass `outline` so no
+ * part of either can reach past the glass onto the frame, the next door or beyond the wardrobe. Returns the
+ * streaks as convex polygons, anticlockwise like the outline.
+ */
+export function sheenPolygons(outline, w, h) {
+  if (w <= 0.15 || h <= 0.3) return [];
+  const angle = 0.55;
+  const across = [Math.cos(angle), Math.sin(angle)];
+  const along = [-Math.sin(angle), Math.cos(angle)];
+  const length = Math.min(h * 0.85, w * 1.5);
+  return [
+    [-0.14, 0.2],
+    [0.12, 0.1],
+  ]
+    .map(([k, band]) => {
+      const dn = across[0] * w * k + across[1] * h * 0.04;
+      const dt = along[0] * w * k + along[1] * h * 0.04;
+      let p = clipHalfPlane(outline, across[0], across[1], dn + (w * band) / 2);
+      p = clipHalfPlane(p, -across[0], -across[1], -(dn - (w * band) / 2));
+      p = clipHalfPlane(p, along[0], along[1], dt + length / 2);
+      return clipHalfPlane(p, -along[0], -along[1], -(dt - length / 2));
+    })
+    .filter((p) => p.length >= 3);
+}
+
+/** Faint white sheen over a mirror's glass (`w` x `h`, in the glass's own plane), one mesh for both streaks. */
+function Sheen({ w, h, oval = false, z }) {
+  const geometry = useMemo(() => {
+    const positions = [];
+    const index = [];
+    // Kept a hair inside the glass edge
+    const outline = oval
+      ? glassOutline(w * 0.98, h * 0.98, true)
+      : glassOutline(w - 0.004, h - 0.004);
+    for (const poly of sheenPolygons(outline, w, h)) {
+      const first = positions.length / 3;
+      for (const [x, y] of poly) positions.push(x, y, 0);
+      for (let i = 1; i + 1 < poly.length; i++) index.push(first, first + i, first + i + 1);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    g.setIndex(index);
+    return g;
+  }, [w, h, oval]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
+  if (!geometry.index.count) return null;
+  return (
+    <mesh name="mirror-sheen" geometry={geometry} position={[0, 0, z]}>
+      <meshBasicMaterial color="#ffffff" transparent opacity={0.14} depthWrite={false} />
+    </mesh>
+  );
+}
+
 /** Flat mirror pane (a thin box) with a soft diagonal sheen across it. */
 export function MirrorPane({ position, size }) {
   const [w, h, d] = size;
@@ -31,22 +119,7 @@ export function MirrorPane({ position, size }) {
         <boxGeometry args={size} />
         <meshStandardMaterial {...MIRROR_GLASS} />
       </mesh>
-      {w > 0.15 &&
-        h > 0.3 &&
-        [
-          [-0.14, 0.1],
-          [0.12, 0.05],
-        ].map(([k, sw]) => (
-          <mesh
-            key={k}
-            position={[w * k, h * 0.04, d / 2 + 0.0006]}
-            rotation={[0, 0, 0.55]}
-            scale={[w * sw * 2, Math.min(h * 0.85, w * 1.5), 1]}
-          >
-            <planeGeometry args={[1, 1]} />
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.14} depthWrite={false} />
-          </mesh>
-        ))}
+      <Sheen w={w} h={h} z={d / 2 + 0.0006} />
     </group>
   );
 }
@@ -128,6 +201,8 @@ function OvalMirror({ x, y, w, h, z }) {
         <circleGeometry args={[0.475, 64]} />
         <meshStandardMaterial {...MIRROR_GLASS} />
       </mesh>
+      {/* the glass is 0.94 of the oval's size, inside its rim */}
+      <Sheen w={w * 0.94} h={h * 0.94} oval z={0.0012} />
     </group>
   );
 }
@@ -180,15 +255,17 @@ function DrawerStack({
     const h = (y1 - y0) * f;
     for (let c = 0; c < cols; c++) {
       const cx = x0 + fw * (c + 0.5);
+      // A bar pull is never wider than its front; on a front too narrow for the shortest bar, a knob
+      const len = Math.min(clamp(fw * 0.36, 0.08, 0.3), fw - 0.03);
       items.push(
         <group key={`${r}-${c}`}>
           <Slab x={cx} y0={y} y1={y + h} w={fw} z={z} color={color} />
           <Handle
-            style={handle}
+            style={handle === 'bar' && len < 0.04 ? 'knob' : handle}
             x={cx}
             y={y + h * (h > 0.16 ? 0.62 : 0.5)}
             z={z + DOOR_T}
-            length={clamp(fw * 0.36, 0.08, 0.3)}
+            length={len}
             vertical={false}
             color={handleColor}
           />
@@ -244,7 +321,6 @@ export function WardrobeDesign({ widthM, depthM, heightM, palette, traits }) {
   const barLen = (h) =>
     traits.handle === 'bar' ? clamp(h * 0.32, 0.18, 0.7) : clamp(h * 0.22, 0.07, 0.32);
   const tallH = L.tallTop - L.plinth;
-  const handleY = (c) => clamp(1.05, c.bottom + 0.12, c.top - 0.12);
   const flutedGroups = {};
   const addFlute = (key, d) => {
     if (!fluted) return;
@@ -260,6 +336,8 @@ export function WardrobeDesign({ widthM, depthM, heightM, palette, traits }) {
     // With a row of top cupboards the fluting is on those (as on a built-in unit), otherwise on every door
     if (!mirror && !L.upperH)
       addFlute(`${y0.toFixed(3)}-${y1.toFixed(3)}`, { x: c.x, w: c.w, y0, y1 });
+    // The whole handle stays on its door, clear of drawers below and cupboards above
+    const grip = placeDoorHandle({ bottom: y0, top: y1, style: handle, length: barLen(tallH) });
     return (
       <group key={i} name="door">
         <Slab x={c.x} y0={y0} y1={y1} w={c.w} z={zc} color={color} />
@@ -278,9 +356,9 @@ export function WardrobeDesign({ widthM, depthM, heightM, palette, traits }) {
         <Handle
           style={handle}
           x={c.x + c.edge * (c.w / 2 - (handle === 'bar' ? 0.04 : 0.05))}
-          y={handleY(c)}
+          y={grip.y}
           z={zc + DOOR_T}
-          length={barLen(tallH)}
+          length={grip.length}
           color={handleColor}
         />
       </group>
@@ -513,15 +591,29 @@ export function DeskDesign({ widthM, depthM, heightM, palette, traits, legThick 
         roughness={0.7}
         castShadow={false}
       />
-      {D.legs.map(([x, z], i) => (
-        <Box
-          key={i}
-          position={[x, D.under / 2, z]}
-          size={[legThick, D.under, legThick]}
-          color={legColor}
-          roughness={0.5}
-        />
-      ))}
+      {D.legs.map(([x, z], i) =>
+        // Round legs taper a little towards the floor, as on the dining table
+        traits.roundLegs ? (
+          <Cyl
+            key={i}
+            position={[x, D.under / 2, z]}
+            radiusTop={legThick / 2}
+            radiusBottom={legThick / 2.6}
+            height={D.under}
+            color={legColor}
+            roughness={0.5}
+            segments={16}
+          />
+        ) : (
+          <Box
+            key={i}
+            position={[x, D.under / 2, z]}
+            size={[legThick, D.under, legThick]}
+            color={legColor}
+            roughness={0.5}
+          />
+        )
+      )}
       {sled &&
         [-1, 1].map((s) => {
           const x = s * D.endX;

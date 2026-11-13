@@ -7,10 +7,22 @@ import {
   guardRailSpans,
   wardrobeLayout,
   deskLayout,
+  deskLegThick,
 } from '../../preview3d/models/designLayout.js';
+import { effectivePalette } from '../../preview3d/models/designPalette.js';
 import { SwingArc, BarHandle } from './parts.jsx';
 
 const OUTLINE = '#22180E';
+
+/**
+ * Colours of a photo-made piece on the plan after a recolour, by the same rule as its 3D model: slots that were
+ * the body's material follow the new colour, contrasting ones (two-tone doors, a dark frame) stay as photographed.
+ */
+function planPalette(design, color) {
+  const palette = design.palette || {};
+  if (!palette.body) return { ...palette, body: color };
+  return effectivePalette({ palette }, color);
+}
 
 /** Closed SVG path through flat [x, z, ...] plan coordinates in [-0.5, 0.5], scaled to the piece size. */
 export function outlinePath(loops, widthCm, depthCm) {
@@ -28,10 +40,13 @@ const LINE = 'rgba(34,24,14,0.55)';
 
 /** Plan view drawn from a seating design when the user gave no top photo: arms, back, seat and feet. */
 function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
-  const { type, palette = {}, traits = {} } = design;
-  const baseColor = palette.body;
-  const same = !baseColor || String(baseColor).toLowerCase() === String(color).toLowerCase();
-  const cushion = same ? palette.cushion || color : color;
+  const { type, traits = {} } = design;
+  const eff = planPalette(design, color);
+  const cushion = eff.cushion || eff.body;
+  // A wood or cane frame is drawn as the classic seat in 3D, which has no channels or terraced arms
+  const classic = !!(traits.frame || traits.cane);
+  const chan = !!traits.chan && !classic;
+  const step = !!traits.step && !classic && type === 'sofa';
   if (type === 'lounge') {
     const bar = Math.max(4, widthCm * 0.07);
     const seatD = depthCm * 0.52;
@@ -109,10 +124,9 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
   const inner = widthCm - armW * 2;
   const roll = !!traits.roll;
   const longSeat = type === 'sofa' && !!traits.longSeat && seats > 1;
-  if (traits.chan)
+  if (chan)
     return (
       <ChannelSeatPlan
-        design={design}
         widthCm={widthCm}
         depthCm={depthCm}
         hw={hw}
@@ -121,6 +135,7 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
         cushion={cushion}
         seats={longSeat ? 1 : seats}
         armW={armW}
+        step={step}
       />
     );
   return (
@@ -152,7 +167,7 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
             <rect
               x={-hw + armW + (longSeat ? 0 : (inner / seats) * i) + 1.5}
               y={-hd + backH + 2}
-              width={(longSeat ? inner : inner / seats) - 3}
+              width={Math.max(0, (longSeat ? inner : inner / seats) - 3)}
               height={depthCm - backH - 6}
               rx={4}
               fill={cushion}
@@ -193,7 +208,7 @@ function SeatingPlan({ design, widthCm, depthCm, hw, hd, color }) {
           strokeWidth="0.7"
         />
       ))}
-      {traits.step && <ArmTiers widthCm={widthCm} hd={hd} armW={armW} y0={-hd + 2} />}
+      {step && <ArmTiers widthCm={widthCm} hd={hd} armW={armW} y0={-hd + 2} />}
     </g>
   );
 }
@@ -234,8 +249,7 @@ function seams(a, b, step) {
  * Plan of a channel-tufted sofa or armchair: the back with its channels running up to the top edge, the seat
  * channels running front to back, and the arms channelled over the top or terraced in slabs.
  */
-function ChannelSeatPlan({ design, widthCm, depthCm, hw, hd, color, cushion, seats, armW }) {
-  const { traits = {} } = design;
+function ChannelSeatPlan({ widthCm, depthCm, hw, hd, color, cushion, seats, armW, step }) {
   const backT = channelBackT(depthCm / 100) * 100;
   const inner = widthCm - armW * 2;
   const seam = { stroke: LINE, strokeWidth: 0.6 };
@@ -288,13 +302,13 @@ function ChannelSeatPlan({ design, widthCm, depthCm, hw, hd, color, cushion, sea
             stroke={LINE}
             strokeWidth="0.8"
           />
-          {!traits.step &&
+          {!step &&
             seams(hw - armW, hw, 10).map((x) => (
               <line key={x} x1={sg * x} y1={-hd + backT + 1} x2={sg * x} y2={hd - 1.5} {...seam} />
             ))}
         </g>
       ))}
-      {traits.step && <ArmTiers widthCm={widthCm} hd={hd} armW={armW} y0={-hd + backT} />}
+      {step && <ArmTiers widthCm={widthCm} hd={hd} armW={armW} y0={-hd + backT} />}
     </g>
   );
 }
@@ -338,13 +352,13 @@ export function cornerSofaPoints(widthCm, depthCm, traits = {}) {
  * bolster or a second tier, the duvet with its folded-back sheet and throw, footboard and stitching lines.
  */
 function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
-  const { palette = {}, traits = {} } = design;
-  const same = !palette.body || String(palette.body).toLowerCase() === String(color).toLowerCase();
-  const head = same ? palette.body || color : color;
-  const base = same ? palette.base || head : color;
-  const sheet = palette.sheet || palette.pillow || '#f1eee8';
-  const pillow = palette.pillow || '#f7f5f0';
-  const duvet = palette.accent || '#a89a88';
+  const { traits = {} } = design;
+  const eff = planPalette(design, color);
+  const head = eff.body;
+  const base = eff.base || head;
+  const sheet = eff.sheet || eff.pillow || '#f1eee8';
+  const pillow = eff.pillow || '#f7f5f0';
+  const duvet = eff.accent || '#a89a88';
   const n = Math.min(4, Math.max(1, Math.round(traits.pillows ?? 2)));
   const headW = widthCm * Math.min(1.15, Math.max(0.7, traits.headW ?? 1));
   // A tube metal frame shows as thin head and foot rails round a slim frame
@@ -352,7 +366,8 @@ function BedPlan({ design, widthCm, depthCm, hw, hd, color }) {
   const headT = metal ? 3.2 : Math.min(14, depthCm * 0.07);
   const footT = metal ? 3.2 : traits.foot ? Math.min(10, depthCm * 0.05) : 0;
   const inner = widthCm - 6;
-  const pillowW = Math.min(75, inner / n - 4);
+  // Never negative, however narrow the bed is resized
+  const pillowW = Math.max(0, Math.min(75, inner / n - 4));
   const pillowH = traits.tiers ? 40 : 34;
   const pillowY = -hd + headT + 4;
   const duvetTop = -hd + depthCm * 0.38;
@@ -630,9 +645,9 @@ function WrapTubPlan({ widthCm, depthCm, hw, hd, color, cushion }) {
 
 /** Plan drawn from the design record for the shapes that have no seating plan of their own. */
 function ShapePlan({ design, widthCm, depthCm, hw, hd, color }) {
-  const { type, palette = {}, traits = {} } = design;
-  const same = !palette.body || String(palette.body).toLowerCase() === String(color).toLowerCase();
-  const cushion = same ? palette.cushion || color : color;
+  const { type, traits = {} } = design;
+  const palette = planPalette(design, color);
+  const cushion = palette.cushion || palette.body;
   const stroke = { stroke: OUTLINE, strokeWidth: 1.2 };
   if (type === 'bed')
     return (
@@ -897,10 +912,10 @@ const HIDDEN = { fill: 'none', stroke: LINE, strokeWidth: 0.7, strokeDasharray: 
  * mirror door picked out in glass blue, and an open niche drawn as the recess behind the front.
  */
 function WardrobePlan({ design, widthCm, depthCm, hw, hd, color }) {
-  const { palette = {}, traits = {} } = design;
-  const same = !palette.body || String(palette.body).toLowerCase() === String(color).toLowerCase();
-  const door = same ? palette.door || color : color;
-  const handle = palette.trim || '#C4A869';
+  const { traits = {} } = design;
+  const eff = planPalette(design, color);
+  const door = eff.door || eff.body;
+  const handle = eff.trim || '#C4A869';
   const L = wardrobeLayout({ widthM: widthCm / 100, heightM: 2.2, traits });
   const front = 2.4;
   const swing = Math.min(30, depthCm * 0.5);
@@ -976,7 +991,15 @@ function WardrobePlan({ design, widthCm, depthCm, hw, hd, color }) {
  */
 function DeskPlan({ design, widthCm, depthCm, hw, hd, color }) {
   const { traits = {} } = design;
-  const D = deskLayout({ widthM: widthCm / 100, depthM: depthCm / 100, heightM: 0.75, traits });
+  const legThick = deskLegThick(widthCm / 100, traits);
+  const D = deskLayout({
+    widthM: widthCm / 100,
+    depthM: depthCm / 100,
+    heightM: 0.75,
+    traits,
+    legThick,
+  });
+  const lt = legThick * 100;
   const pedD = depthCm - 8;
   const pedY = -2 - pedD / 2;
   return (
@@ -1030,9 +1053,20 @@ function DeskPlan({ design, widthCm, depthCm, hw, hd, color }) {
             {...HIDDEN}
           />
         ))}
-      {D.legs.map(([x, z], i) => (
-        <rect key={i} x={x * 100 - 2.5} y={z * 100 - 2.5} width={5} height={5} {...HIDDEN} />
-      ))}
+      {D.legs.map(([x, z], i) =>
+        traits.roundLegs ? (
+          <circle key={i} cx={x * 100} cy={z * 100} r={lt / 2} {...HIDDEN} />
+        ) : (
+          <rect
+            key={i}
+            x={x * 100 - lt / 2}
+            y={z * 100 - lt / 2}
+            width={lt}
+            height={lt}
+            {...HIDDEN}
+          />
+        )
+      )}
       {traits.modesty ? (
         <line x1={-hw + 8} y1={-hd + 5} x2={hw - 8} y2={-hd + 5} {...HIDDEN} strokeWidth="1.2" />
       ) : null}

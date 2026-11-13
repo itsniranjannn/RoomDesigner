@@ -3,7 +3,6 @@
  * (see engine/design.js) drive the same builders the catalog uses, so a piece made from photos has
  * the same materials and detail as a built-in one, and resizing, recolouring and stacking behave alike.
  */
-import * as THREE from 'three';
 import { Box, Pad, Cyl, Pillow, pillowRestY, shade, clamp, corners } from './shared.jsx';
 import { Mattress, Duvet } from './bed.jsx';
 import { Upholstered, ChairModel, BarStoolModel, LoungeChairModel } from './seating.jsx';
@@ -35,6 +34,7 @@ import {
   Caster,
   postCorners,
   BedBaseDrawers,
+  metalFrameLevels,
 } from './metalBed.jsx';
 import {
   ClassicHeadboard,
@@ -43,34 +43,11 @@ import {
   ClassicSeat,
   ClassicTable,
 } from './classicShapes.jsx';
+import { effectivePalette, colourDistance } from './designPalette.js';
+import { deskLegThick } from './designLayout.js';
 
-/** Distance between two hex colours (0-441). */
-function colourDistance(a, b) {
-  const x = new THREE.Color(a);
-  const y = new THREE.Color(b);
-  return Math.hypot(x.r - y.r, x.g - y.g, x.b - y.b) * 255;
-}
-
-/**
- * Palette for drawing: when the body colour was changed, every slot that was the same material as the body
- * (close to it in colour) follows it, keeping its relative lightness; contrasting slots stay as photographed.
- */
-export function effectivePalette(design, mainColor) {
-  const base = design.palette.body;
-  const out = { ...design.palette };
-  if (!mainColor || mainColor.toLowerCase() === base.toLowerCase()) return out;
-  const hslOf = (c) => new THREE.Color(c).getHSL({ h: 0, s: 0, l: 0 });
-  const baseL = hslOf(base).l;
-  out.body = mainColor;
-  for (const key of Object.keys(out)) {
-    if (key === 'body') continue;
-    if (colourDistance(out[key], base) < 70) {
-      const dl = hslOf(out[key]).l - baseL;
-      out[key] = shade(mainColor, Math.max(-0.3, Math.min(0.3, dl)));
-    }
-  }
-  return out;
-}
+// One recolour rule for the 3D models and the plan symbols
+export { effectivePalette };
 
 /**
  * Bed from its design record: headboard (style, width, colour), base (solid, on feet, storage drawers or
@@ -78,7 +55,7 @@ export function effectivePalette(design, mainColor) {
  * tiers, with or without a bolster in front). A tube metal bed has bent head and foot rails with spindles
  * instead of the upholstered headboard and base; guard rails and castors can go on either kind.
  */
-export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
+export function PlatformBedModel({ widthM, depthM, heightM, palette, traits, photo = palette }) {
   const metal = !!traits.metal;
   const hb = metal ? 0.05 : 0.1;
   const legs = !metal && !!traits.legs && !traits.skirt;
@@ -145,8 +122,10 @@ export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
   // Storage drawers sit flush in a base a little narrower than the mattress, so their pulls stay inside
   const store = !metal && !!traits.store && !traits.skirt;
   const baseW = store ? widthM - 0.06 : widthM;
-  // A tube frame's box spring shows in its own colour when that is clearly not the metal's
-  const fabricBase = metal && palette.base && colourDistance(palette.body, palette.base) > 60;
+  // A tube frame has a box spring when the photographed headboard colour is clearly not the metal's; a recolour
+  // repaints it but never adds or removes it (the photographed palette decides)
+  const fabricBase = metal && !!photo.base && colourDistance(photo.body, photo.base) > 60;
+  const levels = metalFrameLevels(frameH, fabricBase);
   // With guard rails the duvet is tucked in clear of the rail posts; on a tube frame it hangs inside the posts
   const duvetW = traits.rails ? widthM - 0.06 : metal ? widthM - 0.03 : widthM;
   const legsAndFeet = bun ? (
@@ -275,11 +254,7 @@ export function PlatformBedModel({ widthM, depthM, heightM, palette, traits }) {
           widthM={widthM}
           depthM={depthM}
           mattressTop={mattressTop}
-          base={
-            metal
-              ? frameH - (fabricBase ? clamp(frameH * 0.32, 0.08, 0.13) : 0) - 0.022
-              : frameH - 0.05
-          }
+          base={metal ? levels.sideY : frameH - 0.05}
           color={base}
         />
       )}
@@ -418,6 +393,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
           depthM={depthM}
           heightM={heightM}
           palette={palette}
+          photo={design.palette}
           traits={traits}
         />
       );
@@ -562,7 +538,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
       // Desks read before pedestals, sled or panel ends and modesty panels keep the catalog desk
       model =
         traits.ped || traits.base || traits.modesty ? (
-          <DeskDesign {...shape} legThick={traits.legFrac ? legThick : 0.05} />
+          <DeskDesign {...shape} legThick={deskLegThick(widthM, traits)} />
         ) : (
           <DeskModel {...common} />
         );

@@ -136,8 +136,19 @@ export function postCorners(widthM, depthM, inset = 0.02) {
 }
 
 /**
+ * Heights in a tube bed frame whose mattress bottom is at `frameH`: the box spring (when there is one) lies on a
+ * deck, and the deck rests on the side rails.
+ */
+export function metalFrameLevels(frameH, boxSpring) {
+  const baseH = boxSpring ? clamp(frameH * 0.32, 0.08, 0.13) : 0;
+  const deckTop = frameH - baseH;
+  return { baseH, deckTop, sideY: deckTop - 0.022 };
+}
+
+/**
  * Tube metal bed frame: a tall bent head rail and a lower foot rail, each with spindles and cross rails,
- * slim side rails under the mattress and a deck for it to lie on. `frameH` is the mattress bottom.
+ * slim side rails under the mattress and a deck for it (or its box spring) to lie on. `frameH` is the mattress
+ * bottom.
  */
 export function MetalBedFrame({
   widthM,
@@ -156,8 +167,7 @@ export function MetalBedFrame({
   const zf = depthM / 2 - 0.02;
   const inner = 2 * x;
   // A fabric base (box spring) under the mattress when the photos show one in its own colour
-  const baseH = fabric ? clamp(frameH * 0.32, 0.08, 0.13) : 0;
-  const sideY = frameH - baseH - 0.022;
+  const { baseH, deckTop, sideY } = metalFrameLevels(frameH, !!fabric);
   const lowY = Math.max(bottom + 0.06, sideY);
   const headTop = Math.max(mattressTop + 0.2, heightM - POST_R);
   const midY = mattressTop + 0.03;
@@ -191,25 +201,38 @@ export function MetalBedFrame({
           finish={finish}
         />
       </group>
-      {[-1, 1].map((s) => (
-        <RailZ key={s} z0={zh} z1={zf} x={s * x} y={sideY} radius={RAIL_R * 1.1} finish={finish} />
-      ))}
-      {/* Deck (or box spring) between the rails for the mattress to lie on */}
-      {fabric ? (
-        <Pad
-          position={[0, frameH - baseH / 2, 0]}
-          size={[widthM - 0.05, baseH, zf - zh - 0.03]}
-          radius={0.02}
-          color={fabric}
-          roughness={0.95}
-        />
-      ) : (
+      <group name="side-rails">
+        {[-1, 1].map((s) => (
+          <RailZ
+            key={s}
+            z0={zh}
+            z1={zf}
+            x={s * x}
+            y={sideY}
+            radius={RAIL_R * 1.1}
+            finish={finish}
+          />
+        ))}
+      </group>
+      {/* Deck resting on the side rails, and the box spring (when there is one) lying on it */}
+      <group name="bed-deck">
         <Box
-          position={[0, frameH - 0.01, 0]}
+          position={[0, deckTop - 0.01, 0]}
           size={[widthM - 0.06, 0.02, zf - zh - 0.03]}
           color={shade(finish.color, -0.35)}
           roughness={0.8}
         />
+      </group>
+      {fabric && (
+        <group name="box-spring">
+          <Pad
+            position={[0, deckTop + baseH / 2, 0]}
+            size={[widthM - 0.05, baseH, zf - zh - 0.03]}
+            radius={0.02}
+            color={fabric}
+            roughness={0.95}
+          />
+        </group>
       )}
       {bottom <= 0 &&
         postCorners(widthM, depthM).map(([px, pz], i) => (

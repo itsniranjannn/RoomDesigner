@@ -18,9 +18,9 @@ function corners(widthM, depthM, inset) {
   ];
 }
 
-/** Depth of a channel-tufted back (its panel and the channels standing on it). */
+/** Depth of a channel-tufted back (its panel and the channels standing on it), never most of the seat. */
 export function channelBackT(depthM) {
-  return clamp(depthM * 0.24, 0.15, 0.3);
+  return Math.min(clamp(depthM * 0.24, 0.15, 0.3), depthM * 0.4);
 }
 
 /** Heights of terraced arm slabs, outermost first, from the arm height down to just above the seat. */
@@ -45,10 +45,14 @@ export function wrapRise(u) {
   return (1 - a ** 2.4) ** 0.55;
 }
 
-/** Where the guard rails stand: one on each long side, staggered (one nearer the head, one the foot). */
+/**
+ * Where the guard rails stand: one on each long side, staggered (one nearer the head, one the foot). A bed
+ * resized too short for a 10 cm rail clear of its ends has none.
+ */
 export function guardRailSpans(depthM) {
   // Clear of the head and foot ends however short the bed is resized
   const len = Math.min(clamp(depthM * 0.46, 0.45, 1.05), depthM - 0.25);
+  if (len < 0.1) return [];
   const off = Math.max(0, Math.min(depthM * 0.09, (depthM - len) / 2 - 0.08));
   return [
     { side: -1, z0: -off - len / 2, z1: -off + len / 2 },
@@ -148,7 +152,17 @@ export function wardrobeLayout({ widthM, heightM, traits }) {
   return { n, plinth, top, upperH, tallTop, rows, rowH, side, cols, niche, mirrorIdx, uppers };
 }
 
-/** Where a desk's supports go: the end frames, any pedestals and the legs, from its traits. */
+/** Thickness of a photo-made desk's legs: read from the photo as a share of its width, within sensible limits. */
+export function deskLegThick(widthM, traits) {
+  return traits.legFrac ? clamp(traits.legFrac * widthM, 0.03, 0.1) : 0.05;
+}
+
+/**
+ * Where a desk's supports go: the end frames, any pedestals and the legs, from its traits.
+ * A pedestal leaves 50 cm of knee space when the desk is wide enough; on a narrower desk the pedestals share
+ * half the clear width, and one that would be under 10 cm wide is left out (the desk keeps its legs instead).
+ * A single drawer hangs under the top inside the legs.
+ */
 export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 }) {
   const topT = (traits.topH ?? 3.5) / 100;
   const under = heightM - topT;
@@ -157,10 +171,21 @@ export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 })
   const drawers = clamp(Math.round(traits.drawers ?? 3), 1, 4);
   const endT = base === 'panel' ? 0.025 : base === 'sled' ? 0.05 : 0;
   const endX = widthM / 2 - 0.03 - endT / 2;
-  const sides = ped === 'both' ? [-1, 1] : ped === 'left' ? [-1] : ped === 'right' ? [1] : [];
-  const pw = Math.min(clamp(widthM * 0.3, 0.3, 0.45), (widthM - 0.5) / Math.max(1, sides.length));
-  const inner = base === 'legs' ? widthM / 2 - 0.02 : endX - endT / 2 - 0.01;
+  const wanted = ped === 'both' ? [-1, 1] : ped === 'left' ? [-1] : ped === 'right' ? [1] : [];
   const hanging = drawers === 1;
+  // Outer side of a pedestal: inside the end frames, at the edge of the top, or (a hanging drawer) just inside
+  // the inner face of the legs, which stand at the corners however the drawer is placed
+  const inner =
+    base !== 'legs'
+      ? endX - endT / 2 - 0.01
+      : hanging
+        ? widthM / 2 - 0.03 - legThick - 0.002
+        : widthM / 2 - 0.02;
+  const pw = Math.min(
+    clamp(widthM * 0.3, 0.3, 0.45),
+    Math.max(widthM - 0.5, inner) / Math.max(1, wanted.length)
+  );
+  const sides = pw >= 0.1 ? wanted : [];
   const pedestals = sides.map((s) => ({
     side: s,
     x: s * (inner - pw / 2),
@@ -176,4 +201,22 @@ export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 })
         )
       : [];
   return { topT, under, base, endT, endX, pedestals, legs, drawers, hanging };
+}
+
+/** Longest bar pull there is (the pull itself clamps to this). */
+export const PULL_MAX = 0.45;
+
+/**
+ * Height and length of the handle on a door running from `bottom` to `top`: at a comfortable 1.05 m where the
+ * door allows, with the whole of a bar kept on the door clear of both ends (centred, and shortened, on a door
+ * too short for that). Knobs and rings keep 12 cm from the ends. `length` is the bar wanted.
+ */
+export function placeDoorHandle({ bottom, top, style, length, at = 1.05 }) {
+  const doorH = top - bottom;
+  const len =
+    style === 'bar' ? Math.min(clamp(length, 0.04, PULL_MAX), Math.max(0.04, doorH - 0.1)) : 0;
+  const margin = Math.max(0.12, len / 2 + 0.05);
+  const lo = bottom + margin;
+  const hi = top - margin;
+  return { y: lo > hi ? (bottom + top) / 2 : clamp(at, lo, hi), length: len };
 }
