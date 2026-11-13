@@ -23,6 +23,13 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
 const hash = (s) => createHash('sha1').update(s).digest('hex').slice(0, 16);
 
+// Decimals are rounded to 5 places before hashing. Math.sin, pow and friends can differ in their last bits from
+// one platform to another (Windows here, Linux on CI), and that must not count as a different model.
+const stable = (s) =>
+  s.replace(/(?<![\d.])-?\d+\.\d+(?:e[-+]?\d+)?/gi, (m) =>
+    String(Math.round(Number(m) * 1e5) / 1e5)
+  );
+
 const markup = (type, palette, traits, [w, d, h]) =>
   renderToStaticMarkup(
     <CustomMeshModel
@@ -96,25 +103,26 @@ async function buildScene(type, palette, traits, [w, d, h], names = []) {
   return { box, meshes, parts };
 }
 
-// Hashes of the model and plan markup of designs saved before these traits, taken before they were added
+// Hashes of the model and plan markup (decimals rounded, see `stable`) of designs saved before these traits,
+// taken before they were added
 const BASELINE = {
-  'sofa-plain': ['a12bc8fe836c22f3', 'b0f02abfcee7f001'],
-  'sofa-rolled': ['9bcf476413ffe096', '8b258b1fb5807d38'],
-  'sofa-classic': ['31a82f7e175066d8', '88e252ca03f5c666'],
-  'armchair-plain': ['d4c76566949a39da', 'e557ff9ce8754926'],
-  'armchair-rolled': ['35c82745bc7f71e4', '08873d461b7c0dca'],
-  'tub-round': ['1e7f60f5d6b26abd', '689d1a60ff50341f'],
-  'tub-bucket': ['e527bce5da0c46e6', 'cc8a9644338a666a'],
-  'tub-pedestal': ['11fe6bef808f9378', '67992faf2b3781c0'],
-  'bed-plain': ['8c8f43aa70e976c6', '37f10309ee2b3d00'],
-  'bed-channel': ['37454743f4b6edc0', '59d2b728d0e77abf'],
-  'bed-carved': ['406340cf3b7f221d', 'd049fcfabdfd53d2'],
-  'bed-skirt': ['c8eebbdc44c64e20', '2feb32af3296aa78'],
-  'wardrobe-2': ['b82da24d2ca48032', '254d5dcfa81ede9f'],
-  'wardrobe-3': ['755090fdb48637ae', '67a56b3fbf1025da'],
-  'wardrobe-loft': ['2e48bf1643dd6c1e', 'd16c9ee1f299b8e4'],
-  'desk-plain': ['f16c86cb2d4341d8', 'a7664ec1871578df'],
-  'desk-thick': ['0c90a60443446176', 'ffed48512e5ccbed'],
+  'sofa-plain': ['0098f88f2bacf4a5', '930991c7d29a574d'],
+  'sofa-rolled': ['454a13a4d5f2e4dd', '162f76f40d6f224e'],
+  'sofa-classic': ['71c9371986fbeddf', '88e252ca03f5c666'],
+  'armchair-plain': ['0cb0744a4815c93e', '2b0f5f137122f977'],
+  'armchair-rolled': ['7bf0ee3414216730', '88278cb09acd218c'],
+  'tub-round': ['3a5517f751762eca', '689d1a60ff50341f'],
+  'tub-bucket': ['199b682a55939898', '364ddb9fe239ade1'],
+  'tub-pedestal': ['09a5be77c960ee5e', '67992faf2b3781c0'],
+  'bed-plain': ['631f5c01711cdc92', '61edeb5a9916553d'],
+  'bed-channel': ['833b5bca6ba73d3e', '718522023118a210'],
+  'bed-carved': ['da238db0297359a5', '25653fdc5e91b312'],
+  'bed-skirt': ['3dd42cfc08a65b11', '2feb32af3296aa78'],
+  'wardrobe-2': ['aa7519fce68e2e64', '254d5dcfa81ede9f'],
+  'wardrobe-3': ['f3cb6a2e0efb4670', '67a56b3fbf1025da'],
+  'wardrobe-loft': ['c246c3140126b04d', 'd16c9ee1f299b8e4'],
+  'desk-plain': ['ef40a5c198970e31', 'a7664ec1871578df'],
+  'desk-thick': ['ca96cc8e36c3a380', 'ffed48512e5ccbed'],
 };
 
 const pink = { body: '#d8a1a4', leg: '#c9a24a' };
@@ -333,8 +341,14 @@ describe('designs saved before the new traits', () => {
 
   it('keep exactly the model and plan symbol they had', () => {
     for (const [key, { type, palette, traits, size }] of Object.entries(OLD_DESIGNS)) {
-      expect([key, hash(markup(type, palette, traits, size))]).toEqual([key, BASELINE[key][0]]);
-      expect([key, hash(planMarkup(type, palette, traits, size))]).toEqual([key, BASELINE[key][1]]);
+      expect([key, hash(stable(markup(type, palette, traits, size)))]).toEqual([
+        key,
+        BASELINE[key][0],
+      ]);
+      expect([key, hash(stable(planMarkup(type, palette, traits, size)))]).toEqual([
+        key,
+        BASELINE[key][1],
+      ]);
     }
   });
 });
