@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ArrowUp, ArrowDown, ArrowLeft, ArrowRight, LogOut } from 'lucide-react';
 import styles from './WalkHud.module.css';
 
@@ -44,6 +44,19 @@ export function WalkHud({ onExit }) {
     return () => {
       walkInput.listeners.delete(fn);
     };
+  }, []);
+
+  // Escape leaves the walkthrough. The HUD owns this, not the 3D controls inside the canvas: the
+  // canvas mounts a moment later (on a slow device, noticeably later), and until it does, an Escape
+  // pressed while the HUD is already on screen would be lost.
+  const exitRef = useRef(onExit);
+  exitRef.current = onExit;
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') exitRef.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, []);
 
   const held = (name) => !!(walkInput.pad[name] || walkInput.keys[name]);
