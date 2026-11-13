@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { decodePng, shrink } from '../../scripts/photo-harness/png.js';
+import { readLikeDialog } from '../../scripts/photo-harness/png.js';
 import { detectSheetViews, cropSheetView } from './sheet.js';
 import { build, fromSheet, dialogPhoto } from './photoTestKit.js';
 
@@ -12,7 +12,8 @@ import { build, fromSheet, dialogPhoto } from './photoTestKit.js';
  */
 const dir = process.env.PHOTO_FIXTURES;
 const has = (name) => Boolean(dir) && fs.existsSync(path.join(dir, name));
-const load = (name) => shrink(decodePng(path.join(dir, name)), 1800);
+// read as the dialog reads a picture: drawn on white and brought down to 1800 pixels by the engine's box average
+const load = (name) => readLikeDialog(path.join(dir, name), 1800);
 
 describe.skipIf(!has('5.png'))('the real bed sheet', () => {
   const sheet = () => load('5.png');

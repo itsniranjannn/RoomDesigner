@@ -96,3 +96,19 @@ export function shrink(img, maxDim) {
   }
   return { rgba: out, width: w, height: h };
 }
+
+/**
+ * A PNG as the photo dialog reads it: drawn on white (a transparent pixel reads as white, a half-transparent one
+ * as its mix with white) and brought down to the dialog's reading size with the same box average.
+ */
+export function readLikeDialog(file, maxDim = 1800) {
+  const img = decodePng(file);
+  const { rgba } = img;
+  for (let i = 0; i < rgba.length; i += 4) {
+    const a = rgba[i + 3] / 255;
+    if (a >= 1) continue;
+    for (let c = 0; c < 3; c++) rgba[i + c] = Math.round(rgba[i + c] * a + 255 * (1 - a));
+    rgba[i + 3] = 255;
+  }
+  return shrink(img, maxDim);
+}

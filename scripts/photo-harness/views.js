@@ -2,12 +2,11 @@
 // (yaw, pitch, width and depth over height), space under it, and the role the splitter gives it.
 // usage: node scripts/photo-harness/views.js <png> [more.png ...]
 import path from 'node:path';
-import { decodePng } from './png.js';
-import { shrinkTo } from '../../src/engine/photoTestKit.js';
+import { readLikeDialog } from './png.js';
 import { sheetSlots, sheetLooks } from '../../src/engine/photoPipeline.js';
 
 for (const file of process.argv.slice(2)) {
-  const big = shrinkTo(decodePng(file), 1800);
+  const big = readLikeDialog(file);
   const { detection, slots } = sheetSlots(big.rgba, big.width, big.height);
   const looks = sheetLooks(big.rgba, big.width, big.height, detection);
   console.log(path.basename(file), `${big.width}x${big.height}`, detection.views.length, 'views');

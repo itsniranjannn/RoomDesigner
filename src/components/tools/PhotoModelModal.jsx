@@ -2051,7 +2051,13 @@ export function PhotoModelModal({ onClose }) {
                 <figcaption>Your {VIEW_LABEL[activeView].toLowerCase()} photo</figcaption>
               </figure>
             )}
-            <div className={local.preview} aria-label="3D model preview">
+            <div
+              className={local.preview}
+              aria-label="3D model preview"
+              // the record and size built from the photos, for checking the dialog against the engine's tests
+              data-design={design ? JSON.stringify(design) : undefined}
+              data-dims={design ? JSON.stringify(dims) : undefined}
+            >
               {design ? (
                 <ModelPreview
                   design={design}

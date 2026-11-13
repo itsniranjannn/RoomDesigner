@@ -1,15 +1,15 @@
 // Writes the front view the detail readers see (the fine normalized grid) as a PNG, scaled up, and prints the
 // lines found in a few bands. usage: node scripts/photo-harness/fineview.js <png> <out.png> [sheet|photo]
-import { decodePng } from './png.js';
+import { readLikeDialog } from './png.js';
 import { writePng } from './pngout.js';
-import { dialogPhoto, dialogSheet, shrinkTo } from '../../src/engine/photoTestKit.js';
+import { dialogPhoto, dialogSheet } from '../../src/engine/photoTestKit.js';
 import { findLines } from '../../src/engine/design.js';
 import { wardrobeDetails } from '../../src/engine/details.js';
 
 wardrobeDetails.debug = (d) => console.log('wardrobe', JSON.stringify(d));
 
 const [file, outFile, mode = 'sheet'] = process.argv.slice(2);
-const big = shrinkTo(decodePng(file), 1800);
+const big = readLikeDialog(file);
 const r = mode === 'photo' ? dialogPhoto(big) : dialogSheet(big);
 const v = (r.views.front || r.views.back).fine;
 const s = v.size;

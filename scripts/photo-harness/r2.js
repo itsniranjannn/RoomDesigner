@@ -2,11 +2,12 @@
 // dialog shows, the views, the design record) and prints the type, the key traits and the colours of each.
 // usage: node scripts/photo-harness/r2.js <dir> [name-filter] [--dump outDir] [--path photo|sheet|both]
 //   --dump outDir  writes each slot's cut-out (photo with the background greyed) as a PNG there
+//   --json file    appends one JSON line per photo and path (type, traits, colours, size) for comparing runs
 import fs from 'node:fs';
 import path from 'node:path';
-import { decodePng } from './png.js';
+import { readLikeDialog } from './png.js';
 import { writePng } from './pngout.js';
-import { dialogPhoto, dialogSheet, shrinkTo } from '../../src/engine/photoTestKit.js';
+import { dialogPhoto, dialogSheet } from '../../src/engine/photoTestKit.js';
 import { threeQuarter } from '../../src/engine/oblique.js';
 import { slabOver, measureTraits } from '../../src/engine/design.js';
 
@@ -31,9 +32,18 @@ const FILES = [
   'r2-mirror-wardrobe-drawers.png',
   'r2-room-built-in-wardrobe.png',
   'r2-room-white-wardrobe.png',
+  '1.png',
+  '2.png',
+  '3.png',
+  '4.png',
   '5.png',
+  '6.png',
+  '7.png',
   '8.png',
+  '9.png',
   '10.png',
+  '11.png',
+  '12.png',
   'new-bed.png',
   'new-teal.png',
   'new-sofa.png',
@@ -77,7 +87,7 @@ for (const name of FILES) {
   if (filter && !name.includes(filter)) continue;
   const file = path.join(dir, name);
   if (!fs.existsSync(file)) continue;
-  const big = shrinkTo(decodePng(file), 1800);
+  const big = readLikeDialog(file);
   for (const kind of which === 'both' ? ['photo', 'sheet'] : [which]) {
     let r;
     try {
@@ -91,6 +101,11 @@ for (const name of FILES) {
         ? ` views ${r.detection.views.length} slots ${r.slots.map((s) => s || '-').join(',')}`
         : ` route ${r.route} pieces ${r.segmented.front?.cut.pieces.length ?? '-'} mode ${r.segmented.front?.cut.mode ?? '-'}`;
     console.log(`${name.padEnd(32)} ${kind.padEnd(5)} ${describe(r)}${extra}`);
+    if (opt('json'))
+      fs.appendFileSync(
+        opt('json'),
+        JSON.stringify({ name, kind, route: r.route, design: r.design, dims: r.dims }) + '\n'
+      );
     if (args.includes('--cues')) {
       const f = r.views.front || r.views.back;
       if (f) {
