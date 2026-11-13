@@ -1,6 +1,7 @@
 // Drives the Create from photos dialog in Chrome (an app served by `vite preview`) with a picture and saves
 // screenshots of the 3D preview. ORBIT=dx,dy drags the preview; TAB=Front|Left|... picks the compared photo.
-// usage: node scripts/photo-harness/shoot.js <baseUrl> <pngPath> <outPrefix> [sheet | crop:<slot label>:<x0>:<y0>:<x1>:<y1> (fractions)]
+// usage: node scripts/photo-harness/shoot.js <baseUrl> <pngPath> <outPrefix> [sheet | photo | crop:<slot label>:<x0>:<y0>:<x1>:<y1> (fractions)]
+//   photo  the whole picture on the Front photo slot, as a user adds it (a sheet or a collage is split by itself)
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 const require = createRequire(import.meta.url);
@@ -20,7 +21,24 @@ const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' }
 await dialog.waitFor();
 // the first-run guide may be open: close it if there is a dismiss button
 const buf = fs.readFileSync(png);
-if (mode === 'sheet') {
+if (mode === 'photo') {
+  await dialog
+    .getByLabel('Front photo', { exact: true })
+    .setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: buf });
+  // a sheet of views added as one photo opens the views panel: use the views it proposes
+  const use = dialog.getByRole('button', { name: 'Use these views' });
+  // wait until the picture is either split into views or in the slot (the Build button comes on)
+  const ready = dialog.locator('button:has-text("Build 3D model"):not([disabled])');
+  await Promise.race([use.waitFor({ timeout: 90000 }), ready.waitFor({ timeout: 90000 })]).catch(
+    () => {}
+  );
+  await page.waitForTimeout(500);
+  if (await use.isVisible()) {
+    const panel = dialog.getByRole('group', { name: 'Views found in the picture' });
+    console.log(outPrefix, 'views panel:', (await panel.innerText()).replace(/\n/g, ' | '));
+    await use.click();
+  }
+} else if (mode === 'sheet') {
   await dialog.getByRole('button', { name: /Split one picture into views/ }).waitFor();
   await dialog
     .getByLabel('Picture with several views')
@@ -72,6 +90,19 @@ if (process.env.TAB) {
     .click();
   await page.waitForTimeout(1500);
 }
+// the details read from the photo, as the Adjust details controls show them
+const details = dialog.locator('details');
+if (!(await details.getAttribute('open'))) await dialog.getByText('Adjust details').click();
+const read = await dialog.evaluate((d) => {
+  const rows = [...d.querySelectorAll('details select')].map(
+    (sel) => `${sel.getAttribute('aria-label')}=${sel.options[sel.selectedIndex]?.text}`
+  );
+  const colours = [...d.querySelectorAll('details input[type=color]')].map(
+    (i) => `${i.getAttribute('aria-label')}=${i.value}`
+  );
+  return [...rows, ...colours].join('; ');
+});
+console.log(outPrefix, 'details:', read);
 const prev = dialog.getByLabel('3D model preview');
 await prev.screenshot({ path: outPrefix + '-model.png' });
 const box = await prev.boundingBox();
