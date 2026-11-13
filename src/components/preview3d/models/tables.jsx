@@ -380,7 +380,15 @@ export function SideTableModel({ widthM, depthM, heightM, mainColor, subColor, l
   );
 }
 
-export function DeskModel({ widthM, depthM, heightM, mainColor, subColor, legColor }) {
+export function DeskModel({
+  widthM,
+  depthM,
+  heightM,
+  mainColor,
+  subColor,
+  legColor,
+  roundLegs = false,
+}) {
   const topH = 0.035;
   const pedestalW = widthM * 0.28;
   const bodyH = heightM - topH;
@@ -490,17 +498,30 @@ export function DeskModel({ widthM, depthM, heightM, mainColor, subColor, legCol
         thick={0.014}
       />
 
-      {/* Left steel sled frame with levelling feet */}
-      {[-1, 1].map((s) => (
-        <Box
-          key={s}
-          position={[-widthM / 2 + 0.06, bodyH / 2, s * depthM * 0.42]}
-          size={[legThick, bodyH, legThick]}
-          color={legColor}
-          roughness={0.4}
-          metalness={0.4}
-        />
-      ))}
+      {/* Left steel sled frame with levelling feet: square posts, or round ones when asked */}
+      {[-1, 1].map((s) =>
+        roundLegs ? (
+          <Cyl
+            key={s}
+            position={[-widthM / 2 + 0.06, bodyH / 2, s * depthM * 0.42]}
+            radiusTop={legThick / 2}
+            height={bodyH}
+            color={legColor}
+            roughness={0.4}
+            metalness={0.4}
+            segments={16}
+          />
+        ) : (
+          <Box
+            key={s}
+            position={[-widthM / 2 + 0.06, bodyH / 2, s * depthM * 0.42]}
+            size={[legThick, bodyH, legThick]}
+            color={legColor}
+            roughness={0.4}
+            metalness={0.4}
+          />
+        )
+      )}
       <Box
         position={[-widthM / 2 + 0.06, 0.02, 0]}
         size={[legThick, 0.04, depthM * 0.86]}

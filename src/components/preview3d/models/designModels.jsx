@@ -540,7 +540,7 @@ export function DesignModel({ def, design, widthM, depthM, heightM, mainColor })
         traits.ped || traits.base || traits.modesty ? (
           <DeskDesign {...shape} legThick={deskLegThick(widthM, traits)} />
         ) : (
-          <DeskModel {...common} />
+          <DeskModel {...common} roundLegs={!!traits.roundLegs} />
         );
       break;
     case 'wardrobe':
