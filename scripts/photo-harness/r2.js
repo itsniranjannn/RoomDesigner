@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { readLikeDialog } from './png.js';
+import { FIXTURE_FILES } from './fixtures.js';
 import { writePng } from './pngout.js';
 import { dialogPhoto, dialogSheet } from '../../src/engine/photoTestKit.js';
 import { threeQuarter } from '../../src/engine/oblique.js';
@@ -23,31 +24,7 @@ const dump = opt('dump');
 const which = opt('path', 'both');
 if (dump) fs.mkdirSync(dump, { recursive: true });
 
-const FILES = [
-  'r2-pink-channel-sofa.png',
-  'r2-mustard-tub-chair-sheet.png',
-  'r2-carved-sofa-three.png',
-  'r2-office-desk-sheet.png',
-  'r2-metal-bed-sheet.png',
-  'r2-mirror-wardrobe-drawers.png',
-  'r2-room-built-in-wardrobe.png',
-  'r2-room-white-wardrobe.png',
-  '1.png',
-  '2.png',
-  '3.png',
-  '4.png',
-  '5.png',
-  '6.png',
-  '7.png',
-  '8.png',
-  '9.png',
-  '10.png',
-  '11.png',
-  '12.png',
-  'new-bed.png',
-  'new-teal.png',
-  'new-sofa.png',
-];
+const FILES = FIXTURE_FILES;
 
 const KEYS = {
   sofa: ['seats', 'longSeat', 'chan', 'step', 'roll', 'frame', 'cab', 'scat', 'trim', 'taper'],

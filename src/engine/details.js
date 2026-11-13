@@ -411,31 +411,55 @@ function regions(on, s) {
  */
 export function findPulls(v) {
   const s = v.size;
+  const rgb = v.rgb;
+  const mask = v.mask;
   const at = (p) => [v.rgb[p * 3], v.rgb[p * 3 + 1], v.rgb[p * 3 + 2]];
   const marks = new Uint8Array(s * s);
   const R = Math.max(4, Math.round(s * 0.025));
+  const ring = [
+    [-R, 0],
+    [R, 0],
+    [0, -R],
+    [0, R],
+    [-R, -R],
+    [R, R],
+    [-R, R],
+    [R, -R],
+  ];
+  // (the ring samples go into these, so reading a whole view does not make a few hundred thousand arrays)
+  const got = [new Float64Array(8), new Float64Array(8), new Float64Array(8)];
+  const sorted = new Float64Array(8);
+  const middle = (src, n) => {
+    for (let i = 0; i < n; i++) {
+      const v0 = src[i];
+      let j = i - 1;
+      while (j >= 0 && sorted[j] > v0) {
+        sorted[j + 1] = sorted[j];
+        j--;
+      }
+      sorted[j + 1] = v0;
+    }
+    return sorted[n >> 1];
+  };
   for (let y = R; y < s - R; y++)
     for (let x = R; x < s - R; x++) {
       const p = y * s + x;
-      if (!v.mask[p]) continue;
+      if (!mask[p]) continue;
       // the local surface: the median colour of a ring of pixels a little way off
-      const ring = [];
-      for (const [dx, dy] of [
-        [-R, 0],
-        [R, 0],
-        [0, -R],
-        [0, R],
-        [-R, -R],
-        [R, R],
-        [-R, R],
-        [R, -R],
-      ]) {
-        const q = (y + dy) * s + x + dx;
-        if (v.mask[q]) ring.push(at(q));
+      let n = 0;
+      for (let i = 0; i < 8; i++) {
+        const q = (y + ring[i][1]) * s + x + ring[i][0];
+        if (!mask[q]) continue;
+        got[0][n] = rgb[q * 3];
+        got[1][n] = rgb[q * 3 + 1];
+        got[2][n] = rgb[q * 3 + 2];
+        n++;
       }
-      if (ring.length < 6) continue;
-      const surface = [0, 1, 2].map((k) => median(ring.map((r) => r[k])));
-      if (dist(at(p), surface) > 48) marks[p] = 1;
+      if (n < 6) continue;
+      const d0 = rgb[p * 3] - middle(got[0], n);
+      const d1 = rgb[p * 3 + 1] - middle(got[1], n);
+      const d2 = rgb[p * 3 + 2] - middle(got[2], n);
+      if (d0 * d0 + d1 * d1 + d2 * d2 > 48 * 48) marks[p] = 1;
     }
   // join the pieces of one handle (a ring breaks up into its rim) before reading shapes
   let joined = marks;
@@ -490,35 +514,61 @@ function pullColumn(pulls, x0, x1, y0) {
 /** k-means colour clusters of a view's object pixels: [{ c: [r, g, b], n }] biggest first. */
 function colourClusters(v, k) {
   const s = v.size;
-  const list = [];
+  const pts = [];
   for (let p = 0; p < s * s; p += 2)
-    if (v.mask[p]) list.push([v.rgb[p * 3], v.rgb[p * 3 + 1], v.rgb[p * 3 + 2]]);
-  if (!list.length) return [];
-  // spread the starting centres: each next one is the colour farthest from those chosen
-  const centres = [mean(list)];
-  while (centres.length < k) {
-    let far = list[0];
-    let fd = -1;
-    for (const c of list) {
-      const d = Math.min(...centres.map((m) => dist(c, m)));
-      if (d > fd) ((fd = d), (far = c));
-    }
-    if (fd < 20) break;
-    centres.push(far);
+    if (v.mask[p]) pts.push(v.rgb[p * 3], v.rgb[p * 3 + 1], v.rgb[p * 3 + 2]);
+  if (!pts.length) return [];
+  const list = Float64Array.from(pts);
+  const N = list.length / 3;
+  const d2 = (i, c) => {
+    const a = list[i * 3] - c[0];
+    const b = list[i * 3 + 1] - c[1];
+    const d = list[i * 3 + 2] - c[2];
+    return a * a + b * b + d * d;
+  };
+  const meanOf = (i0, i1, i2, n) => (n ? [i0 / n, i1 / n, i2 / n] : [0, 0, 0]);
+  let sum0 = 0;
+  let sum1 = 0;
+  let sum2 = 0;
+  for (let i = 0; i < N; i++) {
+    sum0 += list[i * 3];
+    sum1 += list[i * 3 + 1];
+    sum2 += list[i * 3 + 2];
   }
-  let groups = [];
-  for (let it = 0; it < 8; it++) {
-    groups = centres.map(() => []);
-    for (const c of list) {
-      let best = 0;
-      for (let i = 1; i < centres.length; i++)
-        if (dist(c, centres[i]) < dist(c, centres[best])) best = i;
-      groups[best].push(c);
+  // spread the starting centres: each next one is the colour farthest from those chosen
+  const centres = [meanOf(sum0, sum1, sum2, N)];
+  while (centres.length < k) {
+    let far = 0;
+    let fd = -1;
+    for (let i = 0; i < N; i++) {
+      let d = Infinity;
+      for (const m of centres) d = Math.min(d, d2(i, m));
+      if (d > fd) ((fd = d), (far = i));
     }
-    groups.forEach((g, i) => g.length && (centres[i] = mean(g)));
+    if (fd < 20 * 20) break;
+    centres.push([list[far * 3], list[far * 3 + 1], list[far * 3 + 2]]);
+  }
+  const counts = new Int32Array(centres.length);
+  for (let it = 0; it < 8; it++) {
+    const acc = new Float64Array(centres.length * 3);
+    counts.fill(0);
+    for (let i = 0; i < N; i++) {
+      let best = 0;
+      let bd = d2(i, centres[0]);
+      for (let c = 1; c < centres.length; c++) {
+        const d = d2(i, centres[c]);
+        if (d < bd) ((bd = d), (best = c));
+      }
+      acc[best * 3] += list[i * 3];
+      acc[best * 3 + 1] += list[i * 3 + 1];
+      acc[best * 3 + 2] += list[i * 3 + 2];
+      counts[best]++;
+    }
+    for (let c = 0; c < centres.length; c++)
+      if (counts[c]) centres[c] = meanOf(acc[c * 3], acc[c * 3 + 1], acc[c * 3 + 2], counts[c]);
   }
   return centres
-    .map((c, i) => ({ c, n: groups[i].length * 2 }))
+    .map((c, i) => ({ c, n: counts[i] * 2 }))
     .filter((g) => g.n)
     .sort((a, b) => b.n - a.n);
 }

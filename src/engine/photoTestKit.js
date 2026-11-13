@@ -70,7 +70,7 @@ export const shrinkTo = (img, edge) => {
  * @param {Record<string, {rgba: Uint8ClampedArray, width: number, height: number}>} slotPhotos at the dialog's size
  * @param {{ sheet?: boolean, forceType?: string, piece?: number }} [options]
  */
-export function dialogBuild(slotPhotos, { sheet = false, forceType, piece = 0 } = {}) {
+export function dialogBuild(slotPhotos, { sheet = false, forceType, piece = 0, onStage } = {}) {
   let photos = {};
   for (const [slot, p] of Object.entries(slotPhotos)) photos[slot] = { ...p };
   if (Boolean(photos.left) !== Boolean(photos.right)) photos = withMirroredSides(photos);
@@ -80,6 +80,7 @@ export function dialogBuild(slotPhotos, { sheet = false, forceType, piece = 0 } 
   const tolerance = noisy ? (sheet ? 35 : 60) : 16;
   const segmented = {};
   const cutouts = {};
+  onStage?.('cut');
   for (const [slot, p] of Object.entries(photos)) {
     const cut = extractForeground(p.rgba, p.width, p.height, {
       tolerance,
@@ -94,9 +95,11 @@ export function dialogBuild(slotPhotos, { sheet = false, forceType, piece = 0 } 
     segmented[slot] = { mask, coverage: maskCoverage(mask), scene, cut };
     cutouts[slot] = { mask, width: p.width, height: p.height };
   }
+  onStage?.('views');
   const views = buildViews(photos, segmented, tolerance);
   const ratios = estimateProportions(cutouts);
   const partial = estimatePartialProportions(cutouts);
+  onStage?.('design');
   const dims = { widthCm: 80, depthCm: 50, heightCm: 80 };
   const start = ratios ? dimensionsFromProportions(ratios, 'widthCm', dims.widthCm) : dims;
   const built = designFromViews(views, { dims: start, forceType, ratios, partial });
@@ -108,18 +111,21 @@ export function dialogBuild(slotPhotos, { sheet = false, forceType, piece = 0 } 
  * busy background is split and the straight-on one used; a product sheet of several views on a plain backdrop goes
  * through the sheet splitter; otherwise it is one photo. `big` is the picture at the dialog's reading size (1800).
  */
-export function dialogPhoto(big, { slot = 'front', forceType, piece } = {}) {
+export function dialogPhoto(big, { slot = 'front', forceType, piece, onStage } = {}) {
+  onStage?.('route');
   const route = photoRoute(big.rgba, big.width, big.height);
-  if (route.kind === 'sheet') return { ...dialogSheet(big, { forceType }), route: 'sheet' };
+  if (route.kind === 'sheet')
+    return { ...dialogSheet(big, { forceType, onStage }), route: 'sheet' };
   const photo =
     route.kind === 'stacked'
       ? { ...shrinkTo(route.parts[route.used], 480), framed: true }
       : shrinkTo(big, 480);
-  return { ...dialogBuild({ [slot]: photo }, { forceType, piece }), route: route.kind };
+  return { ...dialogBuild({ [slot]: photo }, { forceType, piece, onStage }), route: route.kind };
 }
 
 /** A product sheet through the dialog's splitter and "Use these views", then built. */
-export function dialogSheet(big, { forceType } = {}) {
+export function dialogSheet(big, { forceType, onStage } = {}) {
+  onStage?.('split');
   const { slots, detection, quarter } = sheetSlots(big.rgba, big.width, big.height);
   const photos = {};
   detection.views.forEach((v, i) => {
@@ -131,7 +137,7 @@ export function dialogSheet(big, { forceType } = {}) {
       ...(quarter && slot === 'front' ? { quarter } : {}),
     };
   });
-  return { ...dialogBuild(photos, { sheet: true, forceType }), slots, detection };
+  return { ...dialogBuild(photos, { sheet: true, forceType, onStage }), slots, detection };
 }
 
 /**

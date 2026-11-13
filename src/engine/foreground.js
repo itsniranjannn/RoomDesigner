@@ -515,7 +515,13 @@ function otsu(values, weights) {
  * @param {{ fg?: Uint8Array, bg?: Uint8Array }} [hints] brush strokes at the same size (1 = marked)
  * @returns {{ mask: Uint8Array, saliency: Float32Array, background: Float32Array }}
  */
-export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
+/**
+ * The part of the scene cut that does not depend on what the picture's surroundings are taken to be:
+ * superpixels, their colours, which of them touch, and how far apart they are in colour. `extractForeground`
+ * compares two or three readings of one photo that differ only in that prior, so this is worked out once and
+ * shared between them.
+ */
+export function sceneBase(img, hints = {}) {
   const { rgba, width: w, height: h } = img;
   const n = w * h;
   const planes = toLabPlanes(rgba, n);
@@ -610,16 +616,6 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
     bndCon[i] = l / Math.sqrt(a);
     softArea[i] = a / n;
   }
-  // A big, evenly coloured region (a wall that stops short of the border) is surroundings too: furniture is
-  // a smaller part of the picture than the room around it. softArea (narrow) is kept for the maps.
-  // wall and floor are plain and pale-to-neutral; a big region of rich colour (warm wood, teal fabric) is the piece
-  const bigOf = (i) => {
-    if (!wallRule) return 0;
-    const chroma = Math.hypot(col[i][1], col[i][2]);
-    const plain = Math.min(1, Math.max(0, (20 - chroma) / 8));
-    return Math.min(1, Math.max(0, (wideArea[i] - 0.12) / 0.07)) * plain;
-  };
-  const bgGeo = Array.from(bndCon, (b, i) => Math.max(1 - Math.exp(-(b * b) / 2), 0.95 * bigOf(i)));
   // A colour region that is tall and narrow and runs most of the picture's height is a wall panel, a door or a
   // curtain, not furniture
   const towers = new Float64Array(count);
@@ -639,6 +635,67 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
     const hf = y1 - y0;
     towers[i] = hf >= 0.4 && wf <= 0.32 && hf / wf >= 2.2 ? 1 : 0;
   }
+  const meanDiff =
+    [...adj.values()].reduce((a, e) => a + e.diff / e.len, 0) / Math.max(1, adj.size);
+  return {
+    w,
+    h,
+    n,
+    planes,
+    labels,
+    count,
+    area,
+    col,
+    cx,
+    cy,
+    border,
+    hintFg,
+    hintBg,
+    adj,
+    dc,
+    geo,
+    bndCon,
+    wideArea,
+    towers,
+    meanDiff,
+  };
+}
+
+/**
+ * One reading of a room photo: GrabCut on the superpixel graph with a given prior for what the surroundings
+ * are. Pass `base` (from `sceneBase`) to share the work that every reading of the same photo has in common.
+ */
+export function sceneCut(img, hints = {}, { wallRule = true, base = null } = {}) {
+  const {
+    w,
+    h,
+    n,
+    planes,
+    labels,
+    count,
+    area,
+    col,
+    cx,
+    cy,
+    hintFg,
+    hintBg,
+    adj,
+    dc,
+    bndCon,
+    wideArea,
+    towers,
+    meanDiff,
+  } = base || sceneBase(img, hints);
+  // A big, evenly coloured region (a wall that stops short of the border) is surroundings too: furniture is
+  // a smaller part of the picture than the room around it. softArea (narrow) is kept for the maps.
+  // wall and floor are plain and pale-to-neutral; a big region of rich colour (warm wood, teal fabric) is the piece
+  const bigOf = (i) => {
+    if (!wallRule) return 0;
+    const chroma = Math.hypot(col[i][1], col[i][2]);
+    const plain = Math.min(1, Math.max(0, (20 - chroma) / 8));
+    return Math.min(1, Math.max(0, (wideArea[i] - 0.12) / 0.07)) * plain;
+  };
+  const bgGeo = Array.from(bndCon, (b, i) => Math.max(1 - Math.exp(-(b * b) / 2), 0.95 * bigOf(i)));
   const region = hints.region;
   const inFrac = new Float64Array(count);
   const coreFrac = new Float64Array(count);
@@ -700,8 +757,6 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
   }
 
   // GrabCut on the superpixel graph
-  const meanDiff =
-    [...adj.values()].reduce((a, e) => a + e.diff / e.len, 0) / Math.max(1, adj.size);
   const beta = 1 / (2 * Math.max(4, meanDiff) ** 2);
   const lambda = 10;
   const hintsSamples = { fg: [], bg: [] };
@@ -1482,9 +1537,11 @@ export function extractForeground(rgba, width, height, options = {}) {
     let best = null;
     const readings = inside ? [{ wallRule: false }] : [{ wallRule: true }, { wallRule: false }];
     if (!inside && !edited && options.framed) readings.push({ wallRule: false, framed: true });
+    // the readings differ only in their prior, so the superpixels and their colour graph are worked out once
+    const base = sceneBase(small, hints);
     for (const { wallRule, framed } of readings) {
       const h = framed ? { ...hints, region: frameRegion(sw, sh) } : hints;
-      const cutA = sceneCut(small, h, { wallRule });
+      const cutA = sceneCut(small, h, { wallRule, base });
       if (inside) for (let p = 0; p < cutA.mask.length; p++) if (!inside[p]) cutA.mask[p] = 0;
       const tidyA = tidy(cutA.mask, sw, sh, hints);
       // (the whole-frame reading is taken only when it looks more like a piece than the others)
