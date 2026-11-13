@@ -18,6 +18,7 @@ import {
   placeDoorHandle,
   PULL_MAX,
   KNEE_SPACE,
+  PEDESTAL_FLOOR,
 } from './designLayout.js';
 import { effectivePalette } from './designPalette.js';
 import { glassOutline, sheenPolygons } from './designCasework.jsx';
@@ -133,7 +134,8 @@ describe('1. desks resized narrow keep sensible pedestals', () => {
       }
   });
 
-  it('leaves room for the knees beside every full-height pedestal', () => {
+  // The knee space is a target the pedestal gives way to only at its floor width: see designDetails.test.jsx
+  it('leaves room for the knees, or a pedestal narrowed to its floor', () => {
     for (const traits of DESK_COMBOS.filter((t) => t.drawers > 1))
       for (let cm = 40; cm <= 240; cm += 5) {
         const widthM = cm / 100;
@@ -147,8 +149,9 @@ describe('1. desks resized narrow keep sensible pedestals', () => {
           D.pedestals.length === 2
             ? b.x - b.w / 2 - (a.x + a.w / 2)
             : Math.abs(a.x) - a.w / 2 + D.support;
-        expect(knee, at).toBeGreaterThanOrEqual(KNEE_SPACE - 1e-9);
-        expect(a.w, at).toBeGreaterThanOrEqual(0.2);
+        expect(knee >= KNEE_SPACE - 1e-9 || a.w <= PEDESTAL_FLOOR + 1e-9, at).toBe(true);
+        expect(knee, at).toBeGreaterThan(0.09);
+        expect(a.w, at).toBeGreaterThanOrEqual(PEDESTAL_FLOOR - 1e-9);
       }
   });
 

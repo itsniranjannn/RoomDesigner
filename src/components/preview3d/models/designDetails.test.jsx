@@ -11,6 +11,13 @@ import { createRoot, act, extend } from '@react-three/fiber';
 import { CustomMeshModel } from './customMesh.jsx';
 import { ArchitecturalSilhouette } from '../../canvas/ArchitecturalSilhouette.jsx';
 import { sanitizeDesign } from '../../../engine/design.js';
+import {
+  deskLayout,
+  deskLegThick,
+  KNEE_SPACE,
+  PEDESTAL_FLOOR,
+  OVAL_MIN_H,
+} from './designLayout.js';
 
 extend(THREE);
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
@@ -23,11 +30,11 @@ afterAll(() => spy.mockRestore());
 
 export const record = (type, palette, traits) => sanitizeDesign({ v: 1, type, palette, traits });
 
-export const plan = (design, [w, d], color = design.palette.body) =>
+export const plan = (design, [w, d, h], color = design.palette.body) =>
   renderToStaticMarkup(
     <svg>
       <ArchitecturalSilhouette
-        item={{ shapeType: 'custom-mesh', color, design }}
+        item={{ shapeType: 'custom-mesh', color, design, heightCm: h ? h * 100 : undefined }}
         widthCm={w * 100}
         depthCm={d * 100}
       />
@@ -449,6 +456,144 @@ describe('2e. handles and mirrors that cannot fit are left out', () => {
               expect(h.max.x, at).toBeLessThanOrEqual(box.max.x + 1e-6);
             }
         });
+      }
+  });
+});
+
+describe('2f. a narrow desk keeps the drawers the photos showed', () => {
+  const sizes = (traits, cm) => {
+    const widthM = cm / 100;
+    const legThick = deskLegThick(widthM, traits);
+    return {
+      widthM,
+      D: deskLayout({ widthM, depthM: 0.6, heightM: 0.75, traits, legThick }),
+    };
+  };
+
+  it('keeps a pedestal down to about 45 cm, at a width that still reads as drawers', () => {
+    for (const ped of ['left', 'right', 'both'])
+      for (const cm of [45, 50, 60, 70, 80, 100, 120]) {
+        const { D } = sizes({ ped, drawers: 3 }, cm);
+        const at = `${ped} at ${cm} cm`;
+        expect(D.pedestals.length, at).toBeGreaterThanOrEqual(1);
+        for (const p of D.pedestals) expect(p.w, at).toBeGreaterThanOrEqual(PEDESTAL_FLOOR - 1e-9);
+      }
+  });
+
+  it('gives up the knee space only once the pedestal is at its floor', () => {
+    for (const ped of ['left', 'right', 'both'])
+      for (let cm = 40; cm <= 240; cm += 5) {
+        const { widthM, D } = sizes({ ped, drawers: 3 }, cm);
+        if (!D.pedestals.length) continue;
+        const at = `${ped} at ${cm} cm`;
+        const [a, b] = D.pedestals;
+        const knee =
+          D.pedestals.length === 2
+            ? b.x - b.w / 2 - (a.x + a.w / 2)
+            : Math.abs(a.x) - a.w / 2 + D.support;
+        // either the knee target is met, or the pedestal is down at its floor and cannot give any more
+        expect(
+          knee >= KNEE_SPACE - 1e-9 || a.w <= PEDESTAL_FLOOR + 1e-9,
+          `${at}: knee ${knee.toFixed(3)} pedestal ${a.w.toFixed(3)}`
+        ).toBe(true);
+        // whatever happens there is always a gap, and the pedestals stay on the desk
+        expect(knee, at).toBeGreaterThan(0.09);
+        for (const p of D.pedestals)
+          expect(Math.abs(p.x) + p.w / 2, at).toBeLessThanOrEqual(widthM / 2 + 1e-9);
+      }
+  });
+
+  it('falls back from two pedestals to one, and only then to none', () => {
+    const count = (cm) => sizes({ ped: 'both', drawers: 3 }, cm).D.pedestals.length;
+    expect(count(120)).toBe(2);
+    expect(count(80)).toBe(2);
+    expect(count(55)).toBe(1);
+    expect(count(50)).toBe(1);
+    expect(count(30)).toBe(0);
+    // the fallback is monotone: wider is never worse
+    let last = 0;
+    for (let cm = 20; cm <= 200; cm += 2) {
+      const n = count(cm);
+      expect(n, `${cm} cm`).toBeGreaterThanOrEqual(last === 2 ? 2 : 0);
+      last = Math.max(last, n);
+    }
+  });
+
+  it('leaves the pedestal out only on a desk too narrow for the floor width', () => {
+    for (const ped of ['left', 'right'])
+      for (const cm of [20, 30, 35, 40]) {
+        const { D } = sizes({ ped, drawers: 3 }, cm);
+        if (D.pedestals.length) expect(D.pedestals[0].w).toBeGreaterThanOrEqual(PEDESTAL_FLOOR);
+      }
+    expect(sizes({ ped: 'left', drawers: 3 }, 25).D.pedestals).toHaveLength(0);
+    expect(sizes({ ped: 'left', drawers: 3 }, 50).D.pedestals).toHaveLength(1);
+  });
+
+  it('draws the narrow desk with its drawers, inside the footprint', async () => {
+    for (const cm of [50, 60, 80])
+      for (const ped of ['left', 'right', 'both']) {
+        const design = record('desk', OFFICE, { ped, drawers: 3 });
+        const size = [cm / 100, 0.5, 0.75];
+        const at = `${ped} at ${cm} cm`;
+        await inScene(design, size, (scene) => {
+          expect(named(scene, 'pedestal').length, at).toBeGreaterThanOrEqual(1);
+          expect(named(scene, 'drawers').length, at).toBeGreaterThanOrEqual(1);
+          const all = bbox(scene);
+          expect(all.min.x, at).toBeGreaterThanOrEqual(-size[0] / 2 - 1e-6);
+          expect(all.max.x, at).toBeLessThanOrEqual(size[0] / 2 + 1e-6);
+        });
+        expect(plan(design, size), at).not.toMatch(/\s(width|height|r|rx|ry)="-|NaN|Infinity/);
+      }
+  });
+});
+
+describe('an oval mirror too short to read as one is left off', () => {
+  it('drops it on a short door, in 3D and on the plan', async () => {
+    const traits = { doors: 3, drawers: 2, dside: 'full', handle: 'ring', upper: 1, mirror: 2 };
+    const design = record('wardrobe', WOOD, traits);
+    await inScene(design, [0.7, 0.6, 0.8], (scene) => {
+      expect(named(scene, 'wardrobe-mirror')).toHaveLength(0);
+    });
+    expect(plan(design, [0.7, 0.6, 0.8])).not.toContain('#CFE3EA');
+    // the same wardrobe tall enough keeps it
+    expect(plan(design, [0.7, 0.6, 2.0])).toContain('#CFE3EA');
+  });
+
+  it('keeps it once the door is tall enough', async () => {
+    const design = record('wardrobe', WOOD, { doors: 2, mirror: 2, handle: 'ring' });
+    for (const heightM of [1.4, 1.85, 2.2]) {
+      const glass = await inScene(design, [1.0, 0.6, heightM], (scene) =>
+        named(scene, 'wardrobe-mirror').map(bbox)
+      );
+      expect(glass.length, `h=${heightM}`).toBe(1);
+      expect(glass[0].max.y - glass[0].min.y, `h=${heightM}`).toBeGreaterThanOrEqual(OVAL_MIN_H);
+    }
+  });
+
+  it('the plan marks the mirror door only where the 3D draws one', async () => {
+    for (const heightM of [0.6, 0.8, 1.0, 1.4, 2.0])
+      for (const mirror of [1, 2]) {
+        const design = record('wardrobe', WOOD, { doors: 2, mirror, handle: 'bar' });
+        const drawn = await inScene(
+          design,
+          [1.0, 0.6, heightM],
+          (scene) => named(scene, 'wardrobe-mirror').length > 0
+        );
+        const html = renderToStaticMarkup(
+          <svg>
+            <ArchitecturalSilhouette
+              item={{
+                shapeType: 'custom-mesh',
+                color: design.palette.body,
+                design,
+                heightCm: heightM * 100,
+              }}
+              widthCm={100}
+              depthCm={60}
+            />
+          </svg>
+        );
+        expect(html.includes('#CFE3EA'), `mirror ${mirror} at h=${heightM}`).toBe(drawn);
       }
   });
 });

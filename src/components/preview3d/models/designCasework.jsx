@@ -15,6 +15,7 @@ import {
   placeDoorHandle,
   doorHandleSpot,
   mirrorSpan,
+  OVAL_MIN_H,
 } from './designLayout.js';
 import { metalFinish } from './designShapes.jsx';
 
@@ -377,10 +378,12 @@ export function WardrobeDesign({ widthM, depthM, heightM, palette, traits }) {
     const spot = doorHandleSpot(handle, c.w);
     const span = i === L.mirrorIdx ? mirrorSpan(c.x, c.w, c.edge, spot) : null;
     const ovalW = span ? Math.min(c.w * 0.62, 0.42, span.w) : 0;
+    // An oval too short to read as a mirror would look like a porthole, so the door has none
+    const ovalH = (y1 - y0) * 0.72;
     const mirror =
       span && traits.mirror === 1 && y1 - y0 >= 0.15
         ? 1
-        : span && traits.mirror === 2 && ovalW >= 0.06 && (y1 - y0) * 0.72 >= 0.1
+        : span && traits.mirror === 2 && ovalW >= 0.06 && ovalH >= OVAL_MIN_H
           ? 2
           : 0;
     // A mirror door on a two-tone wardrobe keeps the body colour (a mirror set in a wood door)

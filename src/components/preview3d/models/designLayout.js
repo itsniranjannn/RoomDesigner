@@ -162,18 +162,21 @@ export function deskLegThick(widthM, traits) {
   return traits.legFrac ? clamp(traits.legFrac * widthM, 0.03, 0.1) : 0.05;
 }
 
-/** Clear width a desk keeps for the knees between a full-height pedestal and whatever is beside it. */
+/** Clear width a desk aims to keep for the knees beside a full-height pedestal, where the width allows it. */
 export const KNEE_SPACE = 0.45;
-/** Narrowest drawer pedestal (full height) and hanging drawer worth drawing. */
-const PEDESTAL_MIN = 0.2;
+/** Narrowest pedestal whose drawer fronts still read as drawers, and the narrowest hanging drawer. */
+export const PEDESTAL_FLOOR = 0.23;
 const HANGING_MIN = 0.15;
+/** Gap a pedestal always leaves to the legs, end frame or pedestal facing it. */
+const MIN_GAP = 0.1;
 
 /**
  * Where a desk's supports go: the end frames, any pedestals and the legs, from its traits.
- * A full-height pedestal is about 30% of the desk wide, never leaving less than 45 cm for the knees between it
- * and the other pedestal, legs or end; one that would be under 20 cm wide is left out and the desk keeps its legs.
- * A single drawer hangs under the top inside the legs (at least 15 cm wide) and stops in front of a modesty panel.
- * Each pedestal runs from z0 (back) to z1 (front).
+ * A full-height pedestal is about 30% of the desk wide and gives way to 45 cm of knee space, but never narrows
+ * past the floor where its drawers stop reading as drawers: the photos showed drawers, so a narrow desk keeps
+ * them and loses the knee room instead. A desk with no room for two pedestals at that floor gets one, and one
+ * with no room for even a single one gets none. A single drawer hangs under the top inside the legs and stops
+ * in front of a modesty panel. Each pedestal runs from z0 (back) to z1 (front).
  */
 export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 }) {
   const topT = (traits.topH ?? 3.5) / 100;
@@ -184,7 +187,6 @@ export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 })
   const endT = base === 'panel' ? 0.025 : base === 'sled' ? 0.05 : 0;
   const endX = widthM / 2 - 0.03 - endT / 2;
   const wanted = ped === 'both' ? [-1, 1] : ped === 'left' ? [-1] : ped === 'right' ? [1] : [];
-  const n = Math.max(1, wanted.length);
   const hanging = drawers === 1;
   // Outer side of a pedestal: inside the end frames, at the edge of the top, or (a hanging drawer) just inside
   // the inner face of the legs, which stand at the corners however the drawer is placed
@@ -197,18 +199,21 @@ export function deskLayout({ widthM, depthM, heightM, traits, legThick = 0.05 })
   // Inner face of the legs or end frame at the other end of the desk
   const support = base === 'legs' ? widthM / 2 - 0.03 - legThick : endX - endT / 2;
   const preferred = clamp(widthM * 0.3, 0.3, 0.45);
-  const pw = hanging
-    ? Math.min(preferred, Math.max(widthM - 0.5, inner) / n)
-    : Math.min(
-        preferred,
-        (widthM - 0.5) / n,
-        n === 2 ? inner - KNEE_SPACE / 2 : inner + support - KNEE_SPACE
-      );
+  const floor = hanging ? HANGING_MIN : PEDESTAL_FLOOR;
+  // The widest pedestal `k` of them can be: all of them, with a gap of at least MIN_GAP beside each
+  const roomFor = (k) => (k === 2 ? inner - MIN_GAP / 2 : inner + support - MIN_GAP);
+  // The widest that still leaves the knee space; below the floor the floor wins and the knees give way
+  const kneeLimited = (k) => (k === 2 ? inner - KNEE_SPACE / 2 : inner + support - KNEE_SPACE);
+  const widthOf = (k) => Math.min(preferred, Math.max(kneeLimited(k), floor), roomFor(k));
   // Front and back of a pedestal box; a hanging drawer stops in front of the modesty panel
   const z1 = depthM / 2 - 0.06;
   const z0 = hanging && traits.modesty ? -depthM / 2 + 0.06 : -depthM / 2 + 0.02;
-  const fits = pw >= (hanging ? HANGING_MIN : PEDESTAL_MIN) && z1 - z0 >= 0.06;
-  const sides = fits ? wanted : [];
+  const deepEnough = z1 - z0 >= 0.06;
+  // Two pedestals while both fit at the floor width, otherwise one, otherwise none
+  let count = deepEnough ? wanted.length : 0;
+  while (count > 0 && widthOf(count) < floor) count -= 1;
+  const pw = widthOf(Math.max(1, count));
+  const sides = count === wanted.length ? wanted : wanted.slice(0, count);
   const pedestals = sides.map((s) => ({
     side: s,
     x: s * (inner - pw / 2),
@@ -264,6 +269,9 @@ export function doorHandleSpot(style, doorW) {
 
 /** Margin a door mirror keeps from the door's edge where there is no handle. */
 export const MIRROR_MARGIN = 0.035;
+
+/** Shortest oval mirror that still reads as a mirror rather than a porthole on a short door. */
+export const OVAL_MIN_H = 0.25;
 
 /**
  * The width a mirror may take across a door centred at `x`, `w` wide, with its handle (`spot`, or none) on side

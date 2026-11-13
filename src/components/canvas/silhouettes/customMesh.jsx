@@ -11,6 +11,7 @@ import {
   wrapThickness,
   doorHandleSpot,
   mirrorSpan,
+  OVAL_MIN_H,
 } from '../../preview3d/models/designLayout.js';
 import { effectivePalette, shadeColour } from '../../preview3d/models/designPalette.js';
 import { SwingArc, BarHandle } from './parts.jsx';
@@ -1091,12 +1092,14 @@ const HIDDEN = { fill: 'none', stroke: LINE, strokeWidth: 0.7, strokeDasharray: 
  * Wardrobe from above: the carcass with its doors along the front, a swing arc and handle for each, the
  * mirror door picked out in glass blue, and an open niche drawn as the recess behind the front.
  */
-function WardrobePlan({ design, widthCm, depthCm, hw, hd, color }) {
+function WardrobePlan({ design, widthCm, depthCm, heightCm, hw, hd, color }) {
   const { traits = {} } = design;
   const eff = planPalette(design, color);
   const door = eff.door || eff.body;
   const handle = eff.trim || '#C4A869';
-  const L = wardrobeLayout({ widthM: widthCm / 100, heightM: 2.2, traits });
+  // The height only decides whether a mirror is drawn at all; a piece saved without one reads as full height
+  const heightM = Number.isFinite(heightCm) ? heightCm / 100 : 2.2;
+  const L = wardrobeLayout({ widthM: widthCm / 100, heightM, traits });
   const front = 2.4;
   const swing = Math.min(30, depthCm * 0.5);
   return (
@@ -1132,7 +1135,14 @@ function WardrobePlan({ design, widthCm, depthCm, hw, hd, color }) {
         const x0 = (c.x - c.w / 2) * 100;
         const w = c.w * 100;
         const spot = doorHandleSpot(traits.handle || 'bar', c.w);
-        const mirror = i === L.mirrorIdx && !!mirrorSpan(c.x, c.w, c.edge, spot);
+        // The same rule as the 3D: no mirror where it does not fit, and no oval too short to read as one
+        const span = i === L.mirrorIdx ? mirrorSpan(c.x, c.w, c.edge, spot) : null;
+        const mirror =
+          !!span &&
+          (traits.mirror === 1
+            ? c.top - c.bottom >= 0.15
+            : Math.min(c.w * 0.62, 0.42, span.w) >= 0.06 &&
+              (c.top - c.bottom) * 0.72 >= OVAL_MIN_H);
         const hinge = c.edge > 0 ? x0 : x0 + w;
         return (
           <g key={i}>
@@ -1382,6 +1392,7 @@ export function CustomMeshSilhouette({ item, widthCm, depthCm, hw, hd, color, is
         design={item.design}
         widthCm={widthCm}
         depthCm={depthCm}
+        heightCm={item.heightCm}
         hw={hw}
         hd={hd}
         color={color}
