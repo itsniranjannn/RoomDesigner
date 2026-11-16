@@ -2,7 +2,9 @@
   /* Palette: traditional Nepali interior materials (names kept so existing modules still resolve) */
   --color-ink: #1a1615; /* Aged Sal timber */
   --color-ink-muted: #5c544e;
-  --color-ink-faint: #8a8077;
+  /* The quietest ink still carries real words (sizes, counts, hints), so it clears 4.5:1 on
+     paper (4.70:1) and on white (4.90:1); the old #8a8077 managed only 3.71 and 3.86. */
+  --color-ink-faint: #797065;
   --color-linen: #f6f2ea; /* Lokta paper: app background */
   --color-linen-surface: #ede6d9;
   --color-linen-subtle: #e2d9c8;
@@ -71,7 +73,9 @@
   --shadow-pop: 0 10px 28px -6px rgba(28, 26, 23, 0.2), 0 2px 6px rgba(28, 26, 23, 0.08);
   --shadow-panel: 0 1px 2px rgba(28, 26, 23, 0.04), 0 6px 20px -8px rgba(28, 26, 23, 0.12);
   --shadow-knob: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --focus-ring: 0 0 0 3px rgba(34, 72, 94, 0.28);
+  /* Opaque, so a keyboard user can see where they are: 28% indigo measured 1.6:1 against the
+     page, under the 3:1 a focus indicator needs. The paper gap keeps it off a dark fill. */
+  --focus-ring: 0 0 0 2px var(--color-paper), 0 0 0 5px var(--color-indigo);
 
   /* Shape */
   --radius-sm: 6px;
@@ -84,6 +88,10 @@
   --control-h-sm: 32px;
   --border: 1px solid var(--color-taupe);
   --border-soft: 1px solid var(--color-taupe-light);
+  /* An empty text box or dropdown has nothing but its edge to show it is there, so that edge
+     clears the 3:1 a control needs (3.08:1); the taupe used elsewhere managed 1.58. */
+  --color-field-edge: #998d7b;
+  --border-field: 1px solid var(--color-field-edge);
 
   /* Layout: panels are cards on the linen page, separated by one gutter */
   --gutter: 12px;
