@@ -118,6 +118,24 @@ function withSnapshotLook(room, snapshot) {
 
 const newItemId = () => `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
+/**
+ * Photo-made types deleted from My furniture in this session. Their photos and their 3D model are
+ * gone for good, so undo and redo must never put a copy back: it would come back as a nameless
+ * grey box that nothing can restore.
+ */
+const removedCustomTypes = new Set();
+
+const withoutRemovedTypes = (items) =>
+  removedCustomTypes.size === 0 || !Array.isArray(items)
+    ? items
+    : items.filter((item) => !removedCustomTypes.has(item.furnitureTypeId));
+
+/** A history snapshot with any copy of a deleted photo-made piece taken out. */
+const scrubSnapshot = (snapshot) => ({
+  ...snapshot,
+  placedFurniture: withoutRemovedTypes(snapshot.placedFurniture),
+});
+
 /** The latest unsaved room, written after a short pause or as soon as the open room changes. */
 let pendingSave = null;
 
@@ -262,7 +280,7 @@ export const useRoomStore = create((set, get) => ({
     const updatedRoom = withSnapshotLook(
       {
         ...room,
-        placedFurniture: prevSnapshot.placedFurniture,
+        placedFurniture: withoutRemovedTypes(prevSnapshot.placedFurniture),
         doors: prevSnapshot.doors,
         windows: prevSnapshot.windows,
         ...restoredServices(room, prevSnapshot),
@@ -315,7 +333,7 @@ export const useRoomStore = create((set, get) => ({
     const updatedRoom = withSnapshotLook(
       {
         ...room,
-        placedFurniture: nextSnapshot.placedFurniture,
+        placedFurniture: withoutRemovedTypes(nextSnapshot.placedFurniture),
         doors: nextSnapshot.doors,
         windows: nextSnapshot.windows,
         ...restoredServices(room, nextSnapshot),
@@ -1193,6 +1211,7 @@ export const useRoomStore = create((set, get) => ({
   },
 
   addCustomFurniture: async (def) => {
+    removedCustomTypes.delete(def.id);
     registerCustomFurniture(def);
     try {
       await saveCustomFurnitureToDB(def);
@@ -1204,6 +1223,7 @@ export const useRoomStore = create((set, get) => ({
   },
 
   removeCustomFurniture: async (id) => {
+    removedCustomTypes.add(id);
     unregisterCustomFurniture(id);
     await deleteCustomFurnitureFromDB(id);
     // Copies placed in rooms go too, as the confirmation promises (otherwise they stay as
@@ -1221,13 +1241,20 @@ export const useRoomStore = create((set, get) => ({
     }
     const open = get().room;
     if (open && (open.placedFurniture || []).some((i) => i.furnitureTypeId === id)) {
+      // One history step for the deletion, so an undo does not jump back past it
+      get()._recordHistory();
       get()._commitFurnitureUpdate(
         open.placedFurniture.filter((i) => i.furnitureTypeId !== id),
         null
       );
       set({ selectedItemId: null, selectedItemIds: [] });
     }
-    set((state) => ({ customVersion: state.customVersion + 1 }));
+    // The piece is gone from every snapshot too, so no undo can replay a copy of it
+    set((state) => ({
+      customVersion: state.customVersion + 1,
+      undoStack: state.undoStack.map(scrubSnapshot),
+      redoStack: state.redoStack.map(scrubSnapshot),
+    }));
   },
 
   // Create a new custom room

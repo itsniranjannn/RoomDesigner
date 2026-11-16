@@ -125,4 +125,38 @@ describe('roomStore', () => {
     expect(state().room.id).toBe(room.id);
     expect(state().room.placedFurniture).toHaveLength(1);
   });
+
+  // Deleting a photo-made piece deletes its photos and its model for good, so no undo may
+  // bring a copy back: it would return as a nameless grey box that nothing can restore.
+  it('never brings a deleted photo-made piece back with undo or redo', async () => {
+    const typeId = 'custom-probe-chair';
+    await state().addCustomFurniture({
+      id: typeId,
+      name: 'Probe chair',
+      widthCm: 60,
+      depthCm: 62,
+      heightCm: 90,
+      color: '#7a4b2a',
+    });
+    state().addFurniture(typeId, 200, 200);
+    state().addFurniture('coffee-table', 400, 300);
+    const types = () => state().room.placedFurniture.map((i) => i.furnitureTypeId);
+    expect(types()).toContain(typeId);
+
+    await state().removeCustomFurniture(typeId);
+    expect(types()).toEqual(['coffee-table']);
+
+    // Walk the whole history both ways: the chair must never come back
+    const seen = [];
+    for (let i = 0; i < 4; i += 1) {
+      state().undo();
+      seen.push(...types());
+    }
+    for (let i = 0; i < 4; i += 1) {
+      state().redo();
+      seen.push(...types());
+    }
+    expect(seen).not.toContain(typeId);
+    expect(types()).toEqual(['coffee-table']);
+  });
 });
