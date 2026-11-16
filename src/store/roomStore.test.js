@@ -103,6 +103,23 @@ describe('roomStore', () => {
       expect(state().resizeRoom(200, 1500)).toBe(null);
     });
 
+    it('leaves a room that is not a rectangle to the walls it was drawn with', () => {
+      const room = state().room;
+      useRoomStore.setState({
+        room: {
+          ...room,
+          outline: [
+            [0, 0],
+            [600, 0],
+            [600, 500],
+            [0, 500],
+          ],
+        },
+      });
+      expect(state().resizeRoom(300, 300)).toBe(null);
+      expect(state().room).toMatchObject({ widthCm: 600, depthCm: 500 });
+    });
+
     it('brings furniture and openings inside the new walls and says what moved', () => {
       state().addFurniture('nightstand', 560, 460);
       const item = () => state().room.placedFurniture[0];

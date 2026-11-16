@@ -809,11 +809,17 @@ export const useRoomStore = create((set, get) => ({
    * and a door or window on a wall that is now shorter is slid, and a window narrowed, until it
    * fits. The counts come back so the panel can say what had to move.
    *
-   * @returns {{ widthCm, depthCm, movedPieces, movedOpenings } | null} null if nothing changed
+   * @returns {{ widthCm, depthCm, movedPieces, movedOpenings, movedServices } | null}
+   *   null when there is nothing to do, or when the room's shape is not this panel's to change
    */
   resizeRoom: (widthCm, depthCm) => {
     const { room } = get();
     if (!room) return null;
+    // A room that is not a plain rectangle takes its shape from the walls it was drawn with in the
+    // flat designer, and its openings sit on numbered edges rather than on a named wall: resizing
+    // the box around it would refit them against the wrong walls. Refused here as in the panel,
+    // which offers no boxes for such a room.
+    if (hasOutline(room)) return null;
     // Nothing asked for keeps the side it is: an empty box must not be read as a 0 cm wall
     const asked = (raw, fallback) => {
       if (raw === null || raw === undefined || raw === '') return fallback;
