@@ -32,4 +32,20 @@ test.describe('persistence', () => {
     await panel.getByText('Guest Room').first().click();
     await expect(page.getByRole('textbox', { name: 'Room name' })).toHaveValue('Guest Room');
   });
+
+  test('the count on the landing page includes saved flats, not only rooms', async ({ page }) => {
+    await openApp(page);
+    const badge = page.getByRole('button', { name: 'Open saved sheets panel' }).first();
+    await expect(badge).toContainText('00');
+
+    await page.getByRole('button', { name: 'Design a flat' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Design a flat' });
+    await dialog.getByRole('button', { name: 'Create flat' }).click();
+    await expect(page.getByRole('application')).toBeVisible();
+
+    await page.goto('/');
+    await expect(
+      page.getByRole('button', { name: 'Open saved sheets panel' }).first()
+    ).toContainText('01');
+  });
 });

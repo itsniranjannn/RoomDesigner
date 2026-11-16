@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
+import { useFlatStore } from '../../store/flatStore.js';
 import { Button } from '../common/Button.jsx';
 import { Info, Layers3, Plus, Building2 } from 'lucide-react';
 import { BrandMark } from '../common/BrandMark.jsx';
@@ -391,6 +392,9 @@ function DraftingBoardSurface() {
 
 export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigateAbout }) {
   const allRooms = useRoomStore((state) => state.allRooms);
+  const flats = useFlatStore((state) => state.flats);
+  // The badge counts what the panel it opens lists: saved rooms and saved flats
+  const savedCount = allRooms.length + flats.length;
   const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
 
@@ -432,9 +436,7 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
           >
             <Layers3 size={13} strokeWidth={1.7} />
             <span className={styles.headerSheetsLabel}>SHEETS</span>
-            <span className={styles.headerSheetsCount}>
-              {String(allRooms.length).padStart(2, '0')}
-            </span>
+            <span className={styles.headerSheetsCount}>{String(savedCount).padStart(2, '0')}</span>
           </button>
         </nav>
       </header>
