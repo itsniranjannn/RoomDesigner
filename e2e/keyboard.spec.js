@@ -393,6 +393,61 @@ test.describe('the walkthrough hands focus on and gives it back', () => {
   });
 });
 
+/** A plain "photo" drawn on a canvas inside the page: a solid cabinet on a light backdrop. */
+async function makeCabinetPng(page) {
+  const base64 = await page.evaluate(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 320;
+    canvas.height = 480;
+    const g = canvas.getContext('2d');
+    const r = (x, y, w, h, c) => {
+      g.fillStyle = c;
+      g.fillRect(x, y, w, h);
+    };
+    r(0, 0, 320, 480, '#cfcfcf');
+    r(60, 30, 200, 420, '#8a6a4a'); // carcass
+    r(66, 36, 188, 200, '#93724f'); // upper door
+    r(66, 244, 188, 200, '#9c7a55'); // lower door
+    return canvas.toDataURL('image/png').split(',')[1];
+  });
+  return Buffer.from(base64, 'base64');
+}
+
+test.describe('the photo dialog hands focus back when the model is built', () => {
+  test('the build button keeps the keyboard, and the dialog says the model is ready', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await catalog.getByRole('button', { name: /Create from photos/ }).click();
+    const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
+    await dialog
+      .getByLabel('Front photo', { exact: true })
+      .setInputFiles({
+        name: 'cabinet.png',
+        mimeType: 'image/png',
+        buffer: await makeCabinetPng(page),
+      });
+
+    // Build it with the keyboard. The button is disabled while it works, which drops the focus.
+    const build = dialog.getByRole('button', { name: 'Build 3D model' });
+    await expect(build).toBeEnabled();
+    await build.focus();
+    await page.keyboard.press('Enter');
+
+    // The same button, now relabelled, has the keyboard back when the work is finished
+    const rebuild = dialog.getByRole('button', { name: 'Rebuild model' });
+    await expect(rebuild).toBeEnabled({ timeout: 45_000 });
+    await expect(rebuild).toBeFocused();
+
+    // And it is said out loud, for anyone who was not watching the preview
+    await expect(
+      dialog.getByRole('status').filter({ hasText: 'The model is built' })
+    ).toBeVisible();
+  });
+});
+
 test.describe('getting around with Tab', () => {
   test('a skip link is the first thing in the furniture list and reaches the plan', async ({
     page,

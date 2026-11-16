@@ -19,6 +19,7 @@ import { Modal } from '../common/Modal.jsx';
 import { Button } from '../common/Button.jsx';
 import { NumberField, RangeField, TextField } from '../common/Field.jsx';
 import { Notice } from '../common/Notice.jsx';
+import { focusWhenReady } from '../layout/hooks.js';
 import { useRoomStore } from '../../store/roomStore.js';
 import { readImage, imageFromPixels } from '../../engine/image.js';
 import {
@@ -1028,6 +1029,7 @@ export function PhotoModelModal({ onClose }) {
   const [picked, setPicked] = useState({}); // slot -> piece indexes ticked to save together
   const [splitInfo, setSplitInfo] = useState(null); // { slot, original, parts } after a stacked picture was split
   const [placeAll, setPlaceAll] = useState(false);
+  const [built, setBuilt] = useState(false); // a build has just finished: say so, and hand the focus back
   const inputs = useRef({});
   const sheetPanel = useRef(null);
   const sheetShown = useRef(false);
@@ -1139,7 +1141,18 @@ export function PhotoModelModal({ onClose }) {
     setDesign(null);
     setCandidates(null);
     setProbe(null);
+    setBuilt(false);
   }, [segmented]);
+
+  // Building disables the button that started it, so the browser drops the focus onto <body> and
+  // the next Tab starts again at the top of the dialog. When the build is done the button is back
+  // (now "Rebuild model") and takes the focus again, unless the user has moved it somewhere else
+  // meanwhile. The line under the preview says the model is ready, for anyone not watching it.
+  const wasBusy = useRef(false);
+  useEffect(() => {
+    if (wasBusy.current && !busy) focusWhenReady('[data-build-model]');
+    wasBusy.current = busy;
+  }, [busy]);
 
   const loadPhoto = async (slot, file) => {
     if (!file) return;
@@ -1422,6 +1435,7 @@ export function PhotoModelModal({ onClose }) {
   const handleBuild = (forceType = typeChoice) => {
     setBusy(true);
     setMessage(null);
+    setBuilt(false);
     setStage(STAGE.measure);
     // each step hands the browser back a moment, so the dialog can paint and say where it has got to
     (async () => {
@@ -1457,6 +1471,7 @@ export function PhotoModelModal({ onClose }) {
           setAnchor('widthCm');
         }
         setDesign(result);
+        setBuilt(true);
         setQuarterPhoto(quarter);
         // The likeliest types, for when the first guess is not steady or rests on few photos
         setCandidates(likely);
@@ -1628,6 +1643,7 @@ export function PhotoModelModal({ onClose }) {
             Cancel
           </Button>
           <Button
+            data-build-model
             variant="secondary"
             icon={<Sparkles size={16} />}
             onClick={() => handleBuild()}
@@ -2140,6 +2156,15 @@ export function PhotoModelModal({ onClose }) {
               )}
             </div>
           </div>
+          {/* The dialog's one voice for the build: the stage while it works, the result when it is
+              done. What the model turned out to be and how well it fits the photo are announced by
+              the type line and the fit meter below, so they are not repeated here. */}
+          {built && design && (
+            <p className={local.note} role="status">
+              The model is built and shown in the preview. Check its real size and details below,
+              then save it to My furniture.
+            </p>
+          )}
           {design && (
             <div className={local.overlayRow}>
               <label className={local.check}>
