@@ -87,6 +87,18 @@
   cursor: not-allowed;
 }
 
+/*
+ * A solid maroon button at 0.45 opacity is still the loudest thing on the screen — louder than
+ * the secondary controls that do work — so it reads as live. A disabled one goes quiet instead.
+ */
+.primary:disabled,
+.dangerSolid:disabled {
+  opacity: 1;
+  color: var(--color-ink-faint);
+  background-color: var(--color-linen-surface);
+  border-color: var(--color-taupe);
+}
+
 .dangerSolid {
   background-color: var(--color-maroon);
   color: var(--color-on-accent);
