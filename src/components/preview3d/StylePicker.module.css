@@ -1,7 +1,13 @@
+/*
+ * Used in two places: as a popover over the 3D view, where it sizes itself, and inside the
+ * details panel, where it has to fit the column it is given. A fixed 318px overflowed that
+ * column (318px wide including 20px of padding), slicing the blurb and the right-hand cards.
+ */
 .panel {
   display: grid;
   gap: var(--space-2);
-  width: min(318px, calc(100vw - 40px));
+  width: 100%;
+  max-width: 318px;
   padding: var(--space-1);
 }
 
