@@ -393,6 +393,99 @@ test.describe('the walkthrough hands focus on and gives it back', () => {
   });
 });
 
+test.describe('doors and windows can be placed by typing a number', () => {
+  /** Selects everything in a number box and types a new value, then commits it with Enter. */
+  async function retype(page, box, value) {
+    await box.focus();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type(value);
+    await page.keyboard.press('Enter');
+  }
+
+  test('the room panel slides a door along its wall and widens a window', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room'); // 500 x 400 cm
+    const panel = page.getByRole('complementary', { name: 'Room details' });
+    await expect(
+      panel.getByText(/Set the position above to place a door or window exactly/)
+    ).toBeVisible();
+
+    // The door starts 50 cm along the bottom wall; it can be put anywhere by typing
+    const door = panel.locator('[data-opening="door-1"]');
+    const position = door.getByRole('spinbutton', { name: 'Position' });
+    await expect(position).toHaveValue('50');
+    await retype(page, position, '260');
+    await expect(position).toHaveValue('260');
+
+    // The arrows step it, in the 5 cm the box asks for
+    await page.keyboard.press('ArrowUp');
+    await expect(position).toHaveValue('265');
+
+    // It reached the room, not just the box: Undo puts the door back where it was
+    const undo = page.getByRole('button', { name: /^Undo/ });
+    await expect(undo).toBeEnabled();
+    await undo.click();
+    await expect(position).toHaveValue('260');
+
+    // The far corner is as far as it goes: 500 wall, 90 door, 15 cm corner margin
+    await retype(page, position, '480');
+    await expect(position).toHaveValue('395');
+    await expect(door.getByText('Maximum is 395, so 480 was set to 395.')).toBeVisible();
+
+    // A door has one width, so it has no width box; a window does
+    await expect(door.getByRole('spinbutton', { name: 'Width' })).toHaveCount(0);
+    const win = panel.locator('[data-opening="window-1"]');
+    const width = win.getByRole('spinbutton', { name: 'Width' });
+    await expect(width).toHaveValue('120');
+    await retype(page, width, '200');
+    await expect(width).toHaveValue('200');
+  });
+
+  test('the flat designer places a door on its wall piece by number', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Design a flat' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Design a flat' });
+    await dialog.getByRole('combobox', { name: 'Start from' }).selectOption({ label: 'Blank' });
+    await dialog.getByRole('button', { name: 'Create flat' }).click();
+    await expect(page.getByRole('application')).toBeVisible();
+    await page.getByRole('button', { name: 'Start with a blank plan' }).click();
+
+    // A 400 by 300 box and a door 100 cm along its top wall, all with the keyboard
+    const svg = page.getByRole('application');
+    await svg.focus();
+    await page.keyboard.press('ArrowRight');
+    await page.keyboard.press('Enter');
+    for (let i = 0; i < 8; i += 1) await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Enter');
+    for (let i = 0; i < 6; i += 1) await page.keyboard.press('Shift+ArrowDown');
+    await page.keyboard.press('Enter');
+    for (let i = 0; i < 8; i += 1) await page.keyboard.press('Shift+ArrowLeft');
+    await page.keyboard.press('Enter');
+    for (let i = 0; i < 6; i += 1) await page.keyboard.press('Shift+ArrowUp');
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'Door (D)' }).click();
+    await svg.focus();
+    await page.keyboard.press('ArrowRight');
+    for (let i = 0; i < 2; i += 1) await page.keyboard.press('Shift+ArrowRight');
+    await page.keyboard.press('Enter');
+
+    const details = page.getByRole('complementary', { name: 'Details' });
+    await expect(details.getByRole('heading', { name: 'Door', level: 2 })).toBeVisible();
+    // The door is centred on the point it was placed at, 100 cm along a wall that starts at 0
+    const position = details.getByRole('spinbutton', { name: 'Position' });
+    await expect(position).toHaveValue('60');
+    await retype(page, position, '220');
+    await expect(position).toHaveValue('220');
+
+    // 400 cm of wall and a 90 cm door, so 310 is the end of it
+    await retype(page, position, '390');
+    await expect(position).toHaveValue('310');
+    // A door is one standard width, so there is no width box for it
+    await expect(details.getByRole('spinbutton', { name: 'Width' })).toHaveCount(0);
+  });
+});
+
 /** A plain "photo" drawn on a canvas inside the page: a solid cabinet on a light backdrop. */
 async function makeCabinetPng(page) {
   const base64 = await page.evaluate(() => {
@@ -422,13 +515,11 @@ test.describe('the photo dialog hands focus back when the model is built', () =>
     const catalog = page.getByRole('complementary', { name: 'Furniture' });
     await catalog.getByRole('button', { name: /Create from photos/ }).click();
     const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
-    await dialog
-      .getByLabel('Front photo', { exact: true })
-      .setInputFiles({
-        name: 'cabinet.png',
-        mimeType: 'image/png',
-        buffer: await makeCabinetPng(page),
-      });
+    await dialog.getByLabel('Front photo', { exact: true }).setInputFiles({
+      name: 'cabinet.png',
+      mimeType: 'image/png',
+      buffer: await makeCabinetPng(page),
+    });
 
     // Build it with the keyboard. The button is disabled while it works, which drops the focus.
     const build = dialog.getByRole('button', { name: 'Build 3D model' });

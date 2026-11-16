@@ -2,11 +2,23 @@ import React, { useRef, useState } from 'react';
 import { DoorOpen, GripVertical, Plus, Square, Trash2 } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
-import { isResizable } from '../../engine/openings.js';
-import { hasOutline, outlineEdges, polygonArea } from '../../engine/roomShape.js';
+import {
+  isResizable,
+  moveSpan,
+  resizeSpan,
+  OPENING_LIMITS,
+  WINDOW_MAX_CM,
+  WINDOW_MIN_CM,
+} from '../../engine/openings.js';
+import {
+  hasOutline,
+  openingWallLength,
+  outlineEdges,
+  polygonArea,
+} from '../../engine/roomShape.js';
 import { hingeSides } from '../../engine/planning.js';
 import { Button } from '../common/Button.jsx';
-import { SelectField } from '../common/Field.jsx';
+import { NumberField, SelectField } from '../common/Field.jsx';
 import { Section, IconButton } from '../common/Section.jsx';
 import { focusWhenReady } from '../layout/hooks.js';
 import { InspectorShell } from './InspectorShell.jsx';
@@ -52,6 +64,107 @@ function HingeField({ room, opening, type, onChange }) {
   );
 }
 
+/**
+ * The free stretch of wall an opening may use, and its neighbours on the same wall: the same
+ * limits the drag on the plan works to (see RoomBoundary and OutlineBoundary), so a number typed
+ * here and a drag end up in the same place. `step: 1` keeps a typed number exactly as typed; a
+ * drag snaps to 10 cm because a pointer cannot be that precise.
+ */
+function openingBounds(room, type, opening) {
+  const outlined = hasOutline(room);
+  const margin = OPENING_LIMITS.cornerMargin;
+  const edge = opening.edge ?? 0;
+  const wall = opening.wall || (type === 'door' ? 'bottom' : 'top');
+  const wallLength = outlined
+    ? openingWallLength(room, { edge })
+    : wall === 'left' || wall === 'right'
+      ? room.depthCm
+      : room.widthCm;
+  const others = [
+    ...(room.doors || []).map((o) => ({ o, wall: o.wall || 'bottom' })),
+    ...(room.windows || []).map((o) => ({ o, wall: o.wall || 'top' })),
+  ]
+    .filter(
+      ({ o, wall: w }) => o.id !== opening.id && (outlined ? (o.edge ?? 0) === edge : w === wall)
+    )
+    .map(({ o }) => ({ start: o.offsetCm, width: o.widthCm }));
+  return { wallLength, lo: margin, hi: wallLength - margin, others, step: 1 };
+}
+
+/**
+ * Where an opening sits along its wall, and how wide it is. Dragging on the plan was the only
+ * way to move one, which left anyone working from the keyboard with the wall and the swing but
+ * no way to say where on that wall the door goes.
+ */
+function OpeningPlacement({ room, type, opening, name }) {
+  const updateOpening = useRoomStore((state) => state.updateOpening);
+  const { wallLength, ...bounds } = openingBounds(room, type, opening);
+  const margin = OPENING_LIMITS.cornerMargin;
+  const maxOffset = Math.max(margin, wallLength - margin - opening.widthCm);
+  const maxWidth = Math.min(WINDOW_MAX_CM, Math.max(WINDOW_MIN_CM, wallLength - margin * 2));
+  // Which end of the wall the position is measured from, in the words the plan shows
+  const fromEnd = hasOutline(room)
+    ? 'the start of the wall'
+    : opening.wall === 'left' || opening.wall === 'right'
+      ? 'the top corner'
+      : 'the left corner';
+
+  return (
+    <div className={styles.grid2}>
+      <NumberField
+        label="Position"
+        suffix="cm"
+        min={margin}
+        max={maxOffset}
+        step={5}
+        value={opening.offsetCm}
+        hint={`Along the wall, from ${fromEnd}.`}
+        onCommit={(v) =>
+          updateOpening(
+            type,
+            opening.id,
+            {
+              offsetCm: moveSpan({
+                start: opening.offsetCm,
+                width: opening.widthCm,
+                delta: v - opening.offsetCm,
+                ...bounds,
+              }),
+            },
+            true
+          )
+        }
+      />
+      {isResizable(type) ? (
+        <NumberField
+          label="Width"
+          suffix="cm"
+          min={WINDOW_MIN_CM}
+          max={maxWidth}
+          step={5}
+          value={opening.widthCm}
+          hint={`${WINDOW_MIN_CM} to ${maxWidth} cm on this wall.`}
+          onCommit={(v) => {
+            const next = resizeSpan({
+              side: 'end',
+              start: opening.offsetCm,
+              width: opening.widthCm,
+              pointer: opening.offsetCm + v,
+              ...bounds,
+            });
+            updateOpening(type, opening.id, { offsetCm: next.start, widthCm: next.width }, true);
+          }}
+        />
+      ) : (
+        <div className={styles.stat}>
+          <span className={styles.statValue}>{opening.widthCm} cm</span>
+          <span className={styles.statLabel}>Width ({name.toLowerCase()}s are one size)</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function OpeningRow({ type, opening, index, canRemove, room }) {
   const updateOpening = useRoomStore((state) => state.updateOpening);
   const removeOpening = useRoomStore((state) => state.removeOpening);
@@ -69,11 +182,11 @@ function OpeningRow({ type, opening, index, canRemove, room }) {
   // Under the dropdown, like the hint on "Hinged on" below: in a column beside it the note wrapped
   // to five ragged lines and split "90" from "cm".
   const sizeNote = isResizable(type)
-    ? `${opening.widthCm} cm wide. Drag its ends on the plan to stretch it.`
-    : `Single door, ${opening.widthCm} cm. It slides along the wall but is not stretched.`;
+    ? 'Set its width below, or drag its ends on the plan.'
+    : 'A single door of one standard width. It slides along the wall but is not stretched.';
 
   return (
-    <div className={styles.opening}>
+    <div className={styles.opening} data-opening={`${type}-${index + 1}`}>
       <div className={styles.openingHead}>
         <span className={styles.openingTitle}>
           {isDoor ? (
@@ -110,6 +223,7 @@ function OpeningRow({ type, opening, index, canRemove, room }) {
           onChange={(wall) => updateOpening(type, opening.id, { wall }, true)}
         />
       )}
+      <OpeningPlacement room={room} type={type} opening={opening} name={name} />
       {isDoor ? (
         <>
           <SelectField
@@ -302,7 +416,10 @@ export function RoomPanel({ onClose }) {
             Add window
           </Button>
         </div>
-        <p className={styles.note}>Drag a door or window along its wall on the plan to move it.</p>
+        <p className={styles.note}>
+          Set the position above to place a door or window exactly, or drag it along its wall on the
+          plan.
+        </p>
       </Section>
 
       <Section title={`Pieces (${pieces.length})`}>

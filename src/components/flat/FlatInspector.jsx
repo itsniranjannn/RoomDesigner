@@ -26,10 +26,18 @@ import {
   wallsOf,
   openingsOf,
   levelOpenEdges,
+  levelSolidEdges,
   entranceOf,
 } from '../../engine/flatPlan.js';
 import { PASSAGE_LIMITS, isEditablePassage, passageDims } from '../../engine/flatPassage.js';
-import { edgesOf, wallRunAt, edgesToRuns } from '../../engine/flatWalls.js';
+import { edgesOf, wallRunAt, edgesToRuns, openingWallSpan } from '../../engine/flatWalls.js';
+import {
+  isResizable,
+  moveSpan,
+  resizeSpan,
+  WINDOW_MAX_CM,
+  WINDOW_MIN_CM,
+} from '../../engine/openings.js';
 import styles from './FlatDesigner.module.css';
 
 const KIND_OPTIONS = kindOptions();
@@ -212,11 +220,76 @@ function SpaceInspector({ space }) {
   );
 }
 
+/**
+ * Where an opening sits on its piece of wall, and how wide it is. The numbers work to the same
+ * limits as the drag on the plan (FlatPlanCanvas.openingBounds): the free stretch of that wall
+ * piece, less whatever else is already on it. `step: 1` keeps a typed number as typed, where a
+ * drag snaps to the grid.
+ */
+function OpeningPlacement({ flat, levelId, opening, onChange }) {
+  const span = openingWallSpan(levelSolidEdges(flat, levelId), opening);
+  if (!span) return null;
+  const others = openingsOf(flat, levelId)
+    .filter((o) => o.id !== opening.id && o.axis === opening.axis && o.line === opening.line)
+    .map((o) => ({ start: o.start, width: o.widthCm }));
+  const bounds = { lo: span.lo, hi: span.hi, others, step: 1 };
+  const along = opening.start - span.lo;
+  const runLength = span.hi - span.lo;
+  const maxAlong = Math.max(0, runLength - opening.widthCm);
+  const maxWidth = Math.min(WINDOW_MAX_CM, Math.max(WINDOW_MIN_CM, runLength));
+
+  return (
+    <div className={styles.row2}>
+      <NumberField
+        label="Position"
+        suffix="cm"
+        min={0}
+        max={maxAlong}
+        step={5}
+        value={along}
+        hint="Along this piece of wall, from its start."
+        onCommit={(v) =>
+          onChange({
+            start: moveSpan({
+              start: opening.start,
+              width: opening.widthCm,
+              delta: span.lo + v - opening.start,
+              ...bounds,
+            }),
+          })
+        }
+      />
+      {isResizable(opening.type) && (
+        <NumberField
+          label="Width"
+          suffix="cm"
+          min={WINDOW_MIN_CM}
+          max={maxWidth}
+          step={5}
+          value={opening.widthCm}
+          hint={`${WINDOW_MIN_CM} to ${maxWidth} cm on this wall.`}
+          onCommit={(v) => {
+            const next = resizeSpan({
+              side: 'end',
+              start: opening.start,
+              width: opening.widthCm,
+              pointer: opening.start + v,
+              ...bounds,
+            });
+            onChange({ start: next.start, widthCm: next.width });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 function OpeningInspector({ opening }) {
   const updateOpening = useFlatStore((s) => s.updateOpening);
   const removeOpening = useFlatStore((s) => s.removeOpening);
   const setEntrance = useFlatStore((s) => s.setEntrance);
   const flat = useFlatStore((s) => s.flat);
+  const levelId = useFlatStore((s) => s.levelId);
   const entrance = entranceOf(flat);
   const isEntrance = entrance?.opening.id === opening.id;
   const label = opening.type === 'door' ? 'Door' : 'Window';
@@ -227,12 +300,15 @@ function OpeningInspector({ opening }) {
   return (
     <div className={styles.inspectorBody}>
       <Section title={label} collapsible={false}>
-        <Facts
-          rows={[
-            ['Width', `${opening.widthCm} cm`],
-            ...(opening.type === 'door' ? [['Type', 'Single leaf, standard width']] : []),
-          ]}
-        />
+        {opening.type === 'door' && (
+          <Facts
+            rows={[
+              ['Width', `${opening.widthCm} cm`],
+              ['Type', 'Single leaf, standard width'],
+            ]}
+          />
+        )}
+        <OpeningPlacement flat={flat} levelId={levelId} opening={opening} onChange={change} />
         {opening.type === 'door' && (
           <Switch
             label="Opens to the other side"
@@ -272,8 +348,8 @@ function OpeningInspector({ opening }) {
         </Button>
         <p className={styles.helpText}>
           {opening.type === 'window'
-            ? 'Drag the window along its wall to move it. Drag the handle at either end to stretch it.'
-            : 'Drag the door along its wall to move it. Doors have one standard width.'}
+            ? 'Set the position and width above, or drag the window along its wall and its end handles on the plan.'
+            : 'Set the position above, or drag the door along its wall. Doors have one standard width.'}
         </p>
       </Section>
     </div>
@@ -560,8 +636,8 @@ export function FlatInspector() {
     title = opening.type === 'door' ? 'Door' : 'Window';
     subtitle =
       opening.type === 'window'
-        ? 'Drag it to move it, or drag its ends to stretch it.'
-        : 'Drag it along its wall, or remove it.';
+        ? 'Set its position and width, or drag it on the plan.'
+        : 'Set its position, or drag it along its wall.';
     body = <OpeningInspector key={opening.id} opening={opening} />;
   } else if (wall) {
     title = 'Wall';
