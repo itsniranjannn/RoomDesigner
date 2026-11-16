@@ -273,7 +273,7 @@ test.describe('create furniture from photos', () => {
     await expect(dialog).toBeHidden();
 
     // The piece is now in the catalog under My furniture
-    const mine = catalog.getByRole('region', { name: 'My Furniture' });
+    const mine = catalog.getByRole('region', { name: 'My furniture' });
     await expect(mine.getByRole('button', { name: /^Add Test armchair,/ })).toBeVisible();
     await expect(catalog.getByRole('button', { name: 'My furniture', exact: true })).toBeVisible();
   });
@@ -361,7 +361,7 @@ test.describe('create furniture from photos', () => {
     await expect(saveTwo).toBeVisible();
     await saveTwo.click();
     await expect(dialog).toBeHidden();
-    const mine = catalog.getByRole('region', { name: 'My Furniture' });
+    const mine = catalog.getByRole('region', { name: 'My furniture' });
     await expect(mine.getByRole('button', { name: /^Add My / })).toHaveCount(2);
   });
 

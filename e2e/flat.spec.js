@@ -65,7 +65,7 @@ test.describe('flat designer', () => {
 
   test('a ready-made flat can be walked through a door', async ({ page }) => {
     await openApp(page);
-    await newFlat(page, { label: '2BHK' });
+    await newFlat(page, { label: 'Two-bedroom flat' });
     await expect(stat(page, 'Rooms in the flat')).toBeVisible();
 
     await page.getByRole('button', { name: '3D' }).click();

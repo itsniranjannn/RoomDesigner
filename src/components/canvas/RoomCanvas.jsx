@@ -417,7 +417,7 @@ export function RoomCanvas() {
           <MousePointerClick size={22} aria-hidden="true" />
           <p className={styles.emptyTitle}>Add your first piece</p>
           <p className={styles.emptyText}>
-            Open the furniture list, then click a piece to add it or drag it into the room.
+            Click a piece in the furniture list, or drag it onto the plan.
           </p>
         </div>
       )}

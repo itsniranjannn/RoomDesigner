@@ -83,9 +83,9 @@ export function ShareModal({ onClose }) {
     },
     {
       key: 'json',
-      title: 'Design file',
+      title: 'Save the whole design',
       help: 'Keeps every detail, so you can open the room again later or send it on.',
-      label: 'JSON',
+      label: 'Design file',
       icon: <FileJson size={16} />,
       run: async () => {
         exportRoomAsJSON(room);

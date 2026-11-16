@@ -52,9 +52,7 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
           <div>
             <h2 className={styles.title}>My designs</h2>
             <p className={styles.subtitle}>
-              {total === 0
-                ? 'Nothing saved yet'
-                : `${plural(allRooms.length, 'room')}, ${plural(flats.length, 'flat')}`}
+              {total === 0 ? 'Nothing saved yet' : plural(total, 'design')}
             </p>
           </div>
           <IconButton label="Close" onClick={onClose}>
@@ -79,7 +77,7 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
                 <span className={styles.text}>
                   <span className={styles.name}>{f.name}</span>
                   <span className={styles.meta}>
-                    Flat, {plural(f.levels.length, 'floor')}, {plural(f.spaces.length, 'space')}
+                    Flat, {plural(f.levels.length, 'floor')}, {plural(f.spaces.length, 'room')}
                     {f.stairs.length > 0 && `, ${plural(f.stairs.length, 'staircase')}`}
                   </span>
                 </span>
