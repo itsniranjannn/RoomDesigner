@@ -164,6 +164,17 @@
   padding: 0 var(--space-2);
 }
 
+/* A 28px segment is a mouse target; a finger needs the pill nearer 44px */
+@media (pointer: coarse) {
+  .segBtn {
+    min-height: 40px;
+  }
+
+  .segSmall .segBtn {
+    min-height: 36px;
+  }
+}
+
 .switchRow {
   position: relative;
   display: flex;

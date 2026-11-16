@@ -30,8 +30,12 @@
   }
 }
 
+/*
+ * Only the word goes. The dot stays at every width: a phone is exactly where someone wants proof
+ * that their work is kept, and role="status" plus the title still carry the word for a reader.
+ */
 @media (max-width: 640px) {
   .save {
-    display: none;
+    padding: 0;
   }
 }
