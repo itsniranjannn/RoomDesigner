@@ -13,6 +13,7 @@ import {
   roomToJson,
   roomSideCm,
   STORED_ROOM_SIDE_CM,
+  APP_MARKER,
 } from './share.js';
 
 const piece = { id: 'item-1', furnitureTypeId: 'custom-abc', x: 100, y: 100, rotationDeg: 0 };
@@ -79,6 +80,37 @@ describe('sharing photo-made furniture', () => {
     expect(def.widthCm).toBe(80);
     expect(def.color).toBe('#a8a29a');
     expect(getFurnitureType('nope')).toBeNull();
+  });
+});
+
+describe('opening a file that is not a design', () => {
+  // Any JSON at all used to open as an empty room called "Imported Room"
+  it('is refused, whatever JSON it holds', () => {
+    const others = [
+      { hello: 'world' },
+      { app: 'some-other-app', name: 'Not ours', rooms: 3 },
+      { name: 'A name is not a design' },
+      [],
+      [1, 2, 3],
+      'a string',
+      42,
+      null,
+    ];
+    for (const other of others)
+      expect(() => sanitizeImportedRoom(other), JSON.stringify(other)).toThrow(
+        /not a Room Designer design/
+      );
+  });
+
+  it('still opens a file this app wrote and a design from a share link', () => {
+    const written = JSON.parse(roomToJson(room));
+    expect(written.app).toBe(APP_MARKER);
+    expect(sanitizeImportedRoom(written).name).toBe('Den');
+    // A design packed into a share link carries no marker, but always carries its size
+    const { app: _marker, ...fromLink } = written;
+    expect(sanitizeImportedRoom(fromLink).widthCm).toBe(400);
+    // and the marker alone is enough for a file that lost the rest
+    expect(sanitizeImportedRoom({ app: APP_MARKER }).widthCm).toBe(400);
   });
 });
 
