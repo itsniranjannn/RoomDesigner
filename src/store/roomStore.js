@@ -1526,8 +1526,9 @@ export const useRoomStore = create((set, get) => ({
     const remainingRooms = await listStandaloneRooms();
     const { room } = get();
 
-    // If we deleted a room that wasn't active, just refresh allRooms
-    if (room && room.id !== roomId) {
+    // Another room was deleted, or none was open at all (the designs list on the landing
+    // page): only the list changes. Opening a room nobody asked for would be a surprise.
+    if (!room || room.id !== roomId) {
       set({ allRooms: remainingRooms });
       return;
     }

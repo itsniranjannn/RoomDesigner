@@ -33,6 +33,38 @@ test.describe('persistence', () => {
     await expect(page.getByRole('textbox', { name: 'Room name' })).toHaveValue('Guest Room');
   });
 
+  // A flat could always be thrown away from My designs; a room had to be opened first, and
+  // deleting one while nothing was open used to drag the next room open over the studio.
+  test('a room can be deleted from My designs', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    await addByClick(page, '3-Seater Sofa');
+    await waitForSaved(page);
+    await page.getByRole('button', { name: 'Back to all rooms' }).click();
+    // A second room, so a delete has somewhere wrong to go
+    await createRoomFromPreset(page, 'Home office');
+    await waitForSaved(page);
+    await page.getByRole('button', { name: 'Back to all rooms' }).click();
+    await page.getByRole('button', { name: 'Open saved sheets panel' }).first().click();
+
+    const panel = page.getByRole('dialog', { name: 'My designs' });
+    await expect(panel.getByText('Living room')).toBeVisible();
+    await panel.getByRole('button', { name: 'Delete room Living room' }).click();
+
+    // The confirmation says what goes with it and that it is final
+    const confirm = page.getByRole('dialog', { name: 'Delete "Living room"?' });
+    await expect(confirm).toContainText('1 piece of furniture');
+    await expect(confirm).toContainText('cannot be undone');
+    await confirm.getByRole('button', { name: 'Delete room' }).click();
+
+    // That row goes, the other stays, and the studio stays put: nothing is opened over it
+    await expect(panel.getByText('Living room')).toBeHidden();
+    await expect(panel.getByText('Home office')).toBeVisible();
+    await expect(page.getByLabel('Room plan')).toBeHidden();
+    await page.getByRole('button', { name: 'Close' }).click();
+    await expect(page.getByRole('button', { name: 'Start a new room' })).toBeVisible();
+  });
+
   test('the count on the landing page includes saved flats, not only rooms', async ({ page }) => {
     await openApp(page);
     const badge = page.getByRole('button', { name: 'Open saved sheets panel' }).first();

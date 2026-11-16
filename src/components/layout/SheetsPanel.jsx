@@ -16,11 +16,13 @@ const count = (list) => (Array.isArray(list) ? list.length : 0);
 export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlatModal }) {
   const allRooms = useRoomStore((state) => state.allRooms);
   const switchRoom = useRoomStore((state) => state.switchRoom);
+  const deleteRoom = useRoomStore((state) => state.deleteRoom);
   const flats = useFlatStore((state) => state.flats);
   const openFlat = useFlatStore((state) => state.openFlat);
   const deleteFlat = useFlatStore((state) => state.deleteFlat);
   const panelRef = useRef(null);
   const [pendingFlat, setPendingFlat] = useState(null);
+  const [pendingRoom, setPendingRoom] = useState(null);
 
   // Escape closes the panel; focus moves in on open and back to the trigger on close
   useEffect(() => {
@@ -113,6 +115,14 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
                     </span>
                   </span>
                 </button>
+                {/* A flat could always be thrown away from here; a room had to be opened first */}
+                <IconButton
+                  label={`Delete room ${r.name}`}
+                  danger
+                  onClick={() => setPendingRoom({ ...r, pieces })}
+                >
+                  <Trash2 size={16} />
+                </IconButton>
               </div>
             );
           })}
@@ -168,6 +178,23 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
           onConfirm={() => {
             deleteFlat(pendingFlat.id);
             setPendingFlat(null);
+          }}
+        />
+      )}
+
+      {pendingRoom && (
+        <ConfirmDialog
+          title={`Delete "${pendingRoom.name}"?`}
+          message={`The room${
+            pendingRoom.pieces > 0
+              ? ` and its ${plural(pendingRoom.pieces, 'piece')} of furniture`
+              : ''
+          }, with its doors and windows, are removed for good. This cannot be undone.`}
+          confirmLabel="Delete room"
+          onClose={() => setPendingRoom(null)}
+          onConfirm={() => {
+            deleteRoom(pendingRoom.id);
+            setPendingRoom(null);
           }}
         />
       )}
