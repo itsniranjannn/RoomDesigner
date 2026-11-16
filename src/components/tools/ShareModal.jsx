@@ -29,6 +29,16 @@ export function ShareModal({ onClose }) {
   const [renderPrefs, setRenderPrefs] = useState(loadRenderPrefs);
   const [manualLink, setManualLink] = useState(null); // shown when the browser blocks copying
 
+  /*
+   * The answer is the last thing in a dialog taller than the screen, so whoever pressed
+   * "Copy link" at the top never saw "Link copied" at the bottom. It is brought into view
+   * whenever it changes.
+   */
+  const noticeRef = useRef(null);
+  useEffect(() => {
+    if (message) noticeRef.current?.scrollIntoView({ block: 'nearest' });
+  }, [message]);
+
   const run = async (fn, okText, key = null) => {
     setBusy(true);
     setBusyKey(key);
@@ -95,36 +105,44 @@ export function ShareModal({ onClose }) {
   ];
 
   const copyLink = () =>
-    run(async () => {
-      setManualLink(null);
-      const hash = await encodeRoomToHash(room);
-      const url = `${window.location.origin}${window.location.pathname}#${hash}`;
-      try {
-        await navigator.clipboard.writeText(url);
-      } catch {
-        setManualLink(url);
-        throw new Error(
-          'Your browser would not copy the link automatically. Copy it from the box below.'
-        );
-      }
-    }, 'Link copied. Anyone who opens it gets their own copy of this design. Nothing is uploaded.');
+    run(
+      async () => {
+        setManualLink(null);
+        const hash = await encodeRoomToHash(room);
+        const url = `${window.location.origin}${window.location.pathname}#${hash}`;
+        try {
+          await navigator.clipboard.writeText(url);
+        } catch {
+          setManualLink(url);
+          throw new Error(
+            'Your browser would not copy the link automatically. Copy it from the box below.'
+          );
+        }
+      },
+      'Link copied. Anyone who opens it gets their own copy of this design. Nothing is uploaded.',
+      'link'
+    );
 
   const handleImport = (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
-    run(async () => {
-      if (file.size > 5 * 1024 * 1024)
-        throw new Error('That file is too large to be a room design.');
-      let data;
-      try {
-        data = JSON.parse(await file.text());
-      } catch {
-        throw new Error('That file is not a Room Designer design.');
-      }
-      await importRoomData(data);
-      onClose();
-    }, 'Design imported.');
+    run(
+      async () => {
+        if (file.size > 5 * 1024 * 1024)
+          throw new Error('That file is too large to be a room design.');
+        let data;
+        try {
+          data = JSON.parse(await file.text());
+        } catch {
+          throw new Error('That file is not a Room Designer design.');
+        }
+        await importRoomData(data);
+        onClose();
+      },
+      'Design imported.',
+      'import'
+    );
   };
 
   return (
@@ -145,7 +163,7 @@ export function ShareModal({ onClose }) {
           </div>
           <div className={styles.optionActions}>
             <Button icon={<Link2 size={16} />} onClick={copyLink} disabled={busy}>
-              Copy link
+              {busyKey === 'link' ? 'Copying...' : 'Copy link'}
             </Button>
           </div>
         </li>
@@ -214,7 +232,7 @@ export function ShareModal({ onClose }) {
               onClick={() => fileRef.current?.click()}
               disabled={busy}
             >
-              Choose file
+              {busyKey === 'import' ? 'Opening...' : 'Choose file'}
             </Button>
           </div>
           <input
@@ -228,7 +246,11 @@ export function ShareModal({ onClose }) {
         </li>
       </ul>
 
-      {message && <Notice kind={message.kind}>{message.text}</Notice>}
+      {message && (
+        <div ref={noticeRef}>
+          <Notice kind={message.kind}>{message.text}</Notice>
+        </div>
+      )}
       {manualLink && (
         <TextField
           label="Share link"

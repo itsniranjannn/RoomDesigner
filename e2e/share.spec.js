@@ -34,6 +34,25 @@ test.describe('share and export', () => {
     await other.close();
   });
 
+  // The dialog is taller than the screen, so the answer at the foot of it was out of sight
+  // for anyone who pressed a button at the top of it.
+  test('the answer to Copy link is brought into view', async ({ page, context }) => {
+    await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    await addByClick(page, '3-Seater Sofa');
+    await page.getByRole('button', { name: 'Share and export' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share & export' });
+    await dialog.getByRole('button', { name: 'Copy link' }).click();
+
+    const notice = dialog.getByText(/Link copied/);
+    await expect(notice).toBeVisible();
+    const noticeBox = await notice.boundingBox();
+    const dialogBox = await dialog.boundingBox();
+    expect(noticeBox.y).toBeGreaterThanOrEqual(dialogBox.y);
+    expect(noticeBox.y + noticeBox.height).toBeLessThanOrEqual(dialogBox.y + dialogBox.height + 1);
+  });
+
   test('a damaged share link shows a clear message', async ({ page }) => {
     await page.goto('/#share=not-a-real-design');
     const dialog = page.getByRole('dialog', { name: 'Link could not be opened' });
