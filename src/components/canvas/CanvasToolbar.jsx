@@ -59,6 +59,8 @@ export function CanvasToolbar({
   }, [placeNotice, clearPlaceNotice]);
 
   const phone = useMediaQuery('(max-width: 640px)');
+  // A landscape phone is wider than 640px but only ~375px tall: the strip lies down there too
+  const compact = useMediaQuery('(max-width: 640px), (max-height: 520px)');
   const fileRef = useRef(null);
   const [error, setError] = useState(null);
 
@@ -75,7 +77,7 @@ export function CanvasToolbar({
     }
   };
 
-  const side = phone ? 'bottom' : 'right';
+  const side = compact ? 'bottom' : 'right';
   const trace = room?.traceImage;
   const attention = (checks?.counts.error || 0) + (checks?.counts.warning || 0);
 
@@ -85,12 +87,12 @@ export function CanvasToolbar({
         className={styles.toolbar}
         role="toolbar"
         aria-label="Plan tools"
-        aria-orientation={phone ? 'horizontal' : 'vertical'}
+        aria-orientation={compact ? 'horizontal' : 'vertical'}
         {...stop}
       >
         {/* No room for it in the top bar at this width, and it belongs with the plan tools */}
         {phone && onToggleCatalog && (
-          <ToolGroup vertical={!phone}>
+          <ToolGroup vertical={!compact}>
             <ToolButton
               active={catalogOpen}
               side={side}
@@ -102,7 +104,7 @@ export function CanvasToolbar({
           </ToolGroup>
         )}
         {phone && (
-          <ToolGroup vertical={!phone}>
+          <ToolGroup vertical={!compact}>
             <ToolButton
               label="Undo"
               shortcut="Ctrl+Z"
@@ -123,7 +125,7 @@ export function CanvasToolbar({
             </ToolButton>
           </ToolGroup>
         )}
-        <ToolGroup vertical={!phone}>
+        <ToolGroup vertical={!compact}>
           <ToolButton
             active={measureActive}
             side={side}
@@ -150,7 +152,7 @@ export function CanvasToolbar({
             <ScanLine size={18} />
           </ToolButton>
         </ToolGroup>
-        <ToolGroup vertical={!phone}>
+        <ToolGroup vertical={!compact}>
           <ToolButton
             active={panel === 'services'}
             side={side}
@@ -174,7 +176,7 @@ export function CanvasToolbar({
             )}
           </ToolButton>
         </ToolGroup>
-        <ToolGroup vertical={!phone}>
+        <ToolGroup vertical={!compact}>
           <ToolButton
             side={side}
             onClick={() => fileRef.current?.click()}
@@ -186,7 +188,7 @@ export function CanvasToolbar({
             <Wand2 size={18} />
           </ToolButton>
         </ToolGroup>
-        <ToolGroup vertical={!phone}>
+        <ToolGroup vertical={!compact}>
           <ToolButton
             side={side}
             onClick={() => openModal('shortcuts')}

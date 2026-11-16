@@ -127,7 +127,12 @@
   box-shadow: var(--shadow-card);
 }
 
-@media (max-width: 640px) {
+/*
+ * The strip lies down whenever the plan area is short as well as when it is narrow: a landscape
+ * phone is wider than 640px but only ~375px tall, and the 376px column ran off the bottom edge
+ * with nothing to scroll, putting two tools out of reach.
+ */
+@media (max-width: 640px), (max-height: 520px) {
   .chrome {
     position: absolute;
     top: var(--space-3);
