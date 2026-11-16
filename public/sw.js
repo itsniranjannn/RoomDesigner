@@ -63,13 +63,17 @@ self.addEventListener('fetch', (event) => {
           caches.open(CACHE).then((cache) => cache.put('./', copy));
           return response;
         })
-        .catch(() => caches.match('./'))
+        .catch(() => caches.match('./', { ignoreVary: true }))
     );
     return;
   }
 
+  // ignoreVary: the build's scripts and stylesheet are requested with crossorigin, so the browser
+  // sends an Origin header with them, while the copies stored when the worker installed were
+  // fetched without one. Hosts that answer "Vary: Origin" would make every one of those a miss,
+  // and the app would not start offline even though every file is held.
   event.respondWith(
-    caches.match(request).then((cached) => {
+    caches.match(request, { ignoreVary: true }).then((cached) => {
       const network = fetch(request)
         .then((response) => {
           if (response.ok) {

@@ -15,9 +15,14 @@ function loadWorker({ online = true, cached = {}, manifest = null } = {}) {
     },
     addAll: async (urls) => added.push(...urls),
   };
+  // Every cache lookup records the options it was given, so a test can insist on ignoreVary
+  const lookups = [];
   const caches = {
     open: async () => cache,
-    match: async (req) => cache.match(req),
+    match: async (req, options) => {
+      lookups.push({ url: typeof req === 'string' ? req : req.url, options });
+      return cache.match(req);
+    },
     keys: async () => [],
     delete: async () => true,
   };
@@ -56,7 +61,7 @@ function loadWorker({ online = true, cached = {}, manifest = null } = {}) {
     await listeners.install({ waitUntil: (p) => (waited = p) });
     await waited;
   };
-  return { listeners, run, fetched, store, added, install };
+  return { listeners, run, fetched, store, added, install, lookups };
 }
 
 const req = (url, extra = {}) => ({ url, method: 'GET', mode: 'cors', ...extra });
@@ -79,6 +84,19 @@ describe('what the service worker stores when it installs', () => {
     });
     await w.install();
     expect(w.added).toContain('https://app.test/assets/index-abc.js');
+  });
+});
+
+describe('serving stored files back', () => {
+  it('ignores Vary, so files stored on install are still found', async () => {
+    // The build's scripts and stylesheet are requested with crossorigin, so the browser sends an
+    // Origin header the stored copies were not fetched with. A host answering "Vary: Origin" would
+    // turn every one of those into a miss and the app would not start offline.
+    const w = loadWorker({ online: false, cached: { 'https://app.test/assets/app.js': { a: 1 } } });
+    await w.run(req('https://app.test/assets/app.js'));
+    await w.run(req('https://app.test/', { mode: 'navigate' }));
+    expect(w.lookups.length).toBeGreaterThanOrEqual(2);
+    for (const look of w.lookups) expect(look.options).toEqual({ ignoreVary: true });
   });
 });
 
