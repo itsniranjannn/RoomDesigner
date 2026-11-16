@@ -283,6 +283,26 @@ export async function saveFlatToDB(flat) {
   return updated;
 }
 
+/**
+ * Saves a flat unless another tab has saved it since this one loaded it, the way rooms are
+ * saved. `baseUpdatedAt` is the stamp of the record this tab is working from.
+ * @returns {Promise<{flat: Object} | {conflict: Object}>}
+ */
+export async function saveFlatIfUnchanged(flat, baseUpdatedAt) {
+  const db = await getDB();
+  if (!db) return { flat };
+  const tx = db.transaction(STORE_FLATS, 'readwrite');
+  const stored = await tx.store.get(flat.id);
+  if (storedIsNewer(stored, baseUpdatedAt)) {
+    await tx.done;
+    return { conflict: stored };
+  }
+  const updated = { ...flat, updatedAt: new Date().toISOString() };
+  await tx.store.put(updated);
+  await tx.done;
+  return { flat: updated };
+}
+
 export async function listFlatsFromDB() {
   try {
     const db = await getDB();

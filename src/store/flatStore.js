@@ -8,10 +8,12 @@
 import { create } from 'zustand';
 import {
   saveFlatToDB,
+  saveFlatIfUnchanged,
   listFlatsFromDB,
   loadFlatFromDB,
   deleteFlatFromDB,
   saveRoomToDB,
+  saveRoomIfUnchanged,
   listRoomsFromDB,
   deleteRoomFromDB,
   setActiveFlatId,
@@ -69,14 +71,44 @@ const logDev = (label, err) => {
 /** Keeps the "Saved" note in the header honest: it is read from the store, like the room designer's. */
 const setSaveStatus = (saveStatus) => useFlatStore.setState({ saveStatus });
 
+const isStale = () => useFlatStore.getState().saveStatus === 'stale';
+
+/**
+ * The stored stamps this tab is working from: the flat record and each of its room records, as
+ * they were loaded or last written here. A write that would land on a newer stamp belongs to
+ * another tab and is refused, so that tab's work stays.
+ */
+let flatStamp = { id: null, updatedAt: null };
+const roomStamps = new Map();
+
+const noteFlat = (flat) => {
+  if (flat) flatStamp = { id: flat.id, updatedAt: flat.updatedAt ?? null };
+  return flat;
+};
+const noteRoom = (room) => {
+  if (room) roomStamps.set(room.id, room.updatedAt ?? null);
+  return room;
+};
+const forgetStamps = () => {
+  flatStamp = { id: null, updatedAt: null };
+  roomStamps.clear();
+};
+
+/** Another tab has saved this flat. Nothing more is written until it is opened again. */
+function markStale() {
+  setSaveStatus('stale');
+}
+
 function queueWrite(task) {
+  // Once another tab has saved this flat, this tab writes nothing more
+  if (isStale()) return writeQueue;
   writesInFlight += 1;
   setSaveStatus('saving');
   writeQueue = writeQueue
     .then(task)
     .then(() => {
       writesInFlight -= 1;
-      if (writesInFlight === 0) setSaveStatus('saved');
+      if (writesInFlight === 0 && !isStale()) setSaveStatus('saved');
     })
     .catch((err) => {
       writesInFlight -= 1;
@@ -88,6 +120,8 @@ function queueWrite(task) {
 }
 
 function persistFlat(flat) {
+  // Another tab owns the stored copy until this one is opened again
+  if (isStale()) return;
   pendingFlat = flat;
   // The write itself waits for a pause in the editing; the edit is already unsaved
   setSaveStatus('saving');
@@ -100,17 +134,32 @@ function flushFlat() {
   saveTimer = null;
   const flat = pendingFlat;
   pendingFlat = null;
-  if (flat) queueWrite(() => saveFlatToDB(flat));
+  if (flat)
+    queueWrite(async () => {
+      const base = flatStamp.id === flat.id ? flatStamp.updatedAt : null;
+      const result = await saveFlatIfUnchanged(flat, base);
+      if (result.conflict) markStale();
+      else noteFlat(result.flat);
+    });
   return writeQueue;
 }
 
 /** Writes only the room records that differ between two room maps. */
 function persistRoomDiff(before, after) {
   for (const [id, room] of Object.entries(after)) {
-    if (before[id] !== room) queueWrite(() => saveRoomToDB(room));
+    if (before[id] === room) continue;
+    queueWrite(async () => {
+      const result = await saveRoomIfUnchanged(room, roomStamps.get(id) ?? null);
+      if (result.conflict) markStale();
+      else noteRoom(result.room);
+    });
   }
   for (const id of Object.keys(before)) {
-    if (!after[id]) queueWrite(() => deleteRoomFromDB(id));
+    if (!after[id])
+      queueWrite(async () => {
+        await deleteRoomFromDB(id);
+        roomStamps.delete(id);
+      });
   }
 }
 
@@ -135,7 +184,12 @@ async function listFlats() {
 async function loadFlatRooms(flatId) {
   const rooms = await listRoomsFromDB();
   const map = {};
-  for (const r of rooms) if (r.flatId === flatId) map[r.id] = r;
+  for (const r of rooms)
+    if (r.flatId === flatId) {
+      map[r.id] = r;
+      // The stamp each room was read with, so a later write can tell another tab's work apart
+      noteRoom(r);
+    }
   return map;
 }
 
@@ -150,7 +204,8 @@ const emptySession = {
   future: [],
   canUndo: false,
   canRedo: false,
-  saveStatus: 'saved', // 'saved' | 'saving' | 'error' (the write failed)
+  // 'saved' | 'saving' | 'error' (the write failed) | 'stale' (another tab saved this flat)
+  saveStatus: 'saved',
 };
 
 export const useFlatStore = create((set, get) => ({
@@ -187,6 +242,7 @@ export const useFlatStore = create((set, get) => ({
   _begin: async (flat, rooms) => {
     // Remembered the way the open room is, so a reload comes back to the plan being drawn
     setActiveFlatId(flat.id);
+    set({ saveStatus: 'saved' });
     set({
       ...emptySession,
       flat,
@@ -200,8 +256,11 @@ export const useFlatStore = create((set, get) => ({
     const { flat, rooms } = buildPresetFlat(preset, { name: name || undefined, ...options });
     const named = { ...flat, name: name || flat.name };
     await flushFlat();
-    for (const room of Object.values(rooms)) await queueWrite(() => saveRoomToDB(room));
-    await queueWrite(() => saveFlatToDB(named));
+    forgetStamps();
+    setSaveStatus('saving');
+    for (const room of Object.values(rooms))
+      await queueWrite(async () => noteRoom(await saveRoomToDB(room)));
+    await queueWrite(async () => noteFlat(await saveFlatToDB(named)));
     await get()._begin(named, rooms);
     set({ flats: await listFlats() });
     return named;
@@ -258,6 +317,10 @@ export const useFlatStore = create((set, get) => ({
       clearActiveFlatId();
       return;
     }
+    // From here on, writes are checked against the record this tab just read
+    forgetStamps();
+    setSaveStatus('saved');
+    noteFlat(stored);
     const loaded = await loadFlatRooms(id);
     const { flat, rooms, migrated, removedRoomIds } = migrateFlat(stored, loaded);
     if (migrated) {
@@ -272,6 +335,7 @@ export const useFlatStore = create((set, get) => ({
   closeFlat: async () => {
     clearActiveFlatId();
     await flushFlat();
+    forgetStamps();
     set({ ...emptySession });
     set({ flats: await listFlats() });
   },
@@ -284,6 +348,21 @@ export const useFlatStore = create((set, get) => ({
     await deleteFlatFromDB(id);
     if (get().flat?.id === id) set({ ...emptySession });
     set({ flats: await listFlats() });
+  },
+
+  /**
+   * Opens the stored copy of this flat again, after another tab saved over it. What this tab was
+   * holding is dropped: it was never written, and writing it would undo the other tab's work.
+   */
+  reopenFlat: async () => {
+    const id = get().flat?.id;
+    if (!id) return;
+    pendingFlat = null;
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = null;
+    // Cleared first, so the reopening is allowed to write its own migration
+    setSaveStatus('saved');
+    await get().openFlat(id);
   },
 
   /** Reopens the flat that was being designed when the app was last closed. */

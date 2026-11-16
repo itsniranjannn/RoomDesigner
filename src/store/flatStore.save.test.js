@@ -13,6 +13,15 @@ const write = (store, record) => {
   return stored;
 };
 
+/** Mirrors the real conditional write: a record saved by another tab is left alone. */
+const writeIfUnchanged = (store, record, baseUpdatedAt) => {
+  const theirs = Date.parse(store.get(record.id)?.updatedAt);
+  const ours = Date.parse(baseUpdatedAt);
+  if (Number.isFinite(theirs) && Number.isFinite(ours) && theirs > ours)
+    return { conflict: store.get(record.id) };
+  return write(store, record);
+};
+
 vi.mock('../data/persistence.js', () => ({
   saveFlatToDB: async (flat) => write(flats, flat),
   listFlatsFromDB: async () => [...flats.values()],
@@ -33,7 +42,14 @@ vi.mock('../data/persistence.js', () => ({
   deleteCustomFurnitureFromDB: async () => {},
   setActiveRoomId: () => {},
   clearActiveRoomId: () => {},
-  saveRoomIfUnchanged: async (room) => ({ room: write(rooms, room) }),
+  saveRoomIfUnchanged: async (room, base) => {
+    const result = writeIfUnchanged(rooms, room, base);
+    return result.conflict ? result : { room: result };
+  },
+  saveFlatIfUnchanged: async (flat, base) => {
+    const result = writeIfUnchanged(flats, flat, base);
+    return result.conflict ? result : { flat: result };
+  },
   setActiveFlatId: (id) => {
     activeFlatId = id;
   },
@@ -82,6 +98,55 @@ describe('the flat designer says whether the plan was really saved', () => {
     st().addWall(0, 150, 200, 150);
     await settle();
     expect(st().saveStatus).toBe('saved');
+  });
+});
+
+describe('the same flat open in two tabs', () => {
+  beforeEach(async () => {
+    failWrites = false;
+    activeFlatId = null;
+    flats.clear();
+    rooms.clear();
+  });
+
+  it('does not write over a plan the other tab saved, and offers the stored one', async () => {
+    await st().createNewFlat('Shared flat');
+    st().applyPreset('shell', { widthCm: 600, depthCm: 400 });
+    await settle();
+    const id = st().flat.id;
+    expect(st().saveStatus).toBe('saved');
+    const asBothTabsSawIt = flats.get(id);
+
+    // The other tab adds a floor and saves, a second later
+    flats.set(id, {
+      ...asBothTabsSawIt,
+      levels: [...asBothTabsSawIt.levels, { id: 'lvl-other-tab', name: 'Floor 1' }],
+      updatedAt: new Date(Date.now() + 1000).toISOString(),
+    });
+
+    // This tab, still showing one floor, draws a wall
+    st().addWall(300, 0, 300, 400);
+    await settle();
+    expect(st().saveStatus).toBe('stale');
+    // The other tab's floor is still stored
+    expect(flats.get(id).levels).toHaveLength(2);
+    expect(flats.get(id).levels[1].id).toBe('lvl-other-tab');
+
+    // and nothing more is written from here until it is reopened
+    const stamp = flats.get(id).updatedAt;
+    st().addWall(0, 200, 300, 200);
+    await settle();
+    expect(flats.get(id).updatedAt).toBe(stamp);
+    expect(st().saveStatus).toBe('stale');
+
+    // Opening the saved version brings the other tab's work in, and saving works again
+    await st().reopenFlat();
+    expect(st().flat.levels).toHaveLength(2);
+    expect(st().saveStatus).toBe('saved');
+    st().addWall(300, 0, 300, 400);
+    await settle();
+    expect(st().saveStatus).toBe('saved');
+    expect(flats.get(id).updatedAt).not.toBe(stamp);
   });
 });
 

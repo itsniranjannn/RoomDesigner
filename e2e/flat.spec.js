@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures.js';
+import { test, expect, watchPage } from './fixtures.js';
 import { openApp } from './helpers.js';
 
 async function newFlat(page, startFrom) {
@@ -81,6 +81,40 @@ test.describe('flat designer', () => {
     await expect(page.getByLabel('Walkthrough controls')).toBeHidden();
     await page.getByRole('button', { name: 'Plan', exact: true }).click();
     await expect(page.getByRole('application')).toBeVisible();
+  });
+
+  // Two tabs on the same flat: the second tab's work must not vanish when the first saves
+  test('a second tab on the same flat is not overwritten', async ({ page, problems }) => {
+    await openApp(page);
+    await newFlat(page, { label: '2BHK' });
+    const titleA = page.getByRole('textbox', { name: 'Flat name' });
+    await titleA.fill('Tab A flat');
+    await titleA.press('Enter');
+    await expect(page.getByRole('status', { name: /all changes saved/i })).toBeVisible();
+
+    // The second tab reopens the same flat by itself, as a reload does
+    const second = await page.context().newPage();
+    watchPage(second, problems);
+    await second.goto('/');
+    await expect(second.getByRole('application')).toBeVisible();
+    const titleB = second.getByRole('textbox', { name: 'Flat name' });
+    await expect(titleB).toHaveValue('Tab A flat');
+    await titleB.fill('Renamed in B');
+    await titleB.press('Enter');
+    await expect(second.getByRole('status', { name: /all changes saved/i })).toBeVisible();
+
+    // The first tab, still showing the old name, now edits as well
+    await page.bringToFront();
+    await page.getByRole('button', { name: 'Add a floor' }).click();
+    const notice = page.getByRole('dialog', { name: 'Changed in another tab' });
+    await expect(notice).toBeVisible();
+    await expect(titleA).toHaveValue('Tab A flat');
+
+    await notice.getByRole('button', { name: 'Open the saved version' }).click();
+    await expect(notice).toBeHidden();
+    await expect(titleA).toHaveValue('Renamed in B');
+    await expect(page.getByRole('status', { name: /all changes saved/i })).toBeVisible();
+    await second.close();
   });
 
   // The README promised a design could be shared as a link, but only a room can be
