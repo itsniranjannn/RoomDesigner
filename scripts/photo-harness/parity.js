@@ -23,13 +23,11 @@ async function inDialog(browser, file) {
   await page.getByLabel('Room plan').waitFor();
   await page.getByRole('button', { name: /Create from photos/ }).click();
   const dialog = page.getByRole('dialog', { name: 'Create furniture from photos' });
-  await dialog
-    .getByLabel('Front photo', { exact: true })
-    .setInputFiles({
-      name: path.basename(file),
-      mimeType: 'image/png',
-      buffer: fs.readFileSync(file),
-    });
+  await dialog.getByLabel('Front photo', { exact: true }).setInputFiles({
+    name: path.basename(file),
+    mimeType: 'image/png',
+    buffer: fs.readFileSync(file),
+  });
   const use = dialog.getByRole('button', { name: 'Use these views' });
   const ready = dialog.locator('button:has-text("Build 3D model"):not([disabled])');
   await Promise.race([use.waitFor({ timeout: 120000 }), ready.waitFor({ timeout: 120000 })]);
