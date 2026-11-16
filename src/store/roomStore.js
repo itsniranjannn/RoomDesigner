@@ -1193,6 +1193,7 @@ export const useRoomStore = create((set, get) => ({
       selectedItemIds: [],
       collidingItemIds: collidingIds,
       boundaryCollidingIds,
+      saveStatus: 'saved',
       isInitialAnimationDone: false,
       undoStack: [],
       redoStack: [],
@@ -1296,6 +1297,8 @@ export const useRoomStore = create((set, get) => ({
       selectedItemIds: [],
       collidingItemIds: new Set(),
       boundaryCollidingIds: new Set(),
+      // The status describes the room that is open, so it starts afresh with each one
+      saveStatus: 'saved',
       isInitialAnimationDone: false, // will trigger blueprint draw-in
       undoStack: [],
       redoStack: [],
@@ -1325,6 +1328,7 @@ export const useRoomStore = create((set, get) => ({
       selectedItemIds: [],
       collidingItemIds: collidingIds,
       boundaryCollidingIds,
+      saveStatus: 'saved',
       isInitialAnimationDone: false,
       undoStack: [],
       redoStack: [],
@@ -1423,6 +1427,7 @@ export const useRoomStore = create((set, get) => ({
         selectedItemIds: [],
         collidingItemIds: collidingIds,
         boundaryCollidingIds,
+        saveStatus: 'saved',
         isInitialAnimationDone: false,
         undoStack: [],
         redoStack: [],

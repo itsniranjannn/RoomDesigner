@@ -117,6 +117,12 @@ describe('roomStore persistence ordering', () => {
       'armchair',
     ]);
 
+    // Switching to another room clears the warning: the status describes the open room
+    await state().createRoom('Elsewhere', 400, 400);
+    expect(state().saveStatus).toBe('saved');
+    await state().switchRoom(id);
+    expect(state().saveStatus).toBe('saved');
+
     // Opening the saved version brings the other tab's work into this one
     await state().reopenRoom();
     expect(state().room.placedFurniture.map((f) => f.furnitureTypeId)).toEqual([
