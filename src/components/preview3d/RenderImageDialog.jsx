@@ -31,7 +31,8 @@ export function RenderOptions({ value, onChange, disabled = false }) {
     onChange(next);
   };
   return (
-    <div className={styles.options} aria-disabled={disabled}>
+    /* A fieldset so the browser disables every control in the group with the button it belongs to */
+    <fieldset className={styles.options} disabled={disabled}>
       <div className={styles.row}>
         <span className={styles.label}>Size</span>
         <Segmented
@@ -57,7 +58,7 @@ export function RenderOptions({ value, onChange, disabled = false }) {
         checked={value.titleBlock}
         onChange={(titleBlock) => !disabled && set({ titleBlock })}
       />
-    </div>
+    </fieldset>
   );
 }
 

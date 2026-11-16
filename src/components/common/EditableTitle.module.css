@@ -34,9 +34,28 @@
   box-shadow: var(--focus-ring);
 }
 
+/*
+ * On a phone the name took a hard 48px: two glyphs of an eleven-letter room name, and the same
+ * two while you typed a new one. It now takes whatever the bar has left over, asking for about
+ * seven characters and only giving that up when there is genuinely no room.
+ */
 @media (max-width: 640px) {
   .title {
-    min-width: 48px;
+    flex: 1 1 7ch;
+    min-width: 0;
     padding: 0 var(--space-1);
+  }
+
+  /* Renaming needs to show what you are typing, so the field takes the whole bar */
+  .title:focus {
+    position: absolute;
+    top: 50%;
+    left: var(--space-2);
+    right: var(--space-2);
+    z-index: 3;
+    width: auto;
+    max-width: none;
+    height: var(--control-h);
+    transform: translateY(-50%);
   }
 }

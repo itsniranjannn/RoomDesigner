@@ -386,7 +386,12 @@ export function FlatPlanCanvas() {
     const pad = 72;
     const bw = Math.max(200, maxX - minX);
     const bh = Math.max(200, maxY - minY);
-    const k = clampK(Math.min((w - pad * 2) / bw, (h - pad * 2) / bh, 1.2));
+    // The readout shows whole percent, so the fit is snapped to one. A fit a hair under life
+    // size is taken as life size: a plan nobody has touched reported "99% zoom", which reads
+    // as something already being askew, and a percent either way is well inside the padding.
+    const raw = Math.min((w - pad * 2) / bw, (h - pad * 2) / bh, 1.2);
+    const pct = Math.round(raw * 100);
+    const k = clampK(pct >= 99 && pct <= 101 ? 1 : pct / 100);
     setView({ k, tx: w / 2 - ((minX + maxX) / 2) * k, ty: h / 2 - ((minY + maxY) / 2) * k });
     setFitted(true);
   }, []);

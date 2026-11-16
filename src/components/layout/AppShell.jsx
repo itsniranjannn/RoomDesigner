@@ -141,9 +141,11 @@ export function AppShell() {
   const shareDialog = incoming && (
     <Modal
       title={incoming.error ? 'Link could not be opened' : 'Open shared design?'}
+      /* The explanation belongs in the body: as a subtitle it left the body an empty band */
       subtitle={
-        incoming.error ||
-        `"${incoming.room.name}" with ${incoming.room.placedFurniture.length} ${incoming.room.placedFurniture.length === 1 ? 'piece' : 'pieces'}`
+        incoming.error
+          ? undefined
+          : `"${incoming.room.name}" with ${incoming.room.placedFurniture.length} ${incoming.room.placedFurniture.length === 1 ? 'piece' : 'pieces'}`
       }
       onClose={closeIncoming}
       size="sm"
@@ -171,7 +173,7 @@ export function AppShell() {
         )
       }
     >
-      {!incoming.error && <p>It opens as a new room. Your existing rooms are not changed.</p>}
+      <p>{incoming.error || 'It opens as a new room. Your existing rooms are not changed.'}</p>
     </Modal>
   );
 
@@ -279,7 +281,7 @@ export function AppShell() {
 
         <div className={styles.canvasWrapper}>
           {viewMode === '2d' ? (
-            <RoomCanvas />
+            <RoomCanvas catalogOpen={catalogOpen} onToggleCatalog={toggleCatalog} />
           ) : (
             <Suspense fallback={<CanvasLoader label="Loading 3D view" />}>
               <Room3DView />

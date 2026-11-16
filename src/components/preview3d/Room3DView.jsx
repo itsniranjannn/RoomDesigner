@@ -245,68 +245,79 @@ export function Room3DView() {
           : `${VIEW_HINTS[pointer]}${hiddenWallPieces ? ' Pictures, mirrors and curtains show with Full walls.' : ''}`}
       </p>
 
-      {walking && <WalkHud onExit={exitWalk} />}
+      <div className={`${styles.bottomDock} ${walking ? styles.bottomDockWalk : ''}`}>
+        {walking && <WalkHud onExit={exitWalk} />}
 
-      <div className={styles.controls} role="toolbar" aria-label="3D view controls">
-        <Segmented
-          ariaLabel="Lighting"
-          options={LIGHT_OPTIONS}
-          value={lighting}
-          onChange={setLighting}
-          className={styles.compactSeg}
-        />
-        {!walking && (
-          <>
+        <div className={styles.controls} role="toolbar" aria-label="3D view controls">
+          {/* What the view is set to */}
+          <div className={styles.toggles}>
             <Segmented
-              ariaLabel="Walls"
-              options={WALL_OPTIONS}
-              value={isFullHeight ? 'full' : 'cutaway'}
-              onChange={(v) => setIsFullHeight(v === 'full')}
+              ariaLabel="Lighting"
+              options={LIGHT_OPTIONS}
+              value={lighting}
+              onChange={setLighting}
               className={styles.compactSeg}
             />
+            {!walking && (
+              <Segmented
+                ariaLabel="Walls"
+                options={WALL_OPTIONS}
+                value={isFullHeight ? 'full' : 'cutaway'}
+                onChange={(v) => setIsFullHeight(v === 'full')}
+                className={styles.compactSeg}
+              />
+            )}
+          </div>
+
+          <span className={styles.divider} aria-hidden="true" />
+
+          {/* Things that do something */}
+          <div className={styles.actions}>
+            {!walking && (
+              <Button
+                variant="secondary"
+                icon={<RotateCcw size={16} />}
+                onClick={() => setResetCounter((c) => c + 1)}
+                aria-label="Reset view"
+                title="Reset view"
+                className={styles.controlBtn}
+              >
+                <span className={styles.controlText}>Reset view</span>
+              </Button>
+            )}
+            <StyleButton
+              current={styleOfRoom(room)}
+              hasStyle={!!room.styleApplied}
+              onPick={(id) => applyStyle(id)}
+              onReset={resetStyle}
+              buttonClassName={styles.controlBtn}
+              textClassName={styles.controlText}
+            />
+            <MaterialsPanel
+              floor={finish.floor}
+              wall={finish.wall}
+              onFloor={(floor) => setRoomFinish({ floor })}
+              onWall={(wall) => setRoomFinish({ wall })}
+              quality={quality.mode}
+              onQuality={quality.setMode}
+              resolvedQuality={quality.level}
+              buttonClassName={styles.controlBtn}
+              textClassName={styles.controlText}
+            />
             <Button
-              variant="secondary"
-              icon={<RotateCcw size={16} />}
-              onClick={() => setResetCounter((c) => c + 1)}
-              aria-label="Reset view"
-              title="Reset view"
-              className={styles.controlBtn}
+              variant={walking ? 'primary' : 'secondary'}
+              icon={<Footprints size={16} />}
+              onClick={() => (walking ? exitWalk() : setWalking(true))}
+              className={walking ? undefined : styles.controlBtn}
+              aria-label={walking ? 'Stop walking' : 'Walk through the room'}
+              title={walking ? 'Stop walking (Esc)' : 'Walk through the room'}
             >
-              <span className={styles.controlText}>Reset view</span>
+              <span className={walking ? undefined : styles.controlText}>
+                {walking ? 'Stop walking' : 'Walk through'}
+              </span>
             </Button>
-          </>
-        )}
-        <StyleButton
-          current={styleOfRoom(room)}
-          hasStyle={!!room.styleApplied}
-          onPick={(id) => applyStyle(id)}
-          onReset={resetStyle}
-          buttonClassName={styles.controlBtn}
-          textClassName={styles.controlText}
-        />
-        <MaterialsPanel
-          floor={finish.floor}
-          wall={finish.wall}
-          onFloor={(floor) => setRoomFinish({ floor })}
-          onWall={(wall) => setRoomFinish({ wall })}
-          quality={quality.mode}
-          onQuality={quality.setMode}
-          resolvedQuality={quality.level}
-          buttonClassName={styles.controlBtn}
-          textClassName={styles.controlText}
-        />
-        <Button
-          variant={walking ? 'primary' : 'secondary'}
-          icon={<Footprints size={16} />}
-          onClick={() => (walking ? exitWalk() : setWalking(true))}
-          className={walking ? undefined : styles.controlBtn}
-          aria-label={walking ? 'Stop walking' : 'Walk through the room'}
-          title={walking ? 'Stop walking (Esc)' : 'Walk through the room'}
-        >
-          <span className={walking ? undefined : styles.controlText}>
-            {walking ? 'Stop walking' : 'Walk through'}
-          </span>
-        </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

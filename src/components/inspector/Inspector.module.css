@@ -68,6 +68,24 @@
   flex: 1;
 }
 
+/*
+ * A landscape phone has only ~300px of panel, and this pinned footer was eating the bottom of
+ * the size fields. It drops to icons there and takes a third less height.
+ */
+@media (max-height: 520px) {
+  .footer {
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .footer .footerText {
+    display: none;
+  }
+
+  .footer button {
+    min-height: var(--control-h-sm);
+  }
+}
+
 .grid2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -237,12 +255,6 @@
 .statLabel {
   font-size: var(--text-xs);
   color: var(--color-ink-muted);
-}
-
-.wallRow {
-  display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: var(--space-3);
 }
 
 .opening {

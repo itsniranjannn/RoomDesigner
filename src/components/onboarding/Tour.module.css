@@ -65,6 +65,15 @@
   flex: 1;
 }
 
+/*
+ * The card moves focus to its own buttons as each step opens. That is a programmatic focus, which
+ * :focus-visible does not answer, so the ring never showed; here :focus is the honest test.
+ */
+.actions button:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .launcher {
   position: fixed;
   left: var(--space-3);

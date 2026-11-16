@@ -51,7 +51,7 @@ export function CatalogItem({ item, onSelect, onDelete, onDropped }) {
           >
             <ArchitecturalSilhouette item={item} widthCm={previewW} depthCm={previewD} isSwatch />
           </svg>
-          <span className={styles.plus} aria-hidden="true">
+          <span className={`${styles.plus} ${onDelete ? styles.plusLeft : ''}`} aria-hidden="true">
             <Plus size={14} />
           </span>
         </div>

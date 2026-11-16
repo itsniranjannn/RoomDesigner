@@ -10,6 +10,7 @@ import { ArchitecturalSilhouette } from '../canvas/ArchitecturalSilhouette.jsx';
 import { Button } from '../common/Button.jsx';
 import { RangeField, Segmented } from '../common/Field.jsx';
 import { Section } from '../common/Section.jsx';
+import { useMediaQuery } from '../layout/hooks.js';
 import { supportOf } from '../../engine/stacking.js';
 import { InspectorShell } from './InspectorShell.jsx';
 import { FinishSection, SizeSection } from './PieceSections.jsx';
@@ -25,6 +26,9 @@ export function PiecePanel({ item, def, onClose }) {
   const reorderFurniture = useRoomStore((state) => state.reorderFurniture);
   const duplicateFurniture = useRoomStore((state) => state.duplicateFurniture);
   const removeFurniture = useRoomStore((state) => state.removeFurniture);
+  // Landscape phone: only ~300px of panel, so the extras start folded and the first screen
+  // holds the size fields whole
+  const shortPanel = useMediaQuery('(max-height: 520px)');
 
   // While the slider moves, rotation is applied live; one undo step is added when the gesture ends
   const sliderStart = useRef(null); // { snapshot, value }
@@ -77,21 +81,25 @@ export function PiecePanel({ item, def, onClose }) {
             variant="secondary"
             icon={<Copy size={16} />}
             onClick={() => duplicateFurniture(item.id)}
+            aria-label="Duplicate"
+            title="Duplicate"
           >
-            Duplicate
+            <span className={styles.footerText}>Duplicate</span>
           </Button>
           <Button
             variant="danger"
             icon={<Trash2 size={16} />}
             onClick={() => removeFurniture(item.id)}
+            aria-label="Delete"
+            title="Delete"
           >
-            Delete
+            <span className={styles.footerText}>Delete</span>
           </Button>
         </>
       }
     >
       <SizeSection item={item} def={def} />
-      {!isColorLocked(def) && <FinishSection item={item} def={def} />}
+      {!isColorLocked(def) && <FinishSection item={item} def={def} defaultOpen={!shortPanel} />}
       <PatternSection item={item} def={def} />
       <MountSection item={item} def={def} />
 
@@ -147,7 +155,7 @@ export function PiecePanel({ item, def, onClose }) {
         )}
       </Section>
 
-      <Section title="Layer order">
+      <Section title="Layer order" defaultOpen={!shortPanel}>
         <div className={styles.grid2}>
           <Button
             variant="secondary"

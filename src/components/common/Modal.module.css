@@ -96,6 +96,14 @@
   box-shadow: var(--focus-ring);
 }
 
+/* The way out of a dialog is the last control that should be hard to hit with a finger */
+@media (pointer: coarse) {
+  .close {
+    width: var(--control-h);
+    height: var(--control-h);
+  }
+}
+
 .body {
   display: flex;
   flex-direction: column;

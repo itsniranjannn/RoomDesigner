@@ -113,6 +113,14 @@
   right: var(--space-2);
 }
 
+/* 24px is a mouse target. A finger gets a bigger one, with the same size of arrow inside it. */
+@media (pointer: coarse) {
+  .chev {
+    width: 40px;
+    height: 40px;
+  }
+}
+
 .chips::-webkit-scrollbar {
   display: none;
 }

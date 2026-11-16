@@ -1,5 +1,15 @@
 import React, { Suspense, useEffect, useState } from 'react';
-import { Plus, Undo2, Redo2, ZoomIn, ZoomOut, Maximize, Layers, Box } from 'lucide-react';
+import {
+  Plus,
+  Undo2,
+  Redo2,
+  ZoomIn,
+  ZoomOut,
+  Maximize,
+  Layers,
+  Box,
+  PencilLine,
+} from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
 import { useFlatUi } from '../../store/flatUiStore.js';
 import { IconButton } from '../common/Section.jsx';
@@ -8,6 +18,7 @@ import { EditableTitle } from '../common/EditableTitle.jsx';
 import { SaveStatus } from '../common/SaveStatus.jsx';
 import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
 import { CanvasLoader } from '../common/CanvasLoader.jsx';
+import { EmptyState } from '../common/EmptyState.jsx';
 import { AppHeader } from '../layout/SiteHeader.jsx';
 import { isEditablePassage } from '../../engine/flatPassage.js';
 import { FlatPlanCanvas } from './FlatPlanCanvas.jsx';
@@ -142,6 +153,13 @@ export function FlatDesigner() {
   const showStart = !hasContent && viewMode === '2d' && dismissedFor !== flat.id;
   const levelOptions = flat.levels.map((l) => ({ value: l.id, label: l.name }));
   const plan = viewMode === '2d';
+  // A floor added to a plan that already has something on it: blank canvas, no card, where a
+  // blank flat and a new room both get one
+  const floorEmpty =
+    (flat.walls?.[levelId] || []).length === 0 &&
+    !flat.stairs.some((s) => s.levelId === levelId) &&
+    !flat.spaces.some((s) => s.levelId === levelId);
+  const showFloorEmpty = plan && floorEmpty && !showStart;
 
   return (
     <div className={styles.shell}>
@@ -219,6 +237,16 @@ export function FlatDesigner() {
                   <Maximize size={18} aria-hidden="true" />
                 </ToolButton>
               </ToolGroup>
+            )}
+
+            {showFloorEmpty && (
+              <EmptyState
+                icon={<PencilLine size={22} aria-hidden="true" />}
+                title="Nothing on this floor yet"
+              >
+                Pick the Wall tool and drag on the plan. The floor below shows through, so you can
+                draw over it.
+              </EmptyState>
             )}
 
             {showStart && <FlatStartCard onDismiss={() => setDismissedFor(flat.id)} />}

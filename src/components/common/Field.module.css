@@ -34,7 +34,7 @@
   font-size: var(--text-sm);
   color: var(--color-ink);
   background: var(--color-surface);
-  border: var(--border);
+  border: var(--border-field);
   border-radius: var(--radius-md);
   transition:
     border-color var(--transition-fast),
@@ -162,6 +162,17 @@
   min-height: 28px;
   font-size: var(--text-xs);
   padding: 0 var(--space-2);
+}
+
+/* A 28px segment is a mouse target; a finger needs the pill nearer 44px */
+@media (pointer: coarse) {
+  .segBtn {
+    min-height: 40px;
+  }
+
+  .segSmall .segBtn {
+    min-height: 36px;
+  }
 }
 
 .switchRow {

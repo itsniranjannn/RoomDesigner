@@ -1,7 +1,13 @@
+/*
+ * Used in two places: as a popover over the 3D view, where it sizes itself, and inside the
+ * details panel, where it has to fit the column it is given. A fixed 318px overflowed that
+ * column (318px wide including 20px of padding), slicing the blurb and the right-hand cards.
+ */
 .panel {
   display: grid;
   gap: var(--space-2);
-  width: min(318px, calc(100vw - 40px));
+  width: 100%;
+  max-width: 318px;
   padding: var(--space-1);
 }
 
@@ -84,4 +90,47 @@
 
 .head > button {
   justify-self: start;
+}
+
+/*
+ * As a popover over the 3D view it opened straight into body copy with no title, and its last row
+ * of cards was sliced off by the popover's own edge with nothing to say more was there.
+ */
+.heading {
+  margin: 0;
+  padding-bottom: var(--space-2);
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  border-bottom: var(--border-soft);
+}
+
+/* The cards scroll inside the panel, so the popover itself never has to */
+.popoverPanel {
+  max-height: none;
+  overflow: visible;
+}
+
+.scrollWrap {
+  position: relative;
+  min-height: 0;
+}
+
+.popover .scroller {
+  max-height: min(46vh, 300px);
+  overflow-y: auto;
+  /* room for the fade, so a sliced row is never read as the end of the list */
+  padding-bottom: var(--space-4);
+}
+
+/* The cut edge gets a fade, so it reads as "there is more below" */
+.popover .scrollWrap::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--space-6);
+  background: linear-gradient(to top, var(--color-paper), transparent);
+  pointer-events: none;
 }

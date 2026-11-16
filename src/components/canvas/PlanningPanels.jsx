@@ -5,6 +5,7 @@ import {
   ArrowLeftRight,
   CheckCircle2,
   Info,
+  Plug,
   RotateCw,
   Trash2,
   X,
@@ -181,11 +182,14 @@ export function ServicesPanel() {
           Click the plan to place a {SERVICE_KINDS[placeKind].label.toLowerCase()}. Press Esc when
           you are done.
         </p>
+      ) : services.length === 0 ? (
+        <div className={styles.empty}>
+          <Plug size={28} aria-hidden="true" />
+          <p className={styles.emptyTitle}>Nothing marked yet.</p>
+        </div>
       ) : (
         <p className={styles.muted}>
-          {services.length === 0
-            ? 'Nothing marked yet.'
-            : `${services.length} ${services.length === 1 ? 'point' : 'points'} marked. Click one on the plan to edit it.`}
+          {`${services.length} ${services.length === 1 ? 'point' : 'points'} marked. Click one on the plan to edit it.`}
         </p>
       )}
 

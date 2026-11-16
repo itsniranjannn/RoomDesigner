@@ -200,7 +200,7 @@ export function ShareModal({ onClose }) {
               </Button>
             </div>
           </div>
-          <RenderOptions value={renderPrefs} onChange={setRenderPrefs} disabled={busy} />
+          <RenderOptions value={renderPrefs} onChange={setRenderPrefs} disabled={busy || !has3D} />
         </li>
 
         <li className={styles.option}>

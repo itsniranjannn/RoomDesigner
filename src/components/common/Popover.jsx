@@ -35,6 +35,8 @@ export function Popover({
   align = 'start',
   direction = 'down',
   className = '',
+  /** For a panel that scrolls its own content rather than letting the popover scroll it all */
+  panelClassName = '',
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
@@ -52,7 +54,7 @@ export function Popover({
       {renderTrigger(triggerProps, open)}
       {open && (
         <div
-          className={`${styles.panel} ${align === 'end' ? styles.end : ''} ${direction === 'up' ? styles.up : ''}`}
+          className={`${styles.panel} ${align === 'end' ? styles.end : ''} ${direction === 'up' ? styles.up : ''} ${panelClassName}`}
           role={role}
           aria-label={label}
         >

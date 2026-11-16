@@ -704,83 +704,85 @@ export function Flat3DView() {
         </p>
       )}
 
-      {walking && <WalkHud onExit={exitWalk} />}
+      <div className={`${styles.bottomDock} ${walking ? styles.bottomDockWalk : ''}`}>
+        {walking && <WalkHud onExit={exitWalk} />}
 
-      <div className={styles.view3dControls} role="toolbar" aria-label="3D view controls">
-        <Segmented
-          ariaLabel="Lighting"
-          options={LIGHT_OPTIONS}
-          value={lighting}
-          onChange={setLighting}
-          size="small"
-        />
-        {!walking && (
+        <div className={styles.view3dControls} role="toolbar" aria-label="3D view controls">
           <Segmented
-            ariaLabel="Walls"
-            options={WALL_OPTIONS}
-            value={fullHeight ? 'full' : 'low'}
-            onChange={(v) => setFullHeight(v === 'full')}
+            ariaLabel="Lighting"
+            options={LIGHT_OPTIONS}
+            value={lighting}
+            onChange={setLighting}
             size="small"
           />
-        )}
-        <StyleButton
-          size="small"
-          current={sharedStyle(styleRooms)}
-          hasStyle={styleRooms.some((r) => r.styleApplied)}
-          onPick={(id) => {
-            // Walls are one finish for the whole flat in 3D, so a single room takes only floor and colours
-            applyStyle(id, styleRoomIds, oneRoom ? { wall: false } : undefined);
-            if (!oneRoom) look.set({ wall: null, floor: null });
-          }}
-          onReset={() => resetStyle(styleRoomIds)}
-          scope={
+          {!walking && (
             <Segmented
-              ariaLabel="Apply the style to"
-              options={[
-                { value: 'all', label: 'All rooms' },
-                {
-                  value: 'one',
-                  label: scopeRoom ? scopeRoom.name || 'This room' : 'One room',
-                  title: scopeRoom ? undefined : 'Select a room on the plan first',
-                },
-              ]}
-              value={oneRoom ? 'one' : 'all'}
-              onChange={(v) => setStyleScope(v === 'one' && !scopeRoom ? 'all' : v)}
+              ariaLabel="Walls"
+              options={WALL_OPTIONS}
+              value={fullHeight ? 'full' : 'low'}
+              onChange={(v) => setFullHeight(v === 'full')}
               size="small"
-              fill
             />
-          }
-          note={scopeRoom ? null : 'Select a room on the plan to style just that room.'}
-        />
-        <MaterialsPanel
-          floor={look.floor}
-          wall={look.wall}
-          onFloor={(floor) => look.set({ floor })}
-          onWall={(wall) => look.set({ wall })}
-          quality={quality.mode}
-          onQuality={quality.setMode}
-          resolvedQuality={quality.level}
-          floorLabel="Floors"
-          floorNote="A floor chosen for a room in its own editor is kept for that room."
-        />
-        <Button
-          variant={walking ? 'primary' : 'secondary'}
-          icon={<Footprints size={16} aria-hidden="true" />}
-          onClick={() => (walking ? exitWalk() : startWalk())}
-          disabled={!walking && !start}
-          aria-label={walking ? 'Stop walking' : 'Walk through the flat'}
-          title={
-            start
-              ? walking
-                ? 'Stop walking (Esc)'
-                : entrance
-                  ? 'Walk through the flat, starting at the main entrance'
-                  : 'Walk through the flat'
-              : 'Draw some walls first'
-          }
-        >
-          {walking ? 'Stop walking' : 'Walk through'}
-        </Button>
+          )}
+          <StyleButton
+            size="small"
+            current={sharedStyle(styleRooms)}
+            hasStyle={styleRooms.some((r) => r.styleApplied)}
+            onPick={(id) => {
+              // Walls are one finish for the whole flat in 3D, so a single room takes only floor and colours
+              applyStyle(id, styleRoomIds, oneRoom ? { wall: false } : undefined);
+              if (!oneRoom) look.set({ wall: null, floor: null });
+            }}
+            onReset={() => resetStyle(styleRoomIds)}
+            scope={
+              <Segmented
+                ariaLabel="Apply the style to"
+                options={[
+                  { value: 'all', label: 'All rooms' },
+                  {
+                    value: 'one',
+                    label: scopeRoom ? scopeRoom.name || 'This room' : 'One room',
+                    title: scopeRoom ? undefined : 'Select a room on the plan first',
+                  },
+                ]}
+                value={oneRoom ? 'one' : 'all'}
+                onChange={(v) => setStyleScope(v === 'one' && !scopeRoom ? 'all' : v)}
+                size="small"
+                fill
+              />
+            }
+            note={scopeRoom ? null : 'Select a room on the plan to style just that room.'}
+          />
+          <MaterialsPanel
+            floor={look.floor}
+            wall={look.wall}
+            onFloor={(floor) => look.set({ floor })}
+            onWall={(wall) => look.set({ wall })}
+            quality={quality.mode}
+            onQuality={quality.setMode}
+            resolvedQuality={quality.level}
+            floorLabel="Floors"
+            floorNote="A floor chosen for a room in its own editor is kept for that room."
+          />
+          <Button
+            variant={walking ? 'primary' : 'secondary'}
+            icon={<Footprints size={16} aria-hidden="true" />}
+            onClick={() => (walking ? exitWalk() : startWalk())}
+            disabled={!walking && !start}
+            aria-label={walking ? 'Stop walking' : 'Walk through the flat'}
+            title={
+              start
+                ? walking
+                  ? 'Stop walking (Esc)'
+                  : entrance
+                    ? 'Walk through the flat, starting at the main entrance'
+                    : 'Walk through the flat'
+                : 'Draw some walls first'
+            }
+          >
+            {walking ? 'Stop walking' : 'Walk through'}
+          </Button>
+        </div>
       </div>
     </div>
   );

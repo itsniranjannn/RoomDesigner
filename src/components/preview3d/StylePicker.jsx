@@ -113,11 +113,16 @@ export function StyleGrid({ current, onPick, disabled = false }) {
   );
 }
 
-/** Reset button and a line about the chosen style, then the cards. */
-export function StylePanel({ current, hasStyle, onPick, onReset, scope, note }) {
+/**
+ * Reset button and a line about the chosen style, then the cards. `heading` is for the popover
+ * over the 3D view, which has no section title of its own; in the details panel the section
+ * header already says "Style", and the cards run to the panel's own length.
+ */
+export function StylePanel({ current, hasStyle, onPick, onReset, scope, note, heading }) {
   const style = STYLE_PRESETS.find((s) => s.id === current);
   return (
-    <div className={styles.panel}>
+    <div className={`${styles.panel} ${heading ? styles.popover : ''}`}>
+      {heading && <h2 className={styles.heading}>{heading}</h2>}
       {scope}
       <div className={styles.head}>
         <p className={styles.note}>
@@ -140,7 +145,11 @@ export function StylePanel({ current, hasStyle, onPick, onReset, scope, note }) 
           Reset to original
         </Button>
       </div>
-      <StyleGrid current={current} onPick={onPick} />
+      <div className={styles.scrollWrap}>
+        <div className={styles.scroller}>
+          <StyleGrid current={current} onPick={onPick} />
+        </div>
+      </div>
       {note && <p className={styles.note}>{note}</p>}
     </div>
   );
@@ -154,6 +163,7 @@ export function StyleButton({ buttonClassName = '', textClassName = '', size, ..
       label="Room style"
       align="end"
       direction="up"
+      panelClassName={styles.popoverPanel}
       renderTrigger={(props) => (
         <Button
           variant="secondary"
@@ -168,7 +178,7 @@ export function StyleButton({ buttonClassName = '', textClassName = '', size, ..
         </Button>
       )}
     >
-      <StylePanel {...panelProps} />
+      <StylePanel heading="Room style" {...panelProps} />
     </Popover>
   );
 }

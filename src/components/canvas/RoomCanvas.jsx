@@ -13,6 +13,7 @@ import { PlanningLayer } from './PlanningLayer.jsx';
 import { PlanningPanels } from './PlanningPanels.jsx';
 import { usePlanChecks } from './usePlanChecks.js';
 import { usePlanningStore } from '../../store/planningStore.js';
+import { EmptyState } from '../common/EmptyState.jsx';
 import { MousePointerClick } from 'lucide-react';
 import { drawOrder } from '../../engine/stacking.js';
 import { useMediaQuery } from '../layout/hooks.js';
@@ -33,7 +34,7 @@ const SELECTED_HINTS = {
   touch: 'Drag to move. Open the details panel to turn it or remove it.',
 };
 
-export function RoomCanvas() {
+export function RoomCanvas({ catalogOpen, onToggleCatalog }) {
   const room = useRoomStore((state) => state.room);
   const selectedItemId = useRoomStore((state) => state.selectedItemId);
   const selectedItemIds = useRoomStore((state) => state.selectedItemIds);
@@ -423,18 +424,19 @@ export function RoomCanvas() {
         checks={checks}
         measurementCount={measurements.length}
         onClearMeasurements={() => setMeasurements([])}
+        catalogOpen={catalogOpen}
+        onToggleCatalog={onToggleCatalog}
       />
 
       <PlanningPanels checks={checks} />
 
       {isEmpty && !measureActive && (
-        <div className={styles.empty}>
-          <MousePointerClick size={22} aria-hidden="true" />
-          <p className={styles.emptyTitle}>Add your first piece</p>
-          <p className={styles.emptyText}>
-            Click a piece in the furniture list, or drag it onto the plan.
-          </p>
-        </div>
+        <EmptyState
+          icon={<MousePointerClick size={22} aria-hidden="true" />}
+          title="Add your first piece"
+        >
+          Click a piece in the furniture list, or drag it onto the plan.
+        </EmptyState>
       )}
 
       <p

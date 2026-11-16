@@ -225,14 +225,17 @@ export function TopBar({
             />
             {roomMenu}
             <SaveStatus status={saveStatus} />
-            <IconButton
-              label={catalogOpen ? 'Hide furniture list' : 'Show furniture list'}
-              active={catalogOpen}
-              quiet
-              onClick={onToggleCatalog}
-            >
-              <PanelLeft size={18} />
-            </IconButton>
+            {/* On a phone this lives with the plan tools instead: the bar has no room for it */}
+            {!phone && (
+              <IconButton
+                label={catalogOpen ? 'Hide furniture list' : 'Show furniture list'}
+                active={catalogOpen}
+                quiet
+                onClick={onToggleCatalog}
+              >
+                <PanelLeft size={18} />
+              </IconButton>
+            )}
           </>
         }
         center={
@@ -280,16 +283,19 @@ export function TopBar({
                 <span className={styles.actionText}>New room</span>
               </Button>
             )}
-            {showInspectorToggle && (
-              <IconButton
-                label={inspectorOpen ? 'Hide details panel' : 'Show details panel'}
-                active={inspectorOpen}
-                quiet
-                onClick={onToggleInspector}
-              >
-                <PanelRight size={18} />
-              </IconButton>
-            )}
+            {/*
+              There is no details panel in 3D, but dropping the button shifted the whole cluster
+              46px sideways on every switch between the two views, so it stays and goes quiet.
+            */}
+            <IconButton
+              label={inspectorOpen ? 'Hide details panel' : 'Show details panel'}
+              active={showInspectorToggle && inspectorOpen}
+              quiet
+              disabled={!showInspectorToggle}
+              onClick={onToggleInspector}
+            >
+              <PanelRight size={18} />
+            </IconButton>
           </>
         }
       />
