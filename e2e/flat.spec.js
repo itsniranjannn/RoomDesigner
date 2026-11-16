@@ -83,6 +83,19 @@ test.describe('flat designer', () => {
     await expect(page.getByRole('application')).toBeVisible();
   });
 
+  // The README promised a design could be shared as a link, but only a room can be
+  test('the flat export menu says a flat cannot be shared as a link yet', async ({ page }) => {
+    await openApp(page);
+    await newFlat(page, { label: '2BHK' });
+    await expect(stat(page, 'Rooms')).toBeVisible();
+    await page.getByRole('button', { name: 'Export this floor' }).click();
+    const menu = page.getByRole('menu', { name: 'Export this floor' });
+    await expect(menu.getByRole('menuitem', { name: 'Printable plan (PDF)' })).toBeEnabled();
+    const link = menu.getByRole('menuitem', { name: /cannot be shared as a link/ });
+    await expect(link).toBeVisible();
+    await expect(link).toBeDisabled();
+  });
+
   // Reloading while designing a flat used to drop the user back on the landing page, while
   // reloading inside a room correctly reopened it.
   test('a reload comes back to the flat being designed', async ({ page }) => {

@@ -17,7 +17,7 @@ Plan a room or a whole flat on a 2D plan, check that the furniture fits, and wal
 - **Checks as you place**: collisions, door swings, blocked windows and cramped walking gaps.
 - **Services and Plan checks** (room editor): mark sockets, switches, lights, TV points, water, drains, gas, radiators and air conditioners on the plan (wall points snap to the nearest wall). Plan checks then looks at door swings, walking routes, space in front of units, wheelchair turning space and whether the TV, bed, desk and appliances have a socket, and whether sinks, toilets and machines have water and a drain.
 - **Service links**: dashed lines join each sink, stove, TV, fridge and so on to the nearest water, drain, gas or socket point it relies on. Green is within reach, red is too far (with a "no water nearby" tag), amber means no point of that kind is marked. Links are faint until you select a piece (or a point), then bold. The switch **Show service links** is in the Plan checks panel; the exported PNG and PDF draw the links with a key when it is on. The panels have a button to sit on either side of the plan. The flat designer has no service points yet.
-- **Export** the floor plan as PNG or PDF, the 3D view as a PNG (twice the screen size, with a title strip), or the design as JSON, or share the whole design as a link. File names carry the design name and the date.
+- **Export** the floor plan as PNG or PDF, the 3D view as a PNG (twice the screen size, with a title strip), or a room as JSON, or share a room as a link. A flat exports as pictures and a printable plan; it has no JSON or link yet. File names carry the design name and the date.
 - **Local and offline**: stored in IndexedDB, installable as a PWA.
 
 ![Start page](docs/assets/images/landing.jpg)
@@ -55,7 +55,7 @@ The whole flat is also available in 3D.
 
 ## Export and share
 
-PNG and PDF exports are drawn from the same symbols as the editor (tints, photo cut-outs and stacked items included), with a scale bar, a numbered key to the pieces and the room area. The 3D view exports as its own PNG, for a room and for a flat (the flat export can save the plan and the 3D picture together). Rooms also export to JSON and import back. Share links carry the whole design in the URL, so nothing is uploaded.
+PNG and PDF exports are drawn from the same symbols as the editor (tints, photo cut-outs and stacked items included), with a scale bar, a numbered key to the pieces and the room area. The 3D view exports as its own PNG, for a room and for a flat (the flat export can save the plan and the 3D picture together). Rooms also export to JSON and import back; a file that is not a Room Designer design is refused rather than opened as an empty room. Share links carry a whole room in the URL, so nothing is uploaded. A flat has no JSON file and no share link yet: it exports as pictures and as a printable plan, and the flat's Export menu says so.
 
 ![Exported floor plan](docs/assets/images/export-png.jpg)
 
@@ -110,7 +110,7 @@ Press `?` on the 2D plan to see the room list in the app.
 
 - **Collision and clearance.** Pieces are rotated rectangles. Overlaps and wall containment use the Separating Axis Theorem (`src/engine/collision.js`). `clearance.js` flags door-swing zones, obstructed windows and walking gaps between 25 and 60 cm.
 - **One source for drawings.** The editor and the PNG/PDF export build from shared piece symbols and a sheet model (`sheetModel.js`, `exportPlan.js`), so exports match what you see.
-- **Share links.** A design is compressed, base64url-encoded and placed in the URL hash (`#share=...`), then decoded on load. Nothing leaves the browser, and a design too large for a link is refused rather than truncated.
+- **Share links.** A room is compressed, base64url-encoded and placed in the URL hash (`#share=...`), then decoded on load. Nothing leaves the browser, and a design too large for a link is refused rather than truncated. Flats are not encoded this way yet.
 - **Persistence.** Zustand stores hold the live state. Saves are debounced and written to IndexedDB (`idb`) in three object stores: rooms, custom (photo-made) furniture and flats. The last open room is remembered in `localStorage`.
 - **Offline.** A service worker is registered in production builds only, so dev hot-reload is never cached.
 
