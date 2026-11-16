@@ -19,7 +19,7 @@ import styles from './RoomCanvas.module.css';
 
 const isTyping = () => ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
 
-export function RoomCanvas() {
+export function RoomCanvas({ catalogOpen, onToggleCatalog }) {
   const room = useRoomStore((state) => state.room);
   const selectedItemId = useRoomStore((state) => state.selectedItemId);
   const selectedItemIds = useRoomStore((state) => state.selectedItemIds);
@@ -408,6 +408,8 @@ export function RoomCanvas() {
         checks={checks}
         measurementCount={measurements.length}
         onClearMeasurements={() => setMeasurements([])}
+        catalogOpen={catalogOpen}
+        onToggleCatalog={onToggleCatalog}
       />
 
       <PlanningPanels checks={checks} />

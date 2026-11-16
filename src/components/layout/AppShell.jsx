@@ -260,7 +260,7 @@ export function AppShell() {
 
         <div className={styles.canvasWrapper}>
           {viewMode === '2d' ? (
-            <RoomCanvas />
+            <RoomCanvas catalogOpen={catalogOpen} onToggleCatalog={toggleCatalog} />
           ) : (
             <Suspense fallback={<CanvasLoader label="Loading 3D view" />}>
               <Room3DView />

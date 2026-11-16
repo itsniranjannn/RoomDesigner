@@ -4,6 +4,7 @@ import {
   ImagePlus,
   Keyboard,
   MoveHorizontal,
+  PanelLeft,
   Plug,
   Redo2,
   Ruler,
@@ -25,7 +26,13 @@ import styles from './CanvasToolbar.module.css';
 // Clicks on the overlay must not reach the canvas underneath (it would clear the selection)
 const stop = { onClick: (e) => e.stopPropagation(), onPointerDown: (e) => e.stopPropagation() };
 
-export function CanvasToolbar({ checks, onClearMeasurements, measurementCount }) {
+export function CanvasToolbar({
+  checks,
+  onClearMeasurements,
+  measurementCount,
+  catalogOpen,
+  onToggleCatalog,
+}) {
   const room = useRoomStore((s) => s.room);
   const measureActive = useRoomStore((s) => s.measureActive);
   const showClearance = useRoomStore((s) => s.showClearance);
@@ -81,6 +88,19 @@ export function CanvasToolbar({ checks, onClearMeasurements, measurementCount })
         aria-orientation={phone ? 'horizontal' : 'vertical'}
         {...stop}
       >
+        {/* No room for it in the top bar at this width, and it belongs with the plan tools */}
+        {phone && onToggleCatalog && (
+          <ToolGroup vertical={!phone}>
+            <ToolButton
+              active={catalogOpen}
+              side={side}
+              onClick={onToggleCatalog}
+              label={catalogOpen ? 'Hide furniture list' : 'Show furniture list'}
+            >
+              <PanelLeft size={18} />
+            </ToolButton>
+          </ToolGroup>
+        )}
         {phone && (
           <ToolGroup vertical={!phone}>
             <ToolButton
