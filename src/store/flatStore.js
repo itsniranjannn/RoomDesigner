@@ -57,18 +57,37 @@ const HISTORY_LIMIT = 80;
 let saveTimer = null;
 let pendingFlat = null;
 let writeQueue = Promise.resolve();
+let writesInFlight = 0;
 
 const logDev = (label, err) => {
   if (import.meta.env?.DEV) console.error(label, err);
 };
 
+/** Keeps the "Saved" note in the header honest: it is read from the store, like the room designer's. */
+const setSaveStatus = (saveStatus) => useFlatStore.setState({ saveStatus });
+
 function queueWrite(task) {
-  writeQueue = writeQueue.then(task).catch((err) => logDev('Flat save failed:', err));
+  writesInFlight += 1;
+  setSaveStatus('saving');
+  writeQueue = writeQueue
+    .then(task)
+    .then(() => {
+      writesInFlight -= 1;
+      if (writesInFlight === 0) setSaveStatus('saved');
+    })
+    .catch((err) => {
+      writesInFlight -= 1;
+      // The flat could not be stored: say so instead of showing "Saved" over work that is gone
+      setSaveStatus('error');
+      logDev('Flat save failed:', err);
+    });
   return writeQueue;
 }
 
 function persistFlat(flat) {
   pendingFlat = flat;
+  // The write itself waits for a pause in the editing; the edit is already unsaved
+  setSaveStatus('saving');
   if (saveTimer) clearTimeout(saveTimer);
   saveTimer = setTimeout(flushFlat, 300);
 }
@@ -128,6 +147,7 @@ const emptySession = {
   future: [],
   canUndo: false,
   canRedo: false,
+  saveStatus: 'saved', // 'saved' | 'saving' | 'error' (the write failed)
 };
 
 export const useFlatStore = create((set, get) => ({

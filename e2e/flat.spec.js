@@ -82,4 +82,23 @@ test.describe('flat designer', () => {
     await page.getByRole('button', { name: 'Plan', exact: true }).click();
     await expect(page.getByRole('application')).toBeVisible();
   });
+
+  // A flat whose writes all fail used to keep saying "Saved" over work that was already gone
+  test('says the flat is not saved when the device will not store it', async ({ page }) => {
+    await openApp(page);
+    await newFlat(page, { label: '2BHK' });
+    await expect(stat(page, 'Rooms')).toBeVisible();
+    await expect(page.getByRole('status', { name: /all changes saved/i })).toBeVisible();
+
+    // Every write fails from here on, as a device with no room left would
+    await page.evaluate(() => {
+      IDBObjectStore.prototype.put = function put() {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      };
+    });
+
+    await page.getByRole('button', { name: 'Add a floor' }).click();
+    await expect(page.getByRole('status', { name: /could not be saved/i })).toBeVisible();
+    await expect(page.getByRole('status', { name: /all changes saved/i })).toBeHidden();
+  });
 });

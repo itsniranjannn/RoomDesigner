@@ -49,6 +49,7 @@ export function FlatDesigner() {
   const viewMode = useFlatStore((s) => s.viewMode);
   const canUndo = useFlatStore((s) => s.canUndo);
   const canRedo = useFlatStore((s) => s.canRedo);
+  const saveStatus = useFlatStore((s) => s.saveStatus);
   const setViewMode = useFlatStore((s) => s.setViewMode);
   const setLevel = useFlatStore((s) => s.setLevel);
   const addLevel = useFlatStore((s) => s.addLevel);
@@ -144,7 +145,7 @@ export function FlatDesigner() {
               label="Flat name"
               maxLength={80}
             />
-            <SaveStatus />
+            <SaveStatus status={saveStatus} />
           </>
         }
         center={
