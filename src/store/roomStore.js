@@ -55,6 +55,11 @@ async function listStandaloneRooms() {
 export const RESIZE_MIN_RATIO = 0.4;
 export const RESIZE_MAX_RATIO = 2.5;
 
+// How big a room may be, in centimetres. The New room dialog and the Room details panel both
+// hold to this, so a room cannot be made a size it could not have been created at.
+export const ROOM_MIN_CM = 200;
+export const ROOM_MAX_CM = 1500;
+
 function clampToBase(overrides, base) {
   if (!overrides || !base) return overrides;
   const out = { ...overrides };
@@ -220,6 +225,10 @@ export const useRoomStore = create((set, get) => ({
     if (!room) return null;
     return {
       ...(includeLook ? { look: lookOf(room) } : {}),
+      // The size is part of a step, so undoing a resize brings the old walls back with the
+      // furniture and openings that were refitted to them
+      widthCm: room.widthCm,
+      depthCm: room.depthCm,
       placedFurniture: JSON.parse(JSON.stringify(room.placedFurniture || [])),
       doors: JSON.parse(JSON.stringify(room.doors || [])),
       windows: JSON.parse(JSON.stringify(room.windows || [])),
@@ -280,6 +289,9 @@ export const useRoomStore = create((set, get) => ({
     const updatedRoom = withSnapshotLook(
       {
         ...room,
+        // Snapshots taken before the size became part of a step have no size of their own
+        widthCm: prevSnapshot.widthCm ?? room.widthCm,
+        depthCm: prevSnapshot.depthCm ?? room.depthCm,
         placedFurniture: withoutRemovedTypes(prevSnapshot.placedFurniture),
         doors: prevSnapshot.doors,
         windows: prevSnapshot.windows,
@@ -299,9 +311,9 @@ export const useRoomStore = create((set, get) => ({
 
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       enrichedItems,
-      room.widthCm,
-      room.depthCm,
-      room.outline
+      updatedRoom.widthCm,
+      updatedRoom.depthCm,
+      updatedRoom.outline
     );
 
     set({
@@ -333,6 +345,8 @@ export const useRoomStore = create((set, get) => ({
     const updatedRoom = withSnapshotLook(
       {
         ...room,
+        widthCm: nextSnapshot.widthCm ?? room.widthCm,
+        depthCm: nextSnapshot.depthCm ?? room.depthCm,
         placedFurniture: withoutRemovedTypes(nextSnapshot.placedFurniture),
         doors: nextSnapshot.doors,
         windows: nextSnapshot.windows,
@@ -352,9 +366,9 @@ export const useRoomStore = create((set, get) => ({
 
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       enrichedItems,
-      room.widthCm,
-      room.depthCm,
-      room.outline
+      updatedRoom.widthCm,
+      updatedRoom.depthCm,
+      updatedRoom.outline
     );
 
     set({
@@ -786,6 +800,104 @@ export const useRoomStore = create((set, get) => ({
     set({ room: updatedRoom, saveStatus: 'saving' });
 
     persistDebounced(updatedRoom, set);
+  },
+
+  /**
+   * Changes the size of the open room. A room can be made bigger or smaller at any time, so
+   * furniture and openings that no longer fit have to be dealt with rather than lost: a piece
+   * outside the new walls is brought back inside (wall pieces stay flush against their wall),
+   * and a door or window on a wall that is now shorter is slid, and a window narrowed, until it
+   * fits. The counts come back so the panel can say what had to move.
+   *
+   * @returns {{ widthCm, depthCm, movedPieces, movedOpenings } | null} null if nothing changed
+   */
+  resizeRoom: (widthCm, depthCm) => {
+    const { room } = get();
+    if (!room) return null;
+    const asked = (raw, fallback) => {
+      const n = Number(raw);
+      return Number.isFinite(n) ? clamp(Math.round(n), ROOM_MIN_CM, ROOM_MAX_CM) : fallback;
+    };
+    const nextW = asked(widthCm, room.widthCm);
+    const nextD = asked(depthCm, room.depthCm);
+    if (nextW === room.widthCm && nextD === room.depthCm) return null;
+
+    get()._recordHistory();
+
+    // Doors and windows keep their place on their wall where they can; clampOpening slides them
+    // off the corners and narrows a window that no longer spans the wall, as a drag would.
+    let movedOpenings = 0;
+    const refitOpenings = (list, type) =>
+      (list || []).map((op) => {
+        const wall = op.wall || (type === 'door' ? 'bottom' : 'top');
+        const wallLen = wall === 'left' || wall === 'right' ? nextD : nextW;
+        const fitted = clampOpening(type, op.offsetCm, op.widthCm, wallLen);
+        if (fitted.offsetCm === op.offsetCm && fitted.widthCm === op.widthCm) return op;
+        movedOpenings += 1;
+        return { ...op, ...fitted };
+      });
+
+    const resized = {
+      ...room,
+      widthCm: nextW,
+      depthCm: nextD,
+      doors: refitOpenings(room.doors, 'door'),
+      windows: refitOpenings(room.windows, 'window'),
+    };
+
+    // Pieces are measured at their real size, so one half outside the new wall comes back in whole
+    const was = room.placedFurniture || [];
+    const broughtIn = was.map((item) => {
+      const def = resolveItemDef(item);
+      const sized = {
+        ...item,
+        widthCm: def ? def.widthCm : 50,
+        depthCm: def ? def.depthCm : 50,
+      };
+      const spot = clampInsideRoom(sized, nextW, nextD, room.outline || null);
+      if (Math.abs(spot.x - item.x) < 0.05 && Math.abs(spot.y - item.y) < 0.05) return item;
+      return { ...item, x: Math.round(spot.x), y: Math.round(spot.y) };
+    });
+    // Pictures, mirrors and curtains belong against a wall, and the walls have just moved
+    const placedFurniture = snapWallPieces(resized, broughtIn);
+    const movedPieces = placedFurniture.filter(
+      (item, i) => Math.abs(item.x - was[i].x) > 0.05 || Math.abs(item.y - was[i].y) > 0.05
+    ).length;
+
+    // Sockets, taps and drains sit on a wall or on the floor, and the walls have just moved: they
+    // are put back onto them rather than left floating outside the room
+    let movedServices = 0;
+    const services = (room.services || []).map((point) => {
+      const at = positionService(resized, point.kind, point.x, point.y, point.rotationDeg || 0);
+      if (!at || (Math.abs(at.x - point.x) < 0.05 && Math.abs(at.y - point.y) < 0.05)) return point;
+      movedServices += 1;
+      return { ...point, ...at };
+    });
+
+    const updatedRoom = {
+      ...resized,
+      placedFurniture,
+      ...(room.services ? { services } : {}),
+    };
+    const enriched = placedFurniture.map((item) => {
+      const def = resolveItemDef(item);
+      return { ...item, widthCm: def ? def.widthCm : 50, depthCm: def ? def.depthCm : 50 };
+    });
+    const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
+      enriched,
+      nextW,
+      nextD,
+      updatedRoom.outline
+    );
+
+    set({
+      room: updatedRoom,
+      collidingItemIds: collidingIds,
+      boundaryCollidingIds,
+      saveStatus: 'saving',
+    });
+    persistDebounced(updatedRoom, set);
+    return { widthCm: nextW, depthCm: nextD, movedPieces, movedOpenings, movedServices };
   },
 
   // Floor and wall finish of the 3D view (ids from preview3d/materials.js); classic = none chosen
@@ -1263,8 +1375,8 @@ export const useRoomStore = create((set, get) => ({
     const newRoom = {
       id: `room-${Date.now()}`,
       name: name || 'Custom Room',
-      widthCm: clamp(widthCm, 200, 1500),
-      depthCm: clamp(depthCm, 200, 1500),
+      widthCm: clamp(widthCm, ROOM_MIN_CM, ROOM_MAX_CM),
+      depthCm: clamp(depthCm, ROOM_MIN_CM, ROOM_MAX_CM),
       doors: [
         {
           id: `door-${Date.now()}`,

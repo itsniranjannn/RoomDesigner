@@ -1,5 +1,5 @@
 import { test, expect } from './fixtures.js';
-import { addByClick, createRoomFromPreset, openApp } from './helpers.js';
+import { addByClick, createRoomFromPreset, openApp, piecePosition } from './helpers.js';
 
 /**
  * Keyboard-only paths across the drawing surfaces. Everything here is driven with real key
@@ -483,6 +483,65 @@ test.describe('doors and windows can be placed by typing a number', () => {
     await expect(position).toHaveValue('310');
     // A door is one standard width, so there is no width box for it
     await expect(details.getByRole('spinbutton', { name: 'Width' })).toHaveCount(0);
+  });
+});
+
+test.describe('a room can be resized after it was created', () => {
+  test('Width and Depth refit the furniture and the openings, and Undo puts the size back', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room'); // 500 x 400 cm
+    await addByClick(page, 'Coffee Table');
+    expect(await piecePosition(page)).toEqual({ x: 220, y: 170 });
+
+    const piece = page.getByRole('complementary', { name: 'Selected piece' });
+    await piece.getByRole('button', { name: 'Room overview' }).click();
+    const panel = page.getByRole('complementary', { name: 'Room details' });
+    const size = panel.locator('[data-room-size]');
+    const width = size.getByRole('spinbutton', { name: 'Width' });
+    await expect(width).toHaveValue('500');
+
+    // 500 cm down to 200: the table no longer fits where it stood, nor does the window
+    await width.focus();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('200');
+    await page.keyboard.press('Enter');
+
+    await expect(panel.getByText('2.00 x 2.00 m')).toHaveCount(0);
+    await expect(panel.getByText('2.00 x 4.00 m')).toBeVisible();
+    const said = panel.getByRole('status');
+    await expect(said).toContainText('The room is now 200 by 400 cm.');
+    await expect(said).toContainText('1 piece was brought inside the new walls.');
+    await expect(said).toContainText('1 door or window was moved to fit its wall.');
+
+    // The window was 190 cm along a 500 cm wall; on a 200 cm wall it goes as far as it can
+    await expect(
+      panel.locator('[data-opening="window-1"]').getByRole('spinbutton', { name: 'Position' })
+    ).toHaveValue('65');
+
+    // The table was brought back inside rather than left outside the room or dropped
+    await panel
+      .getByRole('button', { name: /Coffee Table/ })
+      .first()
+      .click();
+    expect(await piecePosition(page)).toEqual({ x: 145, y: 170 });
+
+    // One Undo gives the old room back, with the window where it was
+    await page.getByRole('button', { name: /^Undo/ }).click();
+    await expect(panel.getByText('5.00 x 4.00 m')).toBeVisible();
+    await expect(
+      panel.locator('[data-opening="window-1"]').getByRole('spinbutton', { name: 'Position' })
+    ).toHaveValue('190');
+
+    // The range is the one the New room dialog allows, and a number outside it says so
+    await width.focus();
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.type('1600');
+    await page.keyboard.press('Enter');
+    await expect(width).toHaveValue('1500');
+    await expect(size.getByText('Maximum is 1500, so 1600 was set to 1500.')).toBeVisible();
+    await expect(panel.getByText('15.00 x 4.00 m')).toBeVisible();
   });
 });
 

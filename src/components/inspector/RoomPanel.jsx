@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { DoorOpen, GripVertical, Plus, Square, Trash2 } from 'lucide-react';
-import { useRoomStore } from '../../store/roomStore.js';
+import { useRoomStore, ROOM_MAX_CM, ROOM_MIN_CM } from '../../store/roomStore.js';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import {
   isResizable,
@@ -328,6 +328,77 @@ function PieceList({ pieces }) {
   );
 }
 
+/** What a resize did, in plain words, for the line that is read out after it. */
+function resizeWords({ widthCm, depthCm, movedPieces, movedOpenings, movedServices }) {
+  const parts = [`The room is now ${widthCm} by ${depthCm} cm.`];
+  if (movedPieces > 0)
+    parts.push(
+      movedPieces === 1
+        ? '1 piece was brought inside the new walls.'
+        : `${movedPieces} pieces were brought inside the new walls.`
+    );
+  if (movedOpenings > 0)
+    parts.push(
+      movedOpenings === 1
+        ? '1 door or window was moved to fit its wall.'
+        : `${movedOpenings} doors and windows were moved to fit their walls.`
+    );
+  if (movedServices > 0)
+    parts.push(
+      movedServices === 1
+        ? '1 service point was moved onto the new walls.'
+        : `${movedServices} service points were moved onto the new walls.`
+    );
+  parts.push('Undo puts the old size back.');
+  return parts.join(' ');
+}
+
+/**
+ * Width and depth of the room. A room used to be stuck at the size it was created with, so the
+ * only way to change it was to start again and place the furniture a second time.
+ */
+function RoomSizeFields({ room }) {
+  const resizeRoom = useRoomStore((state) => state.resizeRoom);
+  const [done, setDone] = useState(null);
+  const apply = (patch) => {
+    const result = resizeRoom(patch.widthCm ?? room.widthCm, patch.depthCm ?? room.depthCm);
+    if (result) setDone(resizeWords(result));
+  };
+  return (
+    <>
+      <div className={styles.grid2} data-room-size>
+        <NumberField
+          label="Width"
+          suffix="cm"
+          min={ROOM_MIN_CM}
+          max={ROOM_MAX_CM}
+          step={10}
+          value={room.widthCm}
+          onCommit={(v) => apply({ widthCm: v })}
+        />
+        <NumberField
+          label="Depth"
+          suffix="cm"
+          min={ROOM_MIN_CM}
+          max={ROOM_MAX_CM}
+          step={10}
+          value={room.depthCm}
+          onCommit={(v) => apply({ depthCm: v })}
+        />
+      </div>
+      <p className={styles.note}>
+        Between {ROOM_MIN_CM} and {ROOM_MAX_CM} cm, as when a room is created. Furniture and
+        openings that no longer fit are moved inside the new walls rather than lost.
+      </p>
+      {done && (
+        <p className={styles.note} role="status">
+          {done}
+        </p>
+      )}
+    </>
+  );
+}
+
 export function RoomPanel({ onClose }) {
   const room = useRoomStore((state) => state.room);
   const addOpening = useRoomStore((state) => state.addOpening);
@@ -336,6 +407,9 @@ export function RoomPanel({ onClose }) {
   const pieces = room.placedFurniture || [];
   const doors = room.doors || [];
   const windows = room.windows || [];
+  // A room of a flat takes its shape from the walls drawn there, so its size is changed in the
+  // flat designer and not here; the same goes for a room that is not a plain rectangle.
+  const ownSize = !hasOutline(room) && !room.flatId;
 
   const area = (
     (hasOutline(room) ? polygonArea(room.outline) : room.widthCm * room.depthCm) / 10000
@@ -366,6 +440,15 @@ export function RoomPanel({ onClose }) {
             <span className={styles.statLabel}>{pieces.length === 1 ? 'Piece' : 'Pieces'}</span>
           </div>
         </div>
+        {ownSize ? (
+          <RoomSizeFields room={room} />
+        ) : (
+          <p className={styles.note}>
+            {hasOutline(room)
+              ? 'This room is not a plain rectangle, so its shape follows the walls it was drawn with.'
+              : 'This room belongs to a flat. Change its size by moving the walls in the flat designer.'}
+          </p>
+        )}
       </Section>
 
       <Section title="Style">

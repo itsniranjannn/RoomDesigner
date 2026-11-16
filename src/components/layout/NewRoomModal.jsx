@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useRoomStore } from '../../store/roomStore.js';
+import { useRoomStore, ROOM_MAX_CM, ROOM_MIN_CM } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
 import { Modal } from '../common/Modal.jsx';
 import { TextField, NumberField } from '../common/Field.jsx';
@@ -16,8 +16,6 @@ const ROOM_PRESETS = [
   { name: 'Open studio', width: 600, depth: 500 },
 ];
 
-const MIN_CM = 200;
-const MAX_CM = 1500;
 const meters = (cm) => `${(cm / 100).toFixed(1)} m`;
 
 function NewRoomForm({ onClose }) {
@@ -43,7 +41,7 @@ function NewRoomForm({ onClose }) {
     const clampCm = (raw, fallback) => {
       const n = Number(raw);
       if (raw === null || raw === '' || !Number.isFinite(n)) return fallback;
-      return Math.max(MIN_CM, Math.min(MAX_CM, n));
+      return Math.max(ROOM_MIN_CM, Math.min(ROOM_MAX_CM, n));
     };
     const w = clampCm(data?.get('width'), widthCm);
     const d = clampCm(data?.get('depth'), depthCm);
@@ -116,11 +114,11 @@ function NewRoomForm({ onClose }) {
             label="Width"
             name="width"
             suffix="cm"
-            min={MIN_CM}
-            max={MAX_CM}
+            min={ROOM_MIN_CM}
+            max={ROOM_MAX_CM}
             step="any"
             value={widthCm}
-            hint={`${meters(widthCm)}. Allowed ${MIN_CM} to ${MAX_CM}.`}
+            hint={`${meters(widthCm)}. Allowed ${ROOM_MIN_CM} to ${ROOM_MAX_CM}.`}
             onCommit={(v) => {
               setWidthCm(v);
               setPresetName(null);
@@ -130,11 +128,11 @@ function NewRoomForm({ onClose }) {
             label="Depth"
             name="depth"
             suffix="cm"
-            min={MIN_CM}
-            max={MAX_CM}
+            min={ROOM_MIN_CM}
+            max={ROOM_MAX_CM}
             step="any"
             value={depthCm}
-            hint={`${meters(depthCm)}. Allowed ${MIN_CM} to ${MAX_CM}.`}
+            hint={`${meters(depthCm)}. Allowed ${ROOM_MIN_CM} to ${ROOM_MAX_CM}.`}
             onCommit={(v) => {
               setDepthCm(v);
               setPresetName(null);
