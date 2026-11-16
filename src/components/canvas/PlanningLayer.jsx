@@ -98,14 +98,14 @@ function ServiceNode({ service, label, selected, interactive, svgRef }) {
  * Where the keyboard is pointing, drawn only while the arrow keys are driving the plan. The
  * pale halo under each line keeps it visible over walls, furniture and the floor alike.
  */
-export function KeyboardCrosshair({ x, y, label }) {
+export function KeyboardCrosshair({ x, y, label, readout }) {
   const arm = 30;
   return (
     <g
       transform={`translate(${x} ${y})`}
       pointerEvents="none"
       data-testid="keyboard-crosshair"
-      data-crosshair={`${x},${y}`}
+      data-crosshair={readout || `${x},${y}`}
       aria-hidden="true"
     >
       <g stroke="#F6F2EA" strokeWidth="5" strokeLinecap="round" opacity="0.9">

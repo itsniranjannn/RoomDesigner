@@ -147,3 +147,151 @@ test.describe('measuring by keyboard', () => {
     await expect(crosshair(page)).toHaveCount(0);
   });
 });
+
+test.describe('drawing a flat by keyboard', () => {
+  /** A blank flat, created without touching the mouse on the plan. */
+  async function blankFlat(page) {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Design a flat' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Design a flat' });
+    await dialog.getByRole('combobox', { name: 'Start from' }).selectOption({ label: 'Blank' });
+    await dialog.getByRole('button', { name: 'Create flat' }).click();
+    await expect(page.getByRole('application')).toBeVisible();
+    await page.getByRole('button', { name: 'Start with a blank plan' }).click();
+  }
+
+  const details = (page) => page.getByRole('complementary', { name: 'Details' });
+  const stat = (page, label) =>
+    details(page).getByText(label, { exact: true }).locator('xpath=following-sibling::*[1]');
+
+  /** Presses an arrow n times. */
+  async function arrows(page, key, n) {
+    for (let i = 0; i < n; i += 1) await page.keyboard.press(key);
+  }
+
+  /** Where the crosshair stands, in cm. */
+  async function at(page) {
+    const value = await crosshair(page).getAttribute('data-crosshair');
+    const [x, y] = value.split(',').map(Number);
+    return { x, y };
+  }
+
+  /**
+   * Draws a 400 by 300 cm box with the Wall tool, using only the arrow keys and Enter.
+   * Returns the top-left corner it started from.
+   */
+  async function drawBoxByKeyboard(page) {
+    await page.keyboard.press('ArrowRight');
+    const home = await at(page);
+    await page.keyboard.press('Enter');
+    await arrows(page, 'Shift+ArrowRight', 8);
+    await page.keyboard.press('Enter');
+    await arrows(page, 'Shift+ArrowDown', 6);
+    await page.keyboard.press('Enter');
+    await arrows(page, 'Shift+ArrowLeft', 8);
+    await page.keyboard.press('Enter');
+    await arrows(page, 'Shift+ArrowUp', 6);
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+    return home;
+  }
+
+  test('the plan says the arrow keys work, and they draw a closed room', async ({ page }) => {
+    await blankFlat(page);
+    const svg = page.getByRole('application');
+    await expect(svg).toHaveAttribute('aria-label', /arrow keys/);
+    await expect(svg).toHaveAttribute('aria-label', /press Enter/);
+    // The Wall tool is already chosen on a blank plan
+    await expect(page.getByRole('button', { name: 'Draw wall (W)' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+
+    await svg.focus();
+    await expect(crosshair(page)).toHaveCount(0);
+    await page.keyboard.press('ArrowRight');
+    await expect(crosshair(page)).toHaveCount(1);
+    const home = await at(page);
+
+    // 10 cm a step, 50 cm with Shift
+    await page.keyboard.press('ArrowRight');
+    expect(await at(page)).toEqual({ x: home.x + 10, y: home.y });
+    await page.keyboard.press('Shift+ArrowDown');
+    expect(await at(page)).toEqual({ x: home.x + 10, y: home.y + 50 });
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('Shift+ArrowUp');
+    expect(await at(page)).toEqual(home);
+    await expect(page.getByTestId('flat-status')).toContainText('Crosshair at');
+
+    // Four walls, each drawn with Enter at the corner: 400 cm by 300 cm
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('flat-status')).toContainText('Wall started at');
+    await arrows(page, 'Shift+ArrowRight', 8);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('flat-status')).toContainText('Wall drawn to');
+    await arrows(page, 'Shift+ArrowDown', 6);
+    await page.keyboard.press('Enter');
+    await arrows(page, 'Shift+ArrowLeft', 8);
+    await page.keyboard.press('Enter');
+    await arrows(page, 'Shift+ArrowUp', 6);
+    await page.keyboard.press('Enter');
+
+    // The box is closed, so the room appears
+    await expect(page.getByRole('region', { name: 'Flat plan' }).getByText('1 room')).toBeVisible();
+    await expect(stat(page, 'Rooms in the flat')).toHaveText('1');
+
+    // Esc finishes the run of walls and takes the crosshair down
+    await page.keyboard.press('Escape');
+    await expect(crosshair(page)).toHaveCount(0);
+  });
+
+  test('a door and a window go onto a wall, and a wall can be selected and deleted', async ({
+    page,
+  }) => {
+    await blankFlat(page);
+    const svg = page.getByRole('application');
+    await svg.focus();
+    const home = await drawBoxByKeyboard(page);
+    await expect(stat(page, 'Rooms in the flat')).toHaveText('1');
+
+    /**
+     * Picks a tool and puts the crosshair `alongCm` to the right of the box's top-left
+     * corner, which runs along its top wall. Esc first, so the crosshair comes back out
+     * at the same spot every time.
+     */
+    async function aimAlongTopWall(toolName, alongCm) {
+      await svg.focus();
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: toolName }).click();
+      await svg.focus();
+      await page.keyboard.press('ArrowRight');
+      expect(await at(page)).toEqual(home);
+      await arrows(page, 'Shift+ArrowRight', Math.floor(alongCm / 50));
+      await arrows(page, 'ArrowRight', (alongCm % 50) / 10);
+      expect(await at(page)).toEqual({ x: home.x + alongCm, y: home.y });
+    }
+
+    await aimAlongTopWall('Door (D)', 100);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('flat-status')).toContainText('Door added at');
+    // Placing an opening selects it, so the Details panel becomes the door's
+    await expect(details(page).getByRole('heading', { name: 'Door', level: 2 })).toBeVisible();
+
+    // A window further along the same wall, clear of the door
+    await aimAlongTopWall('Window (N)', 300);
+    await page.keyboard.press('Enter');
+    await expect(details(page).getByRole('heading', { name: 'Window', level: 2 })).toBeVisible();
+
+    await details(page).getByRole('button', { name: 'Flat overview' }).click();
+    await expect(stat(page, 'Doors on this floor')).toHaveText('1');
+    await expect(stat(page, 'Windows on this floor')).toHaveText('1');
+
+    // Select that wall with the crosshair, clear of both openings, then delete it
+    await aimAlongTopWall('Select (V)', 170);
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('flat-status')).toContainText('Wall selected');
+    await page.keyboard.press('Delete');
+    await expect(stat(page, 'Doors on this floor')).toHaveText('0');
+    await expect(stat(page, 'Rooms in the flat')).toHaveText('0');
+  });
+});
