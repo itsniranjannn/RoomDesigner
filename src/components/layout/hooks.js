@@ -61,16 +61,18 @@ export function focusWhenReady(selector, frames = 10) {
   let left = frames;
   const attempt = () => {
     const target = document.querySelector(selector);
-    if (!target) {
-      if (left > 0) {
-        left -= 1;
-        requestAnimationFrame(attempt);
-      }
-      return;
-    }
     const active = document.activeElement;
+    const lost = !active || active === document.body || !document.contains(active);
     // Anything still on the page keeps the focus it was given
-    if (!active || active === document.body || !document.contains(active)) target.focus();
+    if (target && lost) target.focus();
+    // Keep watching to the end of the budget rather than stopping at the first answer. What is
+    // going away may not have gone yet — a dialog hands the focus back to whatever opened it as
+    // it unmounts, a frame or two after it was asked to close — and what replaces it may itself
+    // be replaced as the new screen settles, dropping the focus a second time.
+    if (left > 0) {
+      left -= 1;
+      requestAnimationFrame(attempt);
+    }
   };
   requestAnimationFrame(attempt);
 }
