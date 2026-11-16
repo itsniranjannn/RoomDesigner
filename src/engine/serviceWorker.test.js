@@ -3,14 +3,17 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 /** Runs public/sw.js against a fake worker scope and returns its event listeners plus the fake cache. */
-function loadWorker({ online = true, cached = {} } = {}) {
+function loadWorker({ online = true, cached = {}, manifest = null } = {}) {
   const listeners = {};
   const store = new Map(Object.entries(cached));
+  const added = [];
   const cache = {
     put: async (req, res) => store.set(typeof req === 'string' ? req : req.url, res),
     match: async (req) => store.get(typeof req === 'string' ? req : req.url),
-    add: async () => {},
-    addAll: async () => {},
+    add: async (url) => {
+      added.push(url);
+    },
+    addAll: async (urls) => added.push(...urls),
   };
   const caches = {
     open: async () => cache,
@@ -20,9 +23,12 @@ function loadWorker({ online = true, cached = {} } = {}) {
   };
   const fetched = [];
   const fakeFetch = async (req) => {
-    fetched.push(req.url);
+    const url = typeof req === 'string' ? req : req.url;
+    fetched.push(url);
     if (!online) throw new Error('offline');
-    return { ok: true, clone: () => ({ copy: true }), body: 'network:' + req.url };
+    if (url.endsWith('asset-manifest.json'))
+      return { ok: manifest !== null, json: async () => manifest || [] };
+    return { ok: true, clone: () => ({ copy: true }), body: 'network:' + url };
   };
   const self = {
     addEventListener: (type, fn) => (listeners[type] = fn),
@@ -45,10 +51,36 @@ function loadWorker({ online = true, cached = {} } = {}) {
     });
     return { handled, response: handled ? await answer : undefined };
   };
-  return { listeners, run, fetched, store };
+  const install = async () => {
+    let waited;
+    await listeners.install({ waitUntil: (p) => (waited = p) });
+    await waited;
+  };
+  return { listeners, run, fetched, store, added, install };
 }
 
 const req = (url, extra = {}) => ({ url, method: 'GET', mode: 'cors', ...extra });
+
+describe('what the service worker stores when it installs', () => {
+  it('stores every file the build lists, so parts loaded on demand work offline', async () => {
+    const w = loadWorker({
+      cached: { './': { text: async () => '<script src="/assets/index-abc.js"></script>' } },
+      manifest: ['./assets/index-abc.js', './assets/three-xyz.js', './assets/Room3DView-1.js'],
+    });
+    await w.install();
+    expect(w.added).toContain('https://app.test/assets/Room3DView-1.js');
+    expect(w.added).toContain('https://app.test/assets/three-xyz.js');
+    expect(w.added).toContain('./');
+  });
+
+  it('still stores what the page itself loads when the list is missing', async () => {
+    const w = loadWorker({
+      cached: { './': { text: async () => '<script src="/assets/index-abc.js"></script>' } },
+    });
+    await w.install();
+    expect(w.added).toContain('https://app.test/assets/index-abc.js');
+  });
+});
 
 describe('service worker routing', () => {
   it('leaves cross-origin and non-GET requests to the browser', async () => {

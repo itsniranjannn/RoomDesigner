@@ -3,7 +3,7 @@
  * - Same-origin assets (hashed build files, icons): stale-while-revalidate.
  * Fonts are self-hosted, so they are cached with the other same-origin assets and work offline.
  * Cross-origin requests are left to the browser. Bump CACHE to drop old files. */
-const CACHE = 'room-studio-v3';
+const CACHE = 'room-studio-v4';
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -11,8 +11,21 @@ self.addEventListener('install', (event) => {
       .open(CACHE)
       .then(async (cache) => {
         await cache.addAll(['./', './manifest.webmanifest', './room-studio-mark.svg']);
-        // Also keep the scripts and styles the shell page loads, so the first offline start works
-        // even before they were fetched again. Lazy chunks (3D) are cached on first use.
+        // Every file the build makes, listed by the build itself, so the parts that load only when
+        // they are needed — 3D, the photo dialog, printable plans — work offline too, even if the
+        // visitor never opened them while online.
+        try {
+          const res = await fetch('./asset-manifest.json', { cache: 'no-cache' });
+          const files = res.ok ? await res.json() : [];
+          await Promise.all(
+            files.map((file) =>
+              cache.add(new URL(file, self.registration.scope).href).catch(() => {})
+            )
+          );
+        } catch {
+          /* precaching is best effort */
+        }
+        // Belt and braces: whatever the shell page itself asks for, in case the list is missing
         try {
           const html = await (await cache.match('./')).text();
           const assets = [...html.matchAll(/(?:src|href)="([^"]*assets\/[^"]+)"/g)].map(
