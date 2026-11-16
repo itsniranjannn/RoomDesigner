@@ -242,7 +242,6 @@ export const useFlatStore = create((set, get) => ({
   _begin: async (flat, rooms) => {
     // Remembered the way the open room is, so a reload comes back to the plan being drawn
     setActiveFlatId(flat.id);
-    set({ saveStatus: 'saved' });
     set({
       ...emptySession,
       flat,
@@ -256,6 +255,7 @@ export const useFlatStore = create((set, get) => ({
     const { flat, rooms } = buildPresetFlat(preset, { name: name || undefined, ...options });
     const named = { ...flat, name: name || flat.name };
     await flushFlat();
+    // A fresh flat is this tab's own: nothing it writes can belong to another tab
     forgetStamps();
     setSaveStatus('saving');
     for (const room of Object.values(rooms))
