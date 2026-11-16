@@ -36,6 +36,7 @@ export function CanvasToolbar({ checks, onClearMeasurements, measurementCount })
   const setTraceImage = useRoomStore((s) => s.setTraceImage);
   const updateTraceImage = useRoomStore((s) => s.updateTraceImage);
   const panel = usePlanningStore((s) => s.panel);
+  const crosshairStatus = usePlanningStore((s) => s.crosshairStatus);
   const togglePanel = usePlanningStore((s) => s.togglePanel);
   const openModal = useRoomStore((s) => s.openModal);
   const undo = useRoomStore((s) => s.undo);
@@ -193,8 +194,12 @@ export function CanvasToolbar({ checks, onClearMeasurements, measurementCount })
           </div>
         )}
         {measureActive && (
-          <div className={styles.card} role="status" {...stop}>
-            <span>Click two points to measure. Hold Shift to lock the angle.</span>
+          <div className={styles.card} role="status" data-testid="measure-card" {...stop}>
+            {/* The same line carries the keyboard crosshair's position and what it measured */}
+            <span>
+              {crosshairStatus ||
+                'Click two points to measure, or move the crosshair with the arrow keys and press Enter for each point. Hold Shift to lock the angle.'}
+            </span>
             {measurementCount > 0 && (
               <Button size="small" variant="ghost" onClick={onClearMeasurements}>
                 Clear {measurementCount}
