@@ -19,23 +19,27 @@ test.describe('offline use', () => {
     test.setTimeout(120000);
     await openApp(page);
 
-    const stored = await page.waitForFunction(
+    await page.waitForFunction(
       async () => {
         const reg = await navigator.serviceWorker.getRegistration();
         if (!reg || reg.active?.state !== 'activated' || !navigator.serviceWorker.controller)
           return false;
-        const keys = await caches.keys();
-        if (!keys.length) return false;
-        const have = (await (await caches.open(keys[0])).keys()).map((r) => r.url);
+        const have = [];
+        for (const key of await caches.keys())
+          for (const r of await (await caches.open(key)).keys()) have.push(r.url);
         const want = await fetch('./asset-manifest.json').then((r) => (r.ok ? r.json() : []));
         if (!want.length) return false;
-        const missing = want.filter((f) => !have.includes(new URL(f, location.href).href));
-        return missing.length ? false : { have, want };
+        return want.every((file) => have.includes(new URL(file, location.href).href));
       },
       null,
       { timeout: 90000 }
     );
-    const { have, want } = await stored.jsonValue();
+    const { have, want } = await page.evaluate(async () => {
+      const have = [];
+      for (const key of await caches.keys())
+        for (const r of await (await caches.open(key)).keys()) have.push(r.url);
+      return { have, want: await fetch('./asset-manifest.json').then((r) => r.json()) };
+    });
 
     // the shell itself, and the files that are only fetched when a feature is first opened
     expect(have).toContain(new URL('./', page.url()).href);
@@ -53,10 +57,11 @@ test.describe('offline use', () => {
     // and each one really can be answered from the store, with no network
     const served = await page.evaluate(
       async (names) => {
+        const all = [];
+        for (const key of await caches.keys())
+          for (const r of await (await caches.open(key)).keys()) all.push(r);
         const out = {};
         for (const name of names) {
-          const key = (await caches.keys())[0];
-          const all = await (await caches.open(key)).keys();
           const hit = all.find((r) => r.url.includes(name));
           const res = hit ? await caches.match(hit) : null;
           out[name] = Boolean(res && res.ok);
