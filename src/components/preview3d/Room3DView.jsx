@@ -21,7 +21,7 @@ import { normalizeFinish } from './materials.js';
 import { WalkControls } from './WalkControls.jsx';
 import { WalkHud } from './WalkHud.jsx';
 import { SnapshotBridge } from './SnapshotBridge.jsx';
-import { useMediaQuery } from '../layout/hooks.js';
+import { focusWhenReady, useMediaQuery } from '../layout/hooks.js';
 import styles from './Room3DView.module.css';
 
 /**
@@ -152,6 +152,15 @@ export function Room3DView() {
   const exitWalk = React.useCallback(() => {
     setWalking(false);
   }, []);
+
+  // Leaving the walkthrough takes the HUD away, and with it whatever had the focus inside it, so
+  // the focus goes back to the button that started the walk. This covers every way out: the HUD's
+  // Esc button, WalkHud's own Escape handler and the toolbar button.
+  const wasWalking = useRef(walking);
+  React.useEffect(() => {
+    if (wasWalking.current && !walking) focusWhenReady('[data-walk-start]');
+    wasWalking.current = walking;
+  }, [walking]);
 
   // Pictures, mirrors and curtains hang higher than the low cutaway walls, so they show with full walls
   const showWallPieces = isFullHeight || walking;
@@ -305,6 +314,7 @@ export function Room3DView() {
               textClassName={styles.controlText}
             />
             <Button
+              data-walk-start
               variant={walking ? 'primary' : 'secondary'}
               icon={<Footprints size={16} />}
               onClick={() => (walking ? exitWalk() : setWalking(true))}

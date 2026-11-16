@@ -46,6 +46,15 @@ export function WalkHud({ onExit }) {
     };
   }, []);
 
+  // The walkthrough takes the focus the moment it starts, on the way out. The pad keys are all
+  // out of the tab order (the keyboard walks with W A S D, not with Tab), so this is the only
+  // sensible landing place; without it the focus stays on a button that now says something else,
+  // or is dropped onto <body> when the controls around it are taken away.
+  const exitBtn = useRef(null);
+  useEffect(() => {
+    exitBtn.current?.focus();
+  }, []);
+
   // Escape leaves the walkthrough. The HUD owns this, not the 3D controls inside the canvas: the
   // canvas mounts a moment later (on a slow device, noticeably later), and until it does, an Escape
   // pressed while the HUD is already on screen would be lost.
@@ -67,7 +76,7 @@ export function WalkHud({ onExit }) {
   };
 
   return (
-    <div className={styles.hud} aria-label="Walkthrough controls">
+    <div className={styles.hud} aria-label="Walkthrough controls" data-walk-hud>
       <div className={styles.pad} role="group" aria-label="Move with W A S D">
         {PAD.map((k) => (
           <button
@@ -105,6 +114,7 @@ export function WalkHud({ onExit }) {
         Run (Shift)
       </button>
       <button
+        ref={exitBtn}
         type="button"
         tabIndex={-1}
         className={styles.wide}

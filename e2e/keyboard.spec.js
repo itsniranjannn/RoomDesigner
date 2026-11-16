@@ -346,6 +346,53 @@ test.describe('focus is handed on, never dropped', () => {
   });
 });
 
+test.describe('the walkthrough hands focus on and gives it back', () => {
+  test('a room walkthrough lands on Stop walking, and Escape comes back to the walk button', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    await page.getByRole('button', { name: '3D view' }).click();
+    await expect(page.getByLabel('3D room preview')).toBeVisible();
+
+    const walk = page.getByRole('button', { name: 'Walk through the room' });
+    await walk.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('Walkthrough controls')).toBeVisible();
+    // The pad keys are all out of the tab order, so the exit button is the landing place
+    await expect(page.getByRole('button', { name: 'Stop walking (Esc)' })).toBeFocused();
+
+    // WalkHud's own Escape ends the walk, and the focus goes back where it came from
+    await page.keyboard.press('Escape');
+    await expect(page.getByLabel('Walkthrough controls')).toBeHidden();
+    await expect(walk).toBeFocused();
+  });
+
+  test('the flat walkthrough does the same', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Design a flat' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Design a flat' });
+    await dialog
+      .getByRole('combobox', { name: 'Start from' })
+      .selectOption({ label: 'Two-bedroom flat' });
+    await dialog.getByRole('button', { name: 'Create flat' }).click();
+    await expect(page.getByRole('application')).toBeVisible();
+
+    await page.getByRole('button', { name: '3D view' }).click();
+    await expect(page.getByLabel('3D view of the flat')).toBeVisible();
+
+    const walk = page.getByRole('button', { name: 'Walk through the flat' });
+    await walk.focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByLabel('Walkthrough controls')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Stop walking (Esc)' })).toBeFocused();
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByLabel('Walkthrough controls')).toBeHidden();
+    await expect(walk).toBeFocused();
+  });
+});
+
 test.describe('getting around with Tab', () => {
   test('a skip link is the first thing in the furniture list and reaches the plan', async ({
     page,

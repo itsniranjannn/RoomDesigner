@@ -25,6 +25,7 @@ import { normalizeFinish } from '../preview3d/materials.js';
 import { floorMaterial, wallMaterial } from '../preview3d/surfaceTextures.js';
 import { Button } from '../common/Button.jsx';
 import { Segmented } from '../common/Field.jsx';
+import { focusWhenReady } from '../layout/hooks.js';
 import { SnapshotBridge } from '../preview3d/SnapshotBridge.jsx';
 import {
   stairTreads,
@@ -600,6 +601,15 @@ export function Flat3DView() {
     setResetKey((k) => k + 1);
   }, []);
 
+  // Leaving the walkthrough takes the HUD away, and with it whatever had the focus inside it, so
+  // the focus goes back to the button that started the walk. This covers every way out: the HUD's
+  // Esc button, WalkHud's own Escape handler and the toolbar button.
+  const wasWalking = useRef(walking);
+  useEffect(() => {
+    if (wasWalking.current && !walking) focusWhenReady('[data-walk-start]');
+    wasWalking.current = walking;
+  }, [walking]);
+
   if (!flat || !layout) return null;
   const floorH = flat.floorHeightCm / 100;
   const activeIdx = walking ? walkLevel : levelIndex(flat, levelId);
@@ -765,6 +775,7 @@ export function Flat3DView() {
             floorNote="A floor chosen for a room in its own editor is kept for that room."
           />
           <Button
+            data-walk-start
             variant={walking ? 'primary' : 'secondary'}
             icon={<Footprints size={16} aria-hidden="true" />}
             onClick={() => (walking ? exitWalk() : startWalk())}

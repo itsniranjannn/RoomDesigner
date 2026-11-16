@@ -103,9 +103,13 @@ export function WalkControls({ room, env: envProp, onExit, onLevelChange }) {
     camera.updateProjectionMatrix();
     walkInput.reset();
 
-    // Focus must not stay on the toolbar button that started the walk: it would swallow keys
+    // Focus must not stay on the toolbar button that started the walk: it would swallow keys.
+    // The walkthrough's own HUD is where the focus is handed to instead, so it keeps it; blurring
+    // that too would drop the focus onto <body> and the next Tab would restart at the top of the page.
     const active = document.activeElement;
-    if (active && active !== document.body && typeof active.blur === 'function') active.blur();
+    const inHud = active?.closest?.('[data-walk-hud]');
+    if (active && active !== document.body && !inHud && typeof active.blur === 'function')
+      active.blur();
 
     const setKey = (action, repeat) => {
       walkInput.keys[action] = true;
