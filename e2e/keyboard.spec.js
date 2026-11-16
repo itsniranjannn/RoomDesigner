@@ -295,3 +295,158 @@ test.describe('drawing a flat by keyboard', () => {
     await expect(stat(page, 'Rooms in the flat')).toHaveText('0');
   });
 });
+
+/** What has focus now: its accessible name, or BODY when focus was dropped. */
+const focusName = (page) =>
+  page.evaluate(() => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return 'BODY';
+    return (el.getAttribute('aria-label') || el.textContent || el.tagName).trim().slice(0, 48);
+  });
+
+test.describe('focus is handed on, never dropped', () => {
+  test('Create room leaves focus in the editor', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Start a new room' }).focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'New room' });
+    await dialog.getByRole('button', { name: 'Create room' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(plan(page)).toBeVisible();
+    await expect(plan(page)).toBeFocused();
+  });
+
+  test('choosing a piece from the Pieces list moves focus into its panel', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    await addByClick(page, '3-Seater Sofa');
+    await addByClick(page, 'Coffee Table');
+    const piece = page.getByRole('complementary', { name: 'Selected piece' });
+    await piece.getByRole('button', { name: 'Room overview' }).focus();
+    await page.keyboard.press('Enter');
+
+    const room = page.getByRole('complementary', { name: 'Room details' });
+    await room
+      .getByRole('button', { name: /3-Seater Sofa/ })
+      .first()
+      .focus();
+    await page.keyboard.press('Enter');
+    await expect(piece).toBeVisible();
+    // The row that was focused has gone, so the panel that replaced it takes over
+    await expect(piece.getByRole('button', { name: 'Room overview' })).toBeFocused();
+  });
+
+  test('Back to all rooms leaves focus on the page that replaced the editor', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    await page.getByRole('button', { name: 'Back to all rooms' }).first().focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('button', { name: 'Start a new room' })).toBeVisible();
+    expect(await focusName(page)).not.toBe('BODY');
+  });
+});
+
+test.describe('getting around with Tab', () => {
+  test('a skip link is the first thing in the furniture list and reaches the plan', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    const skip = page.getByRole('link', { name: 'Skip the furniture list' });
+
+    // It is the first focusable thing in the panel, and it shows itself when focused
+    const aside = page.getByRole('complementary', { name: 'Furniture' });
+    await expect(aside.locator('a, button, input').first()).toHaveAttribute('href', '#room-plan');
+    await expect(skip).not.toBeInViewport();
+    await skip.focus();
+    await expect(skip).toBeInViewport();
+
+    await page.keyboard.press('Enter');
+    await expect(plan(page)).toBeFocused();
+
+    // And from the plan the tools are a few presses away, not a hundred and seventy
+    let presses = 0;
+    for (; presses < 20; presses += 1) {
+      await page.keyboard.press('Tab');
+      if ((await focusName(page)).startsWith('Measure distance')) break;
+    }
+    expect(presses).toBeLessThan(6);
+  });
+
+  test('the plan tools are one tab stop that the arrow keys walk', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    const toolbar = page.getByRole('toolbar', { name: 'Plan tools' });
+    await expect(toolbar.locator('button:not([tabindex="-1"])')).toHaveCount(1);
+
+    await toolbar.getByRole('button', { name: 'Measure distance (M)' }).focus();
+    await page.keyboard.press('ArrowDown');
+    expect(await focusName(page)).toBe('Show distances to walls');
+    await page.keyboard.press('ArrowDown');
+    expect(await focusName(page)).toBe('Show clearance zones');
+    await page.keyboard.press('ArrowUp');
+    expect(await focusName(page)).toBe('Show distances to walls');
+    await page.keyboard.press('End');
+    expect(await focusName(page)).toBe('Keyboard shortcuts (?)');
+    await page.keyboard.press('Home');
+    expect(await focusName(page)).toBe('Measure distance (M)');
+
+    // One Tab leaves the whole strip rather than stepping through eight buttons
+    await page.keyboard.press('Tab');
+    expect(await focusName(page)).not.toMatch(/^(Show|Services|Plan checks|Trace|Suggest)/);
+  });
+
+  test('the Room menu answers to the arrow keys, and Tab leaves it', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    const trigger = page.getByRole('button', { name: 'Room menu' });
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const menu = page.getByRole('menu', { name: 'Room menu' });
+    await expect(menu).toBeVisible();
+    // Focus starts on the first item instead of staying behind on the trigger
+    expect(await focusName(page)).toBe('Delete room');
+
+    await page.keyboard.press('ArrowDown');
+    // Only one item here, so the arrows wrap round to it
+    expect(await focusName(page)).toBe('Delete room');
+    await page.keyboard.press('Tab');
+    await expect(menu).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+
+  test('Share & export opens on its first control, not a switch further down', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    await page.getByRole('button', { name: 'Share and export' }).focus();
+    await page.keyboard.press('Enter');
+    const dialog = page.getByRole('dialog', { name: 'Share & export' });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Copy link' })).toBeFocused();
+  });
+});
+
+test.describe('the furniture list keeps the arrow keys', () => {
+  test('arrows scroll the list instead of nudging the selected piece', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living room');
+    await addByClick(page, '3-Seater Sofa');
+    const panel = page.getByRole('complementary', { name: 'Selected piece' });
+    const readXY = async () => {
+      const text = (await panel.innerText()).replace(/\s+/g, ' ');
+      return (text.match(/From left wall ([-\d]+) cm.*?From top wall ([-\d]+) cm/) || []).join(',');
+    };
+
+    const before = await readXY();
+    expect(before).not.toBe('');
+    await page.getByRole('button', { name: 'Bedroom', exact: true }).focus();
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowRight');
+    expect(await readXY()).toBe(before);
+
+    // With focus on the plan the arrows still nudge, as they always did
+    await plan(page).focus();
+    await page.keyboard.press('ArrowRight');
+    expect(await readXY()).not.toBe(before);
+  });
+});

@@ -8,6 +8,7 @@ import { hingeSides } from '../../engine/planning.js';
 import { Button } from '../common/Button.jsx';
 import { SelectField } from '../common/Field.jsx';
 import { Section, IconButton } from '../common/Section.jsx';
+import { focusWhenReady } from '../layout/hooks.js';
 import { InspectorShell } from './InspectorShell.jsx';
 import { StylePanel } from '../preview3d/StylePicker.jsx';
 import { styleOfRoom } from '../../data/stylePresets.js';
@@ -187,7 +188,12 @@ function PieceList({ pieces }) {
             <button
               type="button"
               className={styles.pieceSelect}
-              onClick={() => selectItem(piece.id)}
+              onClick={() => {
+                selectItem(piece.id);
+                // This row is about to be replaced by the piece's own panel, so focus is
+                // handed to that panel instead of being dropped onto <body>
+                focusWhenReady('[data-inspector-back]');
+              }}
             >
               <span className={styles.pieceRowName}>{def.name}</span>
               <span className={styles.pieceRowMeta}>

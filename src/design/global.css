@@ -89,3 +89,32 @@ textarea {
   --text-sm: 13px;
   --font-mono: var(--font-sans);
 }
+
+/*
+ * Skip link. Out of everyone's way until it takes focus, then a plain visible button at the
+ * top of the panel it belongs to. Keyboard users meet it before a long list of controls.
+ */
+.rd-skip-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.rd-skip-link:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  clip: auto;
+  clip-path: none;
+  margin: var(--space-3) var(--space-4) 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--color-ink);
+  color: var(--color-linen);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}

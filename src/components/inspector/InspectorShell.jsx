@@ -27,6 +27,9 @@ export function InspectorShell({
               icon={<ArrowLeft size={14} />}
               onClick={onBack}
               className={styles.back}
+              // Whatever opened this panel hands focus here, so the next Tab carries on from
+              // the panel instead of restarting at the top of the page
+              data-inspector-back
             >
               {backLabel}
             </Button>

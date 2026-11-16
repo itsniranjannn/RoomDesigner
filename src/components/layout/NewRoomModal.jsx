@@ -3,6 +3,7 @@ import { useRoomStore } from '../../store/roomStore.js';
 import { Button } from '../common/Button.jsx';
 import { Modal } from '../common/Modal.jsx';
 import { TextField, NumberField } from '../common/Field.jsx';
+import { focusWhenReady } from './hooks.js';
 import styles from './NewRoomModal.module.css';
 
 const ROOM_PRESETS = [
@@ -45,6 +46,10 @@ function NewRoomForm({ onClose }) {
     const d = clampCm(data?.get('depth'), depthCm);
     createRoom(name.trim() || 'New Room', w, d);
     onClose();
+    // The dialog hands focus back to whatever opened it, but on the landing page that
+    // button has gone with the page. Give the editor the focus instead; if the first-run
+    // tour opens it takes the focus from there.
+    focusWhenReady('#room-plan');
   };
 
   return (

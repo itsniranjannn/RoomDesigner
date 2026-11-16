@@ -73,6 +73,21 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
 
   return (
     <aside className={styles.catalog} aria-label="Furniture">
+      {/*
+       * Every catalog card is a tab stop, so the plan and its toolbar are well over a
+       * hundred Tab presses away. This is the first thing in the panel, and it is visible
+       * as soon as it takes focus.
+       */}
+      <a
+        href="#room-plan"
+        className="rd-skip-link"
+        onClick={(e) => {
+          e.preventDefault();
+          document.getElementById('room-plan')?.focus();
+        }}
+      >
+        Skip the furniture list
+      </a>
       <header className={styles.header}>
         <div className={styles.heading}>
           <h2 className={styles.title}>Furniture</h2>

@@ -56,6 +56,52 @@ export function CanvasToolbar({ checks, onClearMeasurements, measurementCount })
   const fileRef = useRef(null);
   const [error, setError] = useState(null);
 
+  // role="toolbar" promises one stop in the tab order with the arrow keys moving between
+  // the tools, so that is what it does. Eight separate tab stops is also most of what makes
+  // the plan so far from the furniture list.
+  const toolbarRef = useRef(null);
+  const activeTool = useRef(0);
+  const toolButtons = () =>
+    Array.from(toolbarRef.current?.querySelectorAll('button:not([disabled])') || []);
+
+  const markTabStop = (list, index) => {
+    activeTool.current = index;
+    list.forEach((b, i) => {
+      b.tabIndex = i === index ? 0 : -1;
+    });
+  };
+
+  // Runs after every render, so a tool that comes or goes cannot leave the strip without
+  // its one tab stop
+  useEffect(() => {
+    const list = toolButtons();
+    if (list.length === 0) return;
+    markTabStop(list, Math.min(activeTool.current, list.length - 1));
+  });
+
+  const focusToolAt = (index) => {
+    const list = toolButtons();
+    if (list.length === 0) return;
+    const next = ((index % list.length) + list.length) % list.length;
+    markTabStop(list, next);
+    list[next].focus();
+  };
+
+  const onToolbarKeyDown = (e) => {
+    const list = toolButtons();
+    const here = Math.max(0, list.indexOf(document.activeElement));
+    const step = { [phone ? 'ArrowLeft' : 'ArrowUp']: -1, [phone ? 'ArrowRight' : 'ArrowDown']: 1 };
+    let target = null;
+    if (Object.hasOwn(step, e.key)) target = here + step[e.key];
+    else if (e.key === 'Home') target = 0;
+    else if (e.key === 'End') target = list.length - 1;
+    if (target === null) return;
+    e.preventDefault();
+    // The plan nudges the selection with the arrows, and this strip sits inside the plan
+    e.stopPropagation();
+    focusToolAt(target);
+  };
+
   const handleTraceFile = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -76,10 +122,12 @@ export function CanvasToolbar({ checks, onClearMeasurements, measurementCount })
   return (
     <div className={styles.chrome}>
       <div
+        ref={toolbarRef}
         className={styles.toolbar}
         role="toolbar"
         aria-label="Plan tools"
         aria-orientation={phone ? 'horizontal' : 'vertical'}
+        onKeyDown={onToolbarKeyDown}
         {...stop}
       >
         {phone && (
