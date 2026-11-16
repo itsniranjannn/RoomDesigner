@@ -34,26 +34,47 @@
   pointer-events: none;
 }
 
+/*
+ * The bottom edge of the view. It holds the control bar, and the walk pad as well while the
+ * walkthrough is on: side by side when they both fit, the bar stacked above the pad when they do
+ * not, so neither can ever cover the other. The dock itself lets drags through to the canvas.
+ */
+.bottomDock {
+  position: absolute;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: var(--space-4);
+  z-index: var(--z-chrome);
+  display: flex;
+  /* wrap-reverse: the pad keeps the bottom line and the bar wraps above it, never over it. */
+  flex-wrap: wrap-reverse;
+  /* wrap-reverse swaps the cross axis, so flex-start is the bottom of each line. */
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-2);
+  pointer-events: none;
+}
+
+/* Walking: the pad takes the left, the bar the right */
+.bottomDockWalk {
+  justify-content: space-between;
+}
+
 /* One floating cluster along the bottom edge */
 .controls {
-  position: absolute;
-  bottom: var(--space-4);
-  left: 0;
-  right: 0;
-  z-index: var(--z-chrome);
-  width: fit-content;
-  margin: 0 auto;
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: var(--space-2);
-  max-width: calc(100% - 24px);
+  max-width: 100%;
   padding: var(--space-2);
   background: var(--color-paper);
   border: var(--border-soft);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
+  pointer-events: auto;
 }
 
 .controlBtn {

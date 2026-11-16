@@ -1,9 +1,11 @@
-/* Bottom-left cluster shown while walking: a W A S D pad (also usable by touch), run and leave */
+/*
+ * The W A S D pad (also usable by touch), run and leave. It used to pin itself to the bottom-left
+ * corner, where the 3D view's own toolbar — pinned bottom-centre across the full width at the same
+ * z-index — covered it: "Esc" was sliced in half on a laptop and on a phone not one walk key could
+ * be tapped. It is now laid out by the view's bottom dock, which keeps the two apart.
+ */
 .hud {
-  position: absolute;
-  left: var(--space-3);
-  bottom: var(--space-3);
-  z-index: var(--z-chrome);
+  flex: 0 0 auto;
   display: grid;
   grid-template-columns: auto auto;
   align-items: end;
@@ -13,6 +15,7 @@
   border: var(--border-soft);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-pop);
+  pointer-events: auto;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
