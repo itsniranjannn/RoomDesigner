@@ -25,6 +25,7 @@ import {
   openingFitsWalls,
 } from './flatWalls.js';
 import { traceOutline, outlineEdges } from './roomShape.js';
+import { insideRoom, positionService } from './planning.js';
 import {
   SPACE_KINDS,
   buildBlankRoom,
@@ -222,6 +223,35 @@ function refitRoom(room, space, openings, flatId, shape = null) {
   });
   const outline = shape ? shape.outline : undefined;
   const openEdges = shape && shape.openEdges.length ? shape.openEdges : undefined;
+  // Service points are clamped like the furniture, so a socket or a drain never ends up
+  // outside its own room when the walls move in. A point that has to move is re-placed by
+  // the same rules as a fresh one: wall points back onto the nearest wall, floor and
+  // ceiling points onto the floor. A point that still fits is left exactly where it is.
+  const geometry = {
+    widthCm: rect.widthCm,
+    depthCm: rect.depthCm,
+    ...(outline ? { outline } : {}),
+    ...(openEdges ? { openEdges } : {}),
+  };
+  let servicesChanged = false;
+  const services = (room.services || []).map((s) => {
+    const movedX = s.x + shiftX;
+    const movedY = s.y + shiftY;
+    const x = Math.max(0, Math.min(rect.widthCm, movedX));
+    const y = Math.max(0, Math.min(rect.depthCm, movedY));
+    const strayed = x !== movedX || y !== movedY || !insideRoom(geometry, movedX, movedY);
+    const placed = strayed
+      ? positionService(geometry, s.kind, x, y, s.rotationDeg || 0) || { x, y }
+      : { x, y };
+    if (
+      placed.x === s.x &&
+      placed.y === s.y &&
+      (placed.rotationDeg ?? s.rotationDeg) === s.rotationDeg
+    )
+      return s;
+    servicesChanged = true;
+    return { ...s, ...placed };
+  });
   const same =
     room.widthCm === rect.widthCm &&
     room.depthCm === rect.depthCm &&
@@ -230,6 +260,7 @@ function refitRoom(room, space, openings, flatId, shape = null) {
     room.spaceId === space.id &&
     room.flatId === flatId &&
     !furnitureChanged &&
+    !servicesChanged &&
     JSON.stringify(room.outline) === JSON.stringify(outline) &&
     JSON.stringify(room.openEdges) === JSON.stringify(openEdges) &&
     JSON.stringify(room.doors || []) === JSON.stringify(doors) &&
@@ -249,6 +280,7 @@ function refitRoom(room, space, openings, flatId, shape = null) {
     doors,
     windows,
     placedFurniture: furnitureChanged ? placedFurniture : room.placedFurniture,
+    ...(room.services ? { services: servicesChanged ? services : room.services } : {}),
   };
 }
 
