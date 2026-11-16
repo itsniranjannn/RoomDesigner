@@ -4,7 +4,7 @@ import { addByClick, createRoomFromPreset, openApp, pieces, waitForSaved } from 
 test.describe('persistence', () => {
   test('the open room and its furniture survive a reload (IndexedDB)', async ({ page }) => {
     await openApp(page);
-    await createRoomFromPreset(page, 'Kids Bedroom');
+    await createRoomFromPreset(page, "Kids' bedroom");
     await addByClick(page, 'Single Bed');
     await addByClick(page, 'Nightstand');
     await expect(pieces(page)).toHaveCount(2);
@@ -12,7 +12,7 @@ test.describe('persistence', () => {
 
     await page.reload();
     // The editor reopens on the room that was open
-    await expect(page.getByRole('textbox', { name: 'Room name' })).toHaveValue('Kids Bedroom');
+    await expect(page.getByRole('textbox', { name: 'Room name' })).toHaveValue("Kids' bedroom");
     await expect(pieces(page)).toHaveCount(2);
   });
 

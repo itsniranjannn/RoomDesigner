@@ -257,7 +257,7 @@ export function RoomPanel({ onClose }) {
         />
       </Section>
 
-      <Section title="Doors & windows">
+      <Section title="Doors and windows">
         {doors.map((door, i) => (
           <OpeningRow
             key={door.id}

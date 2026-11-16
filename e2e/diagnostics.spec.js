@@ -28,7 +28,7 @@ test.describe('diagnostics', () => {
 
     await page.getByRole('button', { name: /^Keyboard shortcuts/ }).click();
     const dialog = page.getByRole('dialog', { name: 'Keyboard shortcuts' });
-    const diagnostics = dialog.getByRole('region', { name: 'Diagnostics' });
+    const diagnostics = dialog.getByRole('region', { name: 'If something goes wrong' });
     await expect(diagnostics).toContainText(/\d+ problems? recorded/);
 
     await diagnostics.getByRole('button', { name: 'Copy' }).click();
@@ -40,6 +40,9 @@ test.describe('diagnostics', () => {
     expect(copied).not.toContain('placedFurniture');
 
     await diagnostics.getByRole('button', { name: 'Clear' }).click();
-    await expect(diagnostics).toContainText('No problems recorded on this device.');
+    await expect(diagnostics).toContainText('Nothing has gone wrong on this device.');
+    // Nothing left to copy or clear, so neither button is live
+    await expect(diagnostics.getByRole('button', { name: 'Copy' })).toBeDisabled();
+    await expect(diagnostics.getByRole('button', { name: 'Clear' })).toBeDisabled();
   });
 });

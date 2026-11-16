@@ -69,7 +69,7 @@ export function NewFlatModal({ onClose }) {
         {preset === 'shell' && (
           <div className={styles.sizeRow}>
             <NumberField
-              label="Width"
+              label="Width of the flat"
               suffix="m"
               value={widthM}
               min={2}
@@ -78,7 +78,7 @@ export function NewFlatModal({ onClose }) {
               onCommit={setWidthM}
             />
             <NumberField
-              label="Depth"
+              label="Depth of the flat"
               suffix="m"
               value={depthM}
               min={2}

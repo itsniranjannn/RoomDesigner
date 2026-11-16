@@ -52,6 +52,8 @@ export function NumberField({
 }) {
   const id = useId();
   const [draft, setDraft] = useState(value === undefined || value === null ? '' : String(value));
+  // What a number outside the range was changed to, so the change is never silent
+  const [clampNote, setClampNote] = useState(null);
   useEffect(() => setDraft(value === undefined || value === null ? '' : String(value)), [value]);
 
   // Tell the user when what they typed is outside the allowed range, before it is clamped
@@ -65,6 +67,7 @@ export function NumberField({
   }
 
   const commit = () => {
+    setClampNote(null);
     if (draft === '') {
       setDraft(value === undefined || value === null ? '' : String(value));
       return;
@@ -76,11 +79,24 @@ export function NumberField({
     }
     const clamped = Math.max(min ?? -Infinity, Math.min(max ?? Infinity, n));
     setDraft(String(clamped));
+    // The box now shows a different number from the one that was typed: say which, and why
+    if (clamped !== n)
+      setClampNote(
+        clamped === max
+          ? `Maximum is ${max}, so ${n} was set to ${max}.`
+          : `Minimum is ${min}, so ${n} was set to ${min}.`
+      );
     if (clamped !== value) onCommit(clamped);
   };
 
   return (
-    <Field label={label} hint={hint} error={error || rangeError} htmlFor={id} className={className}>
+    <Field
+      label={label}
+      hint={hint}
+      error={error || rangeError || clampNote}
+      htmlFor={id}
+      className={className}
+    >
       <span className={styles.numberWrap}>
         <input
           id={id}
@@ -91,7 +107,10 @@ export function NumberField({
           min={min}
           max={max}
           step={step}
-          onChange={(e) => setDraft(e.target.value)}
+          onChange={(e) => {
+            setDraft(e.target.value);
+            setClampNote(null);
+          }}
           onBlur={commit}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

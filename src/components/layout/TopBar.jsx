@@ -27,8 +27,14 @@ import { useMediaQuery } from './hooks.js';
 import styles from './TopBar.module.css';
 
 const VIEW_OPTIONS = [
-  { value: '2d', label: '2D', icon: <Layers size={15} />, ariaLabel: '2D plan' },
-  { value: '3d', label: '3D', icon: <Box size={15} />, ariaLabel: '3D view' },
+  {
+    value: '2d',
+    label: 'Plan',
+    icon: <Layers size={15} />,
+    ariaLabel: 'Plan view',
+    title: 'Plan view',
+  },
+  { value: '3d', label: '3D', icon: <Box size={15} />, ariaLabel: '3D view', title: '3D view' },
 ];
 
 export function TopBar({

@@ -79,7 +79,7 @@ export function FlatExportMenu() {
                   run('png3d');
                 }}
               >
-                {has3D ? '3D picture (PNG)' : '3D picture (open the 3D tab first)'}
+                {has3D ? '3D picture (PNG)' : '3D picture (switch to the 3D view first)'}
               </MenuItem>
               <MenuItem
                 icon={<Images size={16} aria-hidden="true" />}
@@ -99,7 +99,9 @@ export function FlatExportMenu() {
                   setRenderOpen(true);
                 }}
               >
-                {has3D ? 'Render image (high quality PNG)' : 'Render image (open the 3D tab first)'}
+                {has3D
+                  ? 'Render image (high quality PNG)'
+                  : 'Render image (switch to the 3D view first)'}
               </MenuItem>
               <MenuItem
                 icon={<FileText size={16} aria-hidden="true" />}

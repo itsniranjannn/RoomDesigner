@@ -6,12 +6,12 @@ import { TextField, NumberField } from '../common/Field.jsx';
 import styles from './NewRoomModal.module.css';
 
 const ROOM_PRESETS = [
-  { name: 'Living Room', width: 500, depth: 400 },
-  { name: 'Master Bedroom', width: 450, depth: 400 },
-  { name: 'Kitchen & Dining', width: 420, depth: 360 },
-  { name: 'Kids Bedroom', width: 360, depth: 300 },
-  { name: 'Home Office', width: 340, depth: 300 },
-  { name: 'Open Studio', width: 600, depth: 500 },
+  { name: 'Living room', width: 500, depth: 400 },
+  { name: 'Master bedroom', width: 450, depth: 400 },
+  { name: 'Kitchen and dining', width: 420, depth: 360 },
+  { name: "Kids' bedroom", width: 360, depth: 300 },
+  { name: 'Home office', width: 340, depth: 300 },
+  { name: 'Open studio', width: 600, depth: 500 },
 ];
 
 const MIN_CM = 200;
@@ -84,7 +84,7 @@ function NewRoomForm({ onClose }) {
 
         <TextField
           label="Room name"
-          placeholder="For example, Master Bedroom"
+          placeholder="For example, Master bedroom"
           value={name}
           maxLength={40}
           onChange={(e) => setName(e.target.value)}

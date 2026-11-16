@@ -22,7 +22,7 @@ export const FURNITURE_CATEGORIES = [
   { id: 'decor', name: 'Decor & Accents' },
   { id: 'bathroom', name: 'Bathroom & Utility' },
   { id: 'wall', name: 'Walls & Windows' },
-  { id: 'custom', name: 'My Furniture' },
+  { id: 'custom', name: 'My furniture' },
 ];
 
 export const FURNITURE_CATALOG = [

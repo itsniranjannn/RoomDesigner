@@ -42,7 +42,7 @@ const SECTIONS = [
       ['Drag', 'Orbit the camera'],
       ['Right-drag', 'Pan the camera'],
       ['W / A / S / D', 'Walk in the walkthrough'],
-      ['Esc', 'Leave the walkthrough'],
+      ['Esc', 'Stop walking'],
     ],
   },
 ];
@@ -76,7 +76,7 @@ export function ShortcutsModal({ onClose }) {
   return (
     <Modal
       title="Keyboard shortcuts"
-      subtitle="Plan shortcuts work while the 2D plan is showing."
+      subtitle="Plan shortcuts work while the plan is showing."
       onClose={onClose}
       size="lg"
       footer={

@@ -30,6 +30,12 @@ test.describe('mobile viewport (375 x 812)', () => {
     await expect(catalog).toBeHidden();
     await expect(pieces(page)).toHaveCount(1);
 
+    // The hint under the plan names what a phone has, not keys it has not got
+    await pieces(page).first().tap();
+    const hint = page.getByText(/^Drag to move\./);
+    await expect(hint).toContainText('Open the details panel to turn it or remove it.');
+    await expect(hint).not.toContainText('Arrow keys');
+
     // The plan toolbar lies flat along the screen and holds Undo / Redo on a phone
     const toolbar = page.getByRole('toolbar', { name: 'Plan tools' });
     await expect(toolbar).toBeVisible();

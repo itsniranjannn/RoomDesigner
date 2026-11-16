@@ -16,8 +16,8 @@ export const TOUR_STEPS = {
       id: 'view',
       target: '[role="group"][aria-label="View"]',
       placement: 'bottom',
-      title: '2D plan or 3D view',
-      body: 'Work on the plan in 2D, then switch to 3D to orbit the room or start a walkthrough at eye height.',
+      title: 'Plan or 3D',
+      body: 'Work on the plan, then switch to 3D to turn the room around or walk through it at eye height.',
     },
     {
       id: 'openings',

@@ -1,7 +1,7 @@
 /**
  * flatPresets.js
- * Ready-made starting points for the flat designer: blank, an outer shell by size,
- * and studio / 1BHK / 2BHK / 3BHK layouts. Each preset is described as a tiling of
+ * Ready-made starting points for the flat designer: blank, four outer walls by size, and
+ * studio / one, two and three-bedroom layouts. Each preset is described as a tiling of
  * room rectangles; the walls, doors and windows are generated from the tiling, then
  * rooms are detected from the walls like any other plan.
  */
@@ -12,13 +12,25 @@ import { reconcile, analyzeLevel, setSpaceMeta } from './flatPlan.js';
 
 export const PRESETS = [
   { value: 'blank', label: 'Blank', note: 'Start from an empty plan' },
-  { value: 'shell', label: 'Outer shell by size', note: 'Four outer walls, then add your own' },
-  { value: 'studio', label: 'Studio', note: 'One main room, kitchen and bathroom' },
-  { value: '1bhk', label: '1BHK', note: 'Hall, kitchen, 1 bedroom, bathroom, store' },
-  { value: '2bhk', label: '2BHK', note: 'Hall, dining, kitchen, 2 bedrooms, 2 bathrooms, passage' },
+  {
+    value: 'shell',
+    label: 'Four outer walls',
+    note: 'Just the outside walls. You draw the rooms.',
+  },
+  { value: 'studio', label: 'Studio flat', note: 'One main room, kitchen and bathroom' },
+  {
+    value: '1bhk',
+    label: 'One-bedroom flat',
+    note: 'Hall, kitchen, 1 bedroom, bathroom, store',
+  },
+  {
+    value: '2bhk',
+    label: 'Two-bedroom flat',
+    note: 'Hall, dining, kitchen, 2 bedrooms, 2 bathrooms, passage',
+  },
   {
     value: '3bhk',
-    label: '3BHK',
+    label: 'Three-bedroom flat',
     note: 'Hall, dining, kitchen, 3 bedrooms, 2 bathrooms, store, passage',
   },
 ];

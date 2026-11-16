@@ -14,14 +14,14 @@ import { ChipRow } from './ChipRow.jsx';
 import { CatalogItem } from './CatalogItem.jsx';
 import styles from './FurnitureCatalog.module.css';
 
-// Short names keep all the category chips on one scrolling row
+// Short names keep all the category chips on one scrolling row. A category with no short
+// name here uses its full name, so the chip and the group heading cannot drift apart.
 const SHORT_NAMES = {
   dining_office: 'Dining & office',
   decor: 'Decor',
   bathroom: 'Bathroom',
   nepali: 'Nepali',
   living: 'Living',
-  custom: 'My furniture',
 };
 
 const matches = (item, query, categoryName) => {

@@ -38,7 +38,7 @@ export function CatalogItem({ item, onSelect, onDelete, onDropped }) {
             onSelect(item.id);
           }
         }}
-        aria-label={`Add ${item.name}, ${item.widthCm} by ${item.depthCm} centimeters`}
+        aria-label={`Add ${item.name}, ${item.widthCm} by ${item.depthCm} centimetres`}
         title="Click to add, or drag into the room (touch: press and hold, then drag)"
       >
         <div className={styles.preview}>

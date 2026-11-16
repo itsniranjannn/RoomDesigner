@@ -15,9 +15,23 @@ import { usePlanChecks } from './usePlanChecks.js';
 import { usePlanningStore } from '../../store/planningStore.js';
 import { MousePointerClick } from 'lucide-react';
 import { drawOrder } from '../../engine/stacking.js';
+import { useMediaQuery } from '../layout/hooks.js';
 import styles from './RoomCanvas.module.css';
 
 const isTyping = () => ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+
+/**
+ * The line under the plan, by what the viewer is pointing with. A phone or tablet has no
+ * keys, so it is pointed at the controls on screen instead of at Esc, R and Delete.
+ */
+const MEASURE_HINTS = {
+  mouse: 'Click two points to measure. Press Esc when done.',
+  touch: 'Tap two points to measure. Tap Done when you have finished.',
+};
+const SELECTED_HINTS = {
+  mouse: 'Drag to move. Arrow keys nudge, R rotates, Delete removes.',
+  touch: 'Drag to move. Open the details panel to turn it or remove it.',
+};
 
 export function RoomCanvas() {
   const room = useRoomStore((state) => state.room);
@@ -41,6 +55,7 @@ export function RoomCanvas() {
   const accessible = usePlanningStore((s) => s.accessible);
   const placing = usePlanningStore((s) => !!s.placeKind);
   const checks = usePlanChecks(room, accessible);
+  const pointer = useMediaQuery('(pointer: coarse)') ? 'touch' : 'mouse';
 
   // Leaving the measure tool or switching rooms clears old measurements
   useEffect(() => {
@@ -417,7 +432,7 @@ export function RoomCanvas() {
           <MousePointerClick size={22} aria-hidden="true" />
           <p className={styles.emptyTitle}>Add your first piece</p>
           <p className={styles.emptyText}>
-            Open the furniture list, then click a piece to add it or drag it into the room.
+            Click a piece in the furniture list, or drag it onto the plan.
           </p>
         </div>
       )}
@@ -427,12 +442,12 @@ export function RoomCanvas() {
         aria-live="polite"
       >
         {measureActive
-          ? 'Click two points to measure. Press Esc when done.'
+          ? MEASURE_HINTS[pointer]
           : selectionCount > 1
             ? `${selectionCount} pieces selected. Drag any one to move them together.`
             : selectedItemId
-              ? 'Drag to move. Arrow keys nudge, R rotates, Delete removes.'
-              : 'Click a piece in the list to add it, or drag it into the room.'}
+              ? SELECTED_HINTS[pointer]
+              : 'Click a piece in the furniture list, or drag it onto the plan.'}
       </p>
     </div>
   );
