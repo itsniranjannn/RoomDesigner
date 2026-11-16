@@ -66,6 +66,58 @@ test.describe('persistence', () => {
     await second.close();
   });
 
+  // A write cut short can leave a record with no size. It used to open as an empty plan
+  // reading "NaN x 0.00 m", with console errors and no way back.
+  test('a stored room that lost its size still opens, at a usable size', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living Room');
+    await waitForSaved(page);
+
+    await page.evaluate(
+      () =>
+        new Promise((resolve, reject) => {
+          const req = indexedDB.open('room_planner_db');
+          req.onerror = () => reject(req.error);
+          req.onsuccess = () => {
+            const db = req.result;
+            const tx = db.transaction('rooms', 'readwrite');
+            const store = tx.objectStore('rooms');
+            const all = store.getAll();
+            all.onsuccess = () => {
+              const room = all.result[0];
+              store.put({
+                id: room.id,
+                name: room.name,
+                placedFurniture: 'not-an-array',
+                doors: null,
+                widthCm: undefined,
+                depthCm: null,
+              });
+            };
+            tx.oncomplete = () => {
+              db.close();
+              resolve(true);
+            };
+            tx.onerror = () => reject(tx.error);
+          };
+        })
+    );
+
+    await page.reload();
+    await expect(page.getByLabel('Room plan')).toBeVisible();
+    await page.getByRole('button', { name: 'Room menu' }).click();
+    await expect(
+      page.getByRole('menu', { name: 'Room menu' }).getByText('4.00 x 4.00 m')
+    ).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    // and it is listed with that size rather than as NaN
+    await page.getByRole('button', { name: 'Back to all rooms' }).click();
+    await page.getByRole('button', { name: 'Open saved sheets panel' }).first().click();
+    const panel = page.getByRole('dialog', { name: 'My designs' });
+    await expect(panel.getByText('4.00 x 4.00 m, 0 pieces')).toBeVisible();
+  });
+
   // A flat written by version 1 has no walls, no openings and no stairs. Reading one must not
   // take My designs down, because that panel is the only way to any saved design.
   test('a flat saved by an older build is listed and opens', async ({ page }) => {

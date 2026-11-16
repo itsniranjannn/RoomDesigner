@@ -93,6 +93,21 @@ export async function decodeRoomFromHash(hash) {
   return sanitizeImportedRoom(JSON.parse(new TextDecoder().decode(bytes)));
 }
 
+/** What the room designer lets anyone build, and what an imported design is held to. */
+export const ROOM_SIDE_CM = { min: 200, max: 1500, fallback: 400 };
+
+/**
+ * What a stored record may hold. A room detected from a flat's walls can be narrower than the
+ * designer's own minimum (a passage is 80 cm) and a drawn flat can be larger than its maximum,
+ * so a stored side is only repaired when it is missing or not a number, never resized to taste.
+ */
+export const STORED_ROOM_SIDE_CM = { min: 10, max: 10000, fallback: 400 };
+
+/** One side of a room in centimetres, with a damaged or missing measurement repaired. */
+export function roomSideCm(value, limits = ROOM_SIDE_CM) {
+  return Number.isFinite(value) ? clamp(value, limits.min, limits.max) : limits.fallback;
+}
+
 /** Validates and normalizes imported room data (from a link or a JSON file). */
 export function sanitizeImportedRoom(data) {
   if (!data || typeof data !== 'object') throw new Error('Not a valid room file.');
@@ -134,8 +149,8 @@ export function sanitizeImportedRoom(data) {
     .filter(isObject)
     .slice(0, 100)
     .forEach((t) => registerPlaceholderFurniture(t));
-  const widthCm = num(data.widthCm, 200, 1500, 400);
-  const depthCm = num(data.depthCm, 200, 1500, 400);
+  const widthCm = roomSideCm(data.widthCm);
+  const depthCm = roomSideCm(data.depthCm);
   const services = sanitizeServices(data.services, { maxX: widthCm, maxY: depthCm });
   // A room that is not a rectangle keeps its outline, pulled inside the room's box
   const cleaned = sanitizeOutline(data.outline);

@@ -6,7 +6,14 @@ import {
   resolveItemDef,
   listCustomFurniture,
 } from '../data/furnitureCatalog.js';
-import { encodeRoomToHash, decodeRoomFromHash, sanitizeImportedRoom, roomToJson } from './share.js';
+import {
+  encodeRoomToHash,
+  decodeRoomFromHash,
+  sanitizeImportedRoom,
+  roomToJson,
+  roomSideCm,
+  STORED_ROOM_SIDE_CM,
+} from './share.js';
 
 const piece = { id: 'item-1', furnitureTypeId: 'custom-abc', x: 100, y: 100, rotationDeg: 0 };
 const room = {
@@ -72,5 +79,26 @@ describe('sharing photo-made furniture', () => {
     expect(def.widthCm).toBe(80);
     expect(def.color).toBe('#a8a29a');
     expect(getFurnitureType('nope')).toBeNull();
+  });
+});
+
+describe('a room side with a damaged measurement', () => {
+  it('repairs what is missing, and holds an imported design to the designer limits', () => {
+    for (const bad of [undefined, null, NaN, Infinity, 'wide']) {
+      expect(roomSideCm(bad)).toBe(400);
+      expect(roomSideCm(bad, STORED_ROOM_SIDE_CM)).toBe(400);
+    }
+    // An imported design is kept inside what the room designer can build
+    expect(roomSideCm(80)).toBe(200);
+    expect(roomSideCm(90000)).toBe(1500);
+    const imported = sanitizeImportedRoom({ ...room, widthCm: undefined, depthCm: null });
+    expect(imported.widthCm).toBe(400);
+    expect(imported.depthCm).toBe(400);
+  });
+
+  it('leaves a stored room its own size, even a flat passage narrower than that limit', () => {
+    // Rooms detected from a flat's walls are not held to the room designer's own range
+    expect(roomSideCm(80, STORED_ROOM_SIDE_CM)).toBe(80);
+    expect(roomSideCm(2400, STORED_ROOM_SIDE_CM)).toBe(2400);
   });
 });

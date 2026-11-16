@@ -5,6 +5,7 @@
  */
 
 import { openDB } from 'idb';
+import { roomSideCm, STORED_ROOM_SIDE_CM } from '../engine/share.js';
 
 const DB_NAME = 'room_planner_db';
 const DB_VERSION = 2;
@@ -50,11 +51,17 @@ export function clearActiveRoomId() {
   }
 }
 
-/** A stored room with damaged lists opens with those lists empty instead of failing to open. */
+/**
+ * A stored room with damaged lists opens with those lists empty, and one that has lost its size
+ * opens at a usable size, instead of as an empty plan reading "NaN x 0.00 m". The same repair an
+ * imported design gets (engine/share.js), with the wider bounds a stored record is allowed.
+ */
 function sanitizeRoom(room) {
   const list = (v) => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []);
   return {
     ...room,
+    widthCm: roomSideCm(room.widthCm, STORED_ROOM_SIDE_CM),
+    depthCm: roomSideCm(room.depthCm, STORED_ROOM_SIDE_CM),
     placedFurniture: list(room.placedFurniture),
     doors: list(room.doors),
     windows: list(room.windows),
@@ -143,7 +150,8 @@ export async function listRoomsFromDB() {
     const db = await getDB();
     if (!db) return [];
     const rooms = await db.getAll(STORE_ROOMS);
-    return rooms || [];
+    // Listed as they open: a damaged record shows a usable size, not "NaN x NaN m"
+    return (rooms || []).map(sanitizeRoom);
   } catch (error) {
     if (import.meta.env?.DEV) {
       console.error('Failed to list rooms from IndexedDB:', error);
