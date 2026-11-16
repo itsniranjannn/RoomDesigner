@@ -357,8 +357,12 @@ test.describe('getting around with Tab', () => {
     // It is the first focusable thing in the panel, and it shows itself when focused
     const aside = page.getByRole('complementary', { name: 'Furniture' });
     await expect(aside.locator('a, button, input').first()).toHaveAttribute('href', '#room-plan');
-    await expect(skip).not.toBeInViewport();
+    const box = async () => (await skip.boundingBox()) || { width: 0, height: 0 };
+    expect((await box()).width).toBeLessThan(4);
     await skip.focus();
+    const shown = await box();
+    expect(shown.width).toBeGreaterThan(100);
+    expect(shown.height).toBeGreaterThan(20);
     await expect(skip).toBeInViewport();
 
     await page.keyboard.press('Enter');
