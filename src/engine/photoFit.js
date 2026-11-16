@@ -191,11 +191,17 @@ export function fitScore(model, photo, modelAspect, photoAspectRatio) {
   return { score: overlap * ratio, overlap, ratio };
 }
 
-/** A word and a tone for a fit score. */
+/**
+ * A word and a tone for a fit score. The score says how nearly the model's outline has the same proportions as
+ * the photo's, which is not the same as the model looking like the piece, so the words say so plainly. The
+ * verdict follows the percentage the dialog shows, not the unrounded score, so a score of 0.698 cannot come
+ * out as the lowest verdict beside "70%".
+ */
 export function describeFit(score) {
-  if (score >= 0.85) return { level: 'good', label: 'Close match' };
-  if (score >= 0.7) return { level: 'fair', label: 'Roughly similar' };
-  return { level: 'poor', label: 'Noticeably different' };
+  const shown = Math.round(score * 100);
+  if (shown >= 85) return { level: 'good', label: 'Proportions fit your photo' };
+  if (shown >= 70) return { level: 'fair', label: 'Proportions roughly fit your photo' };
+  return { level: 'poor', label: 'Proportions differ from your photo' };
 }
 
 /**

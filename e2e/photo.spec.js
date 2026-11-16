@@ -513,11 +513,11 @@ test.describe('create furniture from photos', () => {
       });
     };
     await chooseType('Desk');
-    for (const name of ['Drawer pedestal', 'Base', 'Front panel'])
+    for (const name of ['Drawer unit', 'Base', 'Front panel'])
       await expect(pick(name)).toBeVisible();
-    // the drawer count is offered once there is a pedestal to hold them
-    await pick('Drawer pedestal').selectOption({ label: 'On the right' });
-    await expect(pick('Drawers in the pedestal')).toBeVisible();
+    // the drawer count is offered once there is a drawer unit to hold them
+    await pick('Drawer unit').selectOption({ label: 'On the right' });
+    await expect(pick('Drawers in the unit')).toBeVisible();
     await pick('Base').selectOption({ label: 'Metal sled (C-shaped) ends' });
     await chooseType('Bed');
     for (const name of ['Frame', 'Side rails', 'Wheels']) await expect(pick(name)).toBeVisible();

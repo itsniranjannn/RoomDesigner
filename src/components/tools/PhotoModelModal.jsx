@@ -11,8 +11,6 @@ import {
   Layers,
   HelpCircle,
   AlertTriangle,
-  Minus,
-  Plus,
   Crosshair,
   Scissors,
   Undo2,
@@ -70,7 +68,7 @@ import {
 } from '../../engine/photoPipeline.js';
 import { photoJob, warmPhotoWorker } from '../../engine/photoWorkerClient.js';
 import { CutoutFixer, NO_EDITS } from './CutoutFixer.jsx';
-import { CaptureGuide, SLOT_HINTS, guideSeen, markGuideSeen } from './PhotoGuide.jsx';
+import { CaptureGuide, SLOT_HINTS, markGuideSeen } from './PhotoGuide.jsx';
 import local from './PhotoModelModal.module.css';
 
 const PHOTO_MAX = 480;
@@ -83,6 +81,9 @@ const SHEET_SLOT_CHOICES = [
   ['back', 'Back'],
   ['top', 'Top'],
 ];
+
+/** "1 view" or "4 views". */
+const viewCount = (n) => `${n} view${n === 1 ? '' : 's'}`;
 
 /** What the dialog says while it works, step by step. */
 const STAGE = {
@@ -550,7 +551,7 @@ const TRAIT_CONTROLS = {
       label: 'Base',
       fallback: 0,
       options: [
-        [0, 'Plinth'],
+        [0, 'Solid base to the floor'],
         [1, 'Legs'],
       ],
     },
@@ -617,7 +618,7 @@ const TRAIT_CONTROLS = {
     { key: 'roundLegs', label: 'Legs', fallback: 0, options: LEGS },
     {
       key: 'ped',
-      label: 'Drawer pedestal',
+      label: 'Drawer unit',
       fallback: 'none',
       options: [
         ['none', 'None'],
@@ -628,7 +629,7 @@ const TRAIT_CONTROLS = {
     },
     {
       key: 'drawers',
-      label: 'Drawers in the pedestal',
+      label: 'Drawers in the unit',
       fallback: 3,
       options: range(1, 4),
       when: (t) => t.ped && t.ped !== 'none',
@@ -643,7 +644,7 @@ const TRAIT_CONTROLS = {
         ['panel', 'Solid panel ends'],
       ],
     },
-    yesNo('modesty', 'Front panel', 'Open', 'Modesty panel under the top'),
+    yesNo('modesty', 'Front panel', 'Open', 'Panel across the front'),
   ],
   wardrobe: [
     { key: 'doors', label: 'Doors', fallback: 2, options: range(1, 6) },
@@ -680,7 +681,7 @@ const TRAIT_CONTROLS = {
       ],
     },
     yesNo('upper', 'Top cupboards', 'None', 'A row of top cupboards'),
-    yesNo('niche', 'Middle', 'All doors', 'Open niche with mirror and counter'),
+    yesNo('niche', 'Middle', 'All doors', 'Open shelf with a mirror'),
     yesNo('fluted', 'Door faces', 'Flat', 'Fluted (fine upright grooves)'),
   ],
   bookshelf: [{ key: 'shelves', label: 'Compartments', fallback: 4, options: range(2, 8) }],
@@ -977,53 +978,6 @@ function ModelPreview({ design, dims, color, view, nonce, overlay, onSilhouette 
   );
 }
 
-/** A size with minus and plus buttons (shift moves by 10) and a box to type in. */
-function Stepper({ label, value, onChange }) {
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => setDraft(String(value)), [value]);
-  const set = (v) => onChange(Math.min(600, Math.max(5, Math.round(v))));
-  const commit = () => {
-    const n = Number(draft);
-    if (Number.isFinite(n) && draft !== '') set(n);
-    else setDraft(String(value));
-  };
-  return (
-    <div className={local.stepper} role="group" aria-label={label}>
-      <span>{label}</span>
-      <div className={local.stepperRow}>
-        <button
-          type="button"
-          className={local.stepBtn}
-          aria-label={`Make the ${label.toLowerCase()} smaller`}
-          onClick={(e) => set(value - (e.shiftKey ? 10 : 1))}
-        >
-          <Minus size={13} aria-hidden="true" />
-        </button>
-        <input
-          className={local.stepValue}
-          type="number"
-          inputMode="numeric"
-          min={5}
-          max={600}
-          value={draft}
-          aria-label={`${label} in centimeters`}
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => e.key === 'Enter' && commit()}
-        />
-        <button
-          type="button"
-          className={local.stepBtn}
-          aria-label={`Make the ${label.toLowerCase()} larger`}
-          onClick={(e) => set(value + (e.shiftKey ? 10 : 1))}
-        >
-          <Plus size={13} aria-hidden="true" />
-        </button>
-      </div>
-    </div>
-  );
-}
-
 /** The user's photo as taken, scaled to fit its frame. */
 function PhotoPane({ photo }) {
   const ref = useRef(null);
@@ -1062,7 +1016,7 @@ export function PhotoModelModal({ onClose }) {
   const [keepRatio, setKeepRatio] = useState(true);
   const [anchor, setAnchor] = useState('widthCm');
   const [sizeEdited, setSizeEdited] = useState(false); // false: the size follows the type's usual size
-  const [guideOpen, setGuideOpen] = useState(() => !guideSeen()); // shown the first time it is opened
+  const [guideOpen, setGuideOpen] = useState(false); // the tiles come first; the guide opens on request
   const [candidates, setCandidates] = useState(null); // { list, agreement } of likely types
   const [probe, setProbe] = useState(null); // the model's silhouette from the active photo angle
   const [quarterPhoto, setQuarterPhoto] = useState(false); // the lone photo was read as a three-quarter view
@@ -1075,6 +1029,8 @@ export function PhotoModelModal({ onClose }) {
   const [splitInfo, setSplitInfo] = useState(null); // { slot, original, parts } after a stacked picture was split
   const [placeAll, setPlaceAll] = useState(false);
   const inputs = useRef({});
+  const sheetPanel = useRef(null);
+  const sheetShown = useRef(false);
   const sheetInput = useRef(null);
   const dimsRef = useRef(dims);
   dimsRef.current = dims;
@@ -1162,6 +1118,17 @@ export function PhotoModelModal({ onClose }) {
     return out;
   }, [cuts, activePiece, allPhotos]);
 
+  // the views panel must be seen the moment it takes a picture, not found by scrolling
+  useEffect(() => {
+    if (!sheet) {
+      sheetShown.current = false;
+      return;
+    }
+    if (sheetShown.current) return;
+    sheetShown.current = true;
+    sheetPanel.current?.scrollIntoView({ block: 'nearest' });
+  }, [sheet]);
+
   // starting the worker takes a moment: do it while the user is still choosing a photo
   useEffect(() => {
     warmPhotoWorker();
@@ -1185,10 +1152,7 @@ export function PhotoModelModal({ onClose }) {
       // One picture that holds several photos (a listing collage) or several views on a plain backdrop (a
       // product sheet) is split, as the sheet splitter would; any other picture is one photo
       const route = photoRoute(big.rgba, big.width, big.height, { photoEdge: PHOTO_MAX });
-      if (route.kind === 'sheet') {
-        openSheet(big, slot);
-        return;
-      }
+      if (route.kind === 'sheet' && openSheet(big, slot)) return;
       if (route.kind === 'stacked') {
         const imgs = route.parts.map((c) => ({
           ...imageFromPixels(c.rgba, c.width, c.height, PHOTO_MAX),
@@ -1382,8 +1346,12 @@ export function PhotoModelModal({ onClose }) {
         kind: 'error',
         text: 'Only one object was found in that picture. Use the Add photo buttons for single photos.',
       });
-      return;
+      return false;
     }
+    setMessage({
+      kind: 'info',
+      text: `That picture holds ${viewCount(detection.views.length)} of one piece, so it is open below as "Views found in the picture" instead of going into a photo slot. Check what each view shows and choose "Use these views", or "Use it as one photo" to keep the whole picture.`,
+    });
     setSheet({
       rgba: img.rgba,
       width: img.width,
@@ -1393,6 +1361,7 @@ export function PhotoModelModal({ onClose }) {
       fromPhoto,
       quarter,
     });
+    return true;
   };
 
   const loadSheet = async (file) => {
@@ -1632,14 +1601,6 @@ export function PhotoModelModal({ onClose }) {
     onClose();
   };
 
-  // Fine-tuning against the photo: one size at a time, no longer tied to the photos' proportions
-  const nudgeDim = (key, value) => {
-    setSizeEdited(true);
-    setAnchor(key);
-    setKeepRatio(false);
-    setDims((d) => ({ ...d, [key]: value }));
-  };
-
   // Scales the model so its silhouette bounds take the proportions of the photo's cut-out
   const matchPhoto = () => {
     if (!fit) return;
@@ -1734,30 +1695,11 @@ export function PhotoModelModal({ onClose }) {
             <h3 className={local.sectionTitle}>
               Photos{' '}
               <span className={local.sectionNote}>
-                {photoCount} of 5. One is enough, more are more accurate
+                {sheet
+                  ? `${photoCount} of 5 in slots, and a picture with ${viewCount(sheet.detection.views.length)} waiting below.`
+                  : `${photoCount} of 5. One is enough; the more you add, the more accurate the model.`}
               </span>
             </h3>
-            <div>
-              <button
-                type="button"
-                className={local.helpBtn}
-                aria-expanded={guideOpen}
-                onClick={() => {
-                  if (guideOpen) markGuideSeen();
-                  setGuideOpen((open) => !open);
-                }}
-              >
-                <HelpCircle size={14} aria-hidden="true" /> How to photograph it
-              </button>
-            </div>
-            {guideOpen && (
-              <CaptureGuide
-                onClose={() => {
-                  markGuideSeen();
-                  setGuideOpen(false);
-                }}
-              />
-            )}
             <div className={local.sheetRow}>
               <Button
                 variant="secondary"
@@ -1785,13 +1727,14 @@ export function PhotoModelModal({ onClose }) {
             {sheet && (
               <div
                 className={local.sheetPanel}
+                ref={sheetPanel}
                 role="group"
                 aria-label="Views found in the picture"
               >
                 <p className={local.note}>
                   {sheet.fromPhoto
                     ? `That picture shows the piece ${sheet.detection.views.length > 1 ? `${sheet.detection.views.length} times` : 'beside a second picture'}, so it is read as views. `
-                    : `Found ${sheet.detection.views.length} views. `}
+                    : `Found ${viewCount(sheet.detection.views.length)}. `}
                   Check what each one shows, then use them. A three-quarter view is read as one when
                   it is the only view.
                 </p>
@@ -1839,6 +1782,27 @@ export function PhotoModelModal({ onClose }) {
                   </Button>
                 </div>
               </div>
+            )}
+            <div>
+              <button
+                type="button"
+                className={local.helpBtn}
+                aria-expanded={guideOpen}
+                onClick={() => {
+                  if (guideOpen) markGuideSeen();
+                  setGuideOpen((open) => !open);
+                }}
+              >
+                <HelpCircle size={14} aria-hidden="true" /> How to photograph it
+              </button>
+            </div>
+            {guideOpen && (
+              <CaptureGuide
+                onClose={() => {
+                  markGuideSeen();
+                  setGuideOpen(false);
+                }}
+              />
             )}
             <div className={local.slots}>
               {VIEW_SLOTS.map((slot) => {
@@ -2096,17 +2060,23 @@ export function PhotoModelModal({ onClose }) {
             </label>
           )}
           {(photoCount === 0 || Object.values(segmented).some((c) => !c.scene)) && (
-            <RangeField
-              label="Background removal"
-              min={15}
-              max={160}
-              value={tolerance}
-              onChange={(v) => {
-                toleranceTouched.current = true;
-                setTolerance(v);
-              }}
-              hint="Works best with a plain, evenly lit background. Raise it if background stays visible; lower it if parts of the piece disappear."
-            />
+            <div className={local.rangeBox}>
+              <RangeField
+                label="How much background to cut away"
+                min={15}
+                max={160}
+                value={tolerance}
+                onChange={(v) => {
+                  toleranceTouched.current = true;
+                  setTolerance(v);
+                }}
+                hint="Works best with a plain, evenly lit background. More if background stays visible; less if parts of the piece disappear."
+              />
+              <div className={local.rangeEnds} aria-hidden="true">
+                <span>Less</span>
+                <span>More</span>
+              </div>
+            </div>
           )}
         </div>
 
@@ -2211,35 +2181,18 @@ export function PhotoModelModal({ onClose }) {
                   Match photo
                 </Button>
               </div>
-              <div className={local.steppers}>
-                <Stepper
-                  label="Width"
-                  value={dims.widthCm}
-                  onChange={(v) => nudgeDim('widthCm', v)}
-                />
-                <Stepper
-                  label="Depth"
-                  value={dims.depthCm}
-                  onChange={(v) => nudgeDim('depthCm', v)}
-                />
-                <Stepper
-                  label="Height"
-                  value={dims.heightCm}
-                  onChange={(v) => nudgeDim('heightCm', v)}
-                />
-              </div>
               {fit ? (
                 <div className={local.meter} aria-live="polite">
                   <div className={local.meterLine}>
                     <span>
-                      <strong>{describeFit(fit.score).label}</strong> with this photo
+                      <strong>{describeFit(fit.score).label}</strong>
                     </span>
                     <span>{Math.round(fit.score * 100)}%</span>
                   </div>
                   <div
                     className={local.meterBar}
                     role="meter"
-                    aria-label="How closely the model matches the photo"
+                    aria-label="How closely the model's proportions match the photo"
                     aria-valuemin={0}
                     aria-valuemax={100}
                     aria-valuenow={Math.round(fit.score * 100)}
@@ -2256,9 +2209,9 @@ export function PhotoModelModal({ onClose }) {
                       : fitHint(activeView, fit.modelAspect, fit.photoAspect) ||
                         (fit.score < 0.78
                           ? 'The overall size agrees; the difference is in the details of the outline.'
-                          : 'The proportions agree with the photo.')}{' '}
-                    Turn on the overlay above to see the difference, and use the buttons to adjust
-                    (hold Shift for 10 cm).
+                          : 'This weighs the outline’s proportions only, not how much the model looks like the piece.')}{' '}
+                    Turn on the overlay above to see the difference, and change the real size above
+                    to adjust.
                   </p>
                 </div>
               ) : (
@@ -2434,8 +2387,8 @@ export function PhotoModelModal({ onClose }) {
             </div>
           )}
           <p className={local.note}>
-            Furniture made from photos stays on this device. Your top photo is shown on the 2D plan.
-            Shared links and JSON files keep the model's type, colours and size, but not the photos.
+            Your top photo is shown on the 2D plan. A shared link or a saved design file keeps the
+            model&apos;s shape, colours and size - not the photos themselves.
           </p>
         </div>
       </div>
@@ -2452,7 +2405,7 @@ export function PhotoModelModal({ onClose }) {
           Adjust the background removal or retake the photo on a plain background.
         </Notice>
       )}
-      {message && <Notice kind="error">{message.text}</Notice>}
+      {message && <Notice kind={message.kind || 'error'}>{message.text}</Notice>}
     </Modal>
   );
 }
