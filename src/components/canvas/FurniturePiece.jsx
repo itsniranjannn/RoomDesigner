@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { resolveItemDef } from '../../data/furnitureCatalog.js';
 import { useRoomStore } from '../../store/roomStore.js';
@@ -7,6 +7,31 @@ import { normalizeAngle } from '../../engine/geometry.js';
 import { dropTargetAt } from '../../engine/stacking.js';
 import { ArchitecturalSilhouette } from './ArchitecturalSilhouette.jsx';
 import cursors from './Cursors.module.css';
+
+/**
+ * Screen pixels per plan unit. The plan scales to its container, so anything sized in plan units
+ * shrinks with the window; the rotation handle uses this to keep a finger-sized target.
+ */
+function usePlanScale(svgRef, active) {
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    if (!active) return undefined;
+    const read = () => {
+      const m = svgRef?.current?.getScreenCTM?.();
+      if (m?.a) setScale(m.a);
+    };
+    read();
+    window.addEventListener('resize', read);
+    const observer =
+      typeof ResizeObserver === 'function' && svgRef?.current ? new ResizeObserver(read) : null;
+    observer?.observe(svgRef.current);
+    return () => {
+      window.removeEventListener('resize', read);
+      observer?.disconnect();
+    };
+  }, [svgRef, active]);
+  return scale;
+}
 
 export function FurniturePiece({
   item,
@@ -23,6 +48,11 @@ export function FurniturePiece({
   const updateFurnitureRotation = useRoomStore((state) => state.updateFurnitureRotation);
 
   const isDropTarget = useRoomStore((state) => state.dropTargetId === item.id);
+
+  // The handle's own circle is 18 plan units, which is only a 20px target on a 360px screen, so a
+  // near-miss drags the piece instead of turning it. Below that it grows to a 44px one.
+  const planScale = usePlanScale(svgRef, isSelected && isPrimary);
+  const rotateHitR = Math.max(18, 22 / (planScale || 1));
 
   const def = resolveItemDef(item);
   const widthCm = def ? def.widthCm : 50;
@@ -362,8 +392,15 @@ export function FurniturePiece({
               strokeDasharray="2 2"
             />
 
-            {/* Invisible Large Hit Circle (36px wide hit target) */}
-            <circle cx={0} cy={0} r={18} fill="transparent" pointerEvents="all" />
+            {/* Invisible hit circle: at least a 44px target whatever the plan is scaled to */}
+            <circle
+              cx={0}
+              cy={0}
+              r={rotateHitR}
+              fill="transparent"
+              pointerEvents="all"
+              data-testid="rotate-handle"
+            />
 
             {/* White under-casing for knob */}
             <circle cx={0} cy={0} r={9} fill="#FFFFFF" />
