@@ -133,4 +133,8 @@
   .end {
     gap: var(--space-1);
   }
+  /* Nothing follows the mark here, so its trailing space goes to the name */
+  .bar .brand {
+    padding-right: 0;
+  }
 }
