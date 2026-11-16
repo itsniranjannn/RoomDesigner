@@ -123,7 +123,7 @@ test.describe('flat designer', () => {
   test('the flat export menu says a flat cannot be shared as a link yet', async ({ page }) => {
     await openApp(page);
     await newFlat(page, { label: 'Two-bedroom flat' });
-    await expect(stat(page, 'Rooms')).toBeVisible();
+    await expect(stat(page, 'Rooms in the flat')).toBeVisible();
     await page.getByRole('button', { name: 'Export this floor' }).click();
     const menu = page.getByRole('menu', { name: 'Export this floor' });
     await expect(menu.getByRole('menuitem', { name: 'Printable plan (PDF)' })).toBeEnabled();
@@ -137,7 +137,7 @@ test.describe('flat designer', () => {
   test('a reload comes back to the flat being designed', async ({ page }) => {
     await openApp(page);
     await newFlat(page, { label: 'Two-bedroom flat' });
-    await expect(stat(page, 'Rooms')).toBeVisible();
+    await expect(stat(page, 'Rooms in the flat')).toBeVisible();
     const title = page.getByRole('textbox', { name: 'Flat name' });
     await title.fill('Reload flat');
     await title.press('Enter');
@@ -146,7 +146,7 @@ test.describe('flat designer', () => {
     await page.reload();
     await expect(page.getByRole('application')).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Flat name' })).toHaveValue('Reload flat');
-    await expect(stat(page, 'Rooms')).toBeVisible();
+    await expect(stat(page, 'Rooms in the flat')).toBeVisible();
 
     // Going back to the studio is remembered too: a reload then starts there
     await page.getByRole('button', { name: 'Back to your studio' }).click();
@@ -160,7 +160,7 @@ test.describe('flat designer', () => {
   test('says the flat is not saved when the device will not store it', async ({ page }) => {
     await openApp(page);
     await newFlat(page, { label: 'Two-bedroom flat' });
-    await expect(stat(page, 'Rooms')).toBeVisible();
+    await expect(stat(page, 'Rooms in the flat')).toBeVisible();
     await expect(page.getByRole('status', { name: /all changes saved/i })).toBeVisible();
 
     // Every write fails from here on, as a device with no room left would
