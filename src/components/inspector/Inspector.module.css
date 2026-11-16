@@ -239,11 +239,6 @@
   color: var(--color-ink-muted);
 }
 
-.wallRow {
-  display: grid;
-  grid-template-columns: 1.35fr 1fr;
-  gap: var(--space-3);
-}
 
 .opening {
   display: flex;

@@ -65,6 +65,11 @@ function OpeningRow({ type, opening, index, canRemove, room }) {
           label: `Wall ${e.i + 1} (${(e.len / 100).toFixed(1)} m)`,
         }))
     : [];
+  // Under the dropdown, like the hint on "Hinged on" below: in a column beside it the note wrapped
+  // to five ragged lines and split "90" from "cm".
+  const sizeNote = isResizable(type)
+    ? `${opening.widthCm} cm wide. Drag its ends on the plan to stretch it.`
+    : `Single door, ${opening.widthCm} cm. It slides along the wall but is not stretched.`;
 
   return (
     <div className={styles.opening}>
@@ -87,28 +92,23 @@ function OpeningRow({ type, opening, index, canRemove, room }) {
           </IconButton>
         )}
       </div>
-      <div className={styles.wallRow}>
-        {outlined ? (
-          <SelectField
-            label="Wall"
-            options={edgeOptions}
-            value={String(opening.edge ?? 0)}
-            onChange={(edge) => updateOpening(type, opening.id, { edge: Number(edge) }, true)}
-          />
-        ) : (
-          <SelectField
-            label="Wall"
-            options={WALL_OPTIONS}
-            value={opening.wall || (isDoor ? 'bottom' : 'top')}
-            onChange={(wall) => updateOpening(type, opening.id, { wall }, true)}
-          />
-        )}
-        <p className={styles.note}>
-          {isResizable(type)
-            ? `${opening.widthCm} cm wide. Drag its ends on the plan to stretch it.`
-            : `Single door, ${opening.widthCm} cm. It slides along the wall but is not stretched.`}
-        </p>
-      </div>
+      {outlined ? (
+        <SelectField
+          label="Wall"
+          hint={sizeNote}
+          options={edgeOptions}
+          value={String(opening.edge ?? 0)}
+          onChange={(edge) => updateOpening(type, opening.id, { edge: Number(edge) }, true)}
+        />
+      ) : (
+        <SelectField
+          label="Wall"
+          hint={sizeNote}
+          options={WALL_OPTIONS}
+          value={opening.wall || (isDoor ? 'bottom' : 'top')}
+          onChange={(wall) => updateOpening(type, opening.id, { wall }, true)}
+        />
+      )}
       {isDoor ? (
         <>
           <SelectField
