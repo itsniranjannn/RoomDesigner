@@ -3,7 +3,7 @@ import { threeQuarter } from './oblique.js';
 import { channelTufting, steppedArms, findPulls, wardrobeDetails, deskDetails } from './details.js';
 import { sanitizeDesign, slabOver, classifyFromFront } from './design.js';
 import { assignSheetViews } from './sheet.js';
-import { splitFlanks } from './foreground.js';
+import { splitFlanks, boxyOutline } from './foreground.js';
 import { detectStackedPhotos } from './stacked.js';
 
 /** A square view drawn by a colour function over (u, v) in 0-1; null is background. */
@@ -312,5 +312,69 @@ describe('pieces in a room photo', () => {
     expect(found).not.toBeNull();
     expect(found.axis).toBe('y');
     expect(found.parts).toHaveLength(2);
+  });
+});
+
+describe('a pale box against a pale wall', () => {
+  // a white wardrobe in front of a cream wall, with a dark opening in the middle: the colour cut keeps the
+  // opening and loses the carcass, but the four sides of the box are still long straight edges
+  const paleRoom = (w, h, box) => {
+    const rgba = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const inBox = x >= box.x0 && x <= box.x1 && y >= box.y0 && y <= box.y1;
+        const opening =
+          x > box.x0 + 12 &&
+          x < box.x1 - 12 &&
+          y > box.y0 + 10 &&
+          y < box.y0 + (box.y1 - box.y0) * 0.55;
+        const shadow = x > box.x0 + 7 && x < box.x1 - 7 && y > box.y1 - 6 && y <= box.y1;
+        const floor = y > h * 0.86;
+        const c =
+          opening || shadow
+            ? [60, 52, 48]
+            : inBox
+              ? [243, 242, 238]
+              : floor
+                ? [205, 196, 186]
+                : [236, 230, 219];
+        rgba.set([...c, 255], i);
+      }
+    return rgba;
+  };
+
+  it('takes the four straight sides as the outline when only the dark opening was found', () => {
+    const w = 160;
+    const h = 200;
+    const box = { x0: 30, y0: 20, x1: 120, y1: 172 };
+    const rgba = paleRoom(w, h, box);
+    // what a colour cut keeps here: the dark opening and the shadow along the foot of the carcass
+    const found = new Uint8Array(w * h);
+    for (let y = box.y0 + 11; y < box.y0 + (box.y1 - box.y0) * 0.55; y++)
+      for (let x = box.x0 + 13; x < box.x1 - 12; x++) found[y * w + x] = 1;
+    for (let y = box.y1 - 5; y <= box.y1; y++)
+      for (let x = box.x0 + 8; x <= box.x1 - 8; x++) found[y * w + x] = 1;
+    const out = boxyOutline(rgba, w, h, found);
+    expect(out).not.toBeNull();
+    expect(Math.min(...out.support)).toBeGreaterThan(0.55);
+    expect(out.fill).toBeLessThan(0.6);
+    expect(Math.abs(out.rect.x0 - box.x0)).toBeLessThanOrEqual(2);
+    expect(Math.abs(out.rect.x1 - box.x1)).toBeLessThanOrEqual(2);
+    expect(Math.abs(out.rect.y0 - box.y0)).toBeLessThanOrEqual(2);
+    expect(Math.abs(out.rect.y1 - box.y1)).toBeLessThanOrEqual(3);
+  });
+
+  it('leaves a piece alone when its own outline is what was found', () => {
+    const w = 160;
+    const h = 200;
+    const box = { x0: 30, y0: 20, x1: 120, y1: 172 };
+    const rgba = paleRoom(w, h, box);
+    const whole = new Uint8Array(w * h);
+    for (let y = box.y0; y <= box.y1; y++)
+      for (let x = box.x0; x <= box.x1; x++) whole[y * w + x] = 1;
+    const out = boxyOutline(rgba, w, h, whole);
+    // the rectangle is the piece itself, so there is nothing to fill in
+    expect(out.fill).toBeGreaterThan(0.9);
   });
 });

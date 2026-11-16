@@ -190,7 +190,15 @@ describe.skipIf(!has('r2-room-built-in-wardrobe.png'))('the built-in wardrobe in
 });
 
 describe.skipIf(!has('r2-room-white-wardrobe.png'))('the white wardrobe in a room', () => {
-  // The white doors on a cream wall are lost by the room cut-out (it keeps the clothes and the drawers)
+  it('is read as a pale case with drawers, not as a dark bed', () => {
+    // the white carcass is nearly the colour of the wall, so the colour cut keeps only the dark opening; the
+    // four straight sides of the case bring the piece back whole and with its own colour
+    const { design } = r2('r2-room-white-wardrobe.png');
+    expect(['nightstand', 'cabinet', 'wardrobe', 'bookshelf']).toContain(design.type);
+    expect(design.traits.drawers).toBeGreaterThanOrEqual(2);
+    expect(lum(design.palette.body)).toBeGreaterThan(120);
+  });
+  // Which doors, the mirror and the two rows of drawers are still beyond the cut-out
   it.todo('is read as a four-door white wardrobe with a mirror door and two rows of drawers');
 });
 
