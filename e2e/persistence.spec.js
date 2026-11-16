@@ -43,7 +43,8 @@ test.describe('persistence', () => {
     await dialog.getByRole('button', { name: 'Create flat' }).click();
     await expect(page.getByRole('application')).toBeVisible();
 
-    await page.goto('/');
+    // A reload comes back to the flat being drawn, so go to the studio the way a person would
+    await page.getByRole('button', { name: 'Back to your studio' }).click();
     await expect(
       page.getByRole('button', { name: 'Open saved sheets panel' }).first()
     ).toContainText('01');
@@ -52,7 +53,7 @@ test.describe('persistence', () => {
   // Two tabs on the same room: the second tab's work must not vanish when the first saves.
   test('a second tab on the same room is not overwritten', async ({ page, problems }) => {
     await openApp(page);
-    await createRoomFromPreset(page, 'Living Room');
+    await createRoomFromPreset(page, 'Living room');
     await addByClick(page, '3-Seater Sofa');
     await waitForSaved(page);
 
@@ -86,7 +87,7 @@ test.describe('persistence', () => {
   // reading "NaN x 0.00 m", with console errors and no way back.
   test('a stored room that lost its size still opens, at a usable size', async ({ page }) => {
     await openApp(page);
-    await createRoomFromPreset(page, 'Living Room');
+    await createRoomFromPreset(page, 'Living room');
     await waitForSaved(page);
 
     await page.evaluate(
@@ -138,7 +139,7 @@ test.describe('persistence', () => {
   // take My designs down, because that panel is the only way to any saved design.
   test('a flat saved by an older build is listed and opens', async ({ page }) => {
     await openApp(page);
-    await createRoomFromPreset(page, 'Living Room');
+    await createRoomFromPreset(page, 'Living room');
     await waitForSaved(page);
     await page.getByRole('button', { name: 'Back to all rooms' }).click();
     await expect(page.getByRole('button', { name: 'Start a new room' })).toBeVisible();
@@ -171,7 +172,7 @@ test.describe('persistence', () => {
     await expect(panel.getByText('Old flat')).toBeVisible();
     await expect(panel.getByText(/^Flat, 1 floor/)).toBeVisible();
     // The room saved before it is still reachable from the same panel
-    await expect(panel.getByText('Living Room')).toBeVisible();
+    await expect(panel.getByText('Living room')).toBeVisible();
 
     await panel.getByText('Old flat').click();
     await expect(page.getByRole('application')).toBeVisible();

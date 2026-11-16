@@ -67,7 +67,7 @@ test.describe('share and export', () => {
   // Any JSON file at all used to open as an empty room called "Imported Room"
   test('a JSON file that is not a design is refused, a real one opens', async ({ page }) => {
     await openApp(page);
-    await createRoomFromPreset(page, 'Kids Bedroom');
+    await createRoomFromPreset(page, "Kids' bedroom");
     await addByClick(page, 'Single Bed');
     await page.getByRole('button', { name: 'Share and export' }).click();
     const dialog = page.getByRole('dialog', { name: 'Share & export' });

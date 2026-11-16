@@ -134,7 +134,7 @@ test.describe('room editor', () => {
     });
     await page.getByRole('button', { name: 'Start a new room' }).click();
     const dialog = page.getByRole('dialog', { name: 'New room' });
-    await dialog.getByRole('button', { name: /Kids Bedroom/ }).click();
+    await dialog.getByRole('button', { name: /Kids' bedroom/ }).click();
     await dialog.getByRole('button', { name: 'Create room' }).click();
 
     await expect(dialog).toBeVisible();

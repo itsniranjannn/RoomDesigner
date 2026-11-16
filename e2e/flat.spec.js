@@ -88,7 +88,7 @@ test.describe('flat designer', () => {
   // Two tabs on the same flat: the second tab's work must not vanish when the first saves
   test('a second tab on the same flat is not overwritten', async ({ page, problems }) => {
     await openApp(page);
-    await newFlat(page, { label: '2BHK' });
+    await newFlat(page, { label: 'Two-bedroom flat' });
     const titleA = page.getByRole('textbox', { name: 'Flat name' });
     await titleA.fill('Tab A flat');
     await titleA.press('Enter');
@@ -122,7 +122,7 @@ test.describe('flat designer', () => {
   // The README promised a design could be shared as a link, but only a room can be
   test('the flat export menu says a flat cannot be shared as a link yet', async ({ page }) => {
     await openApp(page);
-    await newFlat(page, { label: '2BHK' });
+    await newFlat(page, { label: 'Two-bedroom flat' });
     await expect(stat(page, 'Rooms')).toBeVisible();
     await page.getByRole('button', { name: 'Export this floor' }).click();
     const menu = page.getByRole('menu', { name: 'Export this floor' });
@@ -136,7 +136,7 @@ test.describe('flat designer', () => {
   // reloading inside a room correctly reopened it.
   test('a reload comes back to the flat being designed', async ({ page }) => {
     await openApp(page);
-    await newFlat(page, { label: '2BHK' });
+    await newFlat(page, { label: 'Two-bedroom flat' });
     await expect(stat(page, 'Rooms')).toBeVisible();
     const title = page.getByRole('textbox', { name: 'Flat name' });
     await title.fill('Reload flat');
@@ -159,7 +159,7 @@ test.describe('flat designer', () => {
   // A flat whose writes all fail used to keep saying "Saved" over work that was already gone
   test('says the flat is not saved when the device will not store it', async ({ page }) => {
     await openApp(page);
-    await newFlat(page, { label: '2BHK' });
+    await newFlat(page, { label: 'Two-bedroom flat' });
     await expect(stat(page, 'Rooms')).toBeVisible();
     await expect(page.getByRole('status', { name: /all changes saved/i })).toBeVisible();
 
