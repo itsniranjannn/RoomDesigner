@@ -19,27 +19,35 @@ test.describe('offline use', () => {
     test.setTimeout(120000);
     await openApp(page);
 
-    await page.waitForFunction(
-      async () => {
+    // Read the worker's state and what it holds in one go, over and over until it has everything.
+    // Two readings would not do: the worker can install again between them and start a new store.
+    const look = async () =>
+      page.evaluate(async () => {
         const reg = await navigator.serviceWorker.getRegistration();
-        if (!reg || reg.active?.state !== 'activated' || !navigator.serviceWorker.controller)
-          return false;
         const have = [];
         for (const key of await caches.keys())
           for (const r of await (await caches.open(key)).keys()) have.push(r.url);
-        const want = await fetch('./asset-manifest.json').then((r) => (r.ok ? r.json() : []));
-        if (!want.length) return false;
-        return want.every((file) => have.includes(new URL(file, location.href).href));
-      },
-      null,
-      { timeout: 90000 }
-    );
-    const { have, want } = await page.evaluate(async () => {
-      const have = [];
-      for (const key of await caches.keys())
-        for (const r of await (await caches.open(key)).keys()) have.push(r.url);
-      return { have, want: await fetch('./asset-manifest.json').then((r) => r.json()) };
-    });
+        const want = await fetch('./asset-manifest.json')
+          .then((r) => (r.ok ? r.json() : []))
+          .catch(() => []);
+        return {
+          ready: reg?.active?.state === 'activated' && Boolean(navigator.serviceWorker.controller),
+          have,
+          want,
+          missing: want.filter((f) => !have.includes(new URL(f, location.href).href)),
+        };
+      });
+
+    let seen = await look();
+    const until = Date.now() + 90000;
+    while (Date.now() < until && (!seen.ready || !seen.want.length || seen.missing.length)) {
+      await page.waitForTimeout(500);
+      seen = await look();
+    }
+    expect(seen.ready, 'the worker should be in charge of the page').toBe(true);
+    expect(seen.want.length, 'the build should list the files it made').toBeGreaterThan(0);
+    expect(seen.missing, 'every built file should be stored').toEqual([]);
+    const { have, want } = seen;
 
     // the shell itself, and the files that are only fetched when a feature is first opened
     expect(have).toContain(new URL('./', page.url()).href);
