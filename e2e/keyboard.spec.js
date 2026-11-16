@@ -417,11 +417,12 @@ test.describe('doors and windows can be placed by typing a number', () => {
     await retype(page, position, '260');
     await expect(position).toHaveValue('260');
 
-    // The arrows step it, in the 5 cm the box asks for
+    // The arrows step it, in the 5 cm the box asks for, and Enter commits the step
     await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('Enter');
     await expect(position).toHaveValue('265');
 
-    // It reached the room, not just the box: Undo puts the door back where it was
+    // It reached the room, not just the box: Undo puts the door back where it stood before
     const undo = page.getByRole('button', { name: /^Undo/ });
     await expect(undo).toBeEnabled();
     await undo.click();
@@ -533,6 +534,8 @@ test.describe('a room can be resized after it was created', () => {
     await expect(
       panel.locator('[data-opening="window-1"]').getByRole('spinbutton', { name: 'Position' })
     ).toHaveValue('190');
+    // And the line about the resize goes with it, rather than describing a room that is gone
+    await expect(panel.getByRole('status')).toHaveCount(0);
 
     // The range is the one the New room dialog allows, and a number outside it says so
     await width.focus();

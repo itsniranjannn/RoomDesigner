@@ -362,8 +362,11 @@ function RoomSizeFields({ room }) {
   const [done, setDone] = useState(null);
   const apply = (patch) => {
     const result = resizeRoom(patch.widthCm ?? room.widthCm, patch.depthCm ?? room.depthCm);
-    if (result) setDone(resizeWords(result));
+    if (result) setDone({ ...result, words: resizeWords(result) });
   };
+  // An Undo takes the resize back, and the line that described it stops being true: it is shown
+  // only while the room is still the size it talks about
+  const current = done && done.widthCm === room.widthCm && done.depthCm === room.depthCm;
   return (
     <>
       <div className={styles.grid2} data-room-size>
@@ -390,9 +393,9 @@ function RoomSizeFields({ room }) {
         Between {ROOM_MIN_CM} and {ROOM_MAX_CM} cm, as when a room is created. Furniture and
         openings that no longer fit are moved inside the new walls rather than lost.
       </p>
-      {done && (
+      {current && (
         <p className={styles.note} role="status">
-          {done}
+          {done.words}
         </p>
       )}
     </>
