@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { FURNITURE_CATALOG, FURNITURE_CATEGORIES } from './furnitureCatalog.js';
+import { describe, it, expect, afterEach } from 'vitest';
+import {
+  FURNITURE_CATALOG,
+  FURNITURE_CATEGORIES,
+  getFurnitureType,
+  listCustomFurniture,
+  registerCustomFurniture,
+  unregisterCustomFurniture,
+} from './furnitureCatalog.js';
 import { SILHOUETTES, resolveSilhouette } from '../components/canvas/silhouettes/index.js';
 import { MODELS, resolveModel } from '../components/preview3d/models/index.js';
 
@@ -35,5 +42,60 @@ describe('furniture catalog', () => {
   it('falls back to a generic shape for unknown shapeTypes', () => {
     expect(resolveSilhouette('no-such-shape')).toBeTypeOf('function');
     expect(resolveModel('no-such-shape')).toBeTypeOf('function');
+  });
+});
+
+describe('a damaged photo-made record', () => {
+  afterEach(() => unregisterCustomFurniture('custom-damaged'));
+
+  // A record damaged in storage used to be spread straight in, painting NaN over the plan and
+  // the 3D view: a blank card reading "wide x cm", an invisible piece and a NaN bounding sphere.
+  it('is registered with a readable name, a real size and a real colour', () => {
+    registerCustomFurniture({
+      id: 'custom-damaged',
+      name: '   ',
+      widthCm: 'wide',
+      depthCm: NaN,
+      heightCm: null,
+      color: 'brownish',
+      design: { type: 'not-a-type' },
+      mesh: { positions: [0, 0, 0] },
+    });
+    const def = getFurnitureType('custom-damaged');
+    expect(def.name).toBe('Photo furniture');
+    expect(def.widthCm).toBe(80);
+    expect(def.depthCm).toBe(60);
+    expect(def.heightCm).toBe(80);
+    expect(def.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+    expect(def.design).toBeUndefined();
+    // what was sound about the record is kept
+    expect(def.mesh.positions).toEqual([0, 0, 0]);
+    expect(listCustomFurniture().some((d) => d.id === 'custom-damaged')).toBe(true);
+  });
+
+  it('keeps a sound record exactly as it was made', () => {
+    registerCustomFurniture({
+      id: 'custom-damaged',
+      name: 'Grandma chair',
+      widthCm: 62.5,
+      depthCm: 58,
+      heightCm: 94,
+      color: '#7A4B2A',
+    });
+    expect(getFurnitureType('custom-damaged')).toMatchObject({
+      name: 'Grandma chair',
+      widthCm: 62.5,
+      depthCm: 58,
+      heightCm: 94,
+      color: '#7A4B2A',
+      category: 'custom',
+      shapeType: 'custom-mesh',
+    });
+  });
+
+  it('ignores a record with no id at all', () => {
+    registerCustomFurniture({ name: 'Nameless' });
+    registerCustomFurniture(null);
+    expect(listCustomFurniture().some((d) => !d.id)).toBe(false);
   });
 });
