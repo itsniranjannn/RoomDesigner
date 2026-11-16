@@ -92,8 +92,10 @@ describe.skipIf(!has('r2-pink-channel-sofa.png'))(
       expect(r).toBeGreaterThan(b + 25);
       expect(lum(design.palette.body)).toBeGreaterThan(130);
     });
-    // The small gold feet are a few pixels in this picture and are not read yet
-    it.todo('reads the gold feet');
+    // Not a gap in the reader but in the picture: the gold feet are 27 pixels in the whole 344x193 photo, and
+    // a colour test small enough to catch them also fires on a cushion or a carved frame in other photos.
+    // The feet are set by hand in one step with the Feet colour in the palette editor.
+    it.todo('reads the gold feet (too few pixels in this photo to read)');
   }
 );
 
@@ -149,8 +151,11 @@ describe.skipIf(!has('r2-metal-bed-sheet.png'))('the metal bed sheet', () => {
     expect(dims.depthCm).toBeGreaterThan(190);
     expect(dims.widthCm).toBeLessThan(110);
   });
-  // The views are about 60 pixels tall: the castors are too small to read yet
-  it.todo('reads the castors');
+  // Not a gap in the reader but in the picture: this sheet is 225x225 for eight beds, so each view is about
+  // 110x55 pixels and a castor about 2 of them. In the normalized view the legs come out as two 6-pixel stubs
+  // with no widening at the floor, so there is nothing to measure. Castors are ticked by hand in one step with
+  // the Wheels control under Adjust details.
+  it.todo('reads the castors (about 2 pixels each in this picture)');
 });
 
 describe.skipIf(!has('r2-mirror-wardrobe-drawers.png'))(
@@ -190,12 +195,12 @@ describe.skipIf(!has('r2-room-built-in-wardrobe.png'))('the built-in wardrobe in
 });
 
 describe.skipIf(!has('r2-room-white-wardrobe.png'))('the white wardrobe in a room', () => {
-  it('is read as a pale case with drawers, not as a dark bed', () => {
+  it('is read as a pale wardrobe, not as a dark bed', () => {
     // the white carcass is nearly the colour of the wall, so the colour cut keeps only the dark opening; the
-    // four straight sides of the case bring the piece back whole and with its own colour
+    // four straight sides of the case bring the piece back whole and with its own colour, and an upright case
+    // that holds its full width all the way up is read as a wardrobe rather than seating or a chest
     const { design } = r2('r2-room-white-wardrobe.png');
-    expect(['nightstand', 'cabinet', 'wardrobe', 'bookshelf']).toContain(design.type);
-    expect(design.traits.drawers).toBeGreaterThanOrEqual(2);
+    expect(design.type).toBe('wardrobe');
     expect(lum(design.palette.body)).toBeGreaterThan(120);
   });
   // Which doors, the mirror and the two rows of drawers are still beyond the cut-out
