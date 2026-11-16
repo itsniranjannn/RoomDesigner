@@ -75,7 +75,7 @@ export function SizeSection({ item, def }) {
 }
 
 /** Main colour of one placed piece: preset swatches plus a custom picker. */
-export function FinishSection({ item, def }) {
+export function FinishSection({ item, def, defaultOpen = true }) {
   const updateItemOverrides = useRoomStore((state) => state.updateItemOverrides);
   const base = getFurnitureType(item.furnitureTypeId);
   const current = (def.color || '').toLowerCase();
@@ -101,6 +101,7 @@ export function FinishSection({ item, def }) {
   return (
     <Section
       title="Finish"
+      defaultOpen={defaultOpen}
       action={
         item.overrides?.color && (
           <Button
