@@ -36,6 +36,7 @@ import {
   setSpaceMeta,
   furnishSpace,
   migrateFlat,
+  withFlatLists,
   syncRoomToFlat,
   reconcile,
   levelEdges,
@@ -91,6 +92,24 @@ function persistRoomDiff(before, after) {
   }
 }
 
+/**
+ * A stored flat ready to be listed and opened. Records written by an older build are brought
+ * up to date here, so "My designs" never reads a field that build did not write.
+ */
+function readFlatRecord(record) {
+  try {
+    return migrateFlat(record).flat;
+  } catch {
+    // A record too damaged to migrate is still listed, with empty lists, so it can be deleted
+    return withFlatLists(record);
+  }
+}
+
+/** Every saved flat, each one readable by this build. */
+async function listFlats() {
+  return (await listFlatsFromDB()).map(readFlatRecord);
+}
+
 async function loadFlatRooms(flatId) {
   const rooms = await listRoomsFromDB();
   const map = {};
@@ -116,7 +135,7 @@ export const useFlatStore = create((set, get) => ({
   ...emptySession,
 
   loadFlats: async () => {
-    set({ flats: await listFlatsFromDB() });
+    set({ flats: await listFlats() });
   },
 
   /**
@@ -159,7 +178,7 @@ export const useFlatStore = create((set, get) => ({
     for (const room of Object.values(rooms)) await queueWrite(() => saveRoomToDB(room));
     await queueWrite(() => saveFlatToDB(named));
     await get()._begin(named, rooms);
-    set({ flats: await listFlatsFromDB() });
+    set({ flats: await listFlats() });
     return named;
   },
 
@@ -225,7 +244,7 @@ export const useFlatStore = create((set, get) => ({
   closeFlat: async () => {
     await flushFlat();
     set({ ...emptySession });
-    set({ flats: await listFlatsFromDB() });
+    set({ flats: await listFlats() });
   },
 
   deleteFlat: async (id) => {
@@ -234,7 +253,7 @@ export const useFlatStore = create((set, get) => ({
     for (const roomId of Object.keys(rooms)) await deleteRoomFromDB(roomId);
     await deleteFlatFromDB(id);
     if (get().flat?.id === id) set({ ...emptySession });
-    set({ flats: await listFlatsFromDB() });
+    set({ flats: await listFlats() });
   },
 
   renameFlat: (name) => {

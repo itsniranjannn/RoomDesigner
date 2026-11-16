@@ -631,10 +631,26 @@ export function stairWarnings(flat, stair) {
 // ---------- migration ----------
 
 /**
+ * The lists a flat is expected to have, whatever build wrote the record. A flat saved before
+ * staircases existed has no `stairs` at all, so reading one must never depend on it being there.
+ */
+export function withFlatLists(record) {
+  const list = (v) => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []);
+  const levels = list(record?.levels).filter((l) => typeof l.id === 'string');
+  return {
+    ...record,
+    levels: levels.length > 0 ? levels : [{ id: 'lvl-0', name: 'Ground floor' }],
+    spaces: list(record?.spaces),
+    stairs: list(record?.stairs),
+  };
+}
+
+/**
  * Flats saved before walls existed hold rectangles. Each rectangle becomes its four
  * walls (shared sides merge) and its room record keeps its doors and windows.
  */
-export function migrateFlat(flat, rooms = {}) {
+export function migrateFlat(record, rooms = {}) {
+  const flat = withFlatLists(record);
   if (flat.walls && flat.version >= FLAT_VERSION) {
     // Areas that were not rectangles used to have no room record; they have one now
     if (

@@ -26,6 +26,7 @@ import {
   setSpaceMeta,
   furnishSpace,
   migrateFlat,
+  withFlatLists,
   syncRoomToFlat,
   stairWarnings,
   analyzeLevel,
@@ -608,6 +609,43 @@ describe('migration', () => {
     expect(out.rooms.r2.windows).toHaveLength(1);
     expect(f.stairs).toHaveLength(1);
     expect(migrateFlat(f, out.rooms).migrated).toBe(false);
+  });
+
+  it('fills in the lists an older build never wrote, so a flat is always readable', () => {
+    // Version 1 wrote levels and spaces only: no walls, no openings, no stairs
+    const v1 = {
+      id: 'flat-old-1',
+      version: 1,
+      name: 'Old flat',
+      floorHeightCm: 280,
+      levels: [{ id: 'lvl-0', name: 'Ground floor' }],
+      spaces: [
+        {
+          id: 'sp-1',
+          levelId: 'lvl-0',
+          name: 'Hall',
+          x: 0,
+          y: 0,
+          widthCm: 400,
+          depthCm: 300,
+          roomId: null,
+        },
+      ],
+    };
+    const upgraded = migrateFlat(v1).flat;
+    expect(upgraded.stairs).toEqual([]);
+    expect(upgraded.levels).toHaveLength(1);
+    expect(upgraded.spaces).toHaveLength(1);
+
+    // withFlatLists is the last resort for a record even a migration cannot read
+    const bare = withFlatLists({ id: 'flat-bare', name: 'Bare' });
+    expect(bare.levels).toHaveLength(1);
+    expect(bare.spaces).toEqual([]);
+    expect(bare.stairs).toEqual([]);
+
+    // A current flat that lost its stairs still opens, with no staircases
+    const { stairs: _gone, ...noStairs } = createFlat('Lost stairs');
+    expect(migrateFlat(noStairs).flat.stairs).toEqual([]);
   });
 });
 
