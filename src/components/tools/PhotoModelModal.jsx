@@ -47,7 +47,6 @@ import {
   designMainColor,
   detectionConfidence,
   withMirroredSides,
-  threeQuarterProportions,
 } from '../../engine/design.js';
 import {
   VIEW_AXES,
@@ -69,7 +68,7 @@ import {
   photoRoute,
   sheetSlots,
 } from '../../engine/photoPipeline.js';
-import { extractForeground } from '../../engine/foreground.js';
+import { photoJob, warmPhotoWorker } from '../../engine/photoWorkerClient.js';
 import { CutoutFixer, NO_EDITS } from './CutoutFixer.jsx';
 import { CaptureGuide, SLOT_HINTS, guideSeen, markGuideSeen } from './PhotoGuide.jsx';
 import local from './PhotoModelModal.module.css';
@@ -84,6 +83,31 @@ const SHEET_SLOT_CHOICES = [
   ['back', 'Back'],
   ['top', 'Top'],
 ];
+
+/** What the dialog says while it works, step by step. */
+const STAGE = {
+  look: 'Looking at the photo...',
+  cut: 'Finding the piece in the photo...',
+  measure: 'Measuring the piece...',
+  details: 'Reading the details...',
+};
+
+/**
+ * Hands the browser a moment to paint before the next step of the work. A message port carries the handover
+ * rather than a timer, because a tab in the background has its timers and its frames held back, and a photo
+ * must still be read when the user looks away.
+ */
+const paint = () =>
+  new Promise((resolve) => {
+    const pass = () => {
+      const channel = new MessageChannel();
+      channel.port1.onmessage = () => resolve();
+      channel.port2.postMessage(0);
+    };
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible')
+      requestAnimationFrame(pass);
+    else pass();
+  });
 
 /** One detected view of a sheet picture: a small crop with the slot it is assigned to. */
 function SheetThumb({ rgba, width, height, detection, view }) {
@@ -1033,6 +1057,7 @@ export function PhotoModelModal({ onClose }) {
   const [overlayOpacity, setOverlayOpacity] = useState(0.5);
   const [message, setMessage] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [stage, setStage] = useState(null); // what the dialog is doing now, while it works
   const [sheet, setSheet] = useState(null); // { rgba, width, height, detection, slots: [slot|''] }
   const [keepRatio, setKeepRatio] = useState(true);
   const [anchor, setAnchor] = useState('widthCm');
@@ -1063,26 +1088,62 @@ export function PhotoModelModal({ onClose }) {
 
   // The cut-out of each photo: a plain backdrop is keyed out by colour; a photo taken in a room goes through the
   // scene cut (see engine/foreground.js). Crop and brush strokes from the fixer apply on top.
-  const cuts = useMemo(() => {
-    const out = {};
-    for (const [slot, photo] of Object.entries(allPhotos)) {
-      const e = edits[slot] || NO_EDITS;
-      out[slot] = extractForeground(photo.rgba, photo.width, photo.height, {
-        tolerance,
-        mode: cutMode,
-        crop: e.crop,
-        keep: e.keep,
-        remove: e.remove,
-        framed: Boolean(photo.framed),
-      });
+  // Cutting a room photo out takes a second or two, so it is done one photo at a time with a breath in between:
+  // the dialog paints, says what it is doing, and stays usable instead of freezing.
+  const [cuts, setCuts] = useState({});
+  useEffect(() => {
+    const entries = Object.entries(allPhotos);
+    if (!entries.length) {
+      setCuts({});
+      setStage(null);
+      return undefined;
     }
-    return out;
+    // A clean backdrop (a studio shot on white) can use a fine threshold, which keeps white and pale pieces; a
+    // noisy one (a phone photo) needs a coarser one. It is settled before the cut, not after, so a photo is
+    // never cut out twice.
+    if (!toleranceTouched.current) {
+      const noisy = entries.some(([, p]) => fitBackground(p.rgba, p.width, p.height).noise > 1.5);
+      const want = noisy ? 60 : 16;
+      if (want !== tolerance) {
+        setTolerance(want);
+        return undefined;
+      }
+    }
+    let live = true;
+    setStage(STAGE.cut);
+    (async () => {
+      const out = {};
+      for (const [slot, photo] of entries) {
+        await paint();
+        if (!live) return;
+        const e = edits[slot] || NO_EDITS;
+        out[slot] = await photoJob('cut', {
+          photo: { rgba: photo.rgba, width: photo.width, height: photo.height },
+          options: {
+            tolerance,
+            mode: cutMode,
+            crop: e.crop,
+            keep: e.keep,
+            remove: e.remove,
+            framed: Boolean(photo.framed),
+          },
+        });
+        if (!live) return;
+      }
+      if (!live) return;
+      setCuts(out);
+      setStage(null);
+    })();
+    return () => {
+      live = false;
+    };
   }, [allPhotos, tolerance, cutMode, edits]);
 
   // What is built from each photo: the whole cut-out, or the one piece chosen when it holds several
   const segmented = useMemo(() => {
     const out = {};
     for (const [slot, cut] of Object.entries(cuts)) {
+      if (!allPhotos[slot]) continue;
       const scene = cut.mode === 'scene';
       let mask = cut.mask;
       if (scene && cut.pieces.length > 0) {
@@ -1099,17 +1160,12 @@ export function PhotoModelModal({ onClose }) {
       };
     }
     return out;
-  }, [cuts, activePiece]);
+  }, [cuts, activePiece, allPhotos]);
 
-  // A clean backdrop (a studio shot on white) can use a fine threshold, which keeps white and pale pieces;
-  // a noisy one (a phone photo) needs a coarser one
+  // starting the worker takes a moment: do it while the user is still choosing a photo
   useEffect(() => {
-    if (toleranceTouched.current) return;
-    const list = Object.values(photos);
-    if (!list.length) return;
-    const noisy = list.some((p) => fitBackground(p.rgba, p.width, p.height).noise > 1.5);
-    setTolerance(noisy ? 60 : 16);
-  }, [photos]);
+    warmPhotoWorker();
+  }, []);
 
   // Photos or cut-out changes invalidate the previous model
   useEffect(() => {
@@ -1123,7 +1179,9 @@ export function PhotoModelModal({ onClose }) {
     setMessage(null);
     try {
       // Read at a size the stacked-photo check can use; the photo itself is kept at PHOTO_MAX
+      setStage(STAGE.look);
       const big = await readImage(file, SHEET_MAX, 'image/png');
+      await paint();
       // One picture that holds several photos (a listing collage) or several views on a plain backdrop (a
       // product sheet) is split, as the sheet splitter would; any other picture is one photo
       const route = photoRoute(big.rgba, big.width, big.height, { photoEdge: PHOTO_MAX });
@@ -1145,7 +1203,7 @@ export function PhotoModelModal({ onClose }) {
           label:
             i === frontIdx
               ? 'Front view'
-              : sym[i] >= 0.8
+              : sym?.[i] >= 0.8
                 ? 'Another front view'
                 : 'Three-quarter view',
         }));
@@ -1165,6 +1223,9 @@ export function PhotoModelModal({ onClose }) {
       setActivePiece((prev) => ({ ...prev, [slot]: 0 }));
     } catch (err) {
       setMessage({ kind: 'error', text: err.message });
+    } finally {
+      // the cut-out step takes over from here and says what it is doing
+      setStage((cur) => (cur === STAGE.look ? null : cur));
     }
   };
 
@@ -1196,16 +1257,20 @@ export function PhotoModelModal({ onClose }) {
   };
 
   const photoCount = Object.keys(photos).length;
+  // the cut-out of a photo that has just been added or changed is still being worked out
+  const working = Object.keys(allPhotos).some((slot) => !segmented[slot]);
   const shownViews = VIEW_SLOTS.filter((slot) => allPhotos[slot.id]).map((slot) => slot.id);
   const activeView = shownViews.includes(viewChoice) ? viewChoice : shownViews[0] || 'front';
   const modelColor = design ? designMainColor(design) : '#a0a0a0';
   const cutouts = useMemo(
     () =>
       Object.fromEntries(
-        Object.entries(allPhotos).map(([slot, photo]) => [
-          slot,
-          { mask: segmented[slot].mask, width: photo.width, height: photo.height },
-        ])
+        Object.entries(allPhotos)
+          .filter(([slot]) => segmented[slot])
+          .map(([slot, photo]) => [
+            slot,
+            { mask: segmented[slot].mask, width: photo.width, height: photo.height },
+          ])
       ),
     [segmented, allPhotos]
   );
@@ -1388,34 +1453,42 @@ export function PhotoModelModal({ onClose }) {
   const handleBuild = (forceType = typeChoice) => {
     setBusy(true);
     setMessage(null);
-    // Let the spinner paint before the analysis
-    setTimeout(() => {
+    setStage(STAGE.measure);
+    // each step hands the browser back a moment, so the dialog can paint and say where it has got to
+    (async () => {
       try {
-        const views = buildViews(
-          Object.fromEntries(
-            VIEW_SLOTS.filter((v) => allPhotos[v.id]).map((v) => [v.id, allPhotos[v.id]])
-          ),
-          segmented,
-          tolerance,
-          (slot) => VIEW_SLOTS.find((v) => v.id === slot)?.label || slot
-        );
+        await paint();
+        const slots = VIEW_SLOTS.filter((v) => allPhotos[v.id]).map((v) => v.id);
         const {
           design: result,
           dims: next,
           candidates: likely,
-        } = designFromViews(views, {
-          dims,
-          sizeEdited,
-          forceType,
-          ratios,
-          partial,
+          quarter,
+        } = await photoJob('build', {
+          photos: Object.fromEntries(
+            slots.map((id) => [
+              id,
+              {
+                rgba: allPhotos[id].rgba,
+                width: allPhotos[id].width,
+                height: allPhotos[id].height,
+                ...(allPhotos[id].quarter ? { quarter: allPhotos[id].quarter } : {}),
+              },
+            ])
+          ),
+          cuts: Object.fromEntries(
+            slots.map((id) => [id, { mask: segmented[id].mask, scene: segmented[id].scene }])
+          ),
+          tolerance,
+          labels: Object.fromEntries(VIEW_SLOTS.map((v) => [v.id, v.label])),
+          options: { dims, sizeEdited, forceType, ratios, partial },
         });
         if (next) {
           setDims(next);
           setAnchor('widthCm');
         }
         setDesign(result);
-        setQuarterPhoto(Boolean(threeQuarterProportions(views, partial, result.type)));
+        setQuarterPhoto(quarter);
         // The likeliest types, for when the first guess is not steady or rests on few photos
         setCandidates(likely);
         setTypeOpen(false);
@@ -1428,8 +1501,9 @@ export function PhotoModelModal({ onClose }) {
         setMessage({ kind: 'error', text: err.message });
       } finally {
         setBusy(false);
+        setStage(null);
       }
-    }, 30);
+    })();
   };
 
   const setPaletteColour = (key, value) =>
@@ -1462,7 +1536,9 @@ export function PhotoModelModal({ onClose }) {
       }
     }
     // Catalog card: the piece itself, from the front photo when there is one
-    const thumbSlot = ['front', 'right', 'left', 'back', 'top'].find((id) => allPhotos[id]);
+    const thumbSlot = ['front', 'right', 'left', 'back', 'top'].find(
+      (id) => allPhotos[id] && segmented[id]
+    );
     let thumb;
     if (thumbSlot) {
       const photo = allPhotos[thumbSlot];
@@ -1594,9 +1670,9 @@ export function PhotoModelModal({ onClose }) {
             variant="secondary"
             icon={<Sparkles size={16} />}
             onClick={() => handleBuild()}
-            disabled={photoCount < 1 || busy}
+            disabled={photoCount < 1 || busy || working}
           >
-            {busy ? 'Working...' : design ? 'Rebuild model' : 'Build 3D model'}
+            {busy || working ? 'Working...' : design ? 'Rebuild model' : 'Build 3D model'}
           </Button>
           <Button
             variant="primary"
@@ -1795,7 +1871,11 @@ export function PhotoModelModal({ onClose }) {
                       )}
                     </div>
                     {photo ? (
-                      <CutoutPreview photo={photo} mask={segmented[slot.id].mask} />
+                      segmented[slot.id] ? (
+                        <CutoutPreview photo={photo} mask={segmented[slot.id].mask} />
+                      ) : (
+                        <span className={local.sectionNote}>{STAGE.cut}</span>
+                      )
                     ) : (
                       <button
                         type="button"
@@ -1893,6 +1973,11 @@ export function PhotoModelModal({ onClose }) {
                   Undo the split
                 </Button>
               </div>
+            )}
+            {stage && (
+              <p className={local.sectionNote} role="status">
+                {stage}
+              </p>
             )}
             {photoCount > 0 && segmented[activeView] && (
               <div className={local.fixRow}>
