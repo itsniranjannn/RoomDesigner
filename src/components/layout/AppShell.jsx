@@ -41,6 +41,9 @@ export function AppShell() {
   const [currentPage, setCurrentPage] = useState('main'); // 'main' | 'about'
   const [incoming, setIncoming] = useState(null); // { room } | { error }
   const importRoomData = useRoomStore((state) => state.importRoomData);
+  const saveStatus = useRoomStore((state) => state.saveStatus);
+  const reopenRoom = useRoomStore((state) => state.reopenRoom);
+  const [conflictDismissed, setConflictDismissed] = useState(false);
 
   const docked = useMediaQuery(DOCK_QUERY);
   const [catalogDock, setCatalogDock] = usePersistentFlag('rd.catalogOpen', true);
@@ -174,6 +177,43 @@ export function AppShell() {
       }
     >
       <p>{incoming.error || 'It opens as a new room. Your existing rooms are not changed.'}</p>
+    </Modal>
+  );
+
+  // Another tab saved this room after this one opened it. Its work was kept; this tab's last
+  // change was not written, so say so and offer the stored version.
+  useEffect(() => {
+    if (saveStatus !== 'stale') setConflictDismissed(false);
+  }, [saveStatus]);
+
+  const conflictDialog = room && saveStatus === 'stale' && !conflictDismissed && (
+    <Modal
+      title="Changed in another tab"
+      subtitle={room.name}
+      onClose={() => setConflictDismissed(true)}
+      size="sm"
+      footer={
+        <>
+          <Button variant="ghost" onClick={() => setConflictDismissed(true)}>
+            Leave it for now
+          </Button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              setConflictDismissed(true);
+              reopenRoom();
+            }}
+          >
+            Open the saved version
+          </Button>
+        </>
+      }
+    >
+      <p>
+        Another tab saved this room after you opened it here, so your last change was not saved.
+        Opening the saved version brings in that newer work; what you changed in this tab is not
+        kept.
+      </p>
     </Modal>
   );
 
@@ -316,6 +356,7 @@ export function AppShell() {
       <ModalHost />
       <Tour kind="room" />
       {shareDialog}
+      {conflictDialog}
     </div>
   );
 }

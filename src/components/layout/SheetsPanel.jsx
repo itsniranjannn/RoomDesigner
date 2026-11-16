@@ -9,6 +9,9 @@ import styles from './SheetsPanel.module.css';
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** A list an older build never wrote counts as empty here, rather than taking the panel down. */
+const count = (list) => (Array.isArray(list) ? list.length : 0);
+
 /** Slide-in list of saved rooms and flats ("My designs"). */
 export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlatModal }) {
   const allRooms = useRoomStore((state) => state.allRooms);
@@ -76,8 +79,8 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
                 <span className={styles.text}>
                   <span className={styles.name}>{f.name}</span>
                   <span className={styles.meta}>
-                    Flat, {plural(f.levels.length, 'floor')}, {plural(f.spaces.length, 'room')}
-                    {f.stairs.length > 0 && `, ${plural(f.stairs.length, 'staircase')}`}
+                    Flat, {plural(count(f.levels), 'floor')}, {plural(count(f.spaces), 'room')}
+                    {count(f.stairs) > 0 && `, ${plural(count(f.stairs), 'staircase')}`}
                   </span>
                 </span>
               </button>
@@ -88,7 +91,7 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
           ))}
 
           {allRooms.map((r) => {
-            const count = Array.isArray(r.placedFurniture) ? r.placedFurniture.length : 0;
+            const pieces = count(r.placedFurniture);
             return (
               <div key={r.id} className={styles.row}>
                 <button
@@ -106,7 +109,7 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
                     <span className={styles.name}>{r.name}</span>
                     <span className={styles.meta}>
                       {(r.widthCm / 100).toFixed(2)} x {(r.depthCm / 100).toFixed(2)} m,{' '}
-                      {plural(count, 'piece')}
+                      {plural(pieces, 'piece')}
                     </span>
                   </span>
                 </button>

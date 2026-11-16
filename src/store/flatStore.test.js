@@ -123,6 +123,93 @@ describe('flatStore', () => {
     expect(st().rooms[roomId]).toBeUndefined();
   });
 
+  it('undoes and redoes edits made on more than one floor', () => {
+    st().applyPreset('shell', { widthCm: 400, depthCm: 300 });
+    const ground = st().levelId;
+    st().addLevel();
+    const upper = st().levelId;
+    // a closed box upstairs, then a name for it
+    st().addWall(0, 0, 300, 0);
+    st().addWall(300, 0, 300, 200);
+    st().addWall(300, 200, 0, 200);
+    st().addWall(0, 200, 0, 0);
+    const attic = st().flat.spaces.find((s) => s.levelId === upper);
+    expect(attic).toBeTruthy();
+    st().setSpaceMeta(attic.id, { name: 'Attic', kind: 'bedroom' });
+    // downstairs again, with a staircase up to it
+    st().setLevel(ground);
+    const stair = st().addStair('straight', 50, 50, 0, { toLevelId: upper });
+    expect(stair.toLevelId).toBe(upper);
+    const steps = st().past.length;
+
+    // the staircase goes, the floor above is untouched
+    st().undo();
+    expect(st().flat.stairs).toHaveLength(0);
+    expect(st().flat.spaces.find((s) => s.levelId === upper)).toMatchObject({ name: 'Attic' });
+    // the name goes, the room stays
+    st().undo();
+    expect(st().flat.spaces.find((s) => s.levelId === upper).name).not.toBe('Attic');
+    // the four walls go, the floor stays, and the ground floor is never touched
+    for (let i = 0; i < 4; i += 1) st().undo();
+    expect(st().flat.levels).toHaveLength(2);
+    expect(st().flat.spaces.filter((s) => s.levelId === upper)).toHaveLength(0);
+    expect(st().flat.spaces.filter((s) => s.levelId === ground)).toHaveLength(1);
+    // and finally the floor itself, which leaves the view on a floor that exists
+    st().undo();
+    expect(st().flat.levels).toHaveLength(1);
+    expect(st().levelId).toBe(ground);
+    expect(st().flat.spaces.filter((s) => s.levelId === ground)).toHaveLength(1);
+
+    // every step comes back, on both floors
+    for (let i = 0; i < steps; i += 1) st().redo();
+    expect(st().flat.levels).toHaveLength(2);
+    expect(st().flat.spaces.find((s) => s.levelId === upper)).toMatchObject({
+      name: 'Attic',
+      kind: 'bedroom',
+      id: attic.id,
+    });
+    expect(st().rooms[attic.roomId]).toMatchObject({ name: 'Attic', flatId: st().flat.id });
+    expect(st().flat.stairs).toHaveLength(1);
+    expect(st().flat.stairs[0].toLevelId).toBe(upper);
+    expect(st().canRedo).toBe(false);
+  });
+
+  // Service points are kept on the room record, so a change to the plan on another floor, or to
+  // the walls around the room itself, must not take them away.
+  it('keeps a room and its service points while other floors are drawn', () => {
+    st().applyPreset('shell', { widthCm: 600, depthCm: 400 });
+    const ground = st().levelId;
+    const space = st().flat.spaces[0];
+    const services = [
+      { id: 'svc-1', kind: 'socket', x: 100, y: 0, wall: 'top' },
+      { id: 'svc-2', kind: 'water', x: 20, y: 200, wall: 'left' },
+    ];
+    // as the room designer would have left them
+    useFlatStore.setState({
+      rooms: { ...st().rooms, [space.roomId]: { ...st().rooms[space.roomId], services } },
+    });
+
+    // a second floor with a room of its own
+    st().addLevel();
+    st().addWall(0, 0, 300, 0);
+    st().addWall(300, 0, 300, 200);
+    st().addWall(300, 200, 0, 200);
+    st().addWall(0, 200, 0, 0);
+    expect(st().rooms[space.roomId].services).toEqual(services);
+    // the new room has none of its own: service points never cross a floor
+    const upstairs = st().flat.spaces.find((s) => s.levelId !== ground);
+    expect(st().rooms[upstairs.roomId].services).toBeUndefined();
+
+    // and a wall drawn across the ground-floor room leaves the larger half its points
+    st().setLevel(ground);
+    st().addWall(400, 0, 400, 400);
+    expect(st().flat.spaces.filter((s) => s.levelId === ground)).toHaveLength(2);
+    expect(st().rooms[space.roomId]).toMatchObject({ widthCm: 400, services });
+
+    st().undo();
+    expect(st().rooms[space.roomId]).toMatchObject({ widthCm: 600, services });
+  });
+
   it('deletes the selected wall run, opening or stair', () => {
     st().applyPreset('shell', { widthCm: 400, depthCm: 300 });
     st().select({ type: 'wall', id: edgeKey('h', 5, 0) });

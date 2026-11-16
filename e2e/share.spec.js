@@ -63,4 +63,43 @@ test.describe('share and export', () => {
     expect(bytes.length).toBeGreaterThan(2000);
     await expect(dialog.getByText(/Saved as/)).toBeVisible();
   });
+
+  // Any JSON file at all used to open as an empty room called "Imported Room"
+  test('a JSON file that is not a design is refused, a real one opens', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Kids Bedroom');
+    await addByClick(page, 'Single Bed');
+    await page.getByRole('button', { name: 'Share and export' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Share & export' });
+    const fileBox = dialog.getByLabel('Design file to open');
+
+    await fileBox.setInputFiles({
+      name: 'package.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify({ name: 'some-package', version: '1.0.0' })),
+    });
+    await expect(dialog.getByText('That file is not a Room Designer design.')).toBeVisible();
+    // Nothing was opened and nothing was lost
+    await expect(dialog).toBeVisible();
+    await expect(pieces(page)).toHaveCount(1);
+
+    await fileBox.setInputFiles({
+      name: 'design.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(
+        JSON.stringify({
+          app: 'room-designer-studio',
+          name: 'From a file',
+          widthCm: 420,
+          depthCm: 380,
+          doors: [],
+          windows: [],
+          placedFurniture: [{ furnitureTypeId: 'coffee-table', x: 200, y: 200, rotationDeg: 0 }],
+        })
+      ),
+    });
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole('textbox', { name: 'Room name' })).toHaveValue('From a file');
+    await expect(pieces(page)).toHaveCount(1);
+  });
 });

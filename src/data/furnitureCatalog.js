@@ -2206,13 +2206,37 @@ export const FURNITURE_CATALOG = [
 // ==========================================
 const customFurniture = new Map();
 
+const CUSTOM_FALLBACK = { name: 'Photo furniture', color: '#a8a29a' };
+
+/**
+ * The checks every photo-made piece goes through, whether its record came from this device or
+ * from a shared design. A record damaged in storage must not reach the plan and the 3D view with
+ * a size of NaN: it would paint nothing, measure nothing and take the 3D view's bounds with it.
+ */
+const customDimCm = (value, fallback) =>
+  Number.isFinite(value) ? Math.min(600, Math.max(5, value)) : fallback;
+
+const customName = (value, fallback) =>
+  typeof value === 'string' && value.trim() ? value.trim().slice(0, 60) : fallback;
+
+const customColor = (value) => (/^#[0-9a-fA-F]{6}$/.test(value) ? value : CUSTOM_FALLBACK.color);
+
 export function registerCustomFurniture(def) {
-  if (!def || !def.id) return;
+  if (!def || typeof def.id !== 'string' || !def.id) return;
+  const { design: stored, ...rest } = def;
+  const design = sanitizeDesign(stored);
   customFurniture.set(def.id, {
     category: 'custom',
     shapeType: 'custom-mesh',
-    ...supportTraitsFor(sanitizeDesign(def.design)),
-    ...def,
+    ...supportTraitsFor(design),
+    ...rest,
+    name: customName(def.name, CUSTOM_FALLBACK.name),
+    widthCm: customDimCm(def.widthCm, 80),
+    depthCm: customDimCm(def.depthCm, 60),
+    heightCm: customDimCm(def.heightCm, 80),
+    color: customColor(def.color),
+    // A design that cannot be read is dropped rather than drawn from
+    ...(design ? { design } : {}),
   });
 }
 
@@ -2230,16 +2254,15 @@ const placeholderFurniture = new Map();
 const PLACEHOLDER_NAME = 'Photo furniture (photos not shared)';
 
 function placeholderDef(id, meta = {}) {
-  const dim = (v, fallback) => (Number.isFinite(v) ? Math.min(600, Math.max(5, v)) : fallback);
   return {
     id,
-    name: typeof meta.name === 'string' && meta.name ? meta.name.slice(0, 60) : PLACEHOLDER_NAME,
+    name: customName(meta.name, PLACEHOLDER_NAME),
     category: 'custom',
     shapeType: 'custom-mesh',
-    widthCm: dim(meta.widthCm, 80),
-    depthCm: dim(meta.depthCm, 60),
-    heightCm: dim(meta.heightCm, 80),
-    color: /^#[0-9a-fA-F]{6}$/.test(meta.color) ? meta.color : '#a8a29a',
+    widthCm: customDimCm(meta.widthCm, 80),
+    depthCm: customDimCm(meta.depthCm, 60),
+    heightCm: customDimCm(meta.heightCm, 80),
+    color: customColor(meta.color),
     placeholder: true,
     ...(sanitizeDesign(meta.design)
       ? { design: sanitizeDesign(meta.design), ...supportTraitsFor(sanitizeDesign(meta.design)) }

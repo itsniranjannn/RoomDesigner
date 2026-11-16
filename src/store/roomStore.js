@@ -8,6 +8,7 @@ import { create } from 'zustand';
 import {
   getInitialRoom,
   saveRoomToDB,
+  saveRoomIfUnchanged,
   listRoomsFromDB,
   loadRoomFromDB,
   deleteRoomFromDB,
@@ -117,8 +118,39 @@ function withSnapshotLook(room, snapshot) {
 
 const newItemId = () => `item-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
 
+/**
+ * Photo-made types deleted from My furniture in this session. Their photos and their 3D model are
+ * gone for good, so undo and redo must never put a copy back: it would come back as a nameless
+ * grey box that nothing can restore.
+ */
+const removedCustomTypes = new Set();
+
+const withoutRemovedTypes = (items) =>
+  removedCustomTypes.size === 0 || !Array.isArray(items)
+    ? items
+    : items.filter((item) => !removedCustomTypes.has(item.furnitureTypeId));
+
+/** A history snapshot with any copy of a deleted photo-made piece taken out. */
+const scrubSnapshot = (snapshot) => ({
+  ...snapshot,
+  placedFurniture: withoutRemovedTypes(snapshot.placedFurniture),
+});
+
 /** The latest unsaved room, written after a short pause or as soon as the open room changes. */
 let pendingSave = null;
+
+/**
+ * The stored stamp of the open room: what it was loaded with, or what the last save wrote. A
+ * write that would land on top of a newer stamp belongs to another tab and is refused.
+ */
+let savedBase = { id: null, updatedAt: null };
+
+/** Remembers the stamp a room was loaded or saved with, so later writes can be checked. */
+function noteStoredRoom(room) {
+  savedBase = room ? { id: room.id, updatedAt: room.updatedAt ?? null } : { id: null };
+}
+
+const baseStampFor = (id) => (savedBase.id === id ? savedBase.updatedAt : null);
 
 async function writePending(set) {
   if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
@@ -127,7 +159,13 @@ async function writePending(set) {
   pendingSave = null;
   if (!room) return;
   try {
-    await saveRoomToDB(room);
+    const result = await saveRoomIfUnchanged(room, baseStampFor(room.id));
+    if (result.conflict) {
+      // Another tab has saved this room since it was opened here. Its work stays.
+      set({ saveStatus: 'stale' });
+      return;
+    }
+    noteStoredRoom(result.room);
     if (!pendingSave) set({ saveStatus: 'saved' });
   } catch (err) {
     set({ saveStatus: 'error' });
@@ -160,7 +198,8 @@ export const useRoomStore = create((set, get) => ({
   clearPlaceNotice: () => set({ placeNotice: null }),
   activeModal: null, // 'shortcuts' | 'layout' | 'share' | 'photo' | null
   viewMode: '2d', // '2d' | '3d'
-  saveStatus: 'saved', // 'saved' | 'saving'
+  // 'saved' | 'saving' | 'error' (the write failed) | 'stale' (another tab saved this room)
+  saveStatus: 'saved',
   collidingItemIds: new Set(),
   // Piece a dragged item would come to rest on if dropped now (drives the plan highlight)
   dropTargetId: null,
@@ -241,7 +280,7 @@ export const useRoomStore = create((set, get) => ({
     const updatedRoom = withSnapshotLook(
       {
         ...room,
-        placedFurniture: prevSnapshot.placedFurniture,
+        placedFurniture: withoutRemovedTypes(prevSnapshot.placedFurniture),
         doors: prevSnapshot.doors,
         windows: prevSnapshot.windows,
         ...restoredServices(room, prevSnapshot),
@@ -294,7 +333,7 @@ export const useRoomStore = create((set, get) => ({
     const updatedRoom = withSnapshotLook(
       {
         ...room,
-        placedFurniture: nextSnapshot.placedFurniture,
+        placedFurniture: withoutRemovedTypes(nextSnapshot.placedFurniture),
         doors: nextSnapshot.doors,
         windows: nextSnapshot.windows,
         ...restoredServices(room, nextSnapshot),
@@ -340,7 +379,10 @@ export const useRoomStore = create((set, get) => ({
 
   closeRoom: () => {
     // Save any unsaved edit first: saving marks a room as the one to reopen next time
-    flushPendingSave(set).then(clearActiveRoomId);
+    flushPendingSave(set).then(() => {
+      noteStoredRoom(null);
+      clearActiveRoomId();
+    });
     set({
       room: null,
       selectedItemId: null,
@@ -362,6 +404,7 @@ export const useRoomStore = create((set, get) => ({
       if (initialRoom?.flatId) initialRoom = null;
       const allRooms = await listStandaloneRooms();
 
+      noteStoredRoom(initialRoom);
       if (initialRoom) {
         const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
           initialRoom.placedFurniture || [],
@@ -1135,7 +1178,7 @@ export const useRoomStore = create((set, get) => ({
   importRoomData: async (data) => {
     const imported = sanitizeImportedRoom(data);
     await flushPendingSave(set);
-    await saveRoomToDB(imported);
+    noteStoredRoom(await saveRoomToDB(imported));
     const allRooms = await listStandaloneRooms();
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       imported.placedFurniture,
@@ -1150,6 +1193,7 @@ export const useRoomStore = create((set, get) => ({
       selectedItemIds: [],
       collidingItemIds: collidingIds,
       boundaryCollidingIds,
+      saveStatus: 'saved',
       isInitialAnimationDone: false,
       undoStack: [],
       redoStack: [],
@@ -1168,6 +1212,7 @@ export const useRoomStore = create((set, get) => ({
   },
 
   addCustomFurniture: async (def) => {
+    removedCustomTypes.delete(def.id);
     registerCustomFurniture(def);
     try {
       await saveCustomFurnitureToDB(def);
@@ -1179,6 +1224,7 @@ export const useRoomStore = create((set, get) => ({
   },
 
   removeCustomFurniture: async (id) => {
+    removedCustomTypes.add(id);
     unregisterCustomFurniture(id);
     await deleteCustomFurnitureFromDB(id);
     // Copies placed in rooms go too, as the confirmation promises (otherwise they stay as
@@ -1196,13 +1242,20 @@ export const useRoomStore = create((set, get) => ({
     }
     const open = get().room;
     if (open && (open.placedFurniture || []).some((i) => i.furnitureTypeId === id)) {
+      // One history step for the deletion, so an undo does not jump back past it
+      get()._recordHistory();
       get()._commitFurnitureUpdate(
         open.placedFurniture.filter((i) => i.furnitureTypeId !== id),
         null
       );
       set({ selectedItemId: null, selectedItemIds: [] });
     }
-    set((state) => ({ customVersion: state.customVersion + 1 }));
+    // The piece is gone from every snapshot too, so no undo can replay a copy of it
+    set((state) => ({
+      customVersion: state.customVersion + 1,
+      undoStack: state.undoStack.map(scrubSnapshot),
+      redoStack: state.redoStack.map(scrubSnapshot),
+    }));
   },
 
   // Create a new custom room
@@ -1234,7 +1287,7 @@ export const useRoomStore = create((set, get) => ({
     };
 
     await flushPendingSave(set);
-    await saveRoomToDB(newRoom);
+    noteStoredRoom(await saveRoomToDB(newRoom));
     const allRooms = await listStandaloneRooms();
 
     set({
@@ -1244,6 +1297,8 @@ export const useRoomStore = create((set, get) => ({
       selectedItemIds: [],
       collidingItemIds: new Set(),
       boundaryCollidingIds: new Set(),
+      // The status describes the room that is open, so it starts afresh with each one
+      saveStatus: 'saved',
       isInitialAnimationDone: false, // will trigger blueprint draw-in
       undoStack: [],
       redoStack: [],
@@ -1258,6 +1313,7 @@ export const useRoomStore = create((set, get) => ({
     const loaded = await loadRoomFromDB(roomId);
     if (!loaded) return;
     setActiveRoomId(loaded.id);
+    noteStoredRoom(loaded);
 
     const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
       loaded.placedFurniture || [],
@@ -1272,7 +1328,44 @@ export const useRoomStore = create((set, get) => ({
       selectedItemIds: [],
       collidingItemIds: collidingIds,
       boundaryCollidingIds,
+      saveStatus: 'saved',
       isInitialAnimationDone: false,
+      undoStack: [],
+      redoStack: [],
+      canUndo: false,
+      canRedo: false,
+    });
+  },
+
+  /**
+   * Opens the stored copy of the room again, after another tab saved over it. The edit this tab
+   * was holding is dropped: it was never written, and writing it would undo the other tab's work.
+   */
+  reopenRoom: async () => {
+    const roomId = get().room?.id;
+    if (!roomId) return;
+    pendingSave = null;
+    if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
+    saveDebounceTimer = null;
+    const loaded = await loadRoomFromDB(roomId);
+    if (!loaded) {
+      set({ saveStatus: 'error' });
+      return;
+    }
+    noteStoredRoom(loaded);
+    const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
+      loaded.placedFurniture || [],
+      loaded.widthCm,
+      loaded.depthCm,
+      loaded.outline
+    );
+    set({
+      room: loaded,
+      selectedItemId: null,
+      selectedItemIds: [],
+      collidingItemIds: collidingIds,
+      boundaryCollidingIds,
+      saveStatus: 'saved',
       undoStack: [],
       redoStack: [],
       canUndo: false,
@@ -1286,11 +1379,13 @@ export const useRoomStore = create((set, get) => ({
     if (!trimmed) return;
 
     await flushPendingSave(set);
-    await renameRoomInDB(roomId, trimmed);
+    const renamed = await renameRoomInDB(roomId, trimmed);
     const allRooms = await listStandaloneRooms();
     const { room } = get();
 
     if (room && room.id === roomId) {
+      // The rename wrote a new stamp; later edits here are not a clash with another tab
+      if (renamed) noteStoredRoom(renamed);
       set({
         room: { ...room, name: trimmed },
         allRooms,
@@ -1317,6 +1412,7 @@ export const useRoomStore = create((set, get) => ({
     if (remainingRooms && remainingRooms.length > 0) {
       // Fall back to first available room
       const nextRoom = remainingRooms[0];
+      noteStoredRoom(nextRoom);
       const { collidingIds, boundaryCollidingIds } = evaluateAllCollisions(
         nextRoom.placedFurniture || [],
         nextRoom.widthCm,
@@ -1331,6 +1427,7 @@ export const useRoomStore = create((set, get) => ({
         selectedItemIds: [],
         collidingItemIds: collidingIds,
         boundaryCollidingIds,
+        saveStatus: 'saved',
         isInitialAnimationDone: false,
         undoStack: [],
         redoStack: [],
@@ -1339,6 +1436,7 @@ export const useRoomStore = create((set, get) => ({
       });
     } else {
       // All rooms were deleted — transition cleanly to Studio Overview landing page
+      noteStoredRoom(null);
       set({
         room: null,
         allRooms: [],

@@ -46,7 +46,12 @@ export async function piecePosition(page) {
   return { x: parseInt(left, 10), y: parseInt(top, 10) };
 }
 
-/** Wait for the "Saved" status so a reload will find the work in IndexedDB. */
+/**
+ * Wait for the "Saved" status so a reload will find the work in IndexedDB. Matches the saved
+ * state only: "could not be saved on this device" must never satisfy this.
+ */
 export async function waitForSaved(page) {
-  await expect(page.getByRole('status', { name: /saved on this device/i })).toBeVisible();
+  await expect(
+    page.getByRole('status', { name: /all changes saved on this device/i })
+  ).toBeVisible();
 }

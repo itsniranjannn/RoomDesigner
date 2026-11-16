@@ -93,9 +93,41 @@ export async function decodeRoomFromHash(hash) {
   return sanitizeImportedRoom(JSON.parse(new TextDecoder().decode(bytes)));
 }
 
+/** What the room designer lets anyone build, and what an imported design is held to. */
+export const ROOM_SIDE_CM = { min: 200, max: 1500, fallback: 400 };
+
+/**
+ * What a stored record may hold. A room detected from a flat's walls can be narrower than the
+ * designer's own minimum (a passage is 80 cm) and a drawn flat can be larger than its maximum,
+ * so a stored side is only repaired when it is missing or not a number, never resized to taste.
+ */
+export const STORED_ROOM_SIDE_CM = { min: 10, max: 10000, fallback: 400 };
+
+/** One side of a room in centimetres, with a damaged or missing measurement repaired. */
+export function roomSideCm(value, limits = ROOM_SIDE_CM) {
+  return Number.isFinite(value) ? clamp(value, limits.min, limits.max) : limits.fallback;
+}
+
+/** Written into every exported design file, so one can be told apart from any other JSON. */
+export const APP_MARKER = 'room-designer-studio';
+const NOT_A_DESIGN = 'That file is not a Room Designer design.';
+
+/**
+ * Whether this is a design at all. Files this app wrote carry the marker; a design from a share
+ * link carries no marker, so one of the fields a room cannot be without has to be there.
+ */
+function looksLikeRoom(data) {
+  return (
+    data.app === APP_MARKER ||
+    Number.isFinite(data.widthCm) ||
+    Array.isArray(data.placedFurniture) ||
+    Array.isArray(data.outline)
+  );
+}
+
 /** Validates and normalizes imported room data (from a link or a JSON file). */
 export function sanitizeImportedRoom(data) {
-  if (!data || typeof data !== 'object') throw new Error('Not a valid room file.');
+  if (!data || typeof data !== 'object' || !looksLikeRoom(data)) throw new Error(NOT_A_DESIGN);
   const num = (v, min, max, fallback) => (Number.isFinite(v) ? clamp(v, min, max) : fallback);
   const stamp = Date.now();
   const isObject = (v) => v && typeof v === 'object';
@@ -134,8 +166,8 @@ export function sanitizeImportedRoom(data) {
     .filter(isObject)
     .slice(0, 100)
     .forEach((t) => registerPlaceholderFurniture(t));
-  const widthCm = num(data.widthCm, 200, 1500, 400);
-  const depthCm = num(data.depthCm, 200, 1500, 400);
+  const widthCm = roomSideCm(data.widthCm);
+  const depthCm = roomSideCm(data.depthCm);
   const services = sanitizeServices(data.services, { maxX: widthCm, maxY: depthCm });
   // A room that is not a rectangle keeps its outline, pulled inside the room's box
   const cleaned = sanitizeOutline(data.outline);
@@ -172,5 +204,5 @@ export function sanitizeImportedRoom(data) {
 }
 
 export function roomToJson(room) {
-  return JSON.stringify({ app: 'room-designer-studio', ...toShareableRoom(room) }, null, 2);
+  return JSON.stringify({ app: APP_MARKER, ...toShareableRoom(room) }, null, 2);
 }

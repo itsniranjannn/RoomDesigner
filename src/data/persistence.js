@@ -5,6 +5,7 @@
  */
 
 import { openDB } from 'idb';
+import { roomSideCm, STORED_ROOM_SIDE_CM } from '../engine/share.js';
 
 const DB_NAME = 'room_planner_db';
 const DB_VERSION = 2;
@@ -12,6 +13,7 @@ const STORE_ROOMS = 'rooms';
 const STORE_CUSTOM = 'customFurniture';
 const STORE_FLATS = 'flats';
 const ACTIVE_ROOM_KEY = 'active_room_id';
+const ACTIVE_FLAT_KEY = 'active_flat_id';
 
 export async function getDB() {
   if (typeof indexedDB === 'undefined') {
@@ -50,11 +52,42 @@ export function clearActiveRoomId() {
   }
 }
 
-/** A stored room with damaged lists opens with those lists empty instead of failing to open. */
+/** Remembers which flat to reopen on the next visit, the way the open room is remembered. */
+export function setActiveFlatId(id) {
+  try {
+    localStorage.setItem(ACTIVE_FLAT_KEY, id);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function clearActiveFlatId() {
+  try {
+    localStorage.removeItem(ACTIVE_FLAT_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function getActiveFlatId() {
+  try {
+    return localStorage.getItem(ACTIVE_FLAT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A stored room with damaged lists opens with those lists empty, and one that has lost its size
+ * opens at a usable size, instead of as an empty plan reading "NaN x 0.00 m". The same repair an
+ * imported design gets (engine/share.js), with the wider bounds a stored record is allowed.
+ */
 function sanitizeRoom(room) {
   const list = (v) => (Array.isArray(v) ? v.filter((x) => x && typeof x === 'object') : []);
   return {
     ...room,
+    widthCm: roomSideCm(room.widthCm, STORED_ROOM_SIDE_CM),
+    depthCm: roomSideCm(room.depthCm, STORED_ROOM_SIDE_CM),
     placedFurniture: list(room.placedFurniture),
     doors: list(room.doors),
     windows: list(room.windows),
@@ -72,6 +105,50 @@ export async function saveRoomToDB(room) {
     await db.put(STORE_ROOMS, updatedRoom);
     setActiveRoomId(room.id);
     return updatedRoom;
+  } catch (error) {
+    if (import.meta.env?.DEV) {
+      console.error('Failed to save room to IndexedDB:', error);
+    }
+    throw error;
+  }
+}
+
+const millis = (value) => {
+  const t = Date.parse(value);
+  return Number.isFinite(t) ? t : null;
+};
+
+/**
+ * True when the stored record was written after the copy the editor is holding. With either
+ * stamp missing nothing can be proved, so the write goes ahead as it always did.
+ */
+function storedIsNewer(stored, baseUpdatedAt) {
+  const theirs = millis(stored?.updatedAt);
+  const ours = millis(baseUpdatedAt);
+  return theirs !== null && ours !== null && theirs > ours;
+}
+
+/**
+ * Saves a room unless another tab has saved it since this one loaded it. `baseUpdatedAt` is the
+ * stamp of the record the editor is working from.
+ * @returns {Promise<{room: Object} | {conflict: Object}>} the written record, or the newer stored
+ * record when the write was refused, so that the other tab's work is never overwritten.
+ */
+export async function saveRoomIfUnchanged(room, baseUpdatedAt) {
+  try {
+    const db = await getDB();
+    if (!db) return { room };
+    const tx = db.transaction(STORE_ROOMS, 'readwrite');
+    const stored = await tx.store.get(room.id);
+    if (storedIsNewer(stored, baseUpdatedAt)) {
+      await tx.done;
+      return { conflict: sanitizeRoom(stored) };
+    }
+    const updatedRoom = { ...room, updatedAt: new Date().toISOString() };
+    await tx.store.put(updatedRoom);
+    await tx.done;
+    setActiveRoomId(room.id);
+    return { room: updatedRoom };
   } catch (error) {
     if (import.meta.env?.DEV) {
       console.error('Failed to save room to IndexedDB:', error);
@@ -99,7 +176,8 @@ export async function listRoomsFromDB() {
     const db = await getDB();
     if (!db) return [];
     const rooms = await db.getAll(STORE_ROOMS);
-    return rooms || [];
+    // Listed as they open: a damaged record shows a usable size, not "NaN x NaN m"
+    return (rooms || []).map(sanitizeRoom);
   } catch (error) {
     if (import.meta.env?.DEV) {
       console.error('Failed to list rooms from IndexedDB:', error);
@@ -203,6 +281,26 @@ export async function saveFlatToDB(flat) {
   const updated = { ...flat, updatedAt: new Date().toISOString() };
   await db.put(STORE_FLATS, updated);
   return updated;
+}
+
+/**
+ * Saves a flat unless another tab has saved it since this one loaded it, the way rooms are
+ * saved. `baseUpdatedAt` is the stamp of the record this tab is working from.
+ * @returns {Promise<{flat: Object} | {conflict: Object}>}
+ */
+export async function saveFlatIfUnchanged(flat, baseUpdatedAt) {
+  const db = await getDB();
+  if (!db) return { flat };
+  const tx = db.transaction(STORE_FLATS, 'readwrite');
+  const stored = await tx.store.get(flat.id);
+  if (storedIsNewer(stored, baseUpdatedAt)) {
+    await tx.done;
+    return { conflict: stored };
+  }
+  const updated = { ...flat, updatedAt: new Date().toISOString() };
+  await tx.store.put(updated);
+  await tx.done;
+  return { flat: updated };
 }
 
 export async function listFlatsFromDB() {

@@ -101,4 +101,45 @@ test.describe('room editor', () => {
     await room.getByRole('button', { name: 'Add window' }).click();
     await expect(room.getByText('Window 2')).toBeVisible();
   });
+
+  // A size that is not a round number used to leave "Create room" dead: the browser refused
+  // the form because the boxes carried step="10", while the hint said 200 to 1500 was allowed.
+  test('creates a room at any size inside the allowed range', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Start a new room' }).click();
+    const dialog = page.getByRole('dialog', { name: 'New room' });
+    const width = dialog.getByRole('spinbutton', { name: 'Width' });
+    await width.fill('365');
+    const depth = dialog.getByRole('spinbutton', { name: 'Depth' });
+    await depth.fill('282.5');
+    expect(await width.evaluate((el) => el.checkValidity())).toBe(true);
+    expect(await depth.evaluate((el) => el.checkValidity())).toBe(true);
+
+    await dialog.getByRole('button', { name: 'Create room' }).click();
+    await expect(dialog).toBeHidden();
+    await expect(page.getByLabel('Room plan')).toBeVisible();
+    await page.getByRole('button', { name: 'Room menu' }).click();
+    await expect(
+      page.getByRole('menu', { name: 'Room menu' }).getByText('3.65 x 2.83 m')
+    ).toBeVisible();
+  });
+
+  // Creating a room the device cannot store used to close the dialog and do nothing at all
+  test('says so and stays open when a new room cannot be stored', async ({ page }) => {
+    await openApp(page);
+    await page.evaluate(() => {
+      IDBObjectStore.prototype.put = function put() {
+        throw new DOMException('Quota exceeded', 'QuotaExceededError');
+      };
+    });
+    await page.getByRole('button', { name: 'Start a new room' }).click();
+    const dialog = page.getByRole('dialog', { name: 'New room' });
+    await dialog.getByRole('button', { name: /Kids Bedroom/ }).click();
+    await dialog.getByRole('button', { name: 'Create room' }).click();
+
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByRole('alert')).toContainText('could not be saved on this device');
+    await expect(page.getByLabel('Room plan')).toBeHidden();
+    await expect(dialog.getByRole('button', { name: 'Create room' })).toBeEnabled();
+  });
 });

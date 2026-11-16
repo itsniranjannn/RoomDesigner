@@ -19,6 +19,8 @@ import { SaveStatus } from '../common/SaveStatus.jsx';
 import { ToolButton, ToolGroup } from '../common/ToolButton.jsx';
 import { CanvasLoader } from '../common/CanvasLoader.jsx';
 import { EmptyState } from '../common/EmptyState.jsx';
+import { Button } from '../common/Button.jsx';
+import { Modal } from '../common/Modal.jsx';
 import { AppHeader } from '../layout/SiteHeader.jsx';
 import { isEditablePassage } from '../../engine/flatPassage.js';
 import { FlatPlanCanvas } from './FlatPlanCanvas.jsx';
@@ -72,6 +74,7 @@ export function FlatDesigner() {
   const viewMode = useFlatStore((s) => s.viewMode);
   const canUndo = useFlatStore((s) => s.canUndo);
   const canRedo = useFlatStore((s) => s.canRedo);
+  const saveStatus = useFlatStore((s) => s.saveStatus);
   const setViewMode = useFlatStore((s) => s.setViewMode);
   const setLevel = useFlatStore((s) => s.setLevel);
   const addLevel = useFlatStore((s) => s.addLevel);
@@ -79,9 +82,11 @@ export function FlatDesigner() {
   const renameFlat = useFlatStore((s) => s.renameFlat);
   const undo = useFlatStore((s) => s.undo);
   const redo = useFlatStore((s) => s.redo);
+  const reopenFlat = useFlatStore((s) => s.reopenFlat);
   const requestZoom = useFlatUi((s) => s.requestZoom);
   const requestFit = useFlatUi((s) => s.requestFit);
   const [dismissedFor, setDismissedFor] = useState(null);
+  const [conflictDismissed, setConflictDismissed] = useState(false);
 
   // Keyboard shortcuts for tools, undo / redo, delete and rotate
   useEffect(() => {
@@ -147,6 +152,12 @@ export function FlatDesigner() {
     return () => window.removeEventListener('keydown', onKey, true);
   }, []);
 
+  // Another tab has saved this flat since this one opened it. Its work was kept, and nothing
+  // more is written here, so say so and offer the stored plan.
+  useEffect(() => {
+    if (saveStatus !== 'stale') setConflictDismissed(false);
+  }, [saveStatus]);
+
   if (!flat) return null;
   const hasContent =
     flat.levels.some((l) => (flat.walls?.[l.id] || []).length > 0) || flat.stairs.length > 0;
@@ -174,7 +185,7 @@ export function FlatDesigner() {
               label="Flat name"
               maxLength={80}
             />
-            <SaveStatus />
+            <SaveStatus status={saveStatus} />
           </>
         }
         center={
@@ -255,6 +266,37 @@ export function FlatDesigner() {
         </section>
         <FlatInspector />
       </div>
+
+      {saveStatus === 'stale' && !conflictDismissed && (
+        <Modal
+          title="Changed in another tab"
+          subtitle={flat.name}
+          onClose={() => setConflictDismissed(true)}
+          size="sm"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setConflictDismissed(true)}>
+                Leave it for now
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setConflictDismissed(true);
+                  reopenFlat();
+                }}
+              >
+                Open the saved version
+              </Button>
+            </>
+          }
+        >
+          <p>
+            Another tab saved this flat after you opened it here, so your last change was not saved
+            and nothing more is being saved from this tab. Opening the saved version brings in that
+            newer work; what you changed in this tab is not kept.
+          </p>
+        </Modal>
+      )}
     </div>
   );
 }

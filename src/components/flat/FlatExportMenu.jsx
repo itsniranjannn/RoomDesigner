@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Download, Image as ImageIcon, FileText, Box, Images, Camera } from 'lucide-react';
+import { Download, Image as ImageIcon, FileText, Box, Images, Camera, Link2 } from 'lucide-react';
 import { useFlatStore } from '../../store/flatStore.js';
 import { useFlatUi } from '../../store/flatUiStore.js';
 import { Button } from '../common/Button.jsx';
 import { canCapture3D } from '../../engine/snapshot3d.js';
-import { Popover, MenuItem, MenuLabel } from '../common/Popover.jsx';
+import { Popover, MenuItem, MenuLabel, MenuDivider } from '../common/Popover.jsx';
 import { RenderImageDialog } from '../preview3d/RenderImageDialog.jsx';
 import styles from './FlatDesigner.module.css';
 
@@ -111,6 +111,12 @@ export function FlatExportMenu() {
                 }}
               >
                 Printable plan (PDF)
+              </MenuItem>
+              <MenuDivider />
+              {/* A room can be shared as a link, a flat cannot yet. Saying so beats leaving
+                  someone hunting for a button that is not there. */}
+              <MenuItem icon={<Link2 size={16} aria-hidden="true" />} disabled>
+                A flat cannot be shared as a link yet
               </MenuItem>
             </>
           );
