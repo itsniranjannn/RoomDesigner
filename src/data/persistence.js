@@ -80,6 +80,50 @@ export async function saveRoomToDB(room) {
   }
 }
 
+const millis = (value) => {
+  const t = Date.parse(value);
+  return Number.isFinite(t) ? t : null;
+};
+
+/**
+ * True when the stored record was written after the copy the editor is holding. With either
+ * stamp missing nothing can be proved, so the write goes ahead as it always did.
+ */
+function storedIsNewer(stored, baseUpdatedAt) {
+  const theirs = millis(stored?.updatedAt);
+  const ours = millis(baseUpdatedAt);
+  return theirs !== null && ours !== null && theirs > ours;
+}
+
+/**
+ * Saves a room unless another tab has saved it since this one loaded it. `baseUpdatedAt` is the
+ * stamp of the record the editor is working from.
+ * @returns {Promise<{room: Object} | {conflict: Object}>} the written record, or the newer stored
+ * record when the write was refused, so that the other tab's work is never overwritten.
+ */
+export async function saveRoomIfUnchanged(room, baseUpdatedAt) {
+  try {
+    const db = await getDB();
+    if (!db) return { room };
+    const tx = db.transaction(STORE_ROOMS, 'readwrite');
+    const stored = await tx.store.get(room.id);
+    if (storedIsNewer(stored, baseUpdatedAt)) {
+      await tx.done;
+      return { conflict: sanitizeRoom(stored) };
+    }
+    const updatedRoom = { ...room, updatedAt: new Date().toISOString() };
+    await tx.store.put(updatedRoom);
+    await tx.done;
+    setActiveRoomId(room.id);
+    return { room: updatedRoom };
+  } catch (error) {
+    if (import.meta.env?.DEV) {
+      console.error('Failed to save room to IndexedDB:', error);
+    }
+    throw error;
+  }
+}
+
 export async function loadRoomFromDB(id) {
   try {
     const db = await getDB();

@@ -1,4 +1,4 @@
-import { test, expect } from './fixtures.js';
+import { test, expect, watchPage } from './fixtures.js';
 import { addByClick, createRoomFromPreset, openApp, pieces, waitForSaved } from './helpers.js';
 
 test.describe('persistence', () => {
@@ -31,6 +31,39 @@ test.describe('persistence', () => {
     await expect(panel.getByText('Guest Room').first()).toBeVisible();
     await panel.getByText('Guest Room').first().click();
     await expect(page.getByRole('textbox', { name: 'Room name' })).toHaveValue('Guest Room');
+  });
+
+  // Two tabs on the same room: the second tab's work must not vanish when the first saves.
+  test('a second tab on the same room is not overwritten', async ({ page, problems }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Living Room');
+    await addByClick(page, '3-Seater Sofa');
+    await waitForSaved(page);
+
+    const second = await page.context().newPage();
+    watchPage(second, problems);
+    await openApp(second);
+    await expect(pieces(second)).toHaveCount(1);
+    await addByClick(second, 'Lounge Armchair');
+    await waitForSaved(second);
+    await expect(pieces(second)).toHaveCount(2);
+
+    // The first tab still shows only the sofa. Saving its own edit must leave the armchair alone.
+    await page.bringToFront();
+    await addByClick(page, 'Coffee Table');
+    const notice = page.getByRole('dialog', { name: 'Changed in another tab' });
+    await expect(notice).toBeVisible();
+    await expect(page.getByRole('status', { name: /changed in another tab/i })).toBeVisible();
+    expect(await storedFurniture(page)).toEqual(['sofa-3seat', 'armchair']);
+
+    // Opening the saved version brings the other tab's work into this one
+    await notice.getByRole('button', { name: 'Open the saved version' }).click();
+    await expect(notice).toBeHidden();
+    await expect(pieces(page)).toHaveCount(2);
+    await addByClick(page, 'Coffee Table');
+    await waitForSaved(page);
+    expect(await storedFurniture(page)).toEqual(['sofa-3seat', 'armchair', 'coffee-table']);
+    await second.close();
   });
 
   // A flat written by version 1 has no walls, no openings and no stairs. Reading one must not
@@ -77,6 +110,26 @@ test.describe('persistence', () => {
     await expect(page.getByRole('textbox', { name: 'Flat name' })).toHaveValue('Old flat');
   });
 });
+
+/** The furniture type ids of the one stored room, read straight from IndexedDB. */
+async function storedFurniture(page) {
+  return page.evaluate(
+    () =>
+      new Promise((resolve, reject) => {
+        const req = indexedDB.open('room_planner_db');
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const db = req.result;
+          const all = db.transaction('rooms', 'readonly').objectStore('rooms').getAll();
+          all.onsuccess = () => {
+            db.close();
+            resolve((all.result[0]?.placedFurniture || []).map((f) => f.furnitureTypeId));
+          };
+          all.onerror = () => reject(all.error);
+        };
+      })
+  );
+}
 
 /** Writes a record straight into the flats store, as an older build would have left it. */
 async function putFlatRecord(page, record) {

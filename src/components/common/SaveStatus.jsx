@@ -9,6 +9,12 @@ const STATES = {
     title: 'Changes could not be saved on this device',
     dot: styles.failed,
   },
+  // Another tab saved this design after this one opened it, so the last change was not written
+  stale: {
+    label: 'Not saved',
+    title: 'This design was changed in another tab',
+    dot: styles.failed,
+  },
 };
 
 /** Quiet "Saved" note beside the title. */
