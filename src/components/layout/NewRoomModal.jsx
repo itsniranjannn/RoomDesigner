@@ -4,6 +4,7 @@ import { Button } from '../common/Button.jsx';
 import { Modal } from '../common/Modal.jsx';
 import { TextField, NumberField } from '../common/Field.jsx';
 import { Notice } from '../common/Notice.jsx';
+import { focusWhenReady } from './hooks.js';
 import styles from './NewRoomModal.module.css';
 
 const ROOM_PRESETS = [
@@ -53,6 +54,10 @@ function NewRoomForm({ onClose }) {
       // The room is stored before it opens: if that fails, say so and stay here
       await createRoom(name.trim() || 'New Room', w, d);
       onClose();
+      // The dialog hands focus back to whatever opened it, but on the landing page that
+      // button has gone with the page. Give the editor the focus instead; if the first-run
+      // tour opens it takes the focus from there.
+      focusWhenReady('#room-plan');
     } catch {
       setFailed(
         'This room could not be saved on this device, so it was not created. There may be no storage space left. Delete a design you no longer need, then try again.'

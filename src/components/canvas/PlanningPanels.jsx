@@ -140,6 +140,7 @@ export function ServicesPanel() {
   const placeKind = usePlanningStore((s) => s.placeKind);
   const selectedServiceId = usePlanningStore((s) => s.selectedServiceId);
   const showServices = usePlanningStore((s) => s.showServices);
+  const crosshairStatus = usePlanningStore((s) => s.crosshairStatus);
   const startPlacing = usePlanningStore((s) => s.startPlacing);
   const stopPlacing = usePlanningStore((s) => s.stopPlacing);
   const setShowServices = usePlanningStore((s) => s.setShowServices);
@@ -178,9 +179,10 @@ export function ServicesPanel() {
       ))}
 
       {placeKind ? (
+        // One status line, so a crosshair moved by the arrow keys is read out here as well
         <p className={styles.placing} role="status">
-          Click the plan to place a {SERVICE_KINDS[placeKind].label.toLowerCase()}. Press Esc when
-          you are done.
+          {crosshairStatus ||
+            `Click the plan to place a ${SERVICE_KINDS[placeKind].label.toLowerCase()}, or move the crosshair with the arrow keys and press Enter. Press Esc when you are done.`}
         </p>
       ) : services.length === 0 ? (
         <div className={styles.empty}>

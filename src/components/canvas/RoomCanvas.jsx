@@ -12,21 +12,32 @@ import { TraceLayer, ClearanceLayer, DimensionLayer, MeasureLayer } from './Over
 import { PlanningLayer } from './PlanningLayer.jsx';
 import { PlanningPanels } from './PlanningPanels.jsx';
 import { usePlanChecks } from './usePlanChecks.js';
-import { usePlanningStore } from '../../store/planningStore.js';
+import {
+  crosshairHome,
+  crosshairWords,
+  isCrosshairKey,
+  nudgeCrosshair,
+  usePlanningStore,
+} from '../../store/planningStore.js';
 import { EmptyState } from '../common/EmptyState.jsx';
 import { MousePointerClick } from 'lucide-react';
 import { drawOrder } from '../../engine/stacking.js';
+import { SERVICE_KINDS } from '../../engine/planning.js';
+import { distanceCm, formatCm } from '../../engine/measure.js';
 import { useMediaQuery } from '../layout/hooks.js';
 import styles from './RoomCanvas.module.css';
 
 const isTyping = () => ['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement?.tagName);
+// Scrolling the furniture list is what the arrow keys are for while focus is in it
+const inCatalog = () => !!document.activeElement?.closest('[aria-label="Furniture"]');
 
 /**
  * The line under the plan, by what the viewer is pointing with. A phone or tablet has no
  * keys, so it is pointed at the controls on screen instead of at Esc, R and Delete.
  */
 const MEASURE_HINTS = {
-  mouse: 'Click two points to measure. Press Esc when done.',
+  mouse:
+    'Click two points to measure, or move the crosshair with the arrow keys and press Enter for each point. Press Esc when done.',
   touch: 'Tap two points to measure. Tap Done when you have finished.',
 };
 const SELECTED_HINTS = {
@@ -52,19 +63,31 @@ export function RoomCanvas({ catalogOpen, onToggleCatalog }) {
   const [isDragOver, setIsDragOver] = useState(false);
   const [marquee, setMarquee] = useState(null); // { x0, y0, x1, y1 } in cm
   const [measurements, setMeasurements] = useState([]);
+  // The measurement being taken: its first point, set by a click or by Enter on the crosshair
+  const [measureStart, setMeasureStart] = useState(null);
 
   const accessible = usePlanningStore((s) => s.accessible);
   const placing = usePlanningStore((s) => !!s.placeKind);
+  const crosshair = usePlanningStore((s) => s.crosshair);
   const checks = usePlanChecks(room, accessible);
   const pointer = useMediaQuery('(pointer: coarse)') ? 'touch' : 'mouse';
 
   // Leaving the measure tool or switching rooms clears old measurements
   useEffect(() => {
-    if (!measureActive) setMeasurements([]);
+    if (!measureActive) {
+      setMeasurements([]);
+      setMeasureStart(null);
+    }
   }, [measureActive]);
   useEffect(() => {
     setMeasurements([]);
+    setMeasureStart(null);
   }, [room?.id]);
+
+  // The crosshair belongs to whichever tool is driving it, so it goes when they do
+  useEffect(() => {
+    if (!placing && !measureActive) usePlanningStore.getState().clearCrosshair();
+  }, [placing, measureActive]);
 
   // Keyboard shortcuts for the drafting canvas
   useEffect(() => {
@@ -130,6 +153,8 @@ export function RoomCanvas({ catalogOpen, onToggleCatalog }) {
       const ids = state.selectedItemIds;
       if (ids.length === 0) return;
       const step = e.shiftKey ? 10 : 1;
+      // The arrows scroll the furniture list while focus is in it: nudging would steal them
+      if (inCatalog() && isCrosshairKey(e.key)) return;
 
       switch (e.key) {
         case 'ArrowLeft':
@@ -177,6 +202,116 @@ export function RoomCanvas({ catalogOpen, onToggleCatalog }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Starting a tool that needs a point on the plan hands the plan the keyboard, so the arrow
+  // keys and Enter reach it without hunting for the plan region with Tab first
+  useEffect(() => {
+    if (placing || measureActive) containerRef.current?.focus({ preventScroll: true });
+  }, [placing, measureActive]);
+
+  // ---------- the keyboard crosshair ----------
+  // The surfaces that take a point are transparent SVG rectangles with pointer handlers, so
+  // without this there is no way to say "here" with a keyboard.
+  const crosshairBounds = {
+    minX: 0,
+    minY: 0,
+    maxX: room?.widthCm || 0,
+    maxY: room?.depthCm || 0,
+  };
+
+  const nextStepWords = () => {
+    const kind = usePlanningStore.getState().placeKind;
+    if (kind) return `Press Enter to place the ${SERVICE_KINDS[kind].label.toLowerCase()}.`;
+    return measureStart ? 'Press Enter for the second point.' : 'Press Enter for the first point.';
+  };
+
+  /** Enter while a service kind is being placed: mark the point and say where it landed. */
+  const placeServiceAt = (at) => {
+    const plan = usePlanningStore.getState();
+    const kind = plan.placeKind;
+    const label = SERVICE_KINDS[kind]?.label || 'point';
+    const id = useRoomStore.getState().addService(kind, at.x, at.y);
+    if (!id) {
+      plan.sayCrosshair(
+        `The ${label.toLowerCase()} would not go there. Move the crosshair and press Enter again.`
+      );
+      return;
+    }
+    const placed = (useRoomStore.getState().room?.services || []).find((s) => s.id === id) || at;
+    usePlanningStore.setState({ selectedServiceId: id });
+    plan.sayCrosshair(
+      `${label} placed at ${crosshairWords(placed)}. Enter places another, Esc finishes.`
+    );
+  };
+
+  /** Enter while measuring: the first Enter sets one end of the line, the second the other. */
+  const measureAt = (at) => {
+    const plan = usePlanningStore.getState();
+    if (!measureStart) {
+      setMeasureStart(at);
+      plan.sayCrosshair(
+        `First point at ${crosshairWords(at)}. Move the crosshair and press Enter for the second.`
+      );
+      return;
+    }
+    const length = distanceCm(measureStart, at);
+    if (length <= 1) {
+      plan.sayCrosshair(
+        'Both points are in the same spot. Move the crosshair and press Enter again.'
+      );
+      return;
+    }
+    setMeasurements((prev) => [...prev, { a: measureStart, b: at }]);
+    setMeasureStart(null);
+    plan.sayCrosshair(
+      `Measured ${formatCm(length)}, from ${crosshairWords(measureStart)} to ${crosshairWords(at)}.`
+    );
+  };
+
+  const handlePlanKeyDown = (e) => {
+    // Only the plan region itself: the toolbar and the panels sit inside it and need their keys
+    if (e.target !== e.currentTarget) return;
+    if (isTyping() || e.ctrlKey || e.metaKey || e.altKey) return;
+    const plan = usePlanningStore.getState();
+    if (!plan.placeKind && !measureActive) return;
+
+    if (isCrosshairKey(e.key)) {
+      e.preventDefault();
+      e.stopPropagation();
+      // The first arrow only brings the crosshair out, in the middle of the plan
+      const at = plan.crosshair
+        ? nudgeCrosshair(plan.crosshair, e.key, e.shiftKey, crosshairBounds)
+        : crosshairHome(crosshairBounds);
+      plan.setCrosshair(at, `Crosshair at ${crosshairWords(at)}. ${nextStepWords()}`);
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!plan.crosshair) {
+        const home = crosshairHome(crosshairBounds);
+        plan.setCrosshair(home, `Crosshair at ${crosshairWords(home)}. ${nextStepWords()}`);
+        return;
+      }
+      if (plan.placeKind) placeServiceAt(plan.crosshair);
+      else measureAt(plan.crosshair);
+      return;
+    }
+
+    if (e.key === 'Escape' && plan.crosshair) {
+      // A half-taken measurement is dropped first, so Esc does not leave the tool too early
+      if (measureActive && measureStart) {
+        e.preventDefault();
+        e.stopPropagation();
+        setMeasureStart(null);
+        plan.sayCrosshair('Measurement dropped. Enter starts another, Esc finishes.');
+        return;
+      }
+      // The window handler then steps the tool back, exactly as it does for the mouse
+      plan.clearCrosshair();
+    }
+  };
 
   const svgPoint = (e) => {
     const svg = svgRef.current;
@@ -299,6 +434,8 @@ export function RoomCanvas({ catalogOpen, onToggleCatalog }) {
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onKeyDown={handlePlanKeyDown}
+      id="room-plan"
       tabIndex={0}
       role="region"
       aria-label="Room plan"
@@ -415,6 +552,9 @@ export function RoomCanvas({ catalogOpen, onToggleCatalog }) {
               }}
               measurements={measurements}
               setMeasurements={setMeasurements}
+              start={measureStart}
+              setStart={setMeasureStart}
+              keyboardPoint={crosshair}
             />
           )}
         </motion.g>

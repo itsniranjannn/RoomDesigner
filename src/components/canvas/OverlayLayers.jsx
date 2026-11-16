@@ -194,9 +194,20 @@ function snapPoint(point, room, snapRadius = 8) {
   return { x, y };
 }
 
-/** Click two points to measure; Shift locks to horizontal/vertical. */
-export function MeasureLayer({ room, svgRef, bounds, measurements, setMeasurements }) {
-  const [start, setStart] = useState(null);
+/**
+ * Click two points to measure; Shift locks to horizontal/vertical. The first point lives in
+ * RoomCanvas so the keyboard crosshair can set it as well as the pointer.
+ */
+export function MeasureLayer({
+  room,
+  svgRef,
+  bounds,
+  measurements,
+  setMeasurements,
+  start,
+  setStart,
+  keyboardPoint = null,
+}) {
   const [hover, setHover] = useState(null);
 
   const toRoomPoint = (e) => {
@@ -229,7 +240,9 @@ export function MeasureLayer({ room, svgRef, bounds, measurements, setMeasuremen
     setHover(null);
   };
 
-  const live = start && hover ? { a: start, b: hover } : null;
+  // The pointer wins while it is over the plan; otherwise the keyboard crosshair draws the line
+  const end = hover || keyboardPoint;
+  const live = start && end && distanceCm(start, end) > 0.5 ? { a: start, b: end } : null;
 
   return (
     <g>
@@ -245,12 +258,24 @@ export function MeasureLayer({ room, svgRef, bounds, measurements, setMeasuremen
         data-testid="measure-surface"
       />
       <g pointerEvents="none">
+        {/* The first point on its own, so a keyboard user can see it landed */}
+        {start && !live && (
+          <circle
+            cx={start.x}
+            cy={start.y}
+            r="3.5"
+            fill="#8B2635"
+            stroke="#F6F2EA"
+            strokeWidth="1.5"
+            data-testid="measure-start"
+          />
+        )}
         {[...measurements, ...(live ? [live] : [])].map((m, i) => {
           const len = distanceCm(m.a, m.b);
           const mx = (m.a.x + m.b.x) / 2;
           const my = (m.a.y + m.b.y) / 2;
           return (
-            <g key={i}>
+            <g key={i} data-testid={i < measurements.length ? 'measurement' : 'measurement-live'}>
               <line
                 x1={m.a.x}
                 y1={m.a.y}

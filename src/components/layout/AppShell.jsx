@@ -1,10 +1,10 @@
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRoomStore } from '../../store/roomStore.js';
 import { TopBar } from './TopBar.jsx';
 import { NewRoomModal } from './NewRoomModal.jsx';
 import { LandingPage } from './LandingPage.jsx';
 import { AboutPage } from './AboutPage.jsx';
-import { useMediaQuery, usePersistentFlag } from './hooks.js';
+import { focusWhenReady, useMediaQuery, usePersistentFlag } from './hooks.js';
 import { FurnitureCatalog } from '../catalog/FurnitureCatalog.jsx';
 import { RoomCanvas } from '../canvas/RoomCanvas.jsx';
 import { SelectedItemPanel } from '../inspector/SelectedItemPanel.jsx';
@@ -91,6 +91,22 @@ export function AppShell() {
       if (!popped && window.history.state?.rdFlatRoom) window.history.back();
     };
   }, [inFlatRoom]);
+
+  // Leaving the editor unmounts the top bar along with the button that was pressed, which
+  // would leave focus on <body> and send the next Tab back to the top of the page. Hand it
+  // to the first control of whatever replaced it.
+  const hasRoom = !!room;
+  const wasInEditor = useRef(false);
+  useEffect(() => {
+    if (hasRoom) {
+      wasInEditor.current = true;
+      return;
+    }
+    if (!wasInEditor.current) return;
+    wasInEditor.current = false;
+    // The landing page's first control, or the flat plan when a room of a flat was closed
+    focusWhenReady('main button:not([disabled]), svg[role="application"]');
+  }, [hasRoom]);
 
   // Escape closes an open drawer
   useEffect(() => {

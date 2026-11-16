@@ -47,3 +47,30 @@ export function usePersistentFlag(key, initial) {
 
   return [value, update];
 }
+
+/**
+ * Moves focus to the first element matching `selector` once it appears, waiting a few
+ * frames for React to render it, and only while focus has been lost.
+ *
+ * Several controls here remove themselves by doing their job: "Create room" closes the
+ * landing page, a row in the Pieces list is replaced by that piece's panel, "Back to all
+ * rooms" takes the whole top bar away. The browser drops focus onto <body> when that
+ * happens, so the next Tab restarts at the top of the page.
+ */
+export function focusWhenReady(selector, frames = 10) {
+  let left = frames;
+  const attempt = () => {
+    const target = document.querySelector(selector);
+    if (!target) {
+      if (left > 0) {
+        left -= 1;
+        requestAnimationFrame(attempt);
+      }
+      return;
+    }
+    const active = document.activeElement;
+    // Anything still on the page keeps the focus it was given
+    if (!active || active === document.body || !document.contains(active)) target.focus();
+  };
+  requestAnimationFrame(attempt);
+}

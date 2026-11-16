@@ -94,13 +94,60 @@ function ServiceNode({ service, label, selected, interactive, svgRef }) {
   );
 }
 
+/**
+ * Where the keyboard is pointing, drawn only while the arrow keys are driving the plan. The
+ * pale halo under each line keeps it visible over walls, furniture and the floor alike.
+ */
+export function KeyboardCrosshair({ x, y, label, readout }) {
+  const arm = 30;
+  return (
+    <g
+      transform={`translate(${x} ${y})`}
+      pointerEvents="none"
+      data-testid="keyboard-crosshair"
+      data-crosshair={readout || `${x},${y}`}
+      aria-hidden="true"
+    >
+      <g stroke="#F6F2EA" strokeWidth="5" strokeLinecap="round" opacity="0.9">
+        <line x1={-arm} y1="0" x2={arm} y2="0" />
+        <line x1="0" y1={-arm} x2="0" y2={arm} />
+      </g>
+      <g stroke="#22485E" strokeWidth="2" strokeLinecap="round">
+        <line x1={-arm} y1="0" x2={arm} y2="0" />
+        <line x1="0" y1={-arm} x2="0" y2={arm} />
+      </g>
+      <circle r="7" fill="none" stroke="#F6F2EA" strokeWidth="4.5" opacity="0.9" />
+      <circle r="7" fill="none" stroke="#8B2635" strokeWidth="2" />
+      <circle r="1.8" fill="#8B2635" />
+      {label && (
+        <text
+          x={arm + 6}
+          y="-8"
+          fontSize="11"
+          fontWeight="600"
+          fill="#22485E"
+          stroke="#F6F2EA"
+          strokeWidth="3.5"
+          paintOrder="stroke"
+          fontFamily="var(--font-mono, monospace)"
+        >
+          {label}
+        </text>
+      )}
+    </g>
+  );
+}
+
 /** Click-to-place surface with a ghost symbol that snaps to the nearest wall. */
 function PlaceSurface({ room, svgRef, bounds, kind }) {
   const addService = useRoomStore((s) => s.addService);
   const selectService = usePlanningStore((s) => s.selectService);
+  const crosshair = usePlanningStore((s) => s.crosshair);
   const [hover, setHover] = useState(null);
 
-  const placed = hover ? positionService(room, kind, hover.x, hover.y) : null;
+  // The pointer wins while it is over the plan; otherwise the keyboard crosshair aims the ghost
+  const at = hover || crosshair;
+  const placed = at ? positionService(room, kind, at.x, at.y) : null;
   const def = SERVICE_KINDS[kind];
 
   return (
@@ -211,6 +258,7 @@ export function PlanningLayer({ room, svgRef, bounds, checks }) {
   const selectedServiceId = usePlanningStore((s) => s.selectedServiceId);
   const showServices = usePlanningStore((s) => s.showServices);
   const showTurning = usePlanningStore((s) => s.showTurning);
+  const crosshair = usePlanningStore((s) => s.crosshair);
   const highlight = usePlanningStore((s) => s.highlight);
   const clearHighlight = usePlanningStore((s) => s.clearHighlight);
   const showLinks = usePlanningStore((s) => s.showLinks);
@@ -259,6 +307,13 @@ export function PlanningLayer({ room, svgRef, bounds, checks }) {
       )}
       {editing && placeKind && (
         <PlaceSurface room={room} svgRef={svgRef} bounds={bounds} kind={placeKind} />
+      )}
+      {crosshair && (
+        <KeyboardCrosshair
+          x={crosshair.x}
+          y={crosshair.y}
+          label={`${crosshair.x}, ${crosshair.y}`}
+        />
       )}
       {highlight && (
         <g

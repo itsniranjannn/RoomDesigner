@@ -26,6 +26,10 @@ function useDismiss(rootRef, open, onClose) {
 /**
  * Trigger plus floating panel. `renderTrigger` receives props to spread on the trigger button.
  * `children` can be a function that receives { close }.
+ *
+ * With role="menu" the panel behaves as a menu rather than only claiming to be one: it is
+ * one stop in the tab order, focus starts on the first item, the arrows and Home/End walk
+ * the items, and Tab or Escape closes it and hands focus back to the trigger.
  */
 export function Popover({
   renderTrigger,
@@ -40,11 +44,58 @@ export function Popover({
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef(null);
+  const panelRef = useRef(null);
   const close = useCallback(() => setOpen(false), []);
   useDismiss(rootRef, open, close);
 
+  const isMenu = role === 'menu';
+  const items = useCallback(
+    () => Array.from(panelRef.current?.querySelectorAll('[role="menuitem"]:not([disabled])') || []),
+    []
+  );
+  const focusItem = useCallback(
+    (index) => {
+      const list = items();
+      if (list.length === 0) return;
+      const at = ((index % list.length) + list.length) % list.length;
+      list.forEach((el, i) => {
+        el.tabIndex = i === at ? 0 : -1;
+      });
+      list[at].focus();
+    },
+    [items]
+  );
+
+  useEffect(() => {
+    if (!open || !isMenu) return;
+    focusItem(0);
+  }, [open, isMenu, focusItem]);
+
+  const backToTrigger = () => {
+    close();
+    rootRef.current?.querySelector('[aria-haspopup]')?.focus();
+  };
+
+  const onPanelKeyDown = (e) => {
+    if (!isMenu || items().length === 0) return;
+    const at = items().indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === 'Home') focusItem(0);
+      else if (e.key === 'End') focusItem(items().length - 1);
+      else focusItem(at + (e.key === 'ArrowDown' ? 1 : -1));
+      return;
+    }
+    // A menu is left, not walked through: Tab closes it and gives the trigger the focus
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      backToTrigger();
+    }
+  };
+
   const triggerProps = {
-    'aria-haspopup': role === 'menu' ? 'menu' : 'dialog',
+    'aria-haspopup': isMenu ? 'menu' : 'dialog',
     'aria-expanded': open,
     onClick: () => setOpen((o) => !o),
   };
@@ -54,9 +105,11 @@ export function Popover({
       {renderTrigger(triggerProps, open)}
       {open && (
         <div
+          ref={panelRef}
           className={`${styles.panel} ${align === 'end' ? styles.end : ''} ${direction === 'up' ? styles.up : ''} ${panelClassName}`}
           role={role}
           aria-label={label}
+          onKeyDown={onPanelKeyDown}
         >
           {typeof children === 'function' ? children({ close }) : children}
         </div>

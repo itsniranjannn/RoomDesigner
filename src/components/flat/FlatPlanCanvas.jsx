@@ -58,6 +58,13 @@ import {
   previewPassage,
   snapPassageToWalls,
 } from '../../engine/flatPassage.js';
+import {
+  crosshairHome,
+  isCrosshairKey,
+  nudgeCrosshair,
+  usePlanningStore,
+} from '../../store/planningStore.js';
+import { KeyboardCrosshair } from '../canvas/PlanningLayer.jsx';
 import { StairGlyph, StairDefs } from './StairGlyph.jsx';
 import styles from './FlatPlan.module.css';
 
@@ -75,6 +82,8 @@ const fitText = (text, widthPx, charPx) => {
   return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
 };
 const fmtM = (cm) => `${(cm / 100).toFixed(2)} m`;
+/** "2.50 m across, 1.80 m down" — how a point on the plan is read out. */
+const fmtPoint = (p) => `${fmtM(p.x)} across, ${fmtM(p.y)} down`;
 
 /** Where an opening's gap is drawn: wall thickness at its first edge. */
 function thicknessAt(op, analysis) {
@@ -255,6 +264,7 @@ export function FlatPlanCanvas() {
   const fitNonce = useFlatUi((s) => s.fitNonce);
   const zoomRequest = useFlatUi((s) => s.zoomRequest);
   const notice = useFlatUi((s) => s.notice);
+  const crosshair = usePlanningStore((s) => s.crosshair);
 
   const wrapRef = useRef(null);
   const svgRef = useRef(null);
@@ -471,6 +481,8 @@ export function FlatPlanCanvas() {
         setSpaceDown(true);
       }
       if (e.key === 'Escape') {
+        // The keyboard crosshair goes with the step back, as a half-drawn wall does
+        usePlanningStore.getState().clearCrosshair();
         if (draftRef.current) {
           setDraft(null);
           setHover(null);
@@ -498,6 +510,9 @@ export function FlatPlanCanvas() {
     if (tool !== 'wall') setDraft(null);
     setHover(null);
   }, [tool, levelId, setDraft]);
+
+  // The crosshair is shared with the room plan, so it does not outlive this plan
+  useEffect(() => () => usePlanningStore.getState().clearCrosshair(), []);
 
   useEffect(() => {
     if (!notice) return undefined;
@@ -717,6 +732,124 @@ export function FlatPlanCanvas() {
     setHover(null);
   };
 
+  // ---------- what each tool does at a point ----------
+  // Shared by the pointer and the keyboard crosshair, so a wall drawn with the arrow keys
+  // goes through exactly the same code as one drawn with the mouse. Each returns a short
+  // sentence for the status line, or null when nothing happened.
+
+  /** Wall tool: the first point starts the wall, the next finishes it and starts the next. */
+  const stepWall = (p, mode) => {
+    const d = draftRef.current;
+    if (d && d.mode === 'click') {
+      const end = orthoEnd(d.sx, d.sy, p.x, p.y);
+      if (end.x === d.sx && end.y === d.sy) {
+        setDraft(null);
+        return 'Wall finished.';
+      }
+      finishWall({ ...d, ex: end.x, ey: end.y });
+      setDraft({ sx: end.x, sy: end.y, ex: end.x, ey: end.y, mode: 'click' });
+      return `Wall drawn to ${fmtPoint(end)}. Move on and press Enter for the next, or Esc to finish.`;
+    }
+    const sp = snapPoint(p);
+    setDraft({ sx: sp.x, sy: sp.y, ex: sp.x, ey: sp.y, mode });
+    return `Wall started at ${fmtPoint(sp)}. Move the crosshair and press Enter to draw it.`;
+  };
+
+  const eraseAt = (p) => {
+    const key = hitTestEdge(edges, p.x, p.y, hitTol);
+    if (key) useFlatStore.getState().eraseWall(key);
+    setHover(null);
+    return key ? 'Wall piece removed.' : 'No wall there to remove.';
+  };
+
+  /** Door and window tool: add one on the wall under the point, or take an existing one away. */
+  const openingAt = (p) => {
+    const h = computeHover(p);
+    let said;
+    if (h?.type === 'remove-opening') {
+      useFlatStore.getState().removeOpening(h.op.id);
+      said = `${tool === 'door' ? 'Door' : 'Window'} removed.`;
+    } else if (h?.type === 'opening') {
+      if (h.plan.valid) {
+        useFlatStore.getState().placeOpening(h.plan.op);
+        said = `${tool === 'door' ? 'Door' : 'Window'} added at ${fmtPoint(p)}.`;
+      } else {
+        useFlatUi.getState().setNotice(h.plan.reason);
+        said = h.plan.reason;
+      }
+    } else {
+      const reason = 'Click on a wall to place a ' + tool + '.';
+      useFlatUi.getState().setNotice(reason);
+      said = reason;
+    }
+    setHover(null);
+    return said;
+  };
+
+  const passageAt = (p) => {
+    const h = computeHover(p);
+    if (h?.type !== 'passage') return null;
+    if (!h.plan.valid) {
+      useFlatUi.getState().setNotice(h.plan.reason);
+      return h.plan.reason;
+    }
+    const res = useFlatStore.getState().placePassage(h.spec);
+    if (res.error) {
+      useFlatUi.getState().setNotice(res.error);
+      return res.error;
+    }
+    useFlatUi.getState().setTool('select');
+    // The plan slid across to make room: slide the view with it so nothing seems to jump
+    if (res.shift)
+      setView((v) => ({ ...v, tx: v.tx - res.shift.dx * v.k, ty: v.ty - res.shift.dy * v.k }));
+    if (!res.connected)
+      useFlatUi.getState().setNotice('Passage added. Use the Door tool to open it onto a room.');
+    setHover(null);
+    return `Passage added at ${fmtPoint(p)}.`;
+  };
+
+  const stairAt = (p) => {
+    const h = computeHover(p);
+    if (h?.type !== 'stair') return null;
+    useFlatStore.getState().addStair(h.stair.type, h.stair.x, h.stair.y, h.stair.rotationDeg, {
+      widthCm: h.stair.widthCm,
+      toLevelId: h.stair.toLevelId,
+      steps: h.stair.steps,
+    });
+    if (h.warnings.length) useFlatUi.getState().setNotice(h.warnings[0]);
+    useFlatUi.getState().setTool('select');
+    return `Staircase placed at ${fmtPoint(h.stair)}.`;
+  };
+
+  /** Select tool, without the drag gestures: openings, then stairs, then walls, then rooms. */
+  const selectAt = (p) => {
+    const op = openingAtPoint(openings, p.x, p.y, hitTol + 4);
+    if (op) {
+      select({ type: 'opening', id: op.id });
+      return `${op.type === 'door' ? 'Door' : 'Window'} selected.`;
+    }
+    const stair = [...stairs].reverse().find((st) => {
+      const r = stairRect(st);
+      return p.x >= r.x && p.x <= r.x + r.widthCm && p.y >= r.y && p.y <= r.y + r.depthCm;
+    });
+    if (stair) {
+      select({ type: 'stair', id: stair.id });
+      return 'Staircase selected.';
+    }
+    const key = hitTestEdge(edges, p.x, p.y, hitTol);
+    if (key) {
+      select({ type: 'wall', id: key });
+      return 'Wall selected. Delete removes it.';
+    }
+    const region = regionAtPoint(analysis, p.x, p.y);
+    if (region && spaces[region.index]) {
+      select({ type: 'space', id: spaces[region.index].id });
+      return `${spaces[region.index].name} selected.`;
+    }
+    select(null);
+    return `Nothing at ${fmtPoint(p)}.`;
+  };
+
   const onPointerDown = (e) => {
     if (!flat) return;
     svgRef.current.focus({ preventScroll: true });
@@ -735,77 +868,29 @@ export function FlatPlanCanvas() {
     svgRef.current.setPointerCapture(e.pointerId);
 
     if (tool === 'wall') {
-      const sp = snapPoint(p);
-      const d = draftRef.current;
-      if (d && d.mode === 'click') {
-        const end = orthoEnd(d.sx, d.sy, p.x, p.y);
-        if (end.x === d.sx && end.y === d.sy) {
-          setDraft(null);
-        } else {
-          finishWall({ ...d, ex: end.x, ey: end.y });
-          setDraft({ sx: end.x, sy: end.y, ex: end.x, ey: end.y, mode: 'click' });
-        }
-        return;
-      }
-      setDraft({ sx: sp.x, sy: sp.y, ex: sp.x, ey: sp.y, mode: 'drag' });
-      gesture.current = { type: 'wall-drag' };
+      const continuing = draftRef.current?.mode === 'click';
+      stepWall(p, 'drag');
+      if (!continuing) gesture.current = { type: 'wall-drag' };
       return;
     }
 
     if (tool === 'eraser') {
-      const key = hitTestEdge(edges, p.x, p.y, hitTol);
-      if (key) useFlatStore.getState().eraseWall(key);
-      setHover(null);
+      eraseAt(p);
       return;
     }
 
     if (tool === 'door' || tool === 'window') {
-      const h = computeHover(p);
-      if (h?.type === 'remove-opening') {
-        useFlatStore.getState().removeOpening(h.op.id);
-      } else if (h?.type === 'opening') {
-        if (h.plan.valid) useFlatStore.getState().placeOpening(h.plan.op);
-        else useFlatUi.getState().setNotice(h.plan.reason);
-      } else {
-        useFlatUi.getState().setNotice('Click on a wall to place a ' + tool + '.');
-      }
-      setHover(null);
+      openingAt(p);
       return;
     }
 
     if (tool === 'passage') {
-      const h = computeHover(p);
-      if (h?.type !== 'passage') return;
-      if (!h.plan.valid) {
-        useFlatUi.getState().setNotice(h.plan.reason);
-        return;
-      }
-      const res = useFlatStore.getState().placePassage(h.spec);
-      if (res.error) {
-        useFlatUi.getState().setNotice(res.error);
-        return;
-      }
-      useFlatUi.getState().setTool('select');
-      // The plan slid across to make room: slide the view with it so nothing seems to jump
-      if (res.shift)
-        setView((v) => ({ ...v, tx: v.tx - res.shift.dx * v.k, ty: v.ty - res.shift.dy * v.k }));
-      if (!res.connected)
-        useFlatUi.getState().setNotice('Passage added. Use the Door tool to open it onto a room.');
-      setHover(null);
+      passageAt(p);
       return;
     }
 
     if (tool === 'stairs') {
-      const h = computeHover(p);
-      if (h?.type === 'stair') {
-        useFlatStore.getState().addStair(h.stair.type, h.stair.x, h.stair.y, h.stair.rotationDeg, {
-          widthCm: h.stair.widthCm,
-          toLevelId: h.stair.toLevelId,
-          steps: h.stair.steps,
-        });
-        if (h.warnings.length) useFlatUi.getState().setNotice(h.warnings[0]);
-        useFlatUi.getState().setTool('select');
-      }
+      stairAt(p);
       return;
     }
 
@@ -899,6 +984,82 @@ export function FlatPlanCanvas() {
         setDraft({ ...d, mode: 'click' });
       }
     }
+  };
+
+  // ---------- the keyboard crosshair ----------
+  // Same crosshair as the room plan: the arrow keys move it, Enter uses the chosen tool where
+  // it stands. Without it the plan is a bare SVG surface that only answers to a pointer.
+
+  /** The crosshair stays within the part of the plan that is on screen. */
+  const crosshairBounds = () => {
+    const v = viewRef.current;
+    const { w, h } = sizeRef.current;
+    return {
+      minX: clampCoord(-v.tx / v.k),
+      minY: clampCoord(-v.ty / v.k),
+      maxX: clampCoord((w - v.tx) / v.k),
+      maxY: clampCoord((h - v.ty) / v.k),
+    };
+  };
+
+  const say = (text) => text && usePlanningStore.getState().sayCrosshair(text);
+
+  /** Enter: run the chosen tool where the crosshair stands. */
+  const applyToolAt = (p) => {
+    if (tool === 'wall') return stepWall(p, 'click');
+    if (tool === 'eraser') return eraseAt(p);
+    if (tool === 'door' || tool === 'window') return openingAt(p);
+    if (tool === 'passage') return passageAt(p);
+    if (tool === 'stairs') return stairAt(p);
+    if (tool === 'pan') return 'The Hand tool only moves the plan. Press V for Select.';
+    return selectAt(p);
+  };
+
+  const onKeyDown = (e) => {
+    if (!flat || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target?.tagName)) return;
+    const plan = usePlanningStore.getState();
+
+    if (isCrosshairKey(e.key)) {
+      // A selected staircase already answers to the arrows by moving
+      if (useFlatStore.getState().selected?.type === 'stair') return;
+      e.preventDefault();
+      e.stopPropagation();
+      // The first arrow only brings the crosshair out, in the middle of what is on screen
+      const bounds = crosshairBounds();
+      const at = plan.crosshair
+        ? nudgeCrosshair(plan.crosshair, e.key, e.shiftKey, bounds)
+        : crosshairHome(bounds);
+      plan.setCrosshair(at, `Crosshair at ${fmtPoint(at)}.`);
+      // The wall being drawn follows the crosshair, as it follows the pointer
+      const d = draftRef.current;
+      if (tool === 'wall' && d) {
+        const end = orthoEnd(d.sx, d.sy, at.x, at.y);
+        setDraft({ ...d, ex: end.x, ey: end.y });
+      } else {
+        setHover(computeHover(at));
+      }
+      useFlatUi.getState().setCursor({ x: at.x, y: at.y });
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!plan.crosshair) {
+        const home = crosshairHome(crosshairBounds());
+        plan.setCrosshair(
+          home,
+          `Crosshair at ${fmtPoint(home)}. Press Enter to use the tool here.`
+        );
+        return;
+      }
+      say(applyToolAt(plan.crosshair));
+      return;
+    }
+
+    // Escape and the rest are left to the window handler, which steps the tool back and
+    // takes the crosshair down with it
   };
 
   const onDoubleClick = (e) => {
@@ -1326,9 +1487,10 @@ export function FlatPlanCanvas() {
         onPointerCancel={onPointerUp}
         onPointerLeave={onPointerLeave}
         onDoubleClick={onDoubleClick}
+        onKeyDown={onKeyDown}
         onContextMenu={(e) => e.preventDefault()}
         role="application"
-        aria-label={`Floor plan of ${flat.name}, ${flat.levels[idx]?.name}. Choose a tool on the left, then click the plan. Delete removes the selection.`}
+        aria-label={`Floor plan of ${flat.name}, ${flat.levels[idx]?.name}. Choose a tool on the left, then click the plan, or move a crosshair with the arrow keys and press Enter to use the tool where it stands. Delete removes the selection.`}
       >
         <StairDefs />
         <g>{gridLines.length < 400 ? gridLines : null}</g>
@@ -1373,6 +1535,15 @@ export function FlatPlanCanvas() {
               </text>
             );
           })}
+          {/* Drawn in screen units so its lines stay crisp whatever the zoom */}
+          {crosshair && (
+            <KeyboardCrosshair
+              x={toScreen(crosshair.x, crosshair.y)[0]}
+              y={toScreen(crosshair.x, crosshair.y)[1]}
+              readout={`${crosshair.x},${crosshair.y}`}
+              label={fmtPoint(crosshair)}
+            />
+          )}
           {labels.map((l) => {
             const [sx, sy] = toScreen(l.x, l.y);
             const w = l.text.length * 7 + 16;

@@ -20,14 +20,16 @@ export function Modal({ title, subtitle, onClose, children, footer, size = 'md' 
   useEffect(() => {
     const previouslyFocused = document.activeElement;
     const dialog = dialogRef.current;
-    const firstField = dialog?.querySelector(
-      'input:not([type="hidden"]):not([type="file"]):not([disabled]), textarea:not([disabled])'
+    // The first control in reading order, not the first text box: picking the first input
+    // dropped people two thirds of the way down a dialog, past everything above it. The
+    // close button is skipped, since it is a way out rather than a way in.
+    const first = Array.from(dialog?.querySelectorAll(FOCUSABLE) || []).find(
+      (n) =>
+        n.offsetParent !== null &&
+        !n.hasAttribute('data-modal-close') &&
+        n.getAttribute('type') !== 'file'
     );
-    (
-      firstField ||
-      dialog?.querySelector('button:not([data-modal-close]):not([disabled])') ||
-      dialog
-    )?.focus();
+    (first || dialog)?.focus();
 
     const onKeyDown = (e) => {
       if (e.key === 'Escape') {

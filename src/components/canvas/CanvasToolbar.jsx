@@ -43,6 +43,7 @@ export function CanvasToolbar({
   const setTraceImage = useRoomStore((s) => s.setTraceImage);
   const updateTraceImage = useRoomStore((s) => s.updateTraceImage);
   const panel = usePlanningStore((s) => s.panel);
+  const crosshairStatus = usePlanningStore((s) => s.crosshairStatus);
   const togglePanel = usePlanningStore((s) => s.togglePanel);
   const openModal = useRoomStore((s) => s.openModal);
   const undo = useRoomStore((s) => s.undo);
@@ -64,6 +65,57 @@ export function CanvasToolbar({
   const fileRef = useRef(null);
   const [error, setError] = useState(null);
 
+  // role="toolbar" promises one stop in the tab order with the arrow keys moving between
+  // the tools, so that is what it does. Eight separate tab stops is also most of what makes
+  // the plan so far from the furniture list.
+  const toolbarRef = useRef(null);
+  const activeTool = useRef(0);
+  const toolButtons = () =>
+    Array.from(toolbarRef.current?.querySelectorAll('button:not([disabled])') || []);
+
+  const markTabStop = (list, index) => {
+    activeTool.current = index;
+    list.forEach((b, i) => {
+      b.tabIndex = i === index ? 0 : -1;
+    });
+  };
+
+  // Runs after every render, so a tool that comes or goes cannot leave the strip without
+  // its one tab stop
+  useEffect(() => {
+    const list = toolButtons();
+    if (list.length === 0) return;
+    markTabStop(list, Math.min(activeTool.current, list.length - 1));
+  });
+
+  const focusToolAt = (index) => {
+    const list = toolButtons();
+    if (list.length === 0) return;
+    const next = ((index % list.length) + list.length) % list.length;
+    markTabStop(list, next);
+    list[next].focus();
+  };
+
+  const onToolbarKeyDown = (e) => {
+    const list = toolButtons();
+    const here = Math.max(0, list.indexOf(document.activeElement));
+    // The arrows must follow the way the strip is actually lying, which includes a landscape
+    // phone: wider than 640px, but short enough that the strip is a row
+    const step = {
+      [compact ? 'ArrowLeft' : 'ArrowUp']: -1,
+      [compact ? 'ArrowRight' : 'ArrowDown']: 1,
+    };
+    let target = null;
+    if (Object.hasOwn(step, e.key)) target = here + step[e.key];
+    else if (e.key === 'Home') target = 0;
+    else if (e.key === 'End') target = list.length - 1;
+    if (target === null) return;
+    e.preventDefault();
+    // The plan nudges the selection with the arrows, and this strip sits inside the plan
+    e.stopPropagation();
+    focusToolAt(target);
+  };
+
   const handleTraceFile = async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -84,10 +136,12 @@ export function CanvasToolbar({
   return (
     <div className={styles.chrome}>
       <div
+        ref={toolbarRef}
         className={styles.toolbar}
         role="toolbar"
         aria-label="Plan tools"
         aria-orientation={compact ? 'horizontal' : 'vertical'}
+        onKeyDown={onToolbarKeyDown}
         {...stop}
       >
         {/* No room for it in the top bar at this width, and it belongs with the plan tools */}
@@ -215,8 +269,12 @@ export function CanvasToolbar({
           </div>
         )}
         {measureActive && (
-          <div className={styles.card} role="status" {...stop}>
-            <span>Click two points to measure. Hold Shift to lock the angle.</span>
+          <div className={styles.card} role="status" data-testid="measure-card" {...stop}>
+            {/* The same line carries the keyboard crosshair's position and what it measured */}
+            <span>
+              {crosshairStatus ||
+                'Click two points to measure, or move the crosshair with the arrow keys and press Enter for each point. Hold Shift to lock the angle.'}
+            </span>
             {measurementCount > 0 && (
               <Button size="small" variant="ghost" onClick={onClearMeasurements}>
                 Clear {measurementCount}
