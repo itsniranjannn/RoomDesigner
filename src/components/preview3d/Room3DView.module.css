@@ -77,6 +77,27 @@
   pointer-events: auto;
 }
 
+/*
+ * Two segmented pills followed by four loose white pills read as one undifferentiated row: a
+ * secondary button and a selected segment are both a white pill. The toggles and the actions are
+ * now two groups with a rule between them.
+ */
+.toggles,
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.divider {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 1px;
+  min-height: var(--control-h);
+  background: var(--color-taupe-light);
+}
+
 .controlBtn {
   flex-shrink: 0;
 }
