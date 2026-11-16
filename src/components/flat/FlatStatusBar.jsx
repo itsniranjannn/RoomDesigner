@@ -35,11 +35,12 @@ export function FlatStatusBar({ viewMode }) {
           ? 'Drag to orbit, right-drag to pan, scroll to zoom. Floors above the one you are editing are hidden.'
           : HINTS[tool]}
       </span>
+      {/* This floor only; the Overview panel counts the whole flat and says so */}
       <span className={styles.statusFacts}>
-        <span>{area.toFixed(1)} m² on this floor</span>
         <span>
-          {spaces.length} {spaces.length === 1 ? 'room' : 'rooms'}
+          {spaces.length} {spaces.length === 1 ? 'room' : 'rooms'} on this floor
         </span>
+        <span>{area.toFixed(1)} m²</span>
         {viewMode === '2d' && <span>{zoom}% zoom</span>}
       </span>
     </footer>

@@ -12,6 +12,9 @@ async function newFlat(page, startFrom) {
 const stat = (page, label) =>
   page.getByRole('complementary', { name: 'Details' }).getByText(label, { exact: true });
 
+/** The value shown next to a label in the Details panel's fact list. */
+const statValue = (page, label) => stat(page, label).locator('xpath=following-sibling::*[1]');
+
 test.describe('flat designer', () => {
   test('draws walls, closes a room, adds a door, opens 3D and walks', async ({ page }) => {
     await openApp(page);
@@ -48,9 +51,8 @@ test.describe('flat designer', () => {
     await page.mouse.click(cx, cy - 150);
     await page.getByRole('button', { name: 'Select (V)' }).click();
     await page.keyboard.press('Escape');
-    await expect(
-      page.getByRole('complementary', { name: 'Details' }).getByText('1 / 0', { exact: true })
-    ).toBeVisible(); // one door, no windows
+    await expect(statValue(page, 'Doors on this floor')).toHaveText('1');
+    await expect(statValue(page, 'Windows on this floor')).toHaveText('0');
 
     // 3D, then a walkthrough
     await page.getByRole('button', { name: '3D' }).click();
@@ -64,7 +66,7 @@ test.describe('flat designer', () => {
   test('a ready-made flat can be walked through a door', async ({ page }) => {
     await openApp(page);
     await newFlat(page, { label: '2BHK' });
-    await expect(stat(page, 'Rooms')).toBeVisible();
+    await expect(stat(page, 'Rooms in the flat')).toBeVisible();
 
     await page.getByRole('button', { name: '3D' }).click();
     await expect(page.getByLabel('3D view of the flat')).toBeVisible();

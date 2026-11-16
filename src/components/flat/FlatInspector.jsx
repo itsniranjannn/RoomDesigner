@@ -453,11 +453,13 @@ function SummaryInspector() {
       <Section title="Overview" collapsible={false}>
         <Facts
           rows={[
-            ['Total area', `${summary.areaM2.toFixed(1)} m²`],
-            ['Rooms', summary.rooms],
+            // The scope is in every label: the status bar below counts this floor only
+            ['Rooms in the flat', summary.rooms],
+            ['Area of the flat', `${summary.areaM2.toFixed(1)} m²`],
             ['Floors', summary.levels],
             ['Staircases', summary.stairs],
-            ['Doors / windows here', `${doors} / ${windows}`],
+            ['Doors on this floor', doors],
+            ['Windows on this floor', windows],
           ]}
         />
       </Section>

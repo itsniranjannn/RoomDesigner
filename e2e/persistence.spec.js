@@ -26,7 +26,7 @@ test.describe('persistence', () => {
 
     await page.getByRole('button', { name: 'Back to all rooms' }).click();
     await page.reload();
-    await page.getByRole('button', { name: 'Open saved sheets panel' }).first().click();
+    await page.getByRole('button', { name: 'Open My designs' }).first().click();
     const panel = page.getByRole('dialog', { name: 'My designs' });
     await expect(panel.getByText('Guest Room').first()).toBeVisible();
     await panel.getByText('Guest Room').first().click();

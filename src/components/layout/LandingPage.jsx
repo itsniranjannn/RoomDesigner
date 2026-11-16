@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { useRoomStore } from '../../store/roomStore.js';
+import { useFlatStore } from '../../store/flatStore.js';
 import { Button } from '../common/Button.jsx';
 import { Info, Layers3, Plus, Building2 } from 'lucide-react';
 import { BrandMark } from '../common/BrandMark.jsx';
@@ -8,12 +9,12 @@ import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './LandingPage.module.css';
 
 /**
- * Architectural Full-Bleed Drafting Board Hero
- * Draws perimeter walls, door swings, Nepali Galaicha rug, and architectural
- * dimension notations directly onto the canvas with stroke-draw-in animation.
+ * The drawing on the right of the landing page: a room plan drawn the way the app draws one,
+ * with walls, a door swing, a window, a few pieces of furniture, a Nepali galaicha rug and
+ * the room's size in metres. Decoration only, so it is hidden from screen readers.
  */
 function DraftingBoardSurface() {
-  // Dimension coordinate space in architectural centimeters (580 × 440)
+  // Dimension coordinate space in centimetres (680 × 540)
   const roomW = 520;
   const roomH = 400;
   const paddingX = 80;
@@ -56,7 +57,7 @@ function DraftingBoardSurface() {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          {/* Subtle millimeter drafting grid */}
+          {/* Subtle drafting grid, one square every 20 cm */}
           <pattern id="draftingGrid" width="20" height="20" patternUnits="userSpaceOnUse">
             <path
               d="M 20 0 L 0 0 0 20"
@@ -345,7 +346,7 @@ function DraftingBoardSurface() {
           fontFamily="var(--font-mono)"
           textAnchor="middle"
         >
-          5200 mm
+          5.20 m
         </text>
 
         {/* Dimension Notation (Vertical right) */}
@@ -382,7 +383,7 @@ function DraftingBoardSurface() {
           textAnchor="middle"
           transform={`rotate(90 ${viewW - 27} ${paddingY + roomH / 2})`}
         >
-          4000 mm
+          4.00 m
         </text>
       </svg>
     </div>
@@ -391,8 +392,11 @@ function DraftingBoardSurface() {
 
 export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigateAbout }) {
   const allRooms = useRoomStore((state) => state.allRooms);
+  const flats = useFlatStore((state) => state.flats);
   const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
+  // The badge counts what the panel lists: saved rooms and saved flats
+  const designCount = allRooms.length + flats.length;
 
   return (
     <div className={`legacy-theme ${styles.landingContainer}`}>
@@ -402,7 +406,9 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
           <BrandMark size={28} className={styles.brandMarkIcon} />
           <div className={styles.mastheadLockup}>
             <span className={styles.brandTitle}>ROOM DESIGNER STUDIO</span>
-            <span className={styles.brandSubTitle}>CAD // 2D // 3D SPATIAL WORKSHOP</span>
+            <span className={styles.brandSubTitle}>
+              Plan a room or a whole flat, in your browser
+            </span>
           </div>
         </div>
 
@@ -413,28 +419,26 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
                 type="button"
                 className={styles.headerNavBtn}
                 onClick={onNavigateAbout}
-                title="View About Room Designer Studio"
+                title="What Room Designer Studio does"
               >
                 <Info size={13} strokeWidth={1.7} />
-                ABOUT
+                About
               </button>
               <span className={styles.headerMetaDivider} aria-hidden="true" />
             </>
           )}
 
-          {/* Interactive clickable sheets count button */}
+          {/* Opens the same panel as the link below the hero, and counts the same things */}
           <button
             type="button"
             className={`${styles.headerNavBtn} ${styles.headerSheetsBtn}`}
             onClick={() => setIsSheetsPanelOpen(true)}
-            title="Open saved sheets panel"
-            aria-label="Open saved sheets panel"
+            title="Open My designs"
+            aria-label="Open My designs"
           >
             <Layers3 size={13} strokeWidth={1.7} />
-            <span className={styles.headerSheetsLabel}>SHEETS</span>
-            <span className={styles.headerSheetsCount}>
-              {String(allRooms.length).padStart(2, '0')}
-            </span>
+            <span className={styles.headerSheetsLabel}>My designs</span>
+            <span className={styles.headerSheetsCount}>{String(designCount).padStart(2, '0')}</span>
           </button>
         </nav>
       </header>
@@ -444,7 +448,7 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
         {/* Left: Copy Column */}
         <div className={styles.heroCopyColumn}>
           <div className={styles.heroCopyContent}>
-            <div className={styles.heroClassificationTag}>ARCHITECTURAL FOLIO // ED. 2026</div>
+            <div className={styles.heroClassificationTag}>Nothing is uploaded</div>
 
             <motion.h1
               className={styles.heroPrimaryTitle}
@@ -452,18 +456,19 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.75, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
             >
-              Draft your space
+              Plan your room
               <br />
-              with precision.
+              before you move a thing.
             </motion.h1>
 
             <p className={styles.heroSecondaryTitle}>
-              From dimensional sketch to 3D architectural form.
+              Draw the room, drop furniture in, and walk through it in 3D.
             </p>
 
             <p className={styles.heroDescription}>
-              Intuitive 2D drafting and real-time 3D spatial modeling built on authentic
-              architectural materials and Nepalese craft traditions.
+              Start with one room or a whole flat. Make your own furniture from a photo, check that
+              everything fits and that the doors still open, then share a link. Your designs stay on
+              this device.
             </p>
 
             <motion.div
@@ -492,15 +497,15 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
             </motion.div>
           </div>
 
-          {/* Clickable trigger to open the slide-out sheets panel directly */}
+          {/* Opens the same panel as the button in the header */}
           <button
             type="button"
             className={styles.exploreSheetsBtn}
             onClick={() => setIsSheetsPanelOpen(true)}
-            title="Open saved sheets panel"
-            aria-label="Open saved sheets panel"
+            title="Open My designs"
+            aria-label="Open My designs"
           >
-            <span className={styles.scrollIndicatorText}>EXPLORE SPACES</span>
+            <span className={styles.scrollIndicatorText}>My designs</span>
           </button>
         </div>
 
