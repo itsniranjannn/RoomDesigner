@@ -814,7 +814,9 @@ export const useRoomStore = create((set, get) => ({
   resizeRoom: (widthCm, depthCm) => {
     const { room } = get();
     if (!room) return null;
+    // Nothing asked for keeps the side it is: an empty box must not be read as a 0 cm wall
     const asked = (raw, fallback) => {
+      if (raw === null || raw === undefined || raw === '') return fallback;
       const n = Number(raw);
       return Number.isFinite(n) ? clamp(Math.round(n), ROOM_MIN_CM, ROOM_MAX_CM) : fallback;
     };
@@ -858,11 +860,15 @@ export const useRoomStore = create((set, get) => ({
       if (Math.abs(spot.x - item.x) < 0.05 && Math.abs(spot.y - item.y) < 0.05) return item;
       return { ...item, x: Math.round(spot.x), y: Math.round(spot.y) };
     });
-    // Pictures, mirrors and curtains belong against a wall, and the walls have just moved
-    const placedFurniture = snapWallPieces(resized, broughtIn);
-    const movedPieces = placedFurniture.filter(
-      (item, i) => Math.abs(item.x - was[i].x) > 0.05 || Math.abs(item.y - was[i].y) > 0.05
-    ).length;
+    // Pictures, mirrors and curtains belong against a wall, and the walls have just moved; a piece
+    // standing on another (a laptop on a desk) travels with it and is then settled onto whatever it
+    // now stands over, exactly as it is when that desk is dragged
+    const placedFurniture = reconcileStacking(was, snapWallPieces(resized, broughtIn));
+    const before = new Map(was.map((item) => [item.id, item]));
+    const movedPieces = placedFurniture.filter((item) => {
+      const old = before.get(item.id);
+      return old && (Math.abs(item.x - old.x) > 0.05 || Math.abs(item.y - old.y) > 0.05);
+    }).length;
 
     // Sockets, taps and drains sit on a wall or on the floor, and the walls have just moved: they
     // are put back onto them rather than left floating outside the room

@@ -92,6 +92,57 @@ describe('roomStore', () => {
     expect(item.x + 150).toBeLessThanOrEqual(600 + 0.5);
   });
 
+  describe('resizing the room', () => {
+    // The room from freshRoom is 600 x 500, with a door on the bottom wall and a window on the top
+
+    it('holds to the size a room can be created at', () => {
+      expect(state().resizeRoom(50, 9000)).toMatchObject({ widthCm: 200, depthCm: 1500 });
+      expect(state().resizeRoom('not a number', null)).toBe(null);
+      expect(state().room).toMatchObject({ widthCm: 200, depthCm: 1500 });
+      // Nothing to do is not a step: it must not fill the undo stack with no-ops
+      expect(state().resizeRoom(200, 1500)).toBe(null);
+    });
+
+    it('brings furniture and openings inside the new walls and says what moved', () => {
+      state().addFurniture('nightstand', 560, 460);
+      const item = () => state().room.placedFurniture[0];
+      expect(state().room.windows[0].offsetCm).toBe(240);
+
+      const result = state().resizeRoom(300, 300);
+      expect(result).toMatchObject({ widthCm: 300, depthCm: 300, movedPieces: 1 });
+      // The window was 240 cm along a 600 cm wall; on a 300 cm wall it goes as far as it fits
+      expect(result.movedOpenings).toBe(1);
+      expect(state().room.windows[0].offsetCm).toBe(165);
+      expect(state().room.doors[0].offsetCm).toBe(50); // 50 cm along still fits: left alone
+      expect(item().x).toBeLessThanOrEqual(300);
+      expect(item().y).toBeLessThanOrEqual(300);
+    });
+
+    it('is one history step, so Undo gives the old room and its openings back', () => {
+      state().resizeRoom(300, 300);
+      expect(state().canUndo).toBe(true);
+      state().undo();
+      expect(state().room).toMatchObject({ widthCm: 600, depthCm: 500 });
+      expect(state().room.windows[0].offsetCm).toBe(240);
+      state().redo();
+      expect(state().room).toMatchObject({ widthCm: 300, depthCm: 300 });
+      expect(state().room.windows[0].offsetCm).toBe(165);
+    });
+
+    it('takes a piece standing on another along with it', () => {
+      state().addFurniture('media-console', 400, 250); // 180 x 45, offers a top
+      state().addFurniture('laptop', 400, 250); // 34 x 24, rests on it
+      const find = (id) => state().room.placedFurniture.find((i) => i.furnitureTypeId === id);
+      expect(find('laptop').elevationCm).toBeGreaterThan(0);
+
+      // 480 cm is narrow enough to move the console but not the laptop sitting on it
+      state().resizeRoom(480, 500);
+      expect(find('media-console').x).toBeLessThan(400);
+      expect(find('laptop').x).toBeCloseTo(find('media-console').x, 1);
+      expect(find('laptop').elevationCm).toBeGreaterThan(0);
+    });
+  });
+
   it('stores and clears a trace image', () => {
     state().setTraceImage({ dataUrl: 'data:image/png;base64,AAAA', aspect: 1.5 });
     expect(state().room.traceImage.opacity).toBeGreaterThan(0);
