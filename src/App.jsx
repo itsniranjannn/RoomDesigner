@@ -8,11 +8,14 @@ export default function App() {
   const initStore = useRoomStore((state) => state.initStore);
 
   const loadFlats = useFlatStore((state) => state.loadFlats);
+  const restoreOpenFlat = useFlatStore((state) => state.restoreOpenFlat);
 
   useEffect(() => {
     initStore();
     loadFlats();
-  }, [initStore, loadFlats]);
+    // A flat being designed reopens on the next visit, the way the open room does
+    restoreOpenFlat();
+  }, [initStore, loadFlats, restoreOpenFlat]);
 
   return <AppShell />;
 }

@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const flats = new Map();
 const rooms = new Map();
 let failWrites = false;
+let activeFlatId = null;
 
 const write = (store, record) => {
   if (failWrites) throw new DOMException('Quota exceeded', 'QuotaExceededError');
@@ -33,6 +34,13 @@ vi.mock('../data/persistence.js', () => ({
   setActiveRoomId: () => {},
   clearActiveRoomId: () => {},
   saveRoomIfUnchanged: async (room) => ({ room: write(rooms, room) }),
+  setActiveFlatId: (id) => {
+    activeFlatId = id;
+  },
+  clearActiveFlatId: () => {
+    activeFlatId = null;
+  },
+  getActiveFlatId: () => activeFlatId,
 }));
 
 const { useFlatStore } = await import('./flatStore.js');
@@ -42,6 +50,7 @@ const settle = () => new Promise((r) => setTimeout(r, 400));
 describe('the flat designer says whether the plan was really saved', () => {
   beforeEach(async () => {
     failWrites = false;
+    activeFlatId = null;
     flats.clear();
     rooms.clear();
     await st().createNewFlat('Save status flat');
@@ -73,5 +82,44 @@ describe('the flat designer says whether the plan was really saved', () => {
     st().addWall(0, 150, 200, 150);
     await settle();
     expect(st().saveStatus).toBe('saved');
+  });
+});
+
+describe('the flat that was open comes back on the next visit', () => {
+  beforeEach(async () => {
+    failWrites = false;
+    activeFlatId = null;
+    flats.clear();
+    rooms.clear();
+  });
+
+  it('reopens the plan that was being drawn, and forgets it once it is closed', async () => {
+    await st().createNewFlat('Half-drawn flat');
+    st().applyPreset('shell', { widthCm: 500, depthCm: 400 });
+    await settle();
+    const id = st().flat.id;
+    expect(activeFlatId).toBe(id);
+
+    // As a reload leaves it: nothing in memory, only what was stored
+    useFlatStore.setState({ flat: null, rooms: {}, mode: 'none', levelId: null });
+    await st().restoreOpenFlat();
+    expect(st().mode).toBe('flat');
+    expect(st().flat.id).toBe(id);
+    expect(st().flat.spaces).toHaveLength(1);
+    expect(st().levelId).toBe(st().flat.levels[0].id);
+
+    // Leaving for the studio is remembered too: the next visit starts there
+    await st().closeFlat();
+    expect(activeFlatId).toBeNull();
+    await st().restoreOpenFlat();
+    expect(st().mode).toBe('none');
+    expect(st().flat).toBeNull();
+  });
+
+  it('forgets a flat that is no longer stored', async () => {
+    activeFlatId = 'flat-that-went-away';
+    await st().restoreOpenFlat();
+    expect(st().flat).toBeNull();
+    expect(activeFlatId).toBeNull();
   });
 });

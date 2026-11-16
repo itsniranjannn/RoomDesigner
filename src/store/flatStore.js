@@ -14,6 +14,9 @@ import {
   saveRoomToDB,
   listRoomsFromDB,
   deleteRoomFromDB,
+  setActiveFlatId,
+  clearActiveFlatId,
+  getActiveFlatId,
 } from '../data/persistence.js';
 import {
   createStair,
@@ -182,6 +185,8 @@ export const useFlatStore = create((set, get) => ({
   },
 
   _begin: async (flat, rooms) => {
+    // Remembered the way the open room is, so a reload comes back to the plan being drawn
+    setActiveFlatId(flat.id);
     set({
       ...emptySession,
       flat,
@@ -249,7 +254,10 @@ export const useFlatStore = create((set, get) => ({
 
   openFlat: async (id) => {
     const stored = await loadFlatFromDB(id);
-    if (!stored) return;
+    if (!stored) {
+      clearActiveFlatId();
+      return;
+    }
     const loaded = await loadFlatRooms(id);
     const { flat, rooms, migrated, removedRoomIds } = migrateFlat(stored, loaded);
     if (migrated) {
@@ -262,18 +270,27 @@ export const useFlatStore = create((set, get) => ({
   },
 
   closeFlat: async () => {
+    clearActiveFlatId();
     await flushFlat();
     set({ ...emptySession });
     set({ flats: await listFlats() });
   },
 
   deleteFlat: async (id) => {
+    if (getActiveFlatId() === id) clearActiveFlatId();
     await flushFlat();
     const rooms = await loadFlatRooms(id);
     for (const roomId of Object.keys(rooms)) await deleteRoomFromDB(roomId);
     await deleteFlatFromDB(id);
     if (get().flat?.id === id) set({ ...emptySession });
     set({ flats: await listFlats() });
+  },
+
+  /** Reopens the flat that was being designed when the app was last closed. */
+  restoreOpenFlat: async () => {
+    const id = getActiveFlatId();
+    if (!id || get().flat) return;
+    await get().openFlat(id);
   },
 
   renameFlat: (name) => {

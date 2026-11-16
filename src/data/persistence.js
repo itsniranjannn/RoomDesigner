@@ -13,6 +13,7 @@ const STORE_ROOMS = 'rooms';
 const STORE_CUSTOM = 'customFurniture';
 const STORE_FLATS = 'flats';
 const ACTIVE_ROOM_KEY = 'active_room_id';
+const ACTIVE_FLAT_KEY = 'active_flat_id';
 
 export async function getDB() {
   if (typeof indexedDB === 'undefined') {
@@ -48,6 +49,31 @@ export function clearActiveRoomId() {
     localStorage.removeItem(ACTIVE_ROOM_KEY);
   } catch {
     /* storage unavailable */
+  }
+}
+
+/** Remembers which flat to reopen on the next visit, the way the open room is remembered. */
+export function setActiveFlatId(id) {
+  try {
+    localStorage.setItem(ACTIVE_FLAT_KEY, id);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function clearActiveFlatId() {
+  try {
+    localStorage.removeItem(ACTIVE_FLAT_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function getActiveFlatId() {
+  try {
+    return localStorage.getItem(ACTIVE_FLAT_KEY);
+  } catch {
+    return null;
   }
 }
 

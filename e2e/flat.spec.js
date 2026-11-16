@@ -83,6 +83,30 @@ test.describe('flat designer', () => {
     await expect(page.getByRole('application')).toBeVisible();
   });
 
+  // Reloading while designing a flat used to drop the user back on the landing page, while
+  // reloading inside a room correctly reopened it.
+  test('a reload comes back to the flat being designed', async ({ page }) => {
+    await openApp(page);
+    await newFlat(page, { label: '2BHK' });
+    await expect(stat(page, 'Rooms')).toBeVisible();
+    const title = page.getByRole('textbox', { name: 'Flat name' });
+    await title.fill('Reload flat');
+    await title.press('Enter');
+    await expect(page.getByRole('status', { name: /all changes saved/i })).toBeVisible();
+
+    await page.reload();
+    await expect(page.getByRole('application')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Flat name' })).toHaveValue('Reload flat');
+    await expect(stat(page, 'Rooms')).toBeVisible();
+
+    // Going back to the studio is remembered too: a reload then starts there
+    await page.getByRole('button', { name: 'Back to your studio' }).click();
+    await expect(page.getByRole('button', { name: 'Start a new room' })).toBeVisible();
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Start a new room' })).toBeVisible();
+    await expect(page.getByRole('application')).toBeHidden();
+  });
+
   // A flat whose writes all fail used to keep saying "Saved" over work that was already gone
   test('says the flat is not saved when the device will not store it', async ({ page }) => {
     await openApp(page);
