@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { threeQuarter } from './oblique.js';
-import { channelTufting, steppedArms, findPulls, wardrobeDetails, deskDetails } from './details.js';
+import {
+  channelTufting,
+  steppedArms,
+  findPulls,
+  wardrobeDetails,
+  deskDetails,
+  bedStorage,
+} from './details.js';
 import { sanitizeDesign, slabOver, classifyFromFront } from './design.js';
 import { assignSheetViews } from './sheet.js';
 import { splitFlanks, boxyOutline } from './foreground.js';
@@ -160,6 +167,32 @@ describe('details read from the front', () => {
     expect(d).toMatchObject({ ped: 'right', modesty: 1 });
     expect(d.drawers).toBeGreaterThanOrEqual(2);
     expect(classifyFromFront(desk, 1.8)).toBe('desk');
+  });
+});
+
+describe('drawers in a bed base', () => {
+  // a bed seen from the front: mattress and duvet above, a solid base below with two drawer fronts in it,
+  // each with a pull, side by side at one height
+  const storageBed = (withDrawers) =>
+    view(192, (u, v) => {
+      if (u < 0.04 || u > 0.96) return null;
+      if (v < 0.55) return [225, 220, 210]; // bedding
+      if (withDrawers) {
+        if (Math.abs(v - 0.66) < 0.006) return [60, 45, 35]; // the seam above the drawer fronts
+        for (const x of [0.3, 0.7]) {
+          const r = Math.hypot((u - x) * 1.0, v - 0.82);
+          if (r < 0.022 && r > 0.012) return [225, 225, 230]; // a ring pull on each front
+        }
+      }
+      return [120, 90, 70]; // the base
+    });
+
+  it('reads drawers in the base from the seam and the pair of pulls', () => {
+    expect(bedStorage({ front: storageBed(true) })).toEqual({ store: 1 });
+  });
+
+  it('leaves a plain base alone', () => {
+    expect(bedStorage({ front: storageBed(false) })).toEqual({});
   });
 });
 
