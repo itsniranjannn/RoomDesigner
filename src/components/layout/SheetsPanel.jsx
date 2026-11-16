@@ -51,11 +51,12 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
         <header className={styles.header}>
           <div>
             <h2 className={styles.title}>My designs</h2>
-            <p className={styles.subtitle}>
-              {total === 0
-                ? 'Nothing saved yet'
-                : `${plural(allRooms.length, 'room')}, ${plural(flats.length, 'flat')}`}
-            </p>
+            {/* With nothing saved the empty block in the list says this already */}
+            {total > 0 && (
+              <p className={styles.subtitle}>
+                {`${plural(allRooms.length, 'room')}, ${plural(flats.length, 'flat')}`}
+              </p>
+            )}
           </div>
           <IconButton label="Close" onClick={onClose}>
             <X size={18} />
@@ -119,6 +120,14 @@ export function SheetsPanel({ isOpen, onClose, onOpenNewRoomModal, onOpenNewFlat
 
           {total === 0 && (
             <div className={styles.empty}>
+              <span className={styles.emptyIcons} aria-hidden="true">
+                <span className={styles.icon}>
+                  <DoorClosed size={18} />
+                </span>
+                <span className={styles.icon}>
+                  <Building2 size={18} />
+                </span>
+              </span>
               <p className={styles.emptyTitle}>No designs yet</p>
               <p className={styles.emptyText}>
                 Start a room or a flat and it will be saved here automatically.
