@@ -132,6 +132,28 @@ test.describe('flat designer', () => {
     await expect(link).toBeDisabled();
   });
 
+  // Every tool's hint ends with how to use the tool from the keyboard, and the one-line bar
+  // cut that half off behind an ellipsis, on a full-width window as much as a narrow one.
+  test('the status bar shows the whole hint, keyboard half and all', async ({ page }) => {
+    await openApp(page);
+    await newFlat(page, { label: 'Two-bedroom flat' });
+    await expect(stat(page, 'Rooms in the flat')).toBeVisible();
+
+    const hint = page.getByTestId('flat-status');
+    await expect(hint).toContainText('move the crosshair with the arrow keys');
+    const clipped = await hint.evaluate(
+      (el) => el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1
+    );
+    expect(clipped, 'the hint is cut off').toBe(false);
+
+    // The bar does not jump between a long hint and the short live readout beside it
+    const long = await page.getByLabel('Status').boundingBox();
+    await page.getByRole('button', { name: 'Pan (H)' }).click();
+    await expect(hint).toContainText('Drag the plan to move it');
+    const short = await page.getByLabel('Status').boundingBox();
+    expect(short.height).toBe(long.height);
+  });
+
   // Reloading while designing a flat used to drop the user back on the landing page, while
   // reloading inside a room correctly reopened it.
   test('a reload comes back to the flat being designed', async ({ page }) => {
