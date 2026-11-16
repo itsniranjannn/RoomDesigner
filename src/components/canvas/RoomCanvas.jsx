@@ -13,6 +13,7 @@ import { PlanningLayer } from './PlanningLayer.jsx';
 import { PlanningPanels } from './PlanningPanels.jsx';
 import { usePlanChecks } from './usePlanChecks.js';
 import { usePlanningStore } from '../../store/planningStore.js';
+import { EmptyState } from '../common/EmptyState.jsx';
 import { MousePointerClick } from 'lucide-react';
 import { drawOrder } from '../../engine/stacking.js';
 import styles from './RoomCanvas.module.css';
@@ -415,13 +416,12 @@ export function RoomCanvas({ catalogOpen, onToggleCatalog }) {
       <PlanningPanels checks={checks} />
 
       {isEmpty && !measureActive && (
-        <div className={styles.empty}>
-          <MousePointerClick size={22} aria-hidden="true" />
-          <p className={styles.emptyTitle}>Add your first piece</p>
-          <p className={styles.emptyText}>
-            Open the furniture list, then click a piece to add it or drag it into the room.
-          </p>
-        </div>
+        <EmptyState
+          icon={<MousePointerClick size={22} aria-hidden="true" />}
+          title="Add your first piece"
+        >
+          Open the furniture list, then click a piece to add it or drag it into the room.
+        </EmptyState>
       )}
 
       <p

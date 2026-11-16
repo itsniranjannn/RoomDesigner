@@ -125,6 +125,16 @@ export function Tour({ kind, launcher = false }) {
     if (state.open) markTourSeen(kind);
   }, [state.open, kind]);
 
+  // While the tour is up its first card lands on the canvas, over the "add your first piece"
+  // card. One card at a time: the canvas one steps aside until the tour is done.
+  useEffect(() => {
+    if (!state.open) return undefined;
+    document.body.dataset.tourRunning = '1';
+    return () => {
+      delete document.body.dataset.tourRunning;
+    };
+  }, [state.open]);
+
   // Keyboard: Esc skips, arrows move. Arrows leave the canvas alone unless focus is on the card.
   useEffect(() => {
     if (!state.open) return undefined;

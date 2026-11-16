@@ -1,0 +1,40 @@
+/* First impression: a card over a canvas that has nothing on it yet */
+.card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: var(--z-chrome);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  width: min(300px, calc(100% - 32px));
+  padding: var(--space-5) var(--space-6);
+  text-align: center;
+  color: var(--color-maroon);
+  background: var(--color-paper);
+  border: var(--border-soft);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lift);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+/* The tour's own first card lands here; two cards on one spot is one too many */
+:global(body[data-tour-running]) .card {
+  display: none;
+}
+
+.title {
+  margin: var(--space-2) 0 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-lg);
+  font-weight: 500;
+  color: var(--color-ink);
+}
+
+.text {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-ink-muted);
+}
