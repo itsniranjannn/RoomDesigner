@@ -27,6 +27,10 @@ const Room3DView = React.lazy(() =>
 // Below this width the side panels become drawers over the canvas
 const DOCK_QUERY = '(min-width: 1100px)';
 
+// A share link that will not decode: say what to do about it, not just that it failed
+const BROKEN_LINK =
+  'This link is damaged or incomplete. Ask whoever sent it for a fresh one: links break when they are cut short in a chat or an email.';
+
 export function AppShell() {
   const room = useRoomStore((state) => state.room);
   const viewMode = useRoomStore((state) => state.viewMode);
@@ -102,7 +106,7 @@ export function AppShell() {
       if (!hash.startsWith('#share=')) return;
       decodeRoomFromHash(hash)
         .then((shared) => alive && setIncoming({ room: shared }))
-        .catch(() => alive && setIncoming({ error: 'This share link is damaged or incomplete.' }));
+        .catch(() => alive && setIncoming({ error: BROKEN_LINK, offerNewRoom: true }));
     };
     openShared();
     window.addEventListener('hashchange', openShared);
@@ -115,6 +119,14 @@ export function AppShell() {
   const closeIncoming = () => {
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
     setIncoming(null);
+  };
+
+  // Offered when a link cannot be opened, so the dialog is not a dead end. A flat is closed
+  // first, because the New room dialog belongs to the room designer.
+  const startFreshRoom = async () => {
+    closeIncoming();
+    if (useFlatStore.getState().mode !== 'none') await useFlatStore.getState().closeFlat();
+    setIsNewRoomModalOpen(true);
   };
 
   const acceptIncoming = async () => {
@@ -137,9 +149,16 @@ export function AppShell() {
       size="sm"
       footer={
         incoming.error ? (
-          <Button variant="primary" onClick={closeIncoming}>
-            Close
-          </Button>
+          <>
+            <Button variant="ghost" onClick={closeIncoming}>
+              Close
+            </Button>
+            {incoming.offerNewRoom && (
+              <Button variant="primary" onClick={startFreshRoom}>
+                Start a new room
+              </Button>
+            )}
+          </>
         ) : (
           <>
             <Button variant="ghost" onClick={closeIncoming}>

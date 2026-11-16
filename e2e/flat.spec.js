@@ -55,7 +55,7 @@ test.describe('flat designer', () => {
     await expect(statValue(page, 'Windows on this floor')).toHaveText('0');
 
     // 3D, then a walkthrough
-    await page.getByRole('button', { name: '3D' }).click();
+    await page.getByRole('button', { name: '3D view' }).click();
     await expect(page.getByLabel('3D view of the flat')).toBeVisible();
     await page.getByRole('button', { name: 'Walk through the flat' }).click();
     await expect(page.getByLabel('Walkthrough controls')).toBeVisible();
@@ -68,7 +68,7 @@ test.describe('flat designer', () => {
     await newFlat(page, { label: 'Two-bedroom flat' });
     await expect(stat(page, 'Rooms in the flat')).toBeVisible();
 
-    await page.getByRole('button', { name: '3D' }).click();
+    await page.getByRole('button', { name: '3D view' }).click();
     await expect(page.getByLabel('3D view of the flat')).toBeVisible();
     await page.getByRole('button', { name: 'Walk through the flat' }).click();
     await expect(page.getByLabel('Walkthrough controls')).toBeVisible();
@@ -79,9 +79,9 @@ test.describe('flat designer', () => {
     await page.keyboard.up('w');
     await expect(page.getByLabel('Walkthrough controls')).toBeVisible();
 
-    await page.getByRole('button', { name: 'Leave the walkthrough' }).click();
+    await page.getByRole('button', { name: 'Stop walking (Esc)' }).click();
     await expect(page.getByLabel('Walkthrough controls')).toBeHidden();
-    await page.getByRole('button', { name: 'Plan', exact: true }).click();
+    await page.getByRole('button', { name: 'Plan view' }).click();
     await expect(page.getByRole('application')).toBeVisible();
   });
 });

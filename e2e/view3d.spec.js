@@ -37,7 +37,7 @@ test.describe('3D view', () => {
     await expect(page.getByLabel('Walkthrough controls')).toBeHidden();
 
     // And back to the plan
-    await page.getByRole('button', { name: '2D plan' }).click();
+    await page.getByRole('button', { name: 'Plan view' }).click();
     await expect(page.getByLabel('Room plan')).toBeVisible();
   });
 });

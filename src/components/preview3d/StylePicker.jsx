@@ -123,7 +123,7 @@ export function StylePanel({ current, hasStyle, onPick, onReset, scope, note }) 
         <p className={styles.note}>
           {style
             ? `${style.label}: ${style.note}.`
-            : 'Sets the floor, walls and the colours of recolourable furniture. Lamps, glass, appliances and pictures keep theirs.'}
+            : 'Sets the floor and the walls, and recolours the furniture that can take a new colour. Lamps, glass, appliances and pictures keep their own.'}
         </p>
         <Button
           variant="secondary"

@@ -109,7 +109,7 @@ export function WalkHud({ onExit }) {
         tabIndex={-1}
         className={styles.wide}
         onClick={onExit}
-        aria-label="Leave the walkthrough"
+        aria-label="Stop walking (Esc)"
       >
         <LogOut size={13} aria-hidden="true" /> Esc
       </button>

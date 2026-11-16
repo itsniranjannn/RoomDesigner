@@ -253,7 +253,7 @@ export function PlanChecksPanel({ checks }) {
       {counts.total === 0 ? (
         <p className={styles.allClear} role="status">
           <CheckCircle2 size={18} aria-hidden="true" />
-          <span>All clear. Nothing in the way, and nothing missing that I can see.</span>
+          <span>All clear. Nothing in the way, and nothing missing.</span>
         </p>
       ) : (
         <p className={styles.summary} role="status">

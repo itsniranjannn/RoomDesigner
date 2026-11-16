@@ -89,12 +89,11 @@
   gap: var(--space-2);
 }
 
+/* Sentence case, like the inspector's headings: nothing else in the app chrome shouts */
 .groupTitle {
   margin: 0;
   font-size: var(--text-xs);
   font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
   color: var(--color-ink-muted);
 }
 

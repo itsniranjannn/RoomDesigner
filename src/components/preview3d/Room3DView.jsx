@@ -21,7 +21,22 @@ import { normalizeFinish } from './materials.js';
 import { WalkControls } from './WalkControls.jsx';
 import { WalkHud } from './WalkHud.jsx';
 import { SnapshotBridge } from './SnapshotBridge.jsx';
+import { useMediaQuery } from '../layout/hooks.js';
 import styles from './Room3DView.module.css';
+
+/**
+ * What to tell the viewer, by what they are pointing with: a phone or tablet has no mouse
+ * button to right-drag, no scroll wheel and no keys, so it is given the gestures it has.
+ */
+const VIEW_HINTS = {
+  mouse: 'Drag to turn the view, right-drag to move it, scroll to zoom.',
+  touch: 'Drag to turn the view, pinch to zoom, two fingers to move it.',
+};
+const WALK_HINTS = {
+  mouse:
+    'Drag to look around. Walk with W A S D (Shift to run); the arrow keys also move and turn. Press Esc to leave.',
+  touch: 'Drag to look around, and use the pad to walk. Stop walking when you have finished.',
+};
 
 const WALL_OPTIONS = [
   { value: 'cutaway', label: 'Cutaway', icon: <Square size={15} />, ariaLabel: 'Cutaway walls' },
@@ -123,6 +138,7 @@ export function Room3DView() {
   const [walking, setWalking] = useState(false);
   const preset = LIGHTING[lighting];
   const quality = useQuality();
+  const pointer = useMediaQuery('(pointer: coarse)') ? 'touch' : 'mouse';
   const setRoomFinish = useRoomStore((state) => state.setRoomFinish);
   const applyStyle = useRoomStore((state) => state.applyStyle);
   const resetStyle = useRoomStore((state) => state.resetStyle);
@@ -225,8 +241,8 @@ export function Room3DView() {
 
       <p className={styles.hint} aria-live="polite">
         {walking
-          ? 'Drag to look around. Walk with W A S D (Shift to run); the arrow keys also move and turn. Press Esc to leave.'
-          : `Drag to turn the view, right-drag to move it, scroll to zoom.${hiddenWallPieces ? ' Pictures, mirrors and curtains show with Full walls.' : ''}`}
+          ? WALK_HINTS[pointer]
+          : `${VIEW_HINTS[pointer]}${hiddenWallPieces ? ' Pictures, mirrors and curtains show with Full walls.' : ''}`}
       </p>
 
       {walking && <WalkHud onExit={exitWalk} />}
@@ -284,11 +300,11 @@ export function Room3DView() {
           icon={<Footprints size={16} />}
           onClick={() => (walking ? exitWalk() : setWalking(true))}
           className={walking ? undefined : styles.controlBtn}
-          aria-label={walking ? 'Leave walkthrough' : 'Walk through the room'}
-          title={walking ? 'Leave walkthrough' : 'Walk through the room'}
+          aria-label={walking ? 'Stop walking' : 'Walk through the room'}
+          title={walking ? 'Stop walking (Esc)' : 'Walk through the room'}
         >
           <span className={walking ? undefined : styles.controlText}>
-            {walking ? 'Leave walkthrough' : 'Walk through'}
+            {walking ? 'Stop walking' : 'Walk through'}
           </span>
         </Button>
       </div>

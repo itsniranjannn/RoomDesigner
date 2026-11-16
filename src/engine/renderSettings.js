@@ -16,7 +16,7 @@ export const RENDER_SIZES = [
 ];
 
 export const RENDER_BACKGROUNDS = [
-  { value: 'scene', label: 'Room colors' },
+  { value: 'scene', label: 'Room colours' },
   { value: 'white', label: 'White' },
   { value: 'transparent', label: 'Transparent' },
 ];

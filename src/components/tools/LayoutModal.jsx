@@ -38,8 +38,8 @@ const PRESETS = {
 };
 
 const MODE_OPTIONS = [
-  { value: 'replace', label: 'Replace furniture' },
-  { value: 'add', label: 'Add to furniture' },
+  { value: 'replace', label: 'Replace what is in the room' },
+  { value: 'add', label: 'Keep what is there' },
 ];
 
 const ADD_OPTIONS = [

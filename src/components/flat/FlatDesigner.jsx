@@ -23,8 +23,20 @@ const Flat3DView = React.lazy(() =>
 );
 
 const VIEW_OPTIONS = [
-  { value: '2d', label: 'Plan', icon: <Layers size={16} aria-hidden="true" />, title: 'Plan view' },
-  { value: '3d', label: '3D', icon: <Box size={16} aria-hidden="true" />, title: '3D view' },
+  {
+    value: '2d',
+    label: 'Plan',
+    icon: <Layers size={16} aria-hidden="true" />,
+    ariaLabel: 'Plan view',
+    title: 'Plan view',
+  },
+  {
+    value: '3d',
+    label: '3D',
+    icon: <Box size={16} aria-hidden="true" />,
+    ariaLabel: '3D view',
+    title: '3D view',
+  },
 ];
 
 const TOOL_KEYS = {

@@ -142,9 +142,7 @@ export function PiecePanel({ item, def, onClose }) {
               size="small"
               fill
             />
-            <p className={styles.note}>
-              Drag the piece on the plan to move it. Press R to turn it in 15 degree steps.
-            </p>
+            <p className={styles.note}>Drag the piece on the plan to move it.</p>
           </>
         )}
       </Section>

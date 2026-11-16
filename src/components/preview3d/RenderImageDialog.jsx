@@ -53,7 +53,7 @@ export function RenderOptions({ value, onChange, disabled = false }) {
         />
       </div>
       <Switch
-        label="Title block with the name"
+        label="Print the name and date on the picture"
         checked={value.titleBlock}
         onChange={(titleBlock) => !disabled && set({ titleBlock })}
       />

@@ -6,7 +6,7 @@ test.describe('share and export', () => {
   test('a share link restores the room when opened', async ({ page, context, problems }) => {
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     await openApp(page);
-    await createRoomFromPreset(page, 'Home Office');
+    await createRoomFromPreset(page, 'Home office');
     await addByClick(page, 'Writing Desk');
     await addByClick(page, 'Office Swivel Chair');
 
@@ -24,10 +24,10 @@ test.describe('share and export', () => {
     await other.goto(link);
     const prompt = other.getByRole('dialog', { name: 'Open shared design?' });
     await expect(prompt).toBeVisible();
-    await expect(prompt.getByText(/"Home Office" with 2 pieces/)).toBeVisible();
+    await expect(prompt.getByText(/"Home office" with 2 pieces/)).toBeVisible();
     await prompt.getByRole('button', { name: 'Open as new room' }).click();
     await expect(prompt).toBeHidden();
-    await expect(other.getByRole('textbox', { name: 'Room name' })).toHaveValue('Home Office');
+    await expect(other.getByRole('textbox', { name: 'Room name' })).toHaveValue('Home office');
     await expect(pieces(other)).toHaveCount(2);
     // The hash is cleared so a reload does not ask again
     expect(new URL(other.url()).hash).toBe('');
@@ -38,6 +38,9 @@ test.describe('share and export', () => {
     await page.goto('/#share=not-a-real-design');
     const dialog = page.getByRole('dialog', { name: 'Link could not be opened' });
     await expect(dialog).toBeVisible();
+    // It says what to do about it, and offers a way on rather than only a way out
+    await expect(dialog).toContainText('Ask whoever sent it for a fresh one');
+    await expect(dialog.getByRole('button', { name: 'Start a new room' })).toBeVisible();
     await dialog.getByRole('button', { name: 'Close', exact: true }).click();
     await expect(dialog).toBeHidden();
   });

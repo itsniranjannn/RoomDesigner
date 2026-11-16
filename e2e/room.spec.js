@@ -12,7 +12,7 @@ test.describe('room editor', () => {
   test('landing page starts a new room from a preset', async ({ page }) => {
     await openApp(page);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await createRoomFromPreset(page, 'Master Bedroom');
+    await createRoomFromPreset(page, 'Master bedroom');
     await expect(page.getByRole('complementary', { name: 'Furniture' })).toBeVisible();
     await expect(pieces(page)).toHaveCount(0);
   });

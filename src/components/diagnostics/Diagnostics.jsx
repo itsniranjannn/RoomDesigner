@@ -4,8 +4,9 @@ import { clearErrorLog, copyText, formatErrorLog, readErrorLog } from '../../uti
 import styles from './Diagnostics.module.css';
 
 /**
- * Small "Diagnostics" section: how many problems this browser has recorded, with Copy and
- * Clear. The log stays on this device; Copy is for pasting into a bug report.
+ * Small "If something goes wrong" section: how many problems this browser has recorded, with
+ * Copy and Clear. The log stays on this device; Copy is for pasting into a bug report, and
+ * both buttons are off while there is nothing to copy or clear.
  */
 export function Diagnostics() {
   const [entries, setEntries] = useState(() => readErrorLog());
@@ -25,15 +26,15 @@ export function Diagnostics() {
   return (
     <section className={styles.diagnostics} aria-labelledby="diagnostics-title">
       <h3 id="diagnostics-title" className={styles.title}>
-        Diagnostics
+        If something goes wrong
       </h3>
       <p className={styles.text}>
         {count === 0
-          ? 'No problems recorded on this device.'
+          ? 'Nothing has gone wrong on this device.'
           : `${count} ${count === 1 ? 'problem' : 'problems'} recorded on this device. They hold no room contents and are never sent anywhere.`}
       </p>
       <div className={styles.actions}>
-        <Button size="small" onClick={copy}>
+        <Button size="small" onClick={copy} disabled={count === 0}>
           Copy
         </Button>
         <Button size="small" variant="ghost" onClick={clear} disabled={count === 0}>

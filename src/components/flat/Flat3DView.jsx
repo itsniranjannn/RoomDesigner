@@ -768,18 +768,18 @@ export function Flat3DView() {
           icon={<Footprints size={16} aria-hidden="true" />}
           onClick={() => (walking ? exitWalk() : startWalk())}
           disabled={!walking && !start}
-          aria-label={walking ? 'Leave walkthrough' : 'Walk through the flat'}
+          aria-label={walking ? 'Stop walking' : 'Walk through the flat'}
           title={
             start
               ? walking
-                ? 'Leave walkthrough (Esc)'
+                ? 'Stop walking (Esc)'
                 : entrance
                   ? 'Walk through the flat, starting at the main entrance'
                   : 'Walk through the flat'
               : 'Draw some walls first'
           }
         >
-          {walking ? 'Leave walkthrough' : 'Walk through'}
+          {walking ? 'Stop walking' : 'Walk through'}
         </Button>
       </div>
     </div>

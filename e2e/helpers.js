@@ -9,7 +9,7 @@ export async function openApp(page, path = '/') {
 }
 
 /** Landing page, New room, pick a starting size by name, create. Leaves the editor open. */
-export async function createRoomFromPreset(page, preset = 'Living Room') {
+export async function createRoomFromPreset(page, preset = 'Living room') {
   await page.getByRole('button', { name: 'Start a new room' }).click();
   const dialog = page.getByRole('dialog', { name: 'New room' });
   await dialog.getByRole('button', { name: new RegExp(preset) }).click();

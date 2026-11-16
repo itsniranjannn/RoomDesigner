@@ -27,7 +27,7 @@ test.describe('first-run tour', () => {
     await card.getByRole('button', { name: 'Next' }).focus();
     await page.keyboard.press('ArrowRight');
     await expect(card).toContainText('Step 2 of 6');
-    await expect(card.getByRole('heading', { name: '2D plan or 3D view' })).toBeVisible();
+    await expect(card.getByRole('heading', { name: 'Plan or 3D' })).toBeVisible();
     await page.keyboard.press('ArrowLeft');
     await expect(card).toContainText('Step 1 of 6');
 

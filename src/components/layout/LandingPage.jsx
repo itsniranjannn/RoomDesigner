@@ -9,12 +9,12 @@ import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './LandingPage.module.css';
 
 /**
- * The drawing on the right of the landing page: a room plan drawn the way the app draws one,
- * with walls, a door swing, a window, a few pieces of furniture, a Nepali galaicha rug and
- * the room's size in metres. Decoration only, so it is hidden from screen readers.
+ * Architectural Full-Bleed Drafting Board Hero
+ * Draws perimeter walls, door swings, Nepali Galaicha rug, and architectural
+ * dimension notations directly onto the canvas with stroke-draw-in animation.
  */
 function DraftingBoardSurface() {
-  // Dimension coordinate space in centimetres (680 × 540)
+  // Dimension coordinate space in architectural centimeters (580 × 440)
   const roomW = 520;
   const roomH = 400;
   const paddingX = 80;
@@ -57,7 +57,7 @@ function DraftingBoardSurface() {
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          {/* Subtle drafting grid, one square every 20 cm */}
+          {/* Subtle millimeter drafting grid */}
           <pattern id="draftingGrid" width="20" height="20" patternUnits="userSpaceOnUse">
             <path
               d="M 20 0 L 0 0 0 20"
@@ -346,7 +346,7 @@ function DraftingBoardSurface() {
           fontFamily="var(--font-mono)"
           textAnchor="middle"
         >
-          5.20 m
+          5200 mm
         </text>
 
         {/* Dimension Notation (Vertical right) */}
@@ -383,7 +383,7 @@ function DraftingBoardSurface() {
           textAnchor="middle"
           transform={`rotate(90 ${viewW - 27} ${paddingY + roomH / 2})`}
         >
-          4.00 m
+          4000 mm
         </text>
       </svg>
     </div>
@@ -395,8 +395,6 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
   const flats = useFlatStore((state) => state.flats);
   const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
   const prefersReducedMotion = useReducedMotion();
-  // The badge counts what the panel lists: saved rooms and saved flats
-  const designCount = allRooms.length + flats.length;
 
   return (
     <div className={`legacy-theme ${styles.landingContainer}`}>
@@ -406,9 +404,7 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
           <BrandMark size={28} className={styles.brandMarkIcon} />
           <div className={styles.mastheadLockup}>
             <span className={styles.brandTitle}>ROOM DESIGNER STUDIO</span>
-            <span className={styles.brandSubTitle}>
-              Plan a room or a whole flat, in your browser
-            </span>
+            <span className={styles.brandSubTitle}>CAD // 2D // 3D SPATIAL WORKSHOP</span>
           </div>
         </div>
 
@@ -419,26 +415,28 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
                 type="button"
                 className={styles.headerNavBtn}
                 onClick={onNavigateAbout}
-                title="What Room Designer Studio does"
+                title="View About Room Designer Studio"
               >
                 <Info size={13} strokeWidth={1.7} />
-                About
+                ABOUT
               </button>
               <span className={styles.headerMetaDivider} aria-hidden="true" />
             </>
           )}
 
-          {/* Opens the same panel as the link below the hero, and counts the same things */}
+          {/* Interactive clickable sheets count button */}
           <button
             type="button"
             className={`${styles.headerNavBtn} ${styles.headerSheetsBtn}`}
             onClick={() => setIsSheetsPanelOpen(true)}
-            title="Open My designs"
-            aria-label="Open My designs"
+            title="Open saved sheets panel"
+            aria-label="Open saved sheets panel"
           >
             <Layers3 size={13} strokeWidth={1.7} />
-            <span className={styles.headerSheetsLabel}>My designs</span>
-            <span className={styles.headerSheetsCount}>{String(designCount).padStart(2, '0')}</span>
+            <span className={styles.headerSheetsLabel}>SHEETS</span>
+            <span className={styles.headerSheetsCount}>
+              {String(allRooms.length + flats.length).padStart(2, '0')}
+            </span>
           </button>
         </nav>
       </header>
@@ -448,7 +446,7 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
         {/* Left: Copy Column */}
         <div className={styles.heroCopyColumn}>
           <div className={styles.heroCopyContent}>
-            <div className={styles.heroClassificationTag}>Nothing is uploaded</div>
+            <div className={styles.heroClassificationTag}>ARCHITECTURAL FOLIO // ED. 2026</div>
 
             <motion.h1
               className={styles.heroPrimaryTitle}
@@ -456,19 +454,18 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.75, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
             >
-              Plan your room
+              Draft your space
               <br />
-              before you move a thing.
+              with precision.
             </motion.h1>
 
             <p className={styles.heroSecondaryTitle}>
-              Draw the room, drop furniture in, and walk through it in 3D.
+              From dimensional sketch to 3D architectural form.
             </p>
 
             <p className={styles.heroDescription}>
-              Start with one room or a whole flat. Make your own furniture from a photo, check that
-              everything fits and that the doors still open, then share a link. Your designs stay on
-              this device.
+              Intuitive 2D drafting and real-time 3D spatial modeling built on authentic
+              architectural materials and Nepalese craft traditions.
             </p>
 
             <motion.div
@@ -497,15 +494,15 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
             </motion.div>
           </div>
 
-          {/* Opens the same panel as the button in the header */}
+          {/* Clickable trigger to open the slide-out sheets panel directly */}
           <button
             type="button"
             className={styles.exploreSheetsBtn}
             onClick={() => setIsSheetsPanelOpen(true)}
-            title="Open My designs"
-            aria-label="Open My designs"
+            title="Open saved sheets panel"
+            aria-label="Open saved sheets panel"
           >
-            <span className={styles.scrollIndicatorText}>My designs</span>
+            <span className={styles.scrollIndicatorText}>EXPLORE SPACES</span>
           </button>
         </div>
 

@@ -3,13 +3,14 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { BrandMark } from '../common/BrandMark.jsx';
 import { Info, Layers3 } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
-import { useFlatStore } from '../../store/flatStore.js';
 import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './AboutPage.module.css';
 
 /**
- * The drawing on the right of the About page: a plan sheet with a mandala, a galaicha rug
- * motif and the sheet's size in metres. Decoration only, so it is hidden from screen readers.
+ * Animated Architectural Monograph Plate (Right Column)
+ * Showcases layered Nepalese architectural geometric systems:
+ * Patan brass harmonics, lokta fiber grid drift, Kathmandu mandala geometry,
+ * Galaicha woven proportions, and dimension registration notations.
  */
 function AboutMonographPlate() {
   const roomW = 520;
@@ -215,7 +216,7 @@ function AboutMonographPlate() {
           <circle r="3.5" fill="var(--color-linen)" />
         </g>
 
-        {/* A galaicha rug, as the app draws one on a plan */}
+        {/* Vernacular Galaicha geometric rug in golden proportion */}
         <g opacity="0.85">
           <rect
             x={paddingX + 60}
@@ -247,7 +248,68 @@ function AboutMonographPlate() {
             textAnchor="middle"
             letterSpacing="0.1em"
           >
-            Nepali galaicha motif
+            NEPALESE GALAICHA MOTIF
+          </text>
+        </g>
+
+        {/* Timber Joinery / Kansa Brass Spec Callout */}
+        <g opacity="0.85">
+          <rect
+            x={paddingX + roomW - 200}
+            y={paddingY + 45}
+            width={155}
+            height={85}
+            fill="#F4EFE6"
+            stroke="var(--color-brass)"
+            strokeWidth="1.4"
+            rx="2"
+          />
+          <line
+            x1={paddingX + roomW - 200}
+            y1={paddingY + 70}
+            x2={paddingX + roomW - 45}
+            y2={paddingY + 70}
+            stroke="var(--color-taupe)"
+            strokeWidth="1"
+          />
+          <text
+            x={paddingX + roomW - 122}
+            y={paddingY + 62}
+            fill="var(--color-brass)"
+            fontSize="9"
+            fontFamily="var(--font-mono)"
+            fontWeight="600"
+            textAnchor="middle"
+            letterSpacing="0.12em"
+          >
+            PATAN BRASS // SPEC
+          </text>
+          <text
+            x={paddingX + roomW - 190}
+            y={paddingY + 88}
+            fill="var(--color-ink)"
+            fontSize="8"
+            fontFamily="var(--font-mono)"
+          >
+            JOINERY: MORTISE & TENON
+          </text>
+          <text
+            x={paddingX + roomW - 190}
+            y={paddingY + 104}
+            fill="var(--color-ink-muted)"
+            fontSize="8"
+            fontFamily="var(--font-mono)"
+          >
+            MATERIAL: BELL METAL (KANSA)
+          </text>
+          <text
+            x={paddingX + roomW - 190}
+            y={paddingY + 120}
+            fill="var(--color-ink-muted)"
+            fontSize="8"
+            fontFamily="var(--font-mono)"
+          >
+            SUBSTRATE: LOKTA LINEN
           </text>
         </g>
 
@@ -284,7 +346,7 @@ function AboutMonographPlate() {
           fontFamily="var(--font-mono)"
           textAnchor="middle"
         >
-          5.20 m
+          HARMONIC RATIO // 1.30 : 1.00
         </text>
 
         {/* Right Vertical Dimension */}
@@ -321,20 +383,17 @@ function AboutMonographPlate() {
           textAnchor="middle"
           transform={`rotate(90 ${viewW - 27} ${paddingY + roomH / 2})`}
         >
-          4.00 m
+          KATHMANDU GRID
         </text>
       </svg>
     </div>
   );
 }
 
-export function AboutPage({ onBack, onOpenNewRoomModal, onOpenNewFlatModal }) {
+export function AboutPage({ onBack, onOpenNewRoomModal }) {
   const prefersReducedMotion = useReducedMotion();
   const allRooms = useRoomStore((state) => state.allRooms);
-  const flats = useFlatStore((state) => state.flats);
   const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
-  // The badge counts what the panel lists: saved rooms and saved flats
-  const designCount = allRooms.length + flats.length;
 
   return (
     <div className={`legacy-theme ${styles.aboutContainer}`}>
@@ -344,15 +403,13 @@ export function AboutPage({ onBack, onOpenNewRoomModal, onOpenNewFlatModal }) {
           type="button"
           className={styles.brandLogo}
           onClick={onBack}
-          title="Back to the start"
-          aria-label="Back to the start"
+          title="Return to Studio Overview"
+          aria-label="Return to Studio Overview"
         >
           <BrandMark size={28} className={styles.brandMarkIcon} />
           <div className={styles.mastheadLockup}>
             <span className={styles.brandTitle}>ROOM DESIGNER STUDIO</span>
-            <span className={styles.brandSubTitle}>
-              Plan a room or a whole flat, in your browser
-            </span>
+            <span className={styles.brandSubTitle}>CAD // 2D // 3D SPATIAL WORKSHOP</span>
           </div>
         </button>
 
@@ -366,26 +423,28 @@ export function AboutPage({ onBack, onOpenNewRoomModal, onOpenNewFlatModal }) {
               e.preventDefault();
               setIsSheetsPanelOpen(false);
             }}
-            title="What Room Designer Studio does (this page)"
+            title="About Room Designer Studio (Current Page)"
             aria-current="page"
           >
             <Info size={13} strokeWidth={1.7} />
-            About
+            ABOUT
           </button>
 
           <span className={styles.headerMetaDivider} aria-hidden="true" />
 
-          {/* Opens the same panel, and counts the same things, as on the landing page */}
+          {/* Interactive Sheets trigger button - directly opens the slide-out SheetsPanel */}
           <button
             type="button"
             className={`${styles.headerNavBtn} ${styles.headerSheetsBtn}`}
             onClick={() => setIsSheetsPanelOpen(true)}
-            title="Open My designs"
-            aria-label="Open My designs"
+            title="Open saved sheets panel"
+            aria-label="Open saved sheets panel"
           >
             <Layers3 size={13} strokeWidth={1.7} />
-            <span className={styles.headerSheetsLabel}>My designs</span>
-            <span className={styles.headerSheetsCount}>{String(designCount).padStart(2, '0')}</span>
+            <span className={styles.headerSheetsLabel}>SHEETS</span>
+            <span className={styles.headerSheetsCount}>
+              {String(allRooms.length).padStart(2, '0')}
+            </span>
           </button>
         </nav>
       </header>
@@ -395,7 +454,9 @@ export function AboutPage({ onBack, onOpenNewRoomModal, onOpenNewFlatModal }) {
         {/* Left Column: Rich Architectural Content */}
         <section className={styles.aboutCopyColumn}>
           <div className={styles.aboutCopyContent}>
-            <div className={styles.classificationTag}>About Room Designer Studio</div>
+            <div className={styles.classificationTag}>
+              STUDIO FOLIO // About Room Designer Studio
+            </div>
 
             <motion.h1
               className={styles.aboutHeading}
@@ -403,53 +464,50 @@ export function AboutPage({ onBack, onOpenNewRoomModal, onOpenNewFlatModal }) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
             >
-              Plan a room.
-              <br />
-              Keep it yours.
+              Form, Material
+              <br />& Memory.
             </motion.h1>
 
             <p className={styles.aboutSecondaryTitle}>
-              Draw a room or a whole flat, furnish it, and look around inside — all in this browser
-              tab.
+              Rooted in Nepalese architectural traditions and precision CAD modeling.
             </p>
 
             <div className={styles.articleBody}>
               <p>
-                <strong>Room Designer Studio</strong> is a room planner. Draw one room, or a whole
-                flat across several floors, then place furniture from the list or make your own
-                piece from a photo. Plan checks tell you when a door is blocked, a gap is too tight
-                or a piece will not fit, and the 3D view lets you turn the room around or walk
-                through it at eye height.
+                <strong>Room Designer Studio</strong> is a dual-projection spatial design workshop.
+                It couples orthographic 2D floor plan generation with real-time 3D spatial modeling,
+                grounded in the craft cultures, materials, and proportions of the Kathmandu Valley.
               </p>
               <p>
-                Everything happens in your browser. Designs are saved on this device, nothing is
-                uploaded, and a share link carries the whole design inside the link itself. The
-                colours and the furniture are drawn from homes around the Kathmandu Valley: the
-                palette is named after brass, maroon, pine, walnut and lokta paper, and the list
-                holds a pirka, a chowki and a dhaka rug alongside the sofas and wardrobes.
+                Every wall perimeter, mullion join, and placement grid is calibrated to honor
+                authentic vernacular textures: hand-beaten Patan bell metal (<em>kansa</em> brass),
+                fibrous handmade lokta paper drawing surfaces, timber mortise-and-tenon framing, and
+                geometric Galaicha rug weaves.
               </p>
             </div>
 
             <div className={styles.materialPillRow}>
-              <span className={styles.materialPill}>Runs in your browser</span>
-              <span className={styles.materialPill}>Nothing is uploaded</span>
-              <span className={styles.materialPill}>Rooms and whole flats</span>
-              <span className={styles.materialPill}>Furniture from a photo</span>
-              <span className={styles.materialPill}>Plan and 3D</span>
+              <span className={styles.materialPill}>KANSA BRASS</span>
+              <span className={styles.materialPill}>LOKTA LINEN</span>
+              <span className={styles.materialPill}>TIMBER JOINERY</span>
+              <span className={styles.materialPill}>GALAICHA WEAVE</span>
+              <span className={styles.materialPill}>CAD ORTHO 2D/3D</span>
             </div>
 
-            <p className={styles.creditParagraph}>Made by Niranjan.</p>
+            <p className={styles.creditParagraph}>
+              Conceived, designed, and drafted with architectural precision by Niranjan.
+            </p>
           </div>
 
-          {/* Bottom back link, matching the "My designs" row on the landing page */}
+          {/* Bottom Back Button matching Landing Page's EXPLORE SPACES row */}
           <button
             type="button"
             className={styles.backExploreBtn}
             onClick={onBack}
-            title="Back to the start"
-            aria-label="Back to the start"
+            title="Return to Drafting Workspace"
+            aria-label="Return to Drafting Workspace"
           >
-            <span className={styles.backIndicatorText}>Back to the start</span>
+            <span className={styles.backIndicatorText}>RETURN TO WORKSPACE</span>
           </button>
         </section>
 
@@ -465,17 +523,13 @@ export function AboutPage({ onBack, onOpenNewRoomModal, onOpenNewFlatModal }) {
         <span className={styles.colophonMark}>NIRANJAN</span>
       </footer>
 
-      {/* Slide-out "My designs" panel */}
+      {/* Slide-out Sheets Panel for Saved Rooms */}
       <SheetsPanel
         isOpen={isSheetsPanelOpen}
         onClose={() => setIsSheetsPanelOpen(false)}
         onOpenNewRoomModal={() => {
           setIsSheetsPanelOpen(false);
           if (onOpenNewRoomModal) onOpenNewRoomModal();
-        }}
-        onOpenNewFlatModal={() => {
-          setIsSheetsPanelOpen(false);
-          if (onOpenNewFlatModal) onOpenNewFlatModal();
         }}
       />
     </div>

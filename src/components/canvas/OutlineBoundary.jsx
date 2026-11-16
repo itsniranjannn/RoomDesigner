@@ -179,7 +179,7 @@ export function OutlineBoundary({ room, svgRef }) {
           fontWeight="600"
           pointerEvents="none"
         >
-          Window {win.widthCm}cm
+          Window {win.widthCm} cm
         </text>
       </g>
     );
@@ -230,7 +230,7 @@ export function OutlineBoundary({ room, svgRef }) {
           fontWeight="600"
           pointerEvents="none"
         >
-          Door {door.widthCm}cm
+          Door {door.widthCm} cm
         </text>
       </g>
     );
