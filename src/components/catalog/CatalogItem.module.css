@@ -45,6 +45,17 @@
   border-radius: var(--radius-sm);
 }
 
+/*
+ * A landscape phone leaves about 170px of list under the search box. A 144px card plus its
+ * group heading was just over that, so the drawing loses 12px there and the whole first row
+ * fits. The name keeps both of its lines: a truncated name is worse than a smaller symbol.
+ */
+@media (max-height: 520px) {
+  .preview {
+    height: 52px;
+  }
+}
+
 .plus {
   position: absolute;
   top: 4px;

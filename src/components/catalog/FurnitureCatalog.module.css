@@ -42,6 +42,53 @@
   padding: var(--space-2) var(--space-4) var(--space-3);
 }
 
+/* The search box, and on a short panel the button that stands in for the chip row */
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.searchRow > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.categoryToggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 120px;
+  height: var(--control-h);
+  padding: 0 var(--space-2) 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--color-ink);
+  background: var(--color-linen-surface);
+  border-radius: 999px;
+}
+
+.categoryToggle:hover {
+  background: var(--color-linen-subtle);
+}
+
+.categoryToggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.categoryName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevronUp {
+  transform: rotate(180deg);
+}
+
 /* One scrolling row of chips: wheel, drag, touch, keys and chevrons; the edges fade where more is hidden */
 .chipWrap {
   position: relative;
@@ -231,6 +278,51 @@
 .photoText strong {
   font-size: var(--text-sm);
   color: var(--color-indigo);
+}
+
+/* Where the card sits after the first row of pieces instead of above them */
+.photoBelow {
+  grid-column: 1 / -1;
+}
+
+/*
+ * A landscape phone leaves the drawer about 280px tall. The header, the search box, the
+ * category chips and the photo card came to more than that together, so the list below them
+ * began off screen. The chips fold behind the button beside the search box (see the JSX) and
+ * the rest stays, tighter: a smaller title, less air around the controls and the group
+ * headings, and a one-line photo card. With the shorter preview on each piece (see
+ * CatalogItem.module.css) the first row of furniture is in view as the drawer opens.
+ */
+@media (max-height: 520px) {
+  .header {
+    padding: var(--space-2) var(--space-2) 0 var(--space-4);
+  }
+
+  .title {
+    font-size: var(--text-base);
+  }
+
+  .controls {
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-4);
+  }
+
+  .groupTitle {
+    padding: var(--space-1) 0;
+  }
+
+  .scroll {
+    padding-bottom: var(--space-3);
+  }
+
+  .photoCard {
+    align-items: center;
+    padding: var(--space-2);
+  }
+
+  .photoHint {
+    display: none;
+  }
 }
 
 .empty {

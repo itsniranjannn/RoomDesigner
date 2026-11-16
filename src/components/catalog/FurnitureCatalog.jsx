@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Camera, PanelLeftClose, SearchX } from 'lucide-react';
+import { Camera, ChevronDown, PanelLeftClose, SearchX } from 'lucide-react';
 import {
   FURNITURE_CATALOG,
   FURNITURE_CATEGORIES,
@@ -10,6 +10,7 @@ import { Button } from '../common/Button.jsx';
 import { ConfirmDialog } from '../common/ConfirmDialog.jsx';
 import { SearchField } from '../common/Field.jsx';
 import { IconButton } from '../common/Section.jsx';
+import { useMediaQuery } from '../layout/hooks.js';
 import { ChipRow } from './ChipRow.jsx';
 import { CatalogItem } from './CatalogItem.jsx';
 import styles from './FurnitureCatalog.module.css';
@@ -69,7 +70,35 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
     onPlaced?.();
   };
 
-  const showHeadings = groups.length > 1;
+  /*
+   * Landscape phone: the drawer is about 280px tall and the header, the search box, the
+   * category chips and the photo card of an empty "My furniture" came to more than that, so
+   * not one piece was in sight until you scrolled. There the chips fold behind a button that
+   * names the category in use, the photo card moves below the first row of pieces, and an
+   * empty group steps aside for them. At normal heights nothing about the panel changes.
+   */
+  const shortPanel = useMediaQuery('(max-height: 520px)');
+  const [chipsOpen, setChipsOpen] = useState(false);
+  const foldPhoto = shortPanel && groups.some((g) => g.items.length > 0);
+  const shownGroups = foldPhoto ? groups.filter((g) => g.items.length > 0) : groups;
+  const categoryLabel =
+    category === 'all'
+      ? 'All'
+      : SHORT_NAMES[category] ||
+        FURNITURE_CATEGORIES.find((cat) => cat.id === category)?.name ||
+        'All';
+
+  const photoCard = (
+    <button type="button" className={styles.photoCard} onClick={() => openModal('photo')}>
+      <Camera size={18} aria-hidden="true" />
+      <span className={styles.photoText}>
+        <strong>Create from photos</strong>
+        <span className={styles.photoHint}>Turn photos of your own furniture into a 3D piece.</span>
+      </span>
+    </button>
+  );
+
+  const showHeadings = shownGroups.length > 1;
 
   return (
     <aside className={styles.catalog} aria-label="Furniture">
@@ -103,16 +132,45 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
       </header>
 
       <div className={styles.controls}>
-        <SearchField value={query} onChange={setQuery} placeholder="Search furniture" />
-        <ChipRow
-          label="Category"
-          value={category}
-          onChange={setCategory}
-          chips={[{ id: 'all', name: 'All' }, ...ORDERED_CATEGORIES].map((cat) => ({
-            id: cat.id,
-            label: SHORT_NAMES[cat.id] || cat.name,
-          }))}
-        />
+        <div className={styles.searchRow}>
+          <SearchField
+            value={query}
+            onChange={setQuery}
+            /* The box is narrower beside the category button; the name it answers to is not */
+            placeholder={shortPanel ? 'Search' : 'Search furniture'}
+            ariaLabel="Search furniture"
+          />
+          {shortPanel && (
+            <button
+              type="button"
+              className={styles.categoryToggle}
+              aria-expanded={chipsOpen}
+              aria-label={`Category: ${categoryLabel}. Choose a category`}
+              onClick={() => setChipsOpen((open) => !open)}
+            >
+              <span className={styles.categoryName}>{categoryLabel}</span>
+              <ChevronDown
+                size={14}
+                aria-hidden="true"
+                className={chipsOpen ? styles.chevronUp : undefined}
+              />
+            </button>
+          )}
+        </div>
+        {(!shortPanel || chipsOpen) && (
+          <ChipRow
+            label="Category"
+            value={category}
+            onChange={(id) => {
+              setCategory(id);
+              setChipsOpen(false);
+            }}
+            chips={[{ id: 'all', name: 'All' }, ...ORDERED_CATEGORIES].map((cat) => ({
+              id: cat.id,
+              label: SHORT_NAMES[cat.id] || cat.name,
+            }))}
+          />
+        )}
       </div>
 
       <div className={styles.scroll}>
@@ -120,7 +178,7 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
           {shownCount} pieces shown
         </p>
 
-        {groups.map((group) => (
+        {shownGroups.map((group, index) => (
           <section key={group.id} className={styles.group} aria-label={group.name}>
             {showHeadings && (
               <h3 className={styles.groupTitle}>
@@ -129,27 +187,27 @@ export function FurnitureCatalog({ onClose, onPlaced }) {
               </h3>
             )}
 
-            {group.id === 'custom' && (
-              <button type="button" className={styles.photoCard} onClick={() => openModal('photo')}>
-                <Camera size={18} aria-hidden="true" />
-                <span className={styles.photoText}>
-                  <strong>Create from photos</strong>
-                  <span>Turn photos of your own furniture into a 3D piece.</span>
-                </span>
-              </button>
-            )}
+            {group.id === 'custom' && !foldPhoto && photoCard}
 
             {group.items.length > 0 && (
               <div className={styles.grid}>
-                {group.items.map((item) => (
-                  <CatalogItem
-                    key={item.id}
-                    item={item}
-                    onSelect={place}
-                    onDropped={onPlaced}
-                    onDelete={group.id === 'custom' ? () => setPendingDelete(item) : undefined}
-                  />
+                {group.items.map((item, position) => (
+                  <React.Fragment key={item.id}>
+                    <CatalogItem
+                      item={item}
+                      onSelect={place}
+                      onDropped={onPlaced}
+                      onDelete={group.id === 'custom' ? () => setPendingDelete(item) : undefined}
+                    />
+                    {/* The grid is two columns wide, so this lands under the first row */}
+                    {foldPhoto && index === 0 && position === 1 && (
+                      <div className={styles.photoBelow}>{photoCard}</div>
+                    )}
+                  </React.Fragment>
                 ))}
+                {foldPhoto && index === 0 && group.items.length === 1 && (
+                  <div className={styles.photoBelow}>{photoCard}</div>
+                )}
               </div>
             )}
           </section>

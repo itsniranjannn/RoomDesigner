@@ -57,3 +57,45 @@ test.describe('mobile viewport (375 x 812)', () => {
     expect(overflow).toBeLessThanOrEqual(1);
   });
 });
+
+test.describe('landscape phone (640 x 360)', () => {
+  test.use({ viewport: { width: 640, height: 360 }, hasTouch: true });
+
+  test('the furniture drawer shows pieces without scrolling', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page);
+    await page.getByRole('button', { name: 'Show furniture list' }).click();
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await expect(catalog).toBeVisible();
+
+    // The whole first row of pieces is inside the drawer before anything is scrolled
+    const cards = catalog.getByRole('button', { name: /^Add .*centimetres$/ });
+    const drawer = await catalog.boundingBox();
+    for (const card of await cards.all().then((all) => all.slice(0, 2))) {
+      const box = await card.boundingBox();
+      expect(box.y).toBeGreaterThanOrEqual(drawer.y);
+      expect(box.y + box.height).toBeLessThanOrEqual(drawer.y + drawer.height);
+    }
+
+    // The category chips are folded behind a button that names the category in use
+    const chips = catalog.getByRole('group', { name: 'Category' });
+    await expect(chips).toBeHidden();
+    await catalog.getByRole('button', { name: /^Category: All/ }).click();
+    await expect(chips).toBeVisible();
+    await chips.getByRole('button', { name: 'Bedroom' }).click();
+    await expect(chips).toBeHidden();
+    await expect(catalog.getByRole('button', { name: /^Category: Bedroom/ })).toBeVisible();
+
+    // "Create from photos" is still there, below the pieces rather than on top of them
+    await catalog.getByRole('button', { name: /^Category: Bedroom/ }).click();
+    await chips.getByRole('button', { name: 'All', exact: true }).click();
+    const photo = catalog.getByRole('button', { name: 'Create from photos' });
+    const photoBox = await photo.boundingBox();
+    const firstCard = await cards.first().boundingBox();
+    expect(photoBox.y).toBeGreaterThan(firstCard.y);
+
+    // A piece can be added straight away, with no scrolling first
+    await cards.first().click();
+    await expect(pieces(page)).toHaveCount(1);
+  });
+});
