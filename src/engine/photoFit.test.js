@@ -128,6 +128,12 @@ describe('fitting the model to a photo', () => {
     expect(describeFit(0.85).level).toBe('good');
     expect(describeFit(0.75).level).toBe('fair');
     expect(describeFit(0.3).level).toBe('poor');
+    // the verdict follows the percentage on screen: 0.698 shows as 70%, so it is the middle one
+    expect(describeFit(0.698).level).toBe('fair');
+    expect(describeFit(0.8449).level).toBe('fair');
+    expect(describeFit(0.8451).level).toBe('good');
+    // and it says what is measured
+    expect(describeFit(0.95).label).toMatch(/proportions/i);
   });
 
   it('scales the model so its bounds take the photo proportions, keeping the size you set', () => {

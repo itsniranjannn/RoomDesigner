@@ -515,7 +515,13 @@ function otsu(values, weights) {
  * @param {{ fg?: Uint8Array, bg?: Uint8Array }} [hints] brush strokes at the same size (1 = marked)
  * @returns {{ mask: Uint8Array, saliency: Float32Array, background: Float32Array }}
  */
-export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
+/**
+ * The part of the scene cut that does not depend on what the picture's surroundings are taken to be:
+ * superpixels, their colours, which of them touch, and how far apart they are in colour. `extractForeground`
+ * compares two or three readings of one photo that differ only in that prior, so this is worked out once and
+ * shared between them.
+ */
+export function sceneBase(img, hints = {}) {
   const { rgba, width: w, height: h } = img;
   const n = w * h;
   const planes = toLabPlanes(rgba, n);
@@ -610,16 +616,6 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
     bndCon[i] = l / Math.sqrt(a);
     softArea[i] = a / n;
   }
-  // A big, evenly coloured region (a wall that stops short of the border) is surroundings too: furniture is
-  // a smaller part of the picture than the room around it. softArea (narrow) is kept for the maps.
-  // wall and floor are plain and pale-to-neutral; a big region of rich colour (warm wood, teal fabric) is the piece
-  const bigOf = (i) => {
-    if (!wallRule) return 0;
-    const chroma = Math.hypot(col[i][1], col[i][2]);
-    const plain = Math.min(1, Math.max(0, (20 - chroma) / 8));
-    return Math.min(1, Math.max(0, (wideArea[i] - 0.12) / 0.07)) * plain;
-  };
-  const bgGeo = Array.from(bndCon, (b, i) => Math.max(1 - Math.exp(-(b * b) / 2), 0.95 * bigOf(i)));
   // A colour region that is tall and narrow and runs most of the picture's height is a wall panel, a door or a
   // curtain, not furniture
   const towers = new Float64Array(count);
@@ -639,6 +635,67 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
     const hf = y1 - y0;
     towers[i] = hf >= 0.4 && wf <= 0.32 && hf / wf >= 2.2 ? 1 : 0;
   }
+  const meanDiff =
+    [...adj.values()].reduce((a, e) => a + e.diff / e.len, 0) / Math.max(1, adj.size);
+  return {
+    w,
+    h,
+    n,
+    planes,
+    labels,
+    count,
+    area,
+    col,
+    cx,
+    cy,
+    border,
+    hintFg,
+    hintBg,
+    adj,
+    dc,
+    geo,
+    bndCon,
+    wideArea,
+    towers,
+    meanDiff,
+  };
+}
+
+/**
+ * One reading of a room photo: GrabCut on the superpixel graph with a given prior for what the surroundings
+ * are. Pass `base` (from `sceneBase`) to share the work that every reading of the same photo has in common.
+ */
+export function sceneCut(img, hints = {}, { wallRule = true, base = null } = {}) {
+  const {
+    w,
+    h,
+    n,
+    planes,
+    labels,
+    count,
+    area,
+    col,
+    cx,
+    cy,
+    hintFg,
+    hintBg,
+    adj,
+    dc,
+    bndCon,
+    wideArea,
+    towers,
+    meanDiff,
+  } = base || sceneBase(img, hints);
+  // A big, evenly coloured region (a wall that stops short of the border) is surroundings too: furniture is
+  // a smaller part of the picture than the room around it. softArea (narrow) is kept for the maps.
+  // wall and floor are plain and pale-to-neutral; a big region of rich colour (warm wood, teal fabric) is the piece
+  const bigOf = (i) => {
+    if (!wallRule) return 0;
+    const chroma = Math.hypot(col[i][1], col[i][2]);
+    const plain = Math.min(1, Math.max(0, (20 - chroma) / 8));
+    return Math.min(1, Math.max(0, (wideArea[i] - 0.12) / 0.07)) * plain;
+  };
+  const bgGeo = Array.from(bndCon, (b, i) => Math.max(1 - Math.exp(-(b * b) / 2), 0.95 * bigOf(i)));
   const region = hints.region;
   const inFrac = new Float64Array(count);
   const coreFrac = new Float64Array(count);
@@ -700,8 +757,6 @@ export function sceneCut(img, hints = {}, { wallRule = true } = {}) {
   }
 
   // GrabCut on the superpixel graph
-  const meanDiff =
-    [...adj.values()].reduce((a, e) => a + e.diff / e.len, 0) / Math.max(1, adj.size);
   const beta = 1 / (2 * Math.max(4, meanDiff) ** 2);
   const lambda = 10;
   const hintsSamples = { fg: [], bg: [] };
@@ -1171,6 +1226,16 @@ export function cutQuality(rgba, mask, w, h) {
 }
 
 /** How furniture-like a candidate cut-out is: a good outline, a sensible size, floor contact, not a frame of border. */
+/** The biggest joined-up part of a mask, on its own. */
+function largestPiece(mask, w, h) {
+  const { labels, list } = components(mask, w, h);
+  if (!list.length) return null;
+  const big = list.reduce((a, c) => (c.area > a.area ? c : a), list[0]);
+  const out = new Uint8Array(w * h);
+  for (let p = 0; p < labels.length; p++) if (labels[p] === big.id) out[p] = 1;
+  return out;
+}
+
 function candidateScore(rgba, mask, w, h) {
   const q = cutQuality(rgba, mask, w, h);
   let area = 0,
@@ -1412,6 +1477,128 @@ function frameRegion(w, h) {
  * @returns {{ mask: Uint8Array, quality: number, mode: 'plain'|'scene', pieces: Array<{id:number,area:number,box:object,cx:number,cy:number}>,
  *   pieceLabels: Int32Array, coverage: number }} masks are photo-sized; pieces describe the separate blobs, largest first
  */
+// ---------- boxy pieces ----------
+
+/**
+ * How much of a straight line sits on a colour step: the share of its length where the picture changes across
+ * it. A weak but real edge (a white carcass against a cream wall) scores high here, because what is measured is
+ * the length over which the small step keeps appearing, not the size of the step.
+ */
+function edgeSupport(planes, w, h, upright, at, from, to, step) {
+  let hit = 0;
+  let n = 0;
+  for (let i = from; i <= to; i++) {
+    let best = 0;
+    // the line may wander a pixel over its length
+    for (let d = -1; d <= 1; d++) {
+      const c = at + d;
+      let p0;
+      let p1;
+      if (upright) {
+        if (c - 1 < 0 || c + 1 >= w) continue;
+        p0 = i * w + c - 1;
+        p1 = i * w + c + 1;
+      } else {
+        if (c - 1 < 0 || c + 1 >= h) continue;
+        p0 = (c - 1) * w + i;
+        p1 = (c + 1) * w + i;
+      }
+      const dl = planes.L[p0] - planes.L[p1];
+      const da = planes.A[p0] - planes.A[p1];
+      const db = planes.B[p0] - planes.B[p1];
+      const e = Math.sqrt(dl * dl + da * da + db * db);
+      if (e > best) best = e;
+    }
+    n++;
+    if (best >= step) hit++;
+  }
+  return n ? hit / n : 0;
+}
+
+/**
+ * The piece's side within a band: the line with the most of its length on a colour step, pulled towards the
+ * piece that was found so that a stronger edge further off (a door frame, the line where wall meets ceiling)
+ * does not win over the piece's own.
+ */
+function bestSide(planes, w, h, upright, lo, hi, from, to, near, step) {
+  let best = null;
+  const span = Math.max(1, hi - lo);
+  for (let at = lo; at <= hi; at++) {
+    const sup = edgeSupport(planes, w, h, upright, at, from, to, step);
+    const score = sup - (0.2 * Math.abs(at - near)) / span;
+    if (!best || score > best.score) best = { at, sup, score };
+  }
+  return best;
+}
+
+/**
+ * Casework is a rectangle. A wardrobe, a cabinet or a run of built-ins has two long upright edges and a straight
+ * top and foot, and they stay straight over the whole piece even when its carcass is nearly the colour of the
+ * wall behind it — the case a colour cut loses, keeping only the dark opening or the one painted door. This
+ * looks for the rectangle around what was found and reports how well its four sides are supported, so the
+ * caller can take the rectangle when the cut has plainly found a part of a box rather than a whole piece.
+ * @param {Uint8ClampedArray} rgba picture at analysis size
+ * @param {Uint8Array} mask the piece found so far
+ * @param {{ region?: Uint8Array|null, step?: number }} [options] region: where the user said the piece is
+ * @returns {{ rect: {x0:number,y0:number,x1:number,y1:number}, support: number[], fill: number }|null}
+ */
+export function boxyOutline(rgba, w, h, mask, { region = null, step = 3 } = {}) {
+  const b = maskBounds(mask, w, h);
+  if (!b || b.width < w * 0.08 || b.height < h * 0.08) return null;
+  let area = 0;
+  for (let p = 0; p < mask.length; p++) if (mask[p]) area++;
+  const planes = toLabPlanes(rgba, w * h);
+  let lim = { x0: 0, y0: 0, x1: w - 1, y1: h - 1 };
+  if (region) {
+    const rb = maskBounds(region, w, h);
+    if (rb) lim = { x0: rb.minX, y0: rb.minY, x1: rb.maxX, y1: rb.maxY };
+  }
+  // the sides may sit outside what was found (a lost column) or a little inside it (a caught shadow)
+  const outX = region ? w : Math.round(b.width * 0.35);
+  const outY = region ? h : Math.round(b.height * 0.35);
+  const inX = Math.round(b.width * 0.3);
+  const inY = Math.round(b.height * 0.3);
+  const clampX = (x) => Math.min(lim.x1, Math.max(lim.x0, x));
+  const clampY = (y) => Math.min(lim.y1, Math.max(lim.y0, y));
+  const left = bestSide(planes, w, h, true, clampX(b.minX - outX), clampX(b.minX + inX), b.minY, b.maxY, b.minX, step); // prettier-ignore
+  const right = bestSide(planes, w, h, true, clampX(b.maxX - inX), clampX(b.maxX + outX), b.minY, b.maxY, b.maxX, step); // prettier-ignore
+  const top = bestSide(planes, w, h, false, clampY(b.minY - outY), clampY(b.minY + inY), b.minX, b.maxX, b.minY, step); // prettier-ignore
+  const bottom = bestSide(planes, w, h, false, clampY(b.maxY - inY), clampY(b.maxY + outY), b.minX, b.maxX, b.maxY, step); // prettier-ignore
+  if (!left || !right || !top || !bottom) return null;
+  const rect = { x0: left.at, x1: right.at, y0: top.at, y1: bottom.at };
+  const rw = rect.x1 - rect.x0 + 1;
+  const rh = rect.y1 - rect.y0 + 1;
+  if (rw < 6 || rh < 6) return null;
+  // measure the four sides again over the rectangle they make
+  const support = [
+    edgeSupport(planes, w, h, true, rect.x0, rect.y0, rect.y1, step),
+    edgeSupport(planes, w, h, true, rect.x1, rect.y0, rect.y1, step),
+    edgeSupport(planes, w, h, false, rect.y0, rect.x0, rect.x1, step),
+    edgeSupport(planes, w, h, false, rect.y1, rect.x0, rect.x1, step),
+  ];
+  let inside = 0;
+  for (let y = rect.y0; y <= rect.y1; y++)
+    for (let x = rect.x0; x <= rect.x1; x++) if (mask[y * w + x]) inside++;
+  return { rect, support, fill: inside / (rw * rh), kept: area ? inside / area : 0 };
+}
+
+/**
+ * Was only a part of a box found? True when the rectangle around the piece has four long straight sides, holds
+ * everything the cut found, and is filled well under two thirds: a whole piece fills its own outline, a carcass
+ * lost against the wall behind it does not. The rectangle must also be a tall upright one standing over much of
+ * the picture, which is what casework is; a low piece seen in a room has open floor under it, and filling that
+ * in would turn a coffee table into a chest.
+ */
+function partOfABox(box, w, h) {
+  if (!box) return false;
+  const { rect, support, fill, kept } = box;
+  if (fill >= 0.6 || kept < 0.9) return false;
+  const rw = rect.x1 - rect.x0 + 1;
+  const rh = rect.y1 - rect.y0 + 1;
+  if (rh < rw || rh < h * 0.5 || rw < w * 0.1) return false;
+  return Math.min(...support) >= 0.55 && support.reduce((a, b) => a + b, 0) / 4 >= 0.72;
+}
+
 export function extractForeground(rgba, width, height, options = {}) {
   const { tolerance = 16, mode = 'auto', crop = null, keep = [], remove = [] } = options;
   const x0 = crop ? Math.max(0, Math.floor(crop.x0 * width)) : 0;
@@ -1482,19 +1669,33 @@ export function extractForeground(rgba, width, height, options = {}) {
     let best = null;
     const readings = inside ? [{ wallRule: false }] : [{ wallRule: true }, { wallRule: false }];
     if (!inside && !edited && options.framed) readings.push({ wallRule: false, framed: true });
+    // the readings differ only in their prior, so the superpixels and their colour graph are worked out once
+    const base = sceneBase(small, hints);
     for (const { wallRule, framed } of readings) {
       const h = framed ? { ...hints, region: frameRegion(sw, sh) } : hints;
-      const cutA = sceneCut(small, h, { wallRule });
+      const cutA = sceneCut(small, h, { wallRule, base });
       if (inside) for (let p = 0; p < cutA.mask.length; p++) if (!inside[p]) cutA.mask[p] = 0;
       const tidyA = tidy(cutA.mask, sw, sh, hints);
       // (the whole-frame reading is taken only when it looks more like a piece than the others)
       const score = candidateScore(small.rgba, tidyA.mask, sw, sh);
       if (!best || score > best.score) best = { cut: cutA, tidy: tidyA, score };
     }
-    const tidy1 = {
+    let tidy1 = {
       ...best.tidy,
       mask: edited ? best.tidy.mask : trimRug(best.tidy.mask, small.rgba, sw, sh),
     };
+    // Only a part of a box was found (a pale wardrobe against a pale wall keeps its dark opening and loses its
+    // carcass): the box's own four straight sides are the outline, so the piece is read whole.
+    if (!edited) {
+      const main = largestPiece(tidy1.mask, sw, sh);
+      const box = main && boxyOutline(small.rgba, sw, sh, main, { region: inside });
+      if (partOfABox(box, sw, sh)) {
+        const filled = Uint8Array.from(tidy1.mask);
+        for (let y = box.rect.y0; y <= box.rect.y1; y++)
+          for (let x = box.rect.x0; x <= box.rect.x1; x++) filled[y * sw + x] = 1;
+        tidy1 = { ...tidy1, mask: filled };
+      }
+    }
     mask = resizeMask(tidy1.mask, sw, sh, width, height);
     smallSplit = {
       labels: splitFlanks(splitPieces(tidy1.mask, sw, sh), sw, sh),

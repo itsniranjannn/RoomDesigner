@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { decodePng, shrink } from '../../scripts/photo-harness/png.js';
+import { readLikeDialog, shrink } from '../../scripts/photo-harness/png.js';
 import { lifestyleScene, surface } from './testPhotos.js';
 import { buildScene } from './photoTestKit.js';
 import { detectStackedPhotos, cropRegion, symmetryScores } from './stacked.js';
@@ -154,7 +154,7 @@ describe('records for ornate pieces', () => {
  */
 const dir = process.env.PHOTO_FIXTURES;
 const has = (name) => Boolean(dir) && fs.existsSync(path.join(dir, name));
-const load = (name) => shrink(decodePng(path.join(dir, name)), 1000);
+const load = (name) => readLikeDialog(path.join(dir, name), 1000);
 
 describe.skipIf(!has('new-bed.png'))('the real carved bed picture', () => {
   it('is split into two photos by itself and the front one is a carved bed with a crest', () => {

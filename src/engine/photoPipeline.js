@@ -200,7 +200,7 @@ export function sheetQuarter(looks) {
  * photo of a collage, else the straight-on one); or a product sheet of several views on a plain backdrop
  * ('sheet', for the sheet splitter).
  * @returns {{ kind: 'single' } | { kind: 'sheet' } |
- *   { kind: 'stacked', parts: Array<{rgba, width, height}>, sym: number[], used: number }}
+ *   { kind: 'stacked', parts: Array<{rgba, width, height}>, sym: number[]|null, used: number }}
  */
 export function photoRoute(rgba, width, height, { photoEdge = 480 } = {}) {
   const stacked = detectStackedPhotos(rgba, width, height);
@@ -218,8 +218,14 @@ export function photoRoute(rgba, width, height, { photoEdge = 480 } = {}) {
         ? inner.parts.map((p) => cropRegion(crop.rgba, crop.width, p))
         : [crop];
     });
+    // One photo far bigger than the others is the main picture (the small ones show other colours or details);
+    // among photos of one size the straight-on view is the most left-right symmetric outline
+    const area = parts.map((p) => p.width * p.height);
+    const big = area.indexOf(Math.max(...area));
+    const main = area.every((a, i) => i === big || a * 1.6 <= area[big]);
+    // (cutting every part out to compare them costs seconds, so it is done only when the sizes do not decide)
+    if (main) return { kind: 'stacked', parts, sym: null, used: big };
     const small = parts.map((c) => shrinkRgba(c.rgba, c.width, c.height, photoEdge));
-    // The straight-on view is the most left-right symmetric outline
     const masks = small.map((img) => {
       const cut = extractForeground(img.rgba, img.width, img.height, {
         mode: 'scene',
@@ -228,12 +234,7 @@ export function photoRoute(rgba, width, height, { photoEdge = 480 } = {}) {
       return cut.pieces.length ? pieceMask(cut, 0) : cut.mask;
     });
     const sym = symmetryScores(masks, small);
-    // One photo far bigger than the others is the main picture (the small ones show other colours or details);
-    // among photos of one size the straight-on view is the most left-right symmetric outline
-    const area = parts.map((p) => p.width * p.height);
-    const big = area.indexOf(Math.max(...area));
-    const main = area.every((a, i) => i === big || a * 1.6 <= area[big]);
-    return { kind: 'stacked', parts, sym, used: main ? big : sym.indexOf(Math.max(...sym)) };
+    return { kind: 'stacked', parts, sym, used: sym.indexOf(Math.max(...sym)) };
   }
   if (nearlyPlain) {
     // A product sheet on a plain backdrop given as one photo: several views of one piece (alike in colour and

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { decodePng, shrink } from '../../scripts/photo-harness/png.js';
+import { readLikeDialog } from '../../scripts/photo-harness/png.js';
 import { detectSheetViews, cropSheetView } from './sheet.js';
 import { build, fromSheet, dialogPhoto } from './photoTestKit.js';
 
@@ -12,7 +12,8 @@ import { build, fromSheet, dialogPhoto } from './photoTestKit.js';
  */
 const dir = process.env.PHOTO_FIXTURES;
 const has = (name) => Boolean(dir) && fs.existsSync(path.join(dir, name));
-const load = (name) => shrink(decodePng(path.join(dir, name)), 1800);
+// read as the dialog reads a picture: drawn on white and brought down to 1800 pixels by the engine's box average
+const load = (name) => readLikeDialog(path.join(dir, name), 1800);
 
 describe.skipIf(!has('5.png'))('the real bed sheet', () => {
   const sheet = () => load('5.png');
@@ -189,7 +190,15 @@ describe.skipIf(!has('r2-room-built-in-wardrobe.png'))('the built-in wardrobe in
 });
 
 describe.skipIf(!has('r2-room-white-wardrobe.png'))('the white wardrobe in a room', () => {
-  // The white doors on a cream wall are lost by the room cut-out (it keeps the clothes and the drawers)
+  it('is read as a pale case with drawers, not as a dark bed', () => {
+    // the white carcass is nearly the colour of the wall, so the colour cut keeps only the dark opening; the
+    // four straight sides of the case bring the piece back whole and with its own colour
+    const { design } = r2('r2-room-white-wardrobe.png');
+    expect(['nightstand', 'cabinet', 'wardrobe', 'bookshelf']).toContain(design.type);
+    expect(design.traits.drawers).toBeGreaterThanOrEqual(2);
+    expect(lum(design.palette.body)).toBeGreaterThan(120);
+  });
+  // Which doors, the mirror and the two rows of drawers are still beyond the cut-out
   it.todo('is read as a four-door white wardrobe with a mirror door and two rows of drawers');
 });
 
