@@ -70,6 +70,12 @@
   transform: none;
 }
 
+/* A card with a delete button keeps its corners apart: add on the left, delete on the right */
+.plusLeft {
+  right: auto;
+  left: 4px;
+}
+
 .name {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -88,10 +94,14 @@
   white-space: nowrap;
 }
 
+/*
+ * Delete sat permanently over the top-left of the thumbnail, where it hid the piece it belonged
+ * to and read as part of the drawing. It waits in the top-right corner now, like the add badge.
+ */
 .remove {
   position: absolute;
   top: 6px;
-  left: 6px;
+  right: 6px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -101,6 +111,20 @@
   background: var(--color-paper);
   border-radius: var(--radius-sm);
   box-shadow: var(--shadow-card);
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+
+.cell:hover .remove,
+.cell:focus-within .remove {
+  opacity: 1;
+}
+
+/* Nothing hovers on a touch screen, so there it simply stays */
+@media (hover: none) {
+  .remove {
+    opacity: 1;
+  }
 }
 
 .remove:hover {

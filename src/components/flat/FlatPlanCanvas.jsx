@@ -386,7 +386,10 @@ export function FlatPlanCanvas() {
     const pad = 72;
     const bw = Math.max(200, maxX - minX);
     const bh = Math.max(200, maxY - minY);
-    const k = clampK(Math.min((w - pad * 2) / bw, (h - pad * 2) / bh, 1.2));
+    // Rounded down to a whole percent: a fit that landed on 0.994 read as "99% zoom" on a plan
+    // nobody had touched yet, which looks like something is already askew
+    const raw = Math.min((w - pad * 2) / bw, (h - pad * 2) / bh, 1.2);
+    const k = clampK(Math.floor(raw * 100) / 100);
     setView({ k, tx: w / 2 - ((minX + maxX) / 2) * k, ty: h / 2 - ((minY + maxY) / 2) * k });
     setFitted(true);
   }, []);
