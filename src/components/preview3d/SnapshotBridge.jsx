@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 import { registerSnapshotSource } from '../../engine/snapshot3d.js';
 import { renderSize } from '../../engine/renderSettings.js';
+import { fitRoomView } from './cameraFit.js';
 
 /** Largest shadow map used while rendering a picture (the screen uses 1024 to 2048). */
 const EXPORT_SHADOW_MAP = 4096;
@@ -28,12 +29,45 @@ function restoreShadows(saved) {
 }
 
 /**
+ * Moves the camera back so the whole room fits the picture being taken, keeping the angle the person is
+ * looking from, and gives back a function that puts the camera where it was.
+ */
+export function framePicture(camera, fit, aspect) {
+  const target = new THREE.Vector3(0, fit.lookY ?? 0, 0);
+  const saved = {
+    position: camera.position.clone(),
+    quaternion: camera.quaternion.clone(),
+    aspect: camera.aspect,
+  };
+  // Keep the angle the person is looking from, and stand back far enough for the whole room
+  const dir = camera.position.clone().sub(target);
+  if (dir.lengthSq() < 1e-9) dir.set(0.75, 0.85, 0.9);
+  const spot = fitRoomView({
+    ...fit,
+    direction: [dir.x, dir.y, dir.z],
+    fovDeg: camera.fov,
+    aspect,
+  });
+  camera.position.set(...spot.spot);
+  camera.aspect = aspect;
+  camera.updateProjectionMatrix();
+  camera.lookAt(target.x, spot.lookY, target.z);
+  return () => {
+    camera.position.copy(saved.position);
+    camera.quaternion.copy(saved.quaternion);
+    camera.aspect = saved.aspect;
+    camera.updateProjectionMatrix();
+  };
+}
+
+/**
  * Lives inside a <Canvas>. While mounted it lets the export menus capture the current view: the scene is
  * rendered again at a larger size (antialiased, with big shadow maps) and read straight back, then the
- * canvas is restored. Options: `size` (a key of RENDER_SIZES), `background` ('scene', 'white' or
- * 'transparent') and `highQuality` (bigger shadow maps).
+ * canvas is restored. A picture frames the whole room rather than keeping the screen's crop, where the
+ * caller passes the room as `fit`. Options: `size` (a key of RENDER_SIZES), `background` ('scene', 'white'
+ * or 'transparent') and `highQuality` (bigger shadow maps).
  */
-export function SnapshotBridge() {
+export function SnapshotBridge({ fit = null }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
@@ -48,6 +82,7 @@ export function SnapshotBridge() {
         const cssH = Math.round(canvas.clientHeight);
         const out = renderSize(cssW, cssH, opts.size || 'standard', gl.capabilities.maxTextureSize);
 
+        let restoreCamera = null;
         const prevBackground = scene.background;
         const prevAlpha = gl.getClearAlpha();
         const prevClear = gl.getClearColor(new THREE.Color());
@@ -64,6 +99,7 @@ export function SnapshotBridge() {
           }
           gl.setPixelRatio(1);
           gl.setSize(out.width, out.height, false);
+          if (fit) restoreCamera = framePicture(camera, fit, out.width / out.height);
           gl.render(scene, camera);
           return {
             dataUrl: canvas.toDataURL('image/png'),
@@ -72,6 +108,7 @@ export function SnapshotBridge() {
             alpha: !!gl.getContextAttributes()?.alpha,
           };
         } finally {
+          restoreCamera?.();
           scene.background = prevBackground;
           gl.setClearColor(prevClear, prevAlpha);
           restoreShadows(saved);
@@ -80,7 +117,7 @@ export function SnapshotBridge() {
           gl.render(scene, camera);
         }
       }),
-    [gl, scene, camera]
+    [gl, scene, camera, fit]
   );
   return null;
 }

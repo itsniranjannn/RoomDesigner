@@ -21,6 +21,7 @@ import { normalizeFinish } from './materials.js';
 import { WalkControls } from './WalkControls.jsx';
 import { WalkHud } from './WalkHud.jsx';
 import { SnapshotBridge } from './SnapshotBridge.jsx';
+import { fitRoomView, roomBox, VIEW_DIRECTION, WALL_HEIGHT_M } from './cameraFit.js';
 import { focusWhenReady, useMediaQuery } from '../layout/hooks.js';
 import styles from './Room3DView.module.css';
 
@@ -48,28 +49,33 @@ const WALL_OPTIONS = [
  * into the 3D angled perspective view, with automatic elevation adjustment
  * between cutaway and full-height wall modes.
  */
-function CameraRig({ maxDimM, resetTrigger, isFullHeight, enabled = true }) {
-  const { camera } = useThree();
+function CameraRig({ widthM, depthM, resetTrigger, isFullHeight, bottomPx = 0, enabled = true }) {
+  const { camera, size } = useThree();
   const controlsRef = useRef(null);
   const isTransitioning = useRef(true);
   const transitionTime = useRef(0);
 
-  // Target camera position based on mode:
-  // Cutaway: 45° angle at moderate height for maquette view
-  // Full-Height: elevated high-angle perspective so all interior furniture is clearly visible
-  const targetPos = useMemo(() => {
-    const dist = Math.max(4.5, maxDimM * 1.3);
-    if (isFullHeight) {
-      return new THREE.Vector3(dist * 0.6, dist * 1.45, dist * 0.8);
-    }
-    return new THREE.Vector3(dist * 0.75, dist * 0.85, dist * 0.9);
-  }, [maxDimM, isFullHeight]);
+  // Where the camera sits: the angle of the mode (a maquette view cut away, a high view with full walls),
+  // far enough back that the whole room fits the part of the frame the toolbar does not float over
+  const mode = isFullHeight ? 'full' : 'cutaway';
+  const { targetPos, lookTargetY } = useMemo(() => {
+    const fit = fitRoomView({
+      ...roomBox(widthM, depthM, WALL_HEIGHT_M[mode]),
+      direction: VIEW_DIRECTION[mode],
+      fovDeg: camera.fov,
+      aspect: size.height > 0 ? size.width / size.height : 1,
+      viewportPx: size.height,
+      bottomPx,
+      lookY: isFullHeight ? 0.35 : 0.25,
+    });
+    return { targetPos: new THREE.Vector3(...fit.spot), lookTargetY: fit.lookY };
+  }, [widthM, depthM, mode, isFullHeight, camera.fov, size.width, size.height, bottomPx]);
 
   // Handle reset view button and view mode toggle transitions
   React.useEffect(() => {
     isTransitioning.current = true;
     transitionTime.current = 0;
-  }, [resetTrigger, isFullHeight]);
+  }, [resetTrigger, isFullHeight, targetPos]);
 
   // The view the person had before a walkthrough, put back when it ends
   const saved = useRef(null);
@@ -101,7 +107,6 @@ function CameraRig({ maxDimM, resetTrigger, isFullHeight, enabled = true }) {
       const ease = 1 - Math.pow(1 - t, 3);
 
       camera.position.lerpVectors(camera.position, targetPos, ease * 0.2);
-      const lookTargetY = isFullHeight ? 0.35 : 0.25;
       camera.lookAt(0, lookTargetY, 0);
 
       if (controlsRef.current) {
@@ -153,6 +158,26 @@ export function Room3DView() {
     setWalking(false);
   }, []);
 
+  // How much of the bottom of the view the floating toolbar covers, so the camera can frame the room above it
+  const viewRef = useRef(null);
+  const dockRef = useRef(null);
+  const [dockPx, setDockPx] = useState(0);
+  React.useEffect(() => {
+    const dock = dockRef.current;
+    const view = viewRef.current;
+    if (!dock || !view) return undefined;
+    const read = () => {
+      const covered = view.getBoundingClientRect().bottom - dock.getBoundingClientRect().top;
+      setDockPx(Math.max(0, Math.round(covered)) + 8);
+    };
+    read();
+    if (typeof ResizeObserver !== 'function') return undefined;
+    const ro = new ResizeObserver(read);
+    ro.observe(dock);
+    ro.observe(view);
+    return () => ro.disconnect();
+  }, [walking]);
+
   // Leaving the walkthrough takes the HUD away, and with it whatever had the focus inside it, so
   // the focus goes back to the button that started the walk. This covers every way out: the HUD's
   // Esc button, WalkHud's own Escape handler and the toolbar button.
@@ -180,7 +205,7 @@ export function Room3DView() {
   const initialCamY = Math.max(5, maxDimM * 1.8);
 
   return (
-    <div className={styles.viewContainer} aria-label="3D room preview">
+    <div ref={viewRef} className={styles.viewContainer} aria-label="3D room preview">
       <Canvas
         key={quality.level}
         className={styles.canvas3d}
@@ -189,7 +214,16 @@ export function Room3DView() {
         camera={{ position: [0.01, initialCamY, 0.01], fov: 45 }}
         gl={{ antialias: true }}
       >
-        <SnapshotBridge />
+        <SnapshotBridge
+          fit={{
+            ...roomBox(
+              room.widthCm / 100,
+              room.depthCm / 100,
+              WALL_HEIGHT_M[isFullHeight ? 'full' : 'cutaway']
+            ),
+            lookY: isFullHeight ? 0.35 : 0.25,
+          }}
+        />
         {preset.background && <color attach="background" args={[preset.background]} />}
 
         <SceneLights
@@ -240,9 +274,11 @@ export function Room3DView() {
 
         {/* Camera transition & Orbit navigation */}
         <CameraRig
-          maxDimM={maxDimM}
+          widthM={room.widthCm / 100}
+          depthM={room.depthCm / 100}
           resetTrigger={resetCounter}
           isFullHeight={isFullHeight}
+          bottomPx={walking ? 0 : dockPx}
           enabled={!walking}
         />
         {walking && <WalkControls room={room} onExit={exitWalk} />}
@@ -254,7 +290,7 @@ export function Room3DView() {
           : `${VIEW_HINTS[pointer]}${hiddenWallPieces ? ' Pictures, mirrors and curtains show with Full walls.' : ''}`}
       </p>
 
-      <div className={`${styles.bottomDock} ${walking ? styles.bottomDockWalk : ''}`}>
+      <div ref={dockRef} className={`${styles.bottomDock} ${walking ? styles.bottomDockWalk : ''}`}>
         {walking && <WalkHud onExit={exitWalk} />}
 
         <div className={styles.controls} role="toolbar" aria-label="3D view controls">
