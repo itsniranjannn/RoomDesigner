@@ -49,30 +49,37 @@ export function usePersistentFlag(key, initial) {
 }
 
 /**
- * Moves focus to the first element matching `selector` once it appears, waiting a few
- * frames for React to render it, and only while focus has been lost.
+ * Moves focus to the first element matching `selector` once it appears, and only while focus
+ * has been lost.
  *
  * Several controls here remove themselves by doing their job: "Create room" closes the
  * landing page, a row in the Pieces list is replaced by that piece's panel, "Back to all
  * rooms" takes the whole top bar away. The browser drops focus onto <body> when that
  * happens, so the next Tab restarts at the top of the page.
+ *
+ * It watches for a stretch of time rather than a count of frames. A screen with animation on
+ * it can take far longer than ten frames to settle on a slow or busy machine, and the frame
+ * clock itself slows down exactly then, so a frame budget runs out soonest when it is needed
+ * most. It stops early once the focus has landed somewhere that is staying.
  */
-export function focusWhenReady(selector, frames = 10) {
-  let left = frames;
+export function focusWhenReady(selector, withinMs = 2000) {
+  const until = Date.now() + withinMs;
+  let moved = false;
   const attempt = () => {
     const target = document.querySelector(selector);
     const active = document.activeElement;
     const lost = !active || active === document.body || !document.contains(active);
     // Anything still on the page keeps the focus it was given
-    if (target && lost) target.focus();
-    // Keep watching to the end of the budget rather than stopping at the first answer. What is
-    // going away may not have gone yet — a dialog hands the focus back to whatever opened it as
-    // it unmounts, a frame or two after it was asked to close — and what replaces it may itself
-    // be replaced as the new screen settles, dropping the focus a second time.
-    if (left > 0) {
-      left -= 1;
-      requestAnimationFrame(attempt);
+    if (target && lost) {
+      target.focus();
+      moved = true;
     }
+    // Keep watching: what is going away may not have gone yet — a dialog hands the focus back to
+    // whatever opened it as it unmounts, a frame or two after it was asked to close — and what
+    // replaces it may itself be replaced as the new screen settles, dropping the focus again.
+    // Once focus has been placed and is still held, there is nothing left to wait for.
+    if (moved && !lost) return;
+    if (Date.now() < until) requestAnimationFrame(attempt);
   };
   requestAnimationFrame(attempt);
 }
