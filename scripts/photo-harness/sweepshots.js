@@ -9,9 +9,12 @@ const require = createRequire(import.meta.url);
 const { chromium } = require('@playwright/test');
 const [base, roomsDir, outDir, filter = ''] = process.argv.slice(2);
 fs.mkdirSync(outDir, { recursive: true });
+// the filter may name several prefixes, so a long sweep can be split between two runs
+const wanted = filter ? filter.split(',').filter(Boolean) : [];
 const rooms = fs
   .readdirSync(roomsDir)
-  .filter((f) => f.endsWith('.json') && f.includes(filter))
+  .filter((f) => f.endsWith('.json') && (!wanted.length || wanted.some((w) => f.includes(w))))
+  .filter((f) => !fs.existsSync(path.join(outDir, `${f.replace(/\.json$/, '')}-3d.png`)))
   .sort();
 
 const browser = await chromium.launch({ channel: 'chrome' });
