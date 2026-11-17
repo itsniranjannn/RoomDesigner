@@ -44,6 +44,17 @@ const KIND_OPTIONS = kindOptions();
 const stairOptions = Object.entries(STAIR_TYPES).map(([value, label]) => ({ value, label }));
 const m2 = (cm2) => `${(cm2 / 10000).toFixed(1)} m²`;
 const m = (cm) => `${(cm / 100).toFixed(2)} m`;
+const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** What goes with a floor, in the order a person would miss it: rooms, furniture, then shell. */
+function floorLoss(flat, rooms, levelId) {
+  const spaces = flat.spaces.filter((s) => s.levelId === levelId);
+  const shell = 'Its walls, doors, windows and stairs go with it.';
+  if (spaces.length === 0) return shell;
+  const pieces = spaces.reduce((n, s) => n + (rooms[s.roomId]?.placedFurniture?.length || 0), 0);
+  const furniture = pieces > 0 ? `, and the ${plural(pieces, 'piece')} of furniture in them,` : '';
+  return `The ${plural(spaces.length, 'room')} on this floor${furniture} are removed too. ${shell}`;
+}
 
 function NameField({ label, value, onCommit, maxLength = 60 }) {
   const [draft, setDraft] = useState(value);
@@ -518,6 +529,7 @@ function SummaryInspector() {
   const select = useFlatStore((s) => s.select);
   const renameLevel = useFlatStore((s) => s.renameLevel);
   const removeLevel = useFlatStore((s) => s.removeLevel);
+  const flatRooms = useFlatStore((s) => s.rooms);
   const [confirmingFloor, setConfirmingFloor] = useState(false);
   const summary = flatSummary(flat);
   const level = flat.levels[levelIndex(flat, levelId)];
@@ -591,7 +603,7 @@ function SummaryInspector() {
       {confirmingFloor && (
         <ConfirmDialog
           title={`Remove "${level.name}"?`}
-          message="The walls, doors, windows and stairs on this floor are removed with it."
+          message={floorLoss(flat, flatRooms, levelId)}
           confirmLabel="Remove floor"
           onClose={() => setConfirmingFloor(false)}
           onConfirm={() => {

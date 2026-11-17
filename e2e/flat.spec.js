@@ -132,6 +132,30 @@ test.describe('flat designer', () => {
     await expect(link).toBeDisabled();
   });
 
+  // The warning named the walls and the doors but not the rooms, which is the work a person
+  // would actually mind losing.
+  test('removing a floor says which rooms and furniture go with it', async ({ page }) => {
+    await openApp(page);
+    await newFlat(page, { label: 'Two-bedroom flat' });
+    await expect(stat(page, 'Rooms in the flat')).toBeVisible();
+
+    // A floor can only be removed once there are two of them
+    await page.getByRole('button', { name: 'Add a floor' }).click();
+    await page
+      .getByRole('group', { name: 'Floors' })
+      .getByRole('button', { name: 'Ground floor' })
+      .click();
+
+    const details = page.getByRole('complementary', { name: 'Details' });
+    await details.getByRole('button', { name: 'This floor' }).click();
+    await details.getByRole('button', { name: 'Remove this floor' }).click();
+
+    const confirm = page.getByRole('dialog', { name: 'Remove "Ground floor"?' });
+    await expect(confirm).toContainText('8 rooms on this floor');
+    await expect(confirm).toContainText(/\d+ pieces of furniture/);
+    await expect(confirm).toContainText('walls, doors, windows and stairs');
+  });
+
   // Every tool's hint ends with how to use the tool from the keyboard, and the one-line bar
   // cut that half off behind an ellipsis, on a full-width window as much as a narrow one.
   test('the status bar shows the whole hint, keyboard half and all', async ({ page }) => {
