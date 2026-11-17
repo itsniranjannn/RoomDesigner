@@ -1599,6 +1599,68 @@ function partOfABox(box, w, h) {
   return Math.min(...support) >= 0.55 && support.reduce((a, b) => a + b, 0) / 4 >= 0.72;
 }
 
+/**
+ * A run of casework does not stop at a door seam. When the cut ends at a straight upright edge and the same
+ * face carries on past it - the same colour, over the same height - the piece carries on too: this walks that
+ * side outward while the colour holds, so a built-in wardrobe keeps the column the cut stopped at.
+ * @returns {Uint8Array|null} the widened mask, or null when neither side carries on
+ */
+function alongTheSameFace(rgba, w, h, mask, step = 3) {
+  const b = maskBounds(mask, w, h);
+  if (!b) return null;
+  let area = 0;
+  for (let p = 0; p < mask.length; p++) if (mask[p]) area++;
+  // only for a piece that is already a filled case: a sofa or a plant has no face to follow
+  if (area / (b.width * b.height) < 0.75) return null;
+  const planes = toLabPlanes(rgba, w * h);
+  const y0 = Math.round(b.minY + b.height * 0.2);
+  const y1 = Math.round(b.minY + b.height * 0.8);
+  const bandWidth = Math.max(2, Math.round(b.width * 0.08));
+  const mean = (xa, xb) => {
+    let l = 0;
+    let a = 0;
+    let bb = 0;
+    let n = 0;
+    for (let y = y0; y <= y1; y++)
+      for (let x = Math.max(0, xa); x <= Math.min(w - 1, xb); x++) {
+        const p = y * w + x;
+        l += planes.L[p];
+        a += planes.A[p];
+        bb += planes.B[p];
+        n++;
+      }
+    return n ? [l / n, a / n, bb / n] : null;
+  };
+  const apart = (p, q) => (p && q ? Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) : Infinity);
+  const out = Uint8Array.from(mask);
+  let grew = false;
+  for (const side of [-1, 1]) {
+    const edge = side < 0 ? b.minX : b.maxX;
+    // the cut must have stopped at a straight upright edge, which is what a door seam is
+    if (edgeSupport(planes, w, h, true, edge, b.minY, b.maxY, step) < 0.6) continue;
+    const face = side < 0 ? mean(edge, edge + bandWidth) : mean(edge - bandWidth, edge);
+    const next = side < 0 ? mean(edge - bandWidth, edge - 1) : mean(edge + 1, edge + bandWidth);
+    // the same face carries on at the same brightness; a shadow, a plant or another thing standing beside the
+    // piece steps in brightness even when its colour is close
+    if (!face || !next || Math.abs(face[0] - next[0]) > 6 || apart(face, next) > 12) continue;
+    // walk out column by column while the face holds, up to half the piece again
+    const limit = Math.round(b.width * 0.6);
+    let last = edge;
+    for (let i = 1; i <= limit; i++) {
+      const x = edge + side * i;
+      if (x < 0 || x >= w) break;
+      if (apart(face, mean(x, x)) > 18) break;
+      last = x;
+    }
+    const gained = Math.abs(last - edge);
+    if (gained < w * 0.04) continue;
+    for (let y = b.minY; y <= b.maxY; y++)
+      for (let x = Math.min(edge, last); x <= Math.max(edge, last); x++) out[y * w + x] = 1;
+    grew = true;
+  }
+  return grew ? out : null;
+}
+
 export function extractForeground(rgba, width, height, options = {}) {
   const { tolerance = 16, mode = 'auto', crop = null, keep = [], remove = [] } = options;
   const x0 = crop ? Math.max(0, Math.floor(crop.x0 * width)) : 0;
@@ -1695,6 +1757,9 @@ export function extractForeground(rgba, width, height, options = {}) {
           for (let x = box.rect.x0; x <= box.rect.x1; x++) filled[y * sw + x] = 1;
         tidy1 = { ...tidy1, mask: filled };
       }
+      // a run of casework that the cut stopped partway along: follow the same face past the seam
+      const wider = main && alongTheSameFace(small.rgba, sw, sh, tidy1.mask);
+      if (wider) tidy1 = { ...tidy1, mask: wider };
     }
     mask = resizeMask(tidy1.mask, sw, sh, width, height);
     smallSplit = {

@@ -1226,9 +1226,14 @@ export function classifyFromFront(front, photoWh, q = null) {
   }
   const seatSeam = findLines(front, 'y', [0.25, 0.3, 0.75, 0.8]).length >= 1;
   const soft = rolledArms(front)?.roll || tuftedBack(front) || seatSeam;
+  // An upright piece that holds its full width over nearly its whole height is a case, not seating: a sofa or
+  // a chair narrows at the arms, shows its back above the seat and stands clear of the floor. Without this a
+  // shelf line across the front of a wardrobe reads as a seat seam. Wide boxes are left alone, since a bed
+  // base or a long bench is one too.
+  const boxy = slabFrac >= 0.9 && wh <= 1.05;
   // (a long sofa read from three quarters is its own length: up to about four times its height; and seating is
   // deep, about as deep as it is tall, where a chest of drawers is shallow)
-  if (soft && wh >= 0.85 && wh <= (q ? 4.3 : 3.4) && (!q || q.dph >= 0.6))
+  if (soft && !boxy && wh >= 0.85 && wh <= (q ? 4.3 : 3.4) && (!q || q.dph >= 0.6))
     return wh >= 1.32 ? 'sofa' : 'armchair';
   // Upright bar handles (two or more) are doors: a tall or squarish case with them is a wardrobe, not shelving
   // or a chest of drawers (whose pulls lie level)
@@ -1262,7 +1267,19 @@ export function classifyFromFront(front, photoWh, q = null) {
     const shelves = findLines(front, 'y', [0.12, 0.03, 0.88, 0.97], 5).length;
     const seeThrough = front.open && (fillOf(front, [0.1, 0.1, 0.9, 0.9], true) ?? 1) < 0.72;
     if (seeThrough && wh <= 0.75) return 'etagere';
-    return shelves >= 3 && wh <= 0.75 ? 'bookshelf' : wh <= 0.7 ? 'wardrobe' : 'nightstand';
+    if (shelves >= 3 && wh <= 0.75) return 'bookshelf';
+    if (wh <= 0.7) return 'wardrobe';
+    // Between a wardrobe and a chest of drawers the ratio decides little, but the lines on the front do: a
+    // chest is ruled by level ones, drawer seams spread the whole way up it, while a wardrobe's front is
+    // doors, so it shows upright gaps and few level lines. A case with no spread of level seams and an
+    // upright seam away from its edges is a wardrobe whatever its ratio.
+    const level = findLines(front, 'y', [0.08, 0.08, 0.92, 0.95], 4);
+    const spread = level.length >= 2 ? Math.max(...level) - Math.min(...level) : 0;
+    const doorSplit = findLines(front, 'x', [0.08, 0.05, 0.92, 0.9], 4).some(
+      (x) => x > 0.15 && x < 0.85
+    );
+    if (spread < 0.25 && doorSplit) return 'wardrobe';
+    return 'nightstand';
   }
   return wh <= 1.3 ? 'nightstand' : 'cabinet';
 }

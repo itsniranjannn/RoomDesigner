@@ -574,6 +574,28 @@ function colourClusters(v, k) {
 }
 
 /**
+ * Drawers in a bed's base. A storage bed is a solid box under the mattress with drawer fronts in it: one or
+ * more level seams running across that box, and two or more pulls on it at the same height, set apart. A plain
+ * base shows the seam of its own edge at most, and the carving on an ornate one is never level and paired.
+ * @param {object} views the normalized views
+ * @returns {{ store?: 1 }}
+ */
+export function bedStorage(views) {
+  const v = views.front || views.back || views.left || views.right;
+  if (!v) return {};
+  // the base: below the mattress, above the floor
+  const band = [0.1, 0.62, 0.9, 0.98];
+  const seams = findLines(v, 'y', band, 4);
+  if (!seams.length) return {};
+  const f = v.fine || v;
+  const pulls = findPulls(f).pulls.filter((p) => p.y >= band[1] && p.y <= band[3]);
+  const paired = pulls.some((a) =>
+    pulls.some((b) => b !== a && Math.abs(a.y - b.y) <= 0.04 && Math.abs(a.x - b.x) >= 0.15)
+  );
+  return paired ? { store: 1 } : {};
+}
+
+/**
  * A wardrobe's details from its front: the colour of its doors when they differ from the carcass, an oval mirror
  * set in a door or a full-height mirror door, a stack of drawers under one door or across the bottom, the kind of
  * handles and their colour, a row of top cupboards, an open niche with a mirror and counter, and fluted doors.
@@ -789,7 +811,7 @@ export function detailTraits(type, views, palette, hints = {}) {
   } else if (type === 'desk') {
     Object.assign(out.traits, deskDetails(F));
   } else if (type === 'bed') {
-    Object.assign(out.traits, metalBed(views));
+    Object.assign(out.traits, metalBed(views), bedStorage(views));
     // the tubes are one colour, head to foot: the frame's colour as read along the base
     if (out.traits.metal && palette.base) out.palette.body = palette.base;
   } else if (type === 'wardrobe') {
