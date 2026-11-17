@@ -8,7 +8,17 @@
 import React, { useMemo } from 'react';
 import * as THREE from 'three';
 import { RoundedBox } from '@react-three/drei';
-import { Box, Pad, Cyl, Ball, Pillow, leaningPillow, shade, clamp } from './shared.jsx';
+import {
+  Box,
+  Pad,
+  Cyl,
+  Ball,
+  Pillow,
+  leaningPillow,
+  shade,
+  clamp,
+  seatProportions,
+} from './shared.jsx';
 
 const GOLD = '#c9a24a';
 
@@ -605,9 +615,11 @@ export function ClassicSeat({
   roll,
   tufted,
   pattern,
-  seatH = 0.44,
-  armH = 0.62,
+  seatH: wantSeatH = 0.44,
+  armH: wantArmH = 0.62,
 }) {
+  // A seat resized low keeps a back cushion to sit against (see seatProportions)
+  const { seatH, armH, backH } = seatProportions(heightM, wantSeatH, wantArmH, 0.12);
   const armW = clamp(widthM * armRatio, 0.08, 0.2);
   const innerW = widthM - armW * 2;
   const backT = depthM * (cane ? 0.14 : 0.2);
@@ -834,7 +846,7 @@ export function ClassicSeat({
             key={i}
             position={[
               -innerW / 2 + (innerW * (i + 0.5)) / a.length,
-              heightM - 0.2,
+              Math.max(seatH + 0.06, heightM - 0.2),
               -depthM / 2 + backT + 0.005,
             ]}
             radius={0.012}
@@ -850,14 +862,14 @@ export function ClassicSeat({
           key={i}
           position={[
             -innerW / 2 + seatW * (i + 0.5),
-            seatH + (heightM - seatH - 0.1) / 2,
+            seatH + backH / 2 + 0.01,
             -depthM / 2 + backT + 0.07,
           ]}
           rotation={[-0.2, 0, 0]}
         >
           <FPad
             pattern={pattern}
-            size={[seatW - 0.03, heightM - seatH - 0.12, 0.13]}
+            size={[seatW - 0.03, backH, 0.13]}
             radius={0.05}
             color={cushion}
             roughness={0.85}

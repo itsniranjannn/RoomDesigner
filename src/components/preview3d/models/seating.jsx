@@ -15,6 +15,7 @@ import {
   shade,
   EdgePiping,
   Buttons,
+  seatProportions,
 } from './shared.jsx';
 import { SteppedArm } from './channelSeat.jsx';
 
@@ -26,12 +27,12 @@ export function scatterPillows({ widthM, depthM, heightM, armRatio, seats, seatH
   const armW = widthM * armRatio;
   const backThick = depthM * 0.26;
   const innerW = widthM - armW * 2;
-  const backCushionH = heightM - seatH - 0.06;
+  const { seatH: seat, backH: backCushionH } = seatProportions(heightM, seatH, seatH);
   // Never wider than the gap between the arms, however small the piece is resized
   const w = Math.max(0.12, Math.min(clamp(innerW * 0.34, 0.26, 0.4), innerW - 0.02));
   const size = [w, w * 0.4, w];
   // Front face of the loose back cushion, which the scatter cushions lean on
-  const centre = [0, seatH + backCushionH / 2 - 0.02, -depthM / 2 + backThick + 0.06];
+  const centre = [0, seat + backCushionH / 2 - 0.02, -depthM / 2 + backThick + 0.06];
   const normal = [0, Math.sin(BACK_CUSHION_TILT), Math.cos(BACK_CUSHION_TILT)];
   const planePoint = centre.map((c, i) => c + normal[i] * 0.065);
   const spots = seats > 1 ? [-1, 1] : [-1];
@@ -43,7 +44,7 @@ export function scatterPillows({ widthM, depthM, heightM, armRatio, seats, seatH
       lean: 1.15 + (sg > 0 ? 0.06 : 0),
       yaw: sg * 0.14,
       x: sg * Math.max(0, innerW / 2 - w / 2 - 0.045),
-      seatTop: seatH,
+      seatTop: seat,
       planePoint,
       planeNormal: normal,
     }),
@@ -125,8 +126,8 @@ export function Upholstered({
   legColor,
   armRatio,
   seats,
-  seatH = 0.44,
-  armH = 0.62,
+  seatH: wantSeatH = 0.44,
+  armH: wantArmH = 0.62,
   roughness,
   recliner = false,
   scatter = false,
@@ -142,7 +143,8 @@ export function Upholstered({
   const innerW = widthM - armW * 2;
   const seatW = innerW / seats;
   const seatDepth = depthM - backThick;
-  const backCushionH = heightM - seatH - 0.06;
+  // A piece resized low brings its seat and arms down, so the back cushion never vanishes
+  const { seatH, armH, backH: backCushionH } = seatProportions(heightM, wantSeatH, wantArmH);
   const welt = shade(cushionColor, -0.1);
   return (
     <group>

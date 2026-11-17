@@ -153,6 +153,22 @@ export function clamp(value, lo, hi) {
   return Math.min(hi, Math.max(lo, value));
 }
 
+/**
+ * Seat and arm heights for an upholstered piece `heightM` tall, and the height left for its back cushion.
+ * A piece resized lower brings its seat and arms down with it, so the back never collapses to nothing: the
+ * usual seat of a sofa (0.44) is kept whenever the piece is tall enough for it, so every catalog seat and
+ * every piece at a normal height is drawn exactly as before.
+ * `backGap` is what the back loses to the frame above and below the cushion.
+ */
+export function seatProportions(heightM, seatH, armH, backGap = 0.06) {
+  const seat = Math.min(seatH, heightM * 0.58);
+  return {
+    seatH: seat,
+    armH: Math.min(armH, heightM * 0.82),
+    backH: Math.max(0.08, heightM - seat - backGap),
+  };
+}
+
 /** A colour nudged lighter (positive) or darker (negative) in lightness. */
 export function shade(color, amount) {
   const c = new THREE.Color(color);
