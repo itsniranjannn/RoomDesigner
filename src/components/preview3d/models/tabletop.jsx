@@ -16,9 +16,82 @@ export function CushionModel({ widthM, depthM, heightM, mainColor }) {
   );
 }
 
+/**
+ * Candle holder: a round tray with three pillar candles of different heights, each with a wick and a flame.
+ * The candles are sized from the tray, so the set reads the same at any size.
+ */
+export function CandleSetModel({ widthM, depthM, heightM, mainColor, subColor }) {
+  const r = Math.min(widthM, depthM) / 2;
+  const trayH = Math.min(heightM * 0.12, r * 0.4);
+  const wax = subColor || '#FFE9B0';
+  // Three candles on a circle inside the tray, the tallest in the middle of the group
+  const candleR = Math.min(r * 0.3, (r * 0.78) / 1.6);
+  const spots = [
+    [-0.46, -0.2, 1],
+    [0.42, -0.3, 0.72],
+    [0.02, 0.44, 0.52],
+  ];
+  return (
+    <group name="candle-set">
+      <Cyl
+        position={[0, trayH / 2, 0]}
+        radiusTop={r * 0.96}
+        radiusBottom={r}
+        height={trayH}
+        color={mainColor}
+        roughness={0.3}
+        metalness={0.45}
+        segments={28}
+      />
+      {spots.map(([fx, fz, f], i) => {
+        const h = Math.max(0.01, (heightM - trayH) * (0.42 + f * 0.52));
+        const x = fx * (r - candleR) * 1.6;
+        const z = fz * (r - candleR) * 1.6;
+        return (
+          <group key={i} name="candle">
+            <Cyl
+              position={[x, trayH + h / 2, z]}
+              radiusTop={candleR}
+              radiusBottom={candleR}
+              height={h}
+              color={wax}
+              roughness={0.55}
+              segments={18}
+            />
+            <Cyl
+              position={[x, trayH + h + 0.002, z]}
+              radiusTop={candleR * 0.9}
+              height={0.004}
+              color={shade(wax, -0.12)}
+              roughness={0.6}
+              segments={14}
+              castShadow={false}
+            />
+            <Box
+              position={[x, trayH + h + 0.008, z]}
+              size={[0.0022, 0.012, 0.0022]}
+              color="#3A3028"
+              castShadow={false}
+            />
+            <Ball
+              position={[x, trayH + h + 0.022, z]}
+              radius={Math.max(0.005, candleR * 0.3)}
+              scale={[0.6, 1.5, 0.6]}
+              color="#FFB64A"
+              roughness={0.4}
+              castShadow={false}
+            />
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
 /** Ceramic vase with a short neck and a loose bunch of stems and flower heads. */
 export function VaseModel({ widthM, depthM, heightM, mainColor, subColor }) {
-  const r = Math.min(widthM, depthM) / 2;
+  // The belly never grows past the neck, so a vase made wider keeps its stems and flowers
+  const r = Math.min(Math.min(widthM, depthM) / 2, heightM * 0.3);
   const bodyH = heightM * 0.62;
   const stems = [
     [-0.3, 0.2, -0.12],
@@ -39,7 +112,7 @@ export function VaseModel({ widthM, depthM, heightM, mainColor, subColor }) {
         segments={28}
       />
       <mesh position={[0, bodyH * 0.42, 0]} castShadow>
-        <sphereGeometry args={[r * 0.98, 28, 18]} />
+        <sphereGeometry args={[Math.min(r * 0.98, bodyH * 0.56), 28, 18]} />
         <meshStandardMaterial color={mainColor} roughness={0.18} />
       </mesh>
       <Cyl

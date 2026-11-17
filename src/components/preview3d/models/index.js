@@ -79,6 +79,7 @@ import { TableLampModel, MonitorModel, MicrowaveModel, BookStackModel } from './
 
 import {
   CushionModel,
+  CandleSetModel,
   VaseModel,
   LaptopModel,
   PhotoFrameModel,
@@ -163,6 +164,7 @@ export const MODELS = {
   'book-stack': BookStackModel,
   cushion: CushionModel,
   vase: VaseModel,
+  'candle-set': CandleSetModel,
   laptop: LaptopModel,
   'photo-frame': PhotoFrameModel,
   speaker: SpeakerModel,

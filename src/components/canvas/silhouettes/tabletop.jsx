@@ -35,6 +35,40 @@ export function CushionSilhouette({ widthCm, depthCm, hw, hd, color }) {
 }
 
 /** Vase with a few stems: round lip, dark opening and flower heads. */
+/** Candle holder from above: the tray, with the three candle tops on it. */
+export function CandleSetSilhouette({ hw, hd, color, subColor }) {
+  const r = Math.min(hw, hd);
+  const candleR = Math.min(r * 0.3, (r * 0.78) / 1.6);
+  const spots = [
+    [-0.46, -0.2],
+    [0.42, -0.3],
+    [0.02, 0.44],
+  ];
+  return (
+    <g>
+      <circle cx={0} cy={0} r={r} fill={color} stroke={EDGE} strokeWidth="0.9" />
+      {spots.map(([fx, fz], i) => (
+        <g key={i}>
+          <circle
+            cx={fx * (r - candleR) * 1.6}
+            cy={fz * (r - candleR) * 1.6}
+            r={candleR}
+            fill={subColor || '#FFE9B0'}
+            stroke={EDGE}
+            strokeWidth="0.5"
+          />
+          <circle
+            cx={fx * (r - candleR) * 1.6}
+            cy={fz * (r - candleR) * 1.6}
+            r={Math.max(0.3, candleR * 0.22)}
+            fill="#3A3028"
+          />
+        </g>
+      ))}
+    </g>
+  );
+}
+
 export function VaseSilhouette({ hw, hd, color, subColor }) {
   const r = Math.min(hw, hd);
   const heads = [

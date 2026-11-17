@@ -1806,7 +1806,7 @@ export const FURNITURE_CATALOG = [
     heightCm: 16,
     color: '#B58A3C',
     subColor: '#FFE9B0',
-    shapeType: 'vase',
+    shapeType: 'candle-set',
     restsOnTop: true,
   },
   {

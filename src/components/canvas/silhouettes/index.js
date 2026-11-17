@@ -89,6 +89,7 @@ import {
 
 import {
   CushionSilhouette,
+  CandleSetSilhouette,
   VaseSilhouette,
   LaptopSilhouette,
   PhotoFrameSilhouette,
@@ -173,6 +174,7 @@ export const SILHOUETTES = {
   'book-stack': BookStackSilhouette,
   cushion: CushionSilhouette,
   vase: VaseSilhouette,
+  'candle-set': CandleSetSilhouette,
   laptop: LaptopSilhouette,
   'photo-frame': PhotoFrameSilhouette,
   speaker: SpeakerSilhouette,
