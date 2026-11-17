@@ -13,10 +13,17 @@ import {
 } from './shared.jsx';
 
 /** Flat monitor on a stand, keyboard and mouse, shared by the desk models. */
-function DeskTop({ x, z, topY, widthM, subColor }) {
+/**
+ * Monitor, keyboard and mouse on a top. `front` is how far forward (z) the desk goes: the keyboard and mouse
+ * come forward of the monitor only as far as that allows, and a top with no room for them has neither.
+ */
+function DeskTop({ x, z, topY, widthM, subColor, front = Infinity }) {
   const w = clamp(widthM, 0.3, 0.6);
   const h = w * 0.58;
   const screenY = topY + 0.1 + h / 2;
+  const keyD = 0.13;
+  const keyZ = Math.min(z + 0.26, front - keyD / 2 - 0.01);
+  const keyboard = keyZ > z + 0.1;
   return (
     <group name="monitor">
       <Cyl
@@ -48,29 +55,33 @@ function DeskTop({ x, z, topY, widthM, subColor }) {
         <meshBasicMaterial color="#38D26B" />
       </mesh>
       {/* Keyboard with key rows, and a mouse */}
-      <Box
-        position={[x, topY + 0.008, z + 0.26]}
-        size={[Math.min(0.44, w * 1.1), 0.014, 0.13]}
-        color="#2B2D30"
-        roughness={0.5}
-      />
-      {[-0.04, 0, 0.04].map((dz) => (
-        <Box
-          key={dz}
-          position={[x, topY + 0.0165, z + 0.26 + dz]}
-          size={[Math.min(0.4, w * 1.0), 0.003, 0.025]}
-          color="#4A4E53"
-          roughness={0.6}
-          castShadow={false}
-        />
-      ))}
-      <Pad
-        position={[x + Math.min(0.44, w * 1.1) / 2 + 0.07, topY + 0.015, z + 0.27]}
-        size={[0.06, 0.03, 0.1]}
-        radius={0.015}
-        color="#2B2D30"
-        roughness={0.5}
-      />
+      {keyboard && (
+        <group name="keyboard">
+          <Box
+            position={[x, topY + 0.008, keyZ]}
+            size={[Math.min(0.44, w * 1.1), 0.014, keyD]}
+            color="#2B2D30"
+            roughness={0.5}
+          />
+          {[-0.04, 0, 0.04].map((dz) => (
+            <Box
+              key={dz}
+              position={[x, topY + 0.0165, keyZ + dz]}
+              size={[Math.min(0.4, w * 1.0), 0.003, 0.025]}
+              color="#4A4E53"
+              roughness={0.6}
+              castShadow={false}
+            />
+          ))}
+          <Pad
+            position={[x + Math.min(0.44, w * 1.1) / 2 + 0.07, topY + 0.015, keyZ + 0.01]}
+            size={[0.06, 0.03, 0.1]}
+            radius={0.015}
+            color="#2B2D30"
+            roughness={0.5}
+          />
+        </group>
+      )}
     </group>
   );
 }
@@ -178,6 +189,7 @@ export function DeskLModel({ widthM, depthM, mainColor, subColor, legColor }) {
         topY={topY}
         widthM={widthM * 0.22}
         subColor={subColor}
+        front={mainZ + mainD / 2}
       />
     </group>
   );
@@ -303,6 +315,7 @@ export function StandingDeskModel({
         topY={heightM}
         widthM={widthM * 0.28}
         subColor={subColor}
+        front={depthM / 2}
       />
     </group>
   );
@@ -401,6 +414,7 @@ export function ReceptionCounterModel({
         topY={lowH + 0.03}
         widthM={widthM * 0.14}
         subColor={subColor}
+        front={depthM / 2 - ledgeD}
       />
     </group>
   );

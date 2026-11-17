@@ -908,6 +908,7 @@ export function CredenzaModel({
   const sectionW = (widthM - 0.03) * 0.3;
   const sub = subColor || shade(mainColor, -0.08);
   const gapX = (widthM - 0.03) * 0.2;
+  const shelfD = Math.max(0.05, Math.min(depthM * 0.6, depthM - 0.08));
   return (
     <group>
       {/* Splayed legs */}
@@ -981,6 +982,7 @@ export function CredenzaModel({
         handle="knob"
       />
       <group name="av-bay">
+        {/* The shelf is as deep as the bay, so widening the piece never pushes it out of the front */}
         <Box
           position={[0, legH + 0.015 + doorH * 0.34, depthM / 2 - 0.004]}
           size={[gapX * 1.7, doorH * 0.64, 0.01]}
@@ -988,8 +990,8 @@ export function CredenzaModel({
           roughness={0.9}
         />
         <Box
-          position={[0, legH + 0.02 + doorH * 0.36, depthM / 2 - 0.1]}
-          size={[gapX * 1.4, 0.014, depthM * 0.6]}
+          position={[0, legH + 0.02 + doorH * 0.36, depthM / 2 - 0.04 - shelfD / 2]}
+          size={[gapX * 1.4, 0.014, shelfD]}
           color={sub}
           roughness={0.6}
         />
