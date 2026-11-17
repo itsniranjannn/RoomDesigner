@@ -24,11 +24,14 @@ export default defineConfig({
   testDir: './e2e',
   testMatch: '**/*.spec.js',
   outputDir: './test-results',
-  timeout: 90_000,
-  expect: { timeout: 10_000 },
+  // CI gets longer: two cores, software 3D, and two workers sharing them. Opening a room or a
+  // flat there regularly takes more than ten seconds, which is the machine being slow, not the
+  // app being wrong, and a short window turns that into a wall of failures that say nothing.
+  timeout: CI ? 150_000 : 90_000,
+  expect: { timeout: CI ? 30_000 : 10_000 },
   fullyParallel: true,
   forbidOnly: CI,
-  retries: CI ? 1 : 0,
+  retries: CI ? 2 : 0,
   workers: 2,
   reporter: [
     ...(CI ? [['github']] : []),
