@@ -11,6 +11,7 @@ import {
   METAL_DARK,
   P,
 } from './parts.jsx';
+import { islandCarcass, islandStools } from '../../preview3d/models/kitchenLayout.js';
 
 /** Gooseneck tap in plan: base ring, arched spout reaching towards +y. */
 function GoosenekPlan({ x, y }) {
@@ -30,9 +31,12 @@ function GoosenekPlan({ x, y }) {
 }
 
 export function KitchenIslandSilhouette({ widthCm, depthCm, hw, hd, color }) {
-  const bodyD = depthCm * 0.78;
-  const bodyZ = -depthCm * 0.05;
+  // The same cabinet and stools as the 3D island, so the two agree in size and number
+  const carcass = islandCarcass(depthCm / 100);
+  const bodyD = carcass.depth * 100;
+  const bodyZ = carcass.z * 100;
   const bodyTop = bodyZ - bodyD / 2;
+  const stools = islandStools({ widthM: widthCm / 100, depthM: depthCm / 100, heightM: 0.92 });
   const bankW = widthCm * 0.32;
   const doorW = (widthCm * 0.94 - bankW) / 2;
   return (
@@ -105,28 +109,31 @@ export function KitchenIslandSilhouette({ widthCm, depthCm, hw, hd, color }) {
         strokeWidth="0.8"
         strokeDasharray="5 3"
       />
-      {[-0.4, 0.4].map((f) => (
-        <g key={f}>
-          <circle
-            cx={hw * f}
-            cy={hd - 6}
-            r={7}
-            fill="none"
-            stroke={HAIR}
-            strokeWidth="0.8"
-            strokeDasharray="3 2"
-          />
-          <circle
-            cx={hw * f}
-            cy={hd - 6}
-            r={3.4}
-            fill="none"
-            stroke={HAIR}
-            strokeWidth="0.5"
-            strokeDasharray="2 2"
-          />
-        </g>
-      ))}
+      {Array.from({ length: stools.count }).map((_, i) => {
+        const cx = (i - (stools.count - 1) / 2) * stools.spacing * 100;
+        return (
+          <g key={i} name="stool">
+            <circle
+              cx={cx}
+              cy={stools.z * 100}
+              r={stools.seatR * 100}
+              fill="none"
+              stroke={HAIR}
+              strokeWidth="0.8"
+              strokeDasharray="3 2"
+            />
+            <circle
+              cx={cx}
+              cy={stools.z * 100}
+              r={stools.footR * 100}
+              fill="none"
+              stroke={HAIR}
+              strokeWidth="0.5"
+              strokeDasharray="2 2"
+            />
+          </g>
+        );
+      })}
     </g>
   );
 }

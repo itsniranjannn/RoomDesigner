@@ -18,6 +18,7 @@ import {
   clamp,
   shade,
 } from './shared.jsx';
+import { islandCarcass, islandStools } from './kitchenLayout.js';
 
 function Lit({ position, size, color }) {
   return (
@@ -29,29 +30,33 @@ function Lit({ position, size, color }) {
 }
 
 /** Bar stool tucked under an island overhang. */
-function Stool({ position, color }) {
+/** Bar stool: four splayed legs, a footrest ring and a round seat, all sized from the seat radius. */
+function Stool({ position, color, seatR, seatY, footR }) {
   const legs = [0, 1, 2, 3].map((i) => (i * Math.PI) / 2 + Math.PI / 4);
+  const legThick = Math.max(0.012, seatR * 0.15);
+  const seatT = Math.max(0.025, seatR * 0.33);
+  const top = seatY - seatT / 2;
   return (
     <group name="stool" position={position}>
       {legs.map((a, i) => (
         <Box
           key={i}
-          position={[Math.cos(a) * 0.1, 0.32, Math.sin(a) * 0.1]}
-          size={[0.022, 0.64, 0.022]}
+          position={[Math.cos(a) * footR, top / 2, Math.sin(a) * footR]}
+          size={[legThick, top, legThick]}
           color="#2A2A2C"
           roughness={0.5}
           metalness={0.2}
         />
       ))}
-      <mesh position={[0, 0.25, 0]} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.1, 0.007, 6, 20]} />
+      <mesh position={[0, top * 0.39, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[footR, Math.max(0.004, legThick * 0.32), 6, 20]} />
         <meshStandardMaterial color="#2A2A2C" roughness={0.5} metalness={0.2} />
       </mesh>
       <Cyl
-        position={[0, 0.665, 0]}
-        radiusTop={0.15}
-        radiusBottom={0.14}
-        height={0.05}
+        position={[0, top + seatT / 2, 0]}
+        radiusTop={seatR}
+        radiusBottom={seatR * 0.93}
+        height={seatT}
         color={color}
         roughness={0.8}
         segments={24}
@@ -63,8 +68,10 @@ function Stool({ position, color }) {
 export function KitchenIslandModel({ def, widthM, depthM, heightM, mainColor, legColor }) {
   const body = def.subColor || '#4E5F55';
   const bodyW = widthM * 0.94;
-  const bodyD = depthM * 0.78;
-  const bodyZ = -depthM * 0.05;
+  // The cabinet leaves an overhang in front for the knees and the stools (see kitchenLayout)
+  const carcass = islandCarcass(depthM);
+  const bodyD = carcass.depth;
+  const bodyZ = carcass.z;
   const plinth = 0.09;
   const topT = 0.05;
   const topY = heightM - topT;
@@ -72,7 +79,7 @@ export function KitchenIslandModel({ def, widthM, depthM, heightM, mainColor, le
   const bankW = bodyW * 0.34;
   const doorW = (bodyW - bankW) / 2;
   const frontZ = bodyD / 2;
-  const stoolCount = widthM > 1.1 ? 2 : 1;
+  const stools = islandStools({ widthM, depthM, heightM });
   return (
     <group>
       {/* Plinth, carcass and worktop with a seating overhang */}
@@ -159,11 +166,14 @@ export function KitchenIslandModel({ def, widthM, depthM, heightM, mainColor, le
         roughness={0.7}
         castShadow={false}
       />
-      {Array.from({ length: stoolCount }).map((_, i) => (
+      {Array.from({ length: stools.count }).map((_, i) => (
         <Stool
           key={i}
-          position={[(i - (stoolCount - 1) / 2) * widthM * 0.4, 0, depthM / 2 - 0.03]}
+          position={[(i - (stools.count - 1) / 2) * stools.spacing, 0, stools.z]}
           color={shade(mainColor, -0.35)}
+          seatR={stools.seatR}
+          seatY={stools.seatY}
+          footR={stools.footR}
         />
       ))}
     </group>
