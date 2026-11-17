@@ -78,26 +78,34 @@ export function WallArtSilhouette({ item, widthCm, depthCm, color }) {
   );
 }
 
+/** The three slanted glint strokes of a mirror, laid out to fit inside a mirror `widthCm` wide. */
+export function mirrorGlints(widthCm, vd) {
+  const room = widthCm - 4;
+  const n = 3;
+  const len = Math.min(vd * 0.5, room * 0.3);
+  const gap = Math.min(vd * 0.6, (room - len) / (n - 1));
+  if (len <= 0 || gap <= 0) return [];
+  const x0 = -(len + gap * (n - 1)) / 2;
+  return Array.from({ length: n }, (_, i) => ({ x: x0 + gap * i, len }));
+}
+
 export function WallMirrorHungSilhouette({ item, widthCm, depthCm }) {
   const vd = hangDepth(widthCm, depthCm);
   const y0 = -depthCm / 2;
-  const glint = (x) => (
-    <line
-      key={x}
-      x1={x}
-      y1={y0 + vd * 0.78}
-      x2={x + vd * 0.5}
-      y2={y0 + vd * 0.22}
-      stroke="#FFFFFF"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-    />
-  );
   return (
     <Hung widthCm={widthCm} depthCm={depthCm} fill={item?.mirrorColor || '#B0D3E2'}>
-      {glint(-widthCm * 0.22)}
-      {glint(-widthCm * 0.22 + vd * 0.9)}
-      {glint(-widthCm * 0.22 + vd * 1.5)}
+      {mirrorGlints(widthCm, vd).map(({ x, len }) => (
+        <line
+          key={x}
+          x1={x}
+          y1={y0 + vd * 0.78}
+          x2={x + len}
+          y2={y0 + vd * 0.22}
+          stroke="#FFFFFF"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+      ))}
     </Hung>
   );
 }
