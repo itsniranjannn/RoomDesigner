@@ -835,10 +835,13 @@ export const useRoomStore = create((set, get) => ({
    * furniture and openings that no longer fit have to be dealt with rather than lost: a piece
    * outside the new walls is brought back inside (wall pieces stay flush against their wall),
    * and a door or window on a wall that is now shorter is slid, and a window narrowed, until it
-   * fits. The counts come back so the panel can say what had to move.
+   * fits. A piece too big for the new room cannot be brought inside at all: it stays where it
+   * is and is counted in `stillOutside`, so the panel can report it rather than describe it as
+   * dealt with. The counts come back so the panel can say what had to move.
    *
-   * @returns {{ widthCm, depthCm, movedPieces, movedOpenings, movedServices } | null}
-   *   null when there is nothing to do, or when the room's shape is not this panel's to change
+   * @returns {{ widthCm, depthCm, movedPieces, movedOpenings, movedServices, stillOutside }
+   *   | null} null when there is nothing to do, or when the room's shape is not this panel's
+   *   to change
    */
   resizeRoom: (widthCm, depthCm) => {
     const { room } = get();

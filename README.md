@@ -17,7 +17,7 @@ Plan a room or a whole flat on a 2D plan, check that the furniture fits, and wal
 - **Checks as you place**: collisions, door swings, blocked windows and cramped walking gaps.
 - **Services and Plan checks** (room editor): mark sockets, switches, lights, TV points, water, drains, gas, radiators and air conditioners on the plan (wall points snap to the nearest wall). Plan checks then looks at door swings, walking routes, space in front of units, wheelchair turning space and whether the TV, bed, desk and appliances have a socket, and whether sinks, toilets and machines have water and a drain.
 - **Service links**: dashed lines join each sink, stove, TV, fridge and so on to the nearest water, drain, gas or socket point it relies on. Green is within reach, red is too far (with a "no water nearby" tag), amber means no point of that kind is marked. Links are faint until you select a piece (or a point), then bold. The switch **Show service links** is in the Plan checks panel; the exported PNG and PDF draw the links with a key when it is on. The panels have a button to sit on either side of the plan. The flat designer has no service points yet.
-- **Export** the floor plan as PNG or PDF, the 3D view as a PNG (twice the screen size, with a title strip), or a room as a design file, or share a room as a link. A flat exports as pictures and a printable plan; it has no design file or link yet. File names carry the design name and the date.
+- **Export** the floor plan as PNG or PDF, the 3D view as a PNG (twice the screen size, with a title strip), a high-resolution render of the 3D view (up to 4096 px, with a choice of background), or a room as a design file, or share a room as a link. A flat exports as pictures and a printable plan; it has no design file or link yet. Picture and PDF names carry the design name and the date; a design file is named after the design alone.
 - **Local and offline**: stored in IndexedDB, installable as a PWA.
 
 ![Start page](docs/assets/images/landing.jpg)
@@ -28,9 +28,9 @@ Drag pieces from the catalog onto the plan. Rotate, resize (0.4x to 2.5x), recol
 
 - **Clearance warnings** list door-swing zones, obstructed windows and cramped walking gaps.
 - **Measure** between any two points; the selected piece shows live distances to every wall.
-- **Layout suggestions** place a preset (bedroom, living, dining, study, Nepali sitting room) against the walls, clear of doors and windows.
-- **Trace image**: import a photo or scan of a floor plan and draw over it with adjustable opacity and scale.
-- **Photo to 3D furniture**: add 2 to 5 photos of a piece, or one product sheet showing several views, on a white or dark background (My Furniture, Create from photos). The app reads the type of furniture, proportions and colours from them and builds a catalog-style model from the same parts as the built-in furniture (sofas with tufted backs, rounded arms and tapered legs, wood-frame lounge chairs, beds, tables, storage); the 2D plan shows your own top photo cut out. Everything happens in your browser and photos are never uploaded.
+- **Layout suggestions** place a preset (bedroom, living room, dining, study, Nepali sitting room) against the walls, clear of doors and windows.
+- **Trace image**: import a photo or scan of a floor plan and draw over it with adjustable opacity and width in centimetres.
+- **Photo to 3D furniture**: add 1 to 5 photos of a piece, or one product sheet showing several views (My furniture, Create from photos). One front photo is enough to start; more make the model more accurate. The photo can be taken against a plain backdrop of any one colour or with the piece standing in a room -- the dialog asks which, or works it out. The app reads the type of furniture, proportions and colours from them and builds a catalog-style model from the same parts as the built-in furniture (sofas with tufted backs, rounded arms and tapered legs, wood-frame lounge chairs, beds, tables, storage); the 2D plan shows your own top photo cut out. Everything happens in your browser and photos are never uploaded.
 - Undo and redo, and doors and windows you can drag along their wall.
 
 ## 3D view and walkthrough
@@ -55,7 +55,7 @@ The whole flat is also available in 3D.
 
 ## Export and share
 
-PNG and PDF exports are drawn from the same symbols as the editor (tints, photo cut-outs and stacked items included), with a scale bar, a numbered key to the pieces and the room area. The 3D view exports as its own PNG, for a room and for a flat (the flat export can save the plan and the 3D picture together). Rooms also export to a design file and open back from one; a file that is not a Room Designer design is refused rather than opened as an empty room. Share links carry a whole room in the URL, so nothing is uploaded. A flat has no design file and no share link yet: it exports as pictures and as a printable plan, and the flat's Export menu says so.
+PNG and PDF exports are drawn from the same symbols as the editor (tints, photo cut-outs and stacked items included), with a scale bar, a numbered key to the pieces and the room area. The 3D view exports as its own PNG, for a room and for a flat (the flat export can save the plan and the 3D picture together), and as a larger render with finer shadows. Rooms also export to a design file and open back from one; a file that is not a Room Designer design is refused rather than opened as an empty room. Share links carry a whole room in the URL, so nothing is uploaded. A flat has no design file and no share link yet: it exports as pictures and as a printable plan, and the flat's Export menu says so.
 
 ![Exported floor plan](docs/assets/images/export-png.jpg)
 
@@ -88,7 +88,7 @@ Open the URL Vite prints (by default `http://localhost:5173`) in a WebGL-capable
 
 ## Keyboard shortcuts
 
-Press `?` on the 2D plan to see the room list in the app.
+Press `?` on the 2D plan to see the room shortcuts in the app. The flat designer's keys are not in that dialog; the table below is their only list.
 
 | Keys                        | Action                                             | Where         |
 | :-------------------------- | :------------------------------------------------- | :------------ |
@@ -102,16 +102,17 @@ Press `?` on the 2D plan to see the room list in the app.
 | `Esc`                       | Clear selection or leave measuring                 | Room plan     |
 | Drag, right-drag            | Orbit, pan                                         | 3D view       |
 | `W A S D`, `Esc`            | Walk, leave the walkthrough                        | 3D view       |
-| `V` `W` `E` `D` `N` `S` `P` | Select, wall, erase, door, window, stairs, passage | Flat designer |
+| `V` `H` `W` `E` `D` `N` `S` `P` | Select, pan, wall, erase, door, window, stairs, passage | Flat designer |
 | `R`                         | Rotate the stairs or passage tool or selection     | Flat designer |
-| Delete                      | Remove selection                                   | Flat designer |
+| Arrows, `Shift`+arrows      | Move the selected staircase by 10 cm, or 50 cm     | Flat designer |
+| Delete, Backspace           | Remove selection                                   | Flat designer |
 
 ## How it works
 
 - **Collision and clearance.** Pieces are rotated rectangles. Overlaps and wall containment use the Separating Axis Theorem (`src/engine/collision.js`). `clearance.js` flags door-swing zones, obstructed windows and walking gaps between 25 and 60 cm.
 - **One source for drawings.** The editor and the PNG/PDF export build from shared piece symbols and a sheet model (`sheetModel.js`, `exportPlan.js`), so exports match what you see.
 - **Share links.** A room is compressed, base64url-encoded and placed in the URL hash (`#share=...`), then decoded on load. Nothing leaves the browser, and a design too large for a link is refused rather than truncated. Flats are not encoded this way yet.
-- **Persistence.** Zustand stores hold the live state. Saves are debounced and written to IndexedDB (`idb`) in three object stores: rooms, custom (photo-made) furniture and flats. The last open room is remembered in `localStorage`.
+- **Persistence.** Zustand stores hold the live state. Saves are debounced and written to IndexedDB (`idb`) in three object stores: rooms, custom (photo-made) furniture and flats. The last open room and the last open flat are remembered in `localStorage`.
 - **Offline.** A service worker is registered in production builds only, so dev hot-reload is never cached.
 
 ## Project structure
@@ -123,10 +124,12 @@ src/
     canvas/      2D plan: pieces, silhouettes, grid, collision overlays
     catalog/     Furniture catalog and search
     common/      Buttons, modals, popovers, tooltips and other shared UI
+    diagnostics/ The Diagnostics panel: what this browser supports
     export/      Plan sheets used by PNG and PDF export
     flat/        Flat designer: plan canvas, 3D view, inspector, toolbar
     inspector/   Room and piece panels
     layout/      App shell, landing, about, sheets panel, top bar
+    onboarding/  The first-run tour
     preview3d/   Room 3D view, walls, walkthrough, furniture models
     tools/       Layout, share, shortcuts and photo-model dialogs
   data/          Furniture catalog and IndexedDB persistence
@@ -140,18 +143,21 @@ docs/assets/     README screenshots
 
 ## Testing and contributing
 
-Tests live next to the code (`*.test.js`) and cover the engine (collision, hull, stacking, flats, passages, export), the stores and persistence, and some components. CI (`.github/workflows/ci.yml`) runs `npm ci`, lint, `format:check`, tests and a build on every push to `main` and on pull requests. Run the same before opening one:
+Tests live next to the code (`*.test.js` and `*.test.jsx`) and cover the engine (collision, hull, stacking, flats, passages, export), the stores and persistence, and some components. CI (`.github/workflows/ci.yml`) runs `npm ci`, lint, `format:check`, tests and a build on every push to `main` and on pull requests, and then a second job that runs the whole end-to-end suite. Run all of it before opening one:
 
 ```bash
-npm run lint && npm run format:check && npm test && npm run build
+npm run lint && npm run format:check && npm test && npm run build && npm run e2e
 ```
+
+The tests that read real photographs are the one thing CI cannot run: photographs are never committed, so `src/engine/photoFixtures.test.js` and its neighbours skip unless `PHOTO_FIXTURES` points at a directory of them. Run those by hand against your own photos before changing anything in the photo reader.
 
 ### End-to-end tests
 
 Browser tests use [Playwright](https://playwright.dev) and live in `e2e/`. They run against `vite preview` of the production build on port 4399 (never the dev server's 5173) and cover the main flows: starting a room, adding furniture by click and drag, move, rotate, delete and undo, doors and windows, 3D and the walkthrough, Services and Plan checks, Materials, share links, PNG export, creating furniture from a generated photo, the flat designer, a 375 x 812 phone viewport, persistence after reload, the tour and Diagnostics. Every test fails on any `console.error` or uncaught page error (the allow-list is in `e2e/fixtures.js`).
 
 ```bash
-npm run e2e        # builds, then runs all flows headless
+npm run e2e        # builds, then runs all flows headless (a preview already
+                   # serving the port is reused as is, and nothing is rebuilt)
 npm run e2e:ui     # Playwright's interactive UI
 E2E_SKIP_BUILD=1 npx playwright test share   # reuse dist/, run one file
 ```
@@ -162,7 +168,7 @@ The first-run tour is switched off in the tests. To switch it off by hand, open 
 
 ### Photo fidelity guard
 
-`src/engine/photoGuard.test.js` runs synthetic bed, sofa, armchair and table pictures (drawn in code by `src/engine/testPhotos.js`, no real photos) through the same pipeline the Create from photos dialog uses (`src/engine/photoPipeline.js`) and fails when a bed from any single view, or from a product sheet, stops being detected as a bed, or loses its headboard, pillow or color details. To compare real pictures between two commits, use `scripts/photo-harness/`: `run.js` prints the detected design for a picture in node (point it at a checkout or a `git worktree` of an older commit), and `shoot.js` drives the dialog in Chrome against a `vite preview` and saves screenshots of the 3D preview.
+`src/engine/photoGuard.test.js` runs synthetic bed, sofa, armchair and table pictures (drawn in code by `src/engine/testPhotos.js`, no real photos) through the same pipeline the Create from photos dialog uses (`src/engine/photoPipeline.js`) and fails when a bed from any single view, or from a product sheet, stops being detected as a bed, or loses its headboard, pillow or color details. To compare real pictures between two commits, use `scripts/photo-harness/`: `run.js` prints the detected design for a picture in node (point it at a checkout or a `git worktree` of an older commit), and `shoot.js` drives the dialog in Chrome against a `vite preview` and saves screenshots of the 3D preview. The rest of that folder is one-off tools kept from particular investigations -- read the file before running one; none of them is part of the build or the test suite.
 
 ### Error reporting and the tour
 

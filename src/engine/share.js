@@ -40,7 +40,9 @@ function toShareableRoom(room) {
   const { id, name, widthCm, depthCm, doors, windows, placedFurniture, outline, openEdges } = room;
   const services = sanitizeServices(room.services);
   const finish = finishForStorage(room.finish);
-  // Photo-made pieces: only name, size and colour travel, so the receiver sees a box of the right size
+  // Photo-made pieces: the name, size, colour and the design record travel, so the receiver
+  // sees the shaped piece. The photographs themselves never do -- a piece whose record did
+  // not arrive falls back to PLACEHOLDER_NAME, which says so.
   const customTypes = [];
   const seen = new Set();
   for (const f of placedFurniture || []) {
@@ -81,7 +83,7 @@ export async function encodeRoomToHash(room) {
   const packed = await pipe(bytes, new CompressionStream('deflate'));
   const hash = HASH_KEY + toBase64Url(packed);
   if (hash.length > MAX_HASH_CHARS)
-    throw new Error('Design is too large for a link. Export JSON instead.');
+    throw new Error('Design is too large for a link. Save it as a design file instead.');
   return hash;
 }
 

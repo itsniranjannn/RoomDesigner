@@ -2,12 +2,8 @@
  * furnitureCatalog.js
  * Curated catalog of architectural furniture with real-world dimensions in cm.
  * Designed with diverse, boutique interior design material tones.
- * Grouped into 5 core architectural categories:
- * - Living Room
- * - Bedroom
- * - Dining & Office
- * - Kitchen
- * - Decor & Accents
+ * Grouped into the categories listed in FURNITURE_CATEGORIES below, which is the one place they
+ * are named: a second list up here only went out of date as categories were added.
  */
 
 import { tintedCompanions } from '../engine/tint.js';
