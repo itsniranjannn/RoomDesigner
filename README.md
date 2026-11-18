@@ -113,7 +113,7 @@ Press `?` on the 2D plan to see the room shortcuts in the app. The flat designer
 - **One source for drawings.** The editor and the PNG/PDF export build from shared piece symbols and a sheet model (`sheetModel.js`, `exportPlan.js`), so exports match what you see.
 - **Share links.** A room is compressed, base64url-encoded and placed in the URL hash (`#share=...`), then decoded on load. Nothing leaves the browser, and a design too large for a link is refused rather than truncated. Flats are not encoded this way yet.
 - **Persistence.** Zustand stores hold the live state. Saves are debounced and written to IndexedDB (`idb`) in three object stores: rooms, custom (photo-made) furniture and flats. The last open room and the last open flat are remembered in `localStorage`.
-- **Offline.** A service worker is registered in production builds only, so dev hot-reload is never cached.
+- **Offline.** A service worker is registered in production builds only, so dev hot-reload is never cached. What the tests check is that the worker has stored every file the build makes, which is what offline use rests on; a genuinely disconnected visit is not something the browser's offline switch can stand in for, because it cuts in before the worker and refuses even the files it holds.
 
 ## Project structure
 

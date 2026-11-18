@@ -783,6 +783,10 @@ export function Flat3DView() {
             resolvedQuality={quality.level}
             floorLabel="Floors"
             floorNote="A floor chosen for a room in its own editor is kept for that room."
+            /* Floors are drawn room by room here and walls are not, which is worth saying where
+               the choice is made: a wall finish picked for one room shows in that room's own
+               editor, and a flat seen as a whole takes one finish throughout. */
+            wallNote="Walls take one finish across the whole flat. A wall finish chosen for a room shows in that room's own editor."
           />
           <Button
             data-walk-start

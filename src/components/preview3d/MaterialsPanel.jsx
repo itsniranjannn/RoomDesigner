@@ -50,6 +50,7 @@ export function MaterialsPanel({
   resolvedQuality,
   floorLabel = 'Floor',
   floorNote,
+  wallNote,
   buttonClassName = '',
   textClassName = '',
   size,
@@ -89,6 +90,7 @@ export function MaterialsPanel({
           classic={CLASSIC_WALL}
           value={wall}
           onChange={onWall}
+          extra={wallNote ? <p className={styles.note}>{wallNote}</p> : null}
         />
         <div className={styles.group}>
           <span className={styles.legend}>Graphics quality</span>
