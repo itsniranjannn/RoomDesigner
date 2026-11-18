@@ -162,13 +162,29 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm,
   const byId = new Map(placedFurniture.map((i) => [i.id, i]));
   const n = items.length;
 
-  // Pre-calculate corners for each item
+  // Pre-calculate corners for each item, and the upright box around them
   const cornersMap = new Map();
+  const boxMap = new Map();
   for (const item of items) {
-    cornersMap.set(
-      item.id,
-      getRotatedRectCorners(item.x, item.y, item.widthCm, item.depthCm, item.rotationDeg || 0)
+    const corners = getRotatedRectCorners(
+      item.x,
+      item.y,
+      item.widthCm,
+      item.depthCm,
+      item.rotationDeg || 0
     );
+    cornersMap.set(item.id, corners);
+    let x0 = Infinity;
+    let y0 = Infinity;
+    let x1 = -Infinity;
+    let y1 = -Infinity;
+    for (const c of corners) {
+      if (c.x < x0) x0 = c.x;
+      if (c.x > x1) x1 = c.x;
+      if (c.y < y0) y0 = c.y;
+      if (c.y > y1) y1 = c.y;
+    }
+    boxMap.set(item.id, { x0, y0, x1, y1 });
   }
 
   // Check boundary violations
@@ -190,15 +206,28 @@ export function evaluateAllCollisions(placedFurniture, roomWidthCm, roomDepthCm,
     }
   }
 
-  // Check pairwise furniture collisions (rugs and carpet runners exempt)
+  // Check pairwise furniture collisions (rugs and carpet runners exempt).
+  //
+  // Two pieces whose upright boxes do not meet cannot clash, so they are dropped before any of
+  // the real work. The rest of this pass is not cheap -- asking whether one piece is standing on
+  // the other looks through the whole room for what each is standing on -- and it used to run for
+  // every pair in the room on every step of a drag. Sorted by left edge, the inner loop can also
+  // stop as soon as it has passed the right edge of the piece it is comparing against, so a
+  // crowded room costs about as much as a quiet one per piece instead of as much as the square
+  // of what it holds. The pieces this names are exactly the same; only the work is less.
+  const order = [...items].sort((a, b) => boxMap.get(a.id).x0 - boxMap.get(b.id).x0);
   for (let i = 0; i < n; i++) {
-    const itemA = items[i];
+    const itemA = order[i];
     if (isFlatRug(itemA.shapeType) || itemA.wallMounted) continue;
     const cornersA = cornersMap.get(itemA.id);
+    const boxA = boxMap.get(itemA.id);
 
     for (let j = i + 1; j < n; j++) {
-      const itemB = items[j];
+      const itemB = order[j];
+      const boxB = boxMap.get(itemB.id);
+      if (boxB.x0 > boxA.x1) break; // and so is every piece after it
       if (isFlatRug(itemB.shapeType) || itemB.wallMounted) continue;
+      if (boxB.y0 > boxA.y1 || boxA.y0 > boxB.y1) continue;
       // Items resting on top of one another (e.g. TV on console) do not clash
       if (!overlapsVertically(itemA, itemB)) continue;
       if (restsOn(itemA, itemB, byId, placedFurniture)) continue;
