@@ -28,13 +28,20 @@ test.describe('3D view', () => {
     await expect(materials).toBeHidden();
 
     // Walkthrough starts, shows the controls, and Escape leaves it
+    const catalog = page.getByRole('complementary', { name: 'Furniture' });
+    await expect(catalog).toBeVisible();
     await page.getByRole('button', { name: 'Walk through the room' }).click();
     await expect(page.getByLabel('Walkthrough controls')).toBeVisible();
+    // A walkthrough is a first-person view: the furniture list used to stay docked over a fifth
+    // of the window, and a card clicked there added a piece with no sign of it anywhere.
+    await expect(catalog).toBeHidden();
+    await expect(page.getByRole('button', { name: /furniture list/ })).toBeHidden();
     await page.keyboard.down('w');
     await page.waitForTimeout(400); // hold the key a moment; there is no event to wait for
     await page.keyboard.up('w');
     await page.keyboard.press('Escape');
     await expect(page.getByLabel('Walkthrough controls')).toBeHidden();
+    await expect(catalog).toBeVisible();
 
     // And back to the plan
     await page.getByRole('button', { name: 'Plan view' }).click();

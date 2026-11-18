@@ -158,6 +158,14 @@ export function Room3DView() {
     setWalking(false);
   }, []);
 
+  // The shell reads this to step the furniture list aside: in a walkthrough the view is the
+  // whole point, and a card clicked over there drops a piece out of sight behind you.
+  const setWalkActive = useRoomStore((state) => state.setWalkActive);
+  React.useEffect(() => {
+    setWalkActive(walking);
+    return () => setWalkActive(false);
+  }, [walking, setWalkActive]);
+
   // How much of the bottom of the view the floating toolbar covers, so the camera can frame the room above it
   const viewRef = useRef(null);
   const dockRef = useRef(null);

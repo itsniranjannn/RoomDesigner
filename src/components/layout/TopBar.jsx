@@ -44,6 +44,7 @@ export function TopBar({
   onToggleCatalog,
   onToggleInspector,
   showInspectorToggle,
+  showCatalogToggle = true,
 }) {
   const room = useRoomStore((state) => state.room);
   const allRooms = useRoomStore((state) => state.allRooms);
@@ -225,8 +226,10 @@ export function TopBar({
             />
             {roomMenu}
             <SaveStatus status={saveStatus} />
-            {/* On a phone this lives with the plan tools instead: the bar has no room for it */}
-            {!phone && (
+            {/* On a phone this lives with the plan tools instead: the bar has no room for it.
+                A walkthrough hides it rather than leaving a button that puts the list back
+                over the view. */}
+            {!phone && showCatalogToggle && (
               <IconButton
                 label={catalogOpen ? 'Hide furniture list' : 'Show furniture list'}
                 active={catalogOpen}

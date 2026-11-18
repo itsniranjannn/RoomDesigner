@@ -216,6 +216,9 @@ export const useRoomStore = create((set, get) => ({
   clearPlaceNotice: () => set({ placeNotice: null }),
   activeModal: null, // 'shortcuts' | 'layout' | 'share' | 'photo' | null
   viewMode: '2d', // '2d' | '3d'
+  // Walking through the room in 3D: the whole window is the view, so the side panels step aside
+  walkActive: false,
+  setWalkActive: (on) => set({ walkActive: !!on }),
   // 'saved' | 'saving' | 'error' (the write failed) | 'stale' (another tab saved this room)
   saveStatus: 'saved',
   collidingItemIds: new Set(),
@@ -474,7 +477,8 @@ export const useRoomStore = create((set, get) => ({
   setInitialAnimationDone: (done) => set({ isInitialAnimationDone: done }),
 
   setViewMode: (mode) => {
-    set({ viewMode: mode });
+    // Leaving the 3D view ends any walkthrough with it, so the panels come back
+    set({ viewMode: mode, ...(mode === '3d' ? null : { walkActive: false }) });
   },
 
   // additive = shift/ctrl click toggles membership of the multi-selection

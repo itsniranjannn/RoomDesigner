@@ -50,7 +50,10 @@ export function AppShell() {
   const [inspectorDock, setInspectorDock] = usePersistentFlag('rd.inspectorOpen', true);
   const [drawer, setDrawer] = useState(null); // 'catalog' | 'inspector' | null (narrow screens only)
 
-  const catalogOpen = docked ? catalogDock : drawer === 'catalog';
+  // A walkthrough is a first-person view of the room, so the furniture list steps aside instead
+  // of eating a fifth of the window and dropping pieces out of sight behind the camera.
+  const walkActive = useRoomStore((state) => state.walkActive);
+  const catalogOpen = !walkActive && (docked ? catalogDock : drawer === 'catalog');
   const inspectorOpen = docked ? inspectorDock : drawer === 'inspector';
   const showInspector = viewMode === '2d';
 
@@ -322,6 +325,7 @@ export function AppShell() {
         onToggleCatalog={toggleCatalog}
         onToggleInspector={toggleInspector}
         showInspectorToggle={showInspector}
+        showCatalogToggle={!walkActive}
       />
 
       <main className={styles.workspace}>
