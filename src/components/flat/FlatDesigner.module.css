@@ -284,11 +284,41 @@
   color: var(--color-ink);
 }
 
+/*
+ * On a phone the strip gave the hint about 120 px of its width, which cut the one piece of
+ * guidance on the screen to a few words. The pointer readout has nothing to report without a
+ * pointer, so it goes, and the hint takes the room that frees.
+ */
+@media (max-width: 640px) {
+  .status {
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+  }
+
+  .statusCursor {
+    display: none;
+  }
+
+  .statusHint {
+    -webkit-line-clamp: 3;
+  }
+
+  .statusFacts {
+    flex-shrink: 1;
+    gap: var(--space-2);
+    min-width: 0;
+  }
+}
+
 /* ---------- start card ---------- */
 
 .startWrap {
   position: absolute;
   inset: 0;
+  /* Over the tool rail, not under it: on a blank plan the wall tool's options chip was drawn
+     across this card and covered the first size field's label. The wrap itself lets clicks
+     through, so everything around the card stays as reachable as before. */
+  z-index: calc(var(--z-chrome) + 1);
   display: flex;
   align-items: center;
   justify-content: center;

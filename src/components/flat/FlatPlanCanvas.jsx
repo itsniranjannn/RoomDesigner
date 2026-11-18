@@ -18,6 +18,7 @@ import {
   stairWarnings,
   entranceOf,
   inwardStep,
+  lostOpeningsMessage,
 } from '../../engine/flatPlan.js';
 import {
   moveSpan,
@@ -76,10 +77,62 @@ const WINDOW_W = WINDOW_WIDTH_CM;
 const HANDLE_PX = 12; // size of a window end handle on screen
 
 const clampK = (k) => Math.max(MIN_K, Math.min(MAX_K, k));
-/** Shortens text so it fits a width in px at roughly charPx per character. */
+
+/**
+ * Width of a room name as the plan really draws it. Counting characters cut names that fit
+ * ("Attached bathr…" in a room with the space for "Attached bathroom"), because letters are not
+ * all one width. Falls back to the old guess where a canvas cannot be had.
+ */
+const measureName = (() => {
+  let ctx;
+  let font = '';
+  return (text, charPx) => {
+    try {
+      if (ctx === undefined) ctx = document.createElement('canvas').getContext('2d') || null;
+      if (!ctx) return text.length * charPx;
+      if (!font) {
+        const style = getComputedStyle(document.documentElement);
+        const family = style.getPropertyValue('--font-sans').trim();
+        const size = style.getPropertyValue('--text-sm').trim();
+        if (!family || !size) return text.length * charPx;
+        font = `700 ${size} ${family}`;
+      }
+      ctx.font = font;
+      return ctx.measureText(text).width;
+    } catch {
+      return text.length * charPx;
+    }
+  };
+})();
+
+/** Shortens text so it fits a width in px; charPx is the fallback guess per character. */
 const fitText = (text, widthPx, charPx) => {
-  const max = Math.max(3, Math.floor(widthPx / charPx));
-  return text.length <= max ? text : `${text.slice(0, max - 1)}…`;
+  if (measureName(text, charPx) <= widthPx) return text;
+  let cut = text.length;
+  while (cut > 1 && measureName(`${text.slice(0, cut - 1).trimEnd()}…`, charPx) > widthPx) cut -= 1;
+  return cut <= 1 ? '…' : `${text.slice(0, cut - 1).trimEnd()}…`;
+};
+
+/**
+ * A room name over one or two lines. A narrow room gets the name broken at a space rather than
+ * cut short, the way the printed plan does it: "Attached bathroom", not "Attached bathr…".
+ */
+const fitLines = (text, widthPx, charPx, allowTwo) => {
+  if (measureName(text, charPx) <= widthPx) return [text];
+  const words = text.split(/\s+/);
+  if (!allowTwo || words.length < 2) return [fitText(text, widthPx, charPx)];
+  let cut = 1;
+  let bestGap = Infinity;
+  for (let i = 1; i < words.length; i++) {
+    const gap = Math.abs(words.slice(0, i).join(' ').length - text.length / 2);
+    if (gap < bestGap) {
+      bestGap = gap;
+      cut = i;
+    }
+  }
+  return [words.slice(0, cut).join(' '), words.slice(cut).join(' ')].map((line) =>
+    fitText(line, widthPx, charPx)
+  );
 };
 const fmtM = (cm) => `${(cm / 100).toFixed(2)} m`;
 /** "2.50 m across, 1.80 m down" — how a point on the plan is read out. */
@@ -724,11 +777,31 @@ export function FlatPlanCanvas() {
     setHover(computeHover(p));
   };
 
+  /**
+   * Draws the wall and says so when it cost a door or a window.
+   *
+   * A wall drawn across an opening takes that opening with it -- there is no wall left under it to
+   * hold it -- and until now it went without a word, so the front door of a flat could be lost by
+   * doing the one thing this screen is for. Everywhere else the app reports this kind of loss and
+   * says Undo puts it back; here it did not.
+   */
+  const drawWall = (d) => {
+    const before = openingsOf(useFlatStore.getState().flat, levelId);
+    const wasEntrance = entranceOf(useFlatStore.getState().flat)?.opening?.id || null;
+    useFlatStore
+      .getState()
+      .addWall(d.sx, d.sy, d.ex, d.ey, { open: useFlatUi.getState().wallStyle === 'open' });
+    const after = openingsOf(useFlatStore.getState().flat, levelId);
+    if (after.length >= before.length) return;
+    const kept = new Set(after.map((op) => op.id));
+    const gone = before.filter((op) => !kept.has(op.id));
+    const lostEntrance = Boolean(wasEntrance && gone.some((op) => op.id === wasEntrance));
+    const said = lostOpeningsMessage(gone, lostEntrance);
+    if (said) useFlatUi.getState().setNotice(said);
+  };
+
   const finishWall = (d) => {
-    if (d && (d.ex !== d.sx || d.ey !== d.sy))
-      useFlatStore
-        .getState()
-        .addWall(d.sx, d.sy, d.ex, d.ey, { open: useFlatUi.getState().wallStyle === 'open' });
+    if (d && (d.ex !== d.sx || d.ey !== d.sy)) drawWall(d);
     setHover(null);
   };
 
@@ -1513,11 +1586,21 @@ export function FlatPlanCanvas() {
             const wide = space.widthCm * k;
             const small = wide < 70 || space.depthCm * k < 50;
             if (wide < 36) return null;
+            // A second line needs the room to be deep enough for it and the area underneath
+            const lines = fitLines(space.name, wide - 10, 7.6, !small && space.depthCm * k >= 70);
+            const baseY = small ? 4 : -4;
             return (
               <g key={space.id} transform={`translate(${sx} ${sy})`}>
-                <text className={styles.roomName} textAnchor="middle" y={small ? 4 : -4}>
-                  {fitText(space.name, wide - 10, 7.6)}
-                </text>
+                {lines.map((line, i) => (
+                  <text
+                    key={i}
+                    className={styles.roomName}
+                    textAnchor="middle"
+                    y={baseY - (lines.length - 1 - i) * 13}
+                  >
+                    {line}
+                  </text>
+                ))}
                 {!small && (
                   <text className={styles.roomMeta} textAnchor="middle" y={14}>
                     {(space.areaCm2 / 10000).toFixed(1)} m²

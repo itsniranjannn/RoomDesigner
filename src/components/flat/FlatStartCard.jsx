@@ -44,7 +44,7 @@ export function FlatStartCard({ onDismiss }) {
         </div>
         <div className={styles.shellRow}>
           <NumberField
-            label="Outer shell width"
+            label="Width of the flat"
             suffix="m"
             value={widthM}
             min={2}
@@ -53,7 +53,7 @@ export function FlatStartCard({ onDismiss }) {
             onCommit={setWidthM}
           />
           <NumberField
-            label="Outer shell depth"
+            label="Depth of the flat"
             suffix="m"
             value={depthM}
             min={2}
@@ -65,7 +65,7 @@ export function FlatStartCard({ onDismiss }) {
             variant="secondary"
             onClick={() => start('shell', { widthCm: widthM * 100, depthCm: depthM * 100 })}
           >
-            Add shell
+            Add four outer walls
           </Button>
         </div>
         <div className={styles.startActions}>

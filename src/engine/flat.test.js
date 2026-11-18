@@ -35,6 +35,7 @@ import {
   setWallsOpen,
   levelSolidEdges,
   openWallsOf,
+  lostOpeningsMessage,
 } from './flatPlan.js';
 import { outlineEdges } from './roomShape.js';
 import { buildPresetFlat } from './flatPresets.js';
@@ -758,5 +759,50 @@ describe('stairs', () => {
   it('analysis is cached per runs array', () => {
     const runs = edgesToRuns(rectEdges(0, 0, 200, 200));
     expect(analyzeRuns(runs)).toBe(analyzeRuns(runs));
+  });
+});
+
+describe('what a new wall cost', () => {
+  const door = { id: 'd1', type: 'door' };
+  const window = { id: 'w1', type: 'window' };
+
+  it('says nothing when nothing was lost', () => {
+    expect(lostOpeningsMessage([])).toBe(null);
+    expect(lostOpeningsMessage(null)).toBe(null);
+  });
+
+  it('names what went and says Undo puts it back', () => {
+    expect(lostOpeningsMessage([door])).toBe(
+      'That wall crossed a door, so it was removed. Undo puts it back.'
+    );
+    expect(lostOpeningsMessage([door, { id: 'd2', type: 'door' }, window])).toBe(
+      'That wall crossed 2 doors and a window, so they were removed. Undo puts them back.'
+    );
+    expect(lostOpeningsMessage([window])).toBe(
+      'That wall crossed a window, so it was removed. Undo puts it back.'
+    );
+  });
+
+  it('says so when the main entrance was among them', () => {
+    expect(lostOpeningsMessage([door], true)).toContain('the main entrance among them');
+  });
+});
+
+describe('drawing a wall over an opening', () => {
+  it('takes the opening with it, so there is something to report', () => {
+    // Four outer walls with a door in the middle of the bottom one
+    const { flat, rooms, levelId } = withWalls(rectEdges(0, 0, 400, 400));
+    const added = addOpening(flat, rooms, levelId, door('h', 400, 155));
+    expect(openingsOf(added.flat, levelId)).toHaveLength(1);
+
+    // A wall drawn down the middle ends inside that door, so there is no wall left to hold it
+    const after = addWall(added.flat, added.rooms, levelId, 200, 0, 200, 400);
+    const gone = openingsOf(added.flat, levelId).filter(
+      (op) => !openingsOf(after.flat, levelId).some((k) => k.id === op.id)
+    );
+    expect(gone).toHaveLength(1);
+    expect(lostOpeningsMessage(gone)).toBe(
+      'That wall crossed a door, so it was removed. Undo puts it back.'
+    );
   });
 });

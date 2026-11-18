@@ -615,6 +615,29 @@ export function entranceOf(flat) {
 }
 
 /**
+ * What to say when a new wall took openings with it. A wall drawn across a door or a window
+ * leaves no wall under it to hold the opening, so the opening goes; saying nothing meant the
+ * front door of a flat could be lost by doing the one thing that screen is for.
+ *
+ * @param {Array<{ type: string }>} gone the openings that were removed
+ * @param {boolean} lostEntrance whether the main entrance was among them
+ * @returns {string|null} null when nothing was lost
+ */
+export function lostOpeningsMessage(gone, lostEntrance = false) {
+  if (!gone || gone.length === 0) return null;
+  const doors = gone.filter((op) => op.type === 'door').length;
+  const windows = gone.length - doors;
+  const count = (n, one, many) => (n === 1 ? `a ${one}` : `${n} ${many}`);
+  const parts = [];
+  if (doors) parts.push(count(doors, 'door', 'doors'));
+  if (windows) parts.push(count(windows, 'window', 'windows'));
+  const one = gone.length === 1;
+  return `That wall crossed ${parts.join(' and ')}${
+    lostEntrance ? ', the main entrance among them' : ''
+  }, so ${one ? 'it was' : 'they were'} removed. Undo puts ${one ? 'it' : 'them'} back.`;
+}
+
+/**
  * Makes a door the main entrance (only one per flat) or clears the choice with null.
  * @returns {{ flat } | { error: string }}
  */
