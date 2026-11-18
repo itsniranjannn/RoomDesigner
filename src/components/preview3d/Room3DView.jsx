@@ -21,6 +21,7 @@ import { normalizeFinish } from './materials.js';
 import { WalkControls } from './WalkControls.jsx';
 import { WalkHud } from './WalkHud.jsx';
 import { SnapshotBridge } from './SnapshotBridge.jsx';
+import { FirstFrame, useFirstFrame } from '../common/FirstFrame.jsx';
 import { fitRoomView, roomBox, VIEW_DIRECTION, WALL_HEIGHT_M } from './cameraFit.js';
 import { focusWhenReady, useMediaQuery } from '../layout/hooks.js';
 import styles from './Room3DView.module.css';
@@ -90,8 +91,14 @@ function CameraRig({ widthM, depthM, resetTrigger, isFullHeight, bottomPx = 0, e
     wasEnabled.current = enabled;
   }, [enabled, camera]);
 
+  // Keeps the view drawing while the camera is on its way to a new angle. The canvas draws on
+  // demand rather than sixty times a second, so an animation that is not driven by the person --
+  // this one -- has to ask for each of its frames or it would stop at the first.
+  const invalidate = useThree((state) => state.invalidate);
+
   useFrame((_, delta) => {
     if (!enabled) return;
+    if (isTransitioning.current) invalidate();
     if (!isTransitioning.current && controlsRef.current) {
       saved.current = {
         position: camera.position.clone(),
@@ -206,6 +213,8 @@ export function Room3DView() {
     [room]
   );
   const hiddenWallPieces = !showWallPieces && pieces.some((p) => p.wall);
+  // The wait is not over when the 3D code has downloaded: the scene still has to be built
+  const [loading, onFrameState] = useFirstFrame();
 
   if (!room) return null;
 
@@ -221,7 +230,16 @@ export function Room3DView() {
         dpr={quality.settings.dpr}
         camera={{ position: [0.01, initialCamY, 0.01], fov: 45 }}
         gl={{ antialias: true }}
+        /*
+         * Drawn when there is something new to show, not sixty times a second. Simply having the
+         * 3D view open used to cost about three quarters of a processor core with nothing moving
+         * on screen -- a warm phone and a flat battery for a still picture. Orbiting, a changed
+         * setting and a moved piece all ask for a frame of their own; the walkthrough is the one
+         * part that really is continuous, so it gets the running loop back while it is on.
+         */
+        frameloop={walking ? 'always' : 'demand'}
       >
+        <FirstFrame onState={onFrameState} />
         <SnapshotBridge
           fit={{
             ...roomBox(
@@ -291,6 +309,8 @@ export function Room3DView() {
         />
         {walking && <WalkControls room={room} onExit={exitWalk} />}
       </Canvas>
+
+      {loading}
 
       <p className={styles.hint} aria-live="polite">
         {walking

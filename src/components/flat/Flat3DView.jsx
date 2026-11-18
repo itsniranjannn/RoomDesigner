@@ -24,6 +24,7 @@ import { collectLamps } from '../preview3d/lamps.js';
 import { normalizeFinish } from '../preview3d/materials.js';
 import { floorMaterial, wallMaterial } from '../preview3d/surfaceTextures.js';
 import { Button } from '../common/Button.jsx';
+import { FirstFrame, useFirstFrame } from '../common/FirstFrame.jsx';
 import { Segmented } from '../common/Field.jsx';
 import { focusWhenReady } from '../layout/hooks.js';
 import { SnapshotBridge } from '../preview3d/SnapshotBridge.jsx';
@@ -610,6 +611,9 @@ export function Flat3DView() {
     wasWalking.current = walking;
   }, [walking]);
 
+  // The wait is not over when the 3D code has downloaded: the scene still has to be built
+  const [loading, onFrameState] = useFirstFrame();
+
   if (!flat || !layout) return null;
   const floorH = flat.floorHeightCm / 100;
   const activeIdx = walking ? walkLevel : levelIndex(flat, levelId);
@@ -633,7 +637,11 @@ export function Flat3DView() {
           far: 400,
         }}
         gl={{ antialias: true }}
+        /* Drawn on demand, not sixty times a second; see Room3DView for why. The walkthrough is
+           continuous, so it gets the running loop back while it is on. */
+        frameloop={walking ? 'always' : 'demand'}
       >
+        <FirstFrame onState={onFrameState} />
         {preset.background && <color attach="background" args={[preset.background]} />}
         <SceneLights
           mode={lighting}
@@ -699,6 +707,8 @@ export function Flat3DView() {
         )}
         <SnapshotBridge />
       </Canvas>
+
+      {loading}
 
       {notice && (
         <div className={`${planStyles.notice} ${styles.noticeTop}`} role="status">

@@ -41,8 +41,22 @@ export function CollisionLayer({ placedFurniture, collidingItemIds }) {
             stroke-width: 1.8px;
           }
         }
+        /*
+         * Four beats, then it holds at its brightest. The pulse is there to catch the eye, and it
+         * had no end: a plan with pieces overlapping -- which is the plan someone is in the middle
+         * of arranging -- never stopped repainting, costing a share of a processor core and, on a
+         * phone, battery, for as long as it was on screen. It ends lit rather than faded, so the
+         * clash is no less plain after the fourth beat than during it.
+         */
         .colliding-pulse-border {
-          animation: architecturalClashPulse 1.6s ease-in-out infinite;
+          animation: architecturalClashPulse 1.6s ease-in-out 4;
+          opacity: 0.95;
+          stroke-width: 2.8px;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .colliding-pulse-border {
+            animation: none;
+          }
         }
       `}</style>
 
