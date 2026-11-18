@@ -27,14 +27,10 @@ function assetManifest() {
 export default defineConfig({
   plugins: [react(), assetManifest()],
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          three: ['three', '@react-three/fiber', '@react-three/drei'],
-          lucide: ['lucide-react'],
-        },
-      },
-    },
+    // No manualChunks: Rollup splits at the dynamic-import boundaries the app already has, so
+    // three.js travels with the 3D views instead of the first page. Naming a chunk for three
+    // also pulls in everything those packages import -- react, react-dom, zustand -- which puts
+    // the whole 1.1 MB bundle on the critical path for the landing page.
     chunkSizeWarningLimit: 1200,
   },
   test: {

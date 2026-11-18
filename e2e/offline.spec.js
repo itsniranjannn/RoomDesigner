@@ -62,22 +62,19 @@ test.describe('offline use', () => {
       ).toBe(true);
     }
 
-    // and each one really can be answered from the store, with no network
-    const served = await page.evaluate(
-      async (names) => {
-        const all = [];
-        for (const key of await caches.keys())
-          for (const r of await (await caches.open(key)).keys()) all.push(r);
-        const out = {};
-        for (const name of names) {
-          const hit = all.find((r) => r.url.includes(name));
-          const res = hit ? await caches.match(hit) : null;
-          out[name] = Boolean(res && res.ok);
-        }
-        return out;
-      },
-      ['Room3DView', 'PhotoModelModal', 'three-']
-    );
-    expect(served).toEqual({ Room3DView: true, PhotoModelModal: true, 'three-': true });
+    // and every one of them really can be answered from the store, with no network. Asked of
+    // each file the build lists rather than of chunk names: what Rollup calls the chunk that
+    // carries the 3D library is its own business and has changed before now.
+    const scripts = want.filter((f) => f.endsWith('.js'));
+    expect(scripts.length, 'the build should make JavaScript files').toBeGreaterThan(3);
+    const refused = await page.evaluate(async (files) => {
+      const out = [];
+      for (const f of files) {
+        const res = await caches.match(new URL(f, location.href).href, { ignoreVary: true });
+        if (!res || !res.ok) out.push(f);
+      }
+      return out;
+    }, scripts);
+    expect(refused, 'every built script should be answered from the store').toEqual([]);
   });
 });
