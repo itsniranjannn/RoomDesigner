@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { BrandMark } from '../common/BrandMark.jsx';
 import { Info, Layers3 } from 'lucide-react';
 import { useRoomStore } from '../../store/roomStore.js';
+import { useFlatStore } from '../../store/flatStore.js';
 import { SheetsPanel } from './SheetsPanel.jsx';
 import styles from './AboutPage.module.css';
 
@@ -390,9 +391,13 @@ function AboutMonographPlate() {
   );
 }
 
-export function AboutPage({ onBack, onOpenNewRoomModal }) {
+export function AboutPage({ onBack, onOpenNewRoomModal, onOpenNewFlatModal }) {
   const prefersReducedMotion = useReducedMotion();
   const allRooms = useRoomStore((state) => state.allRooms);
+  const flats = useFlatStore((state) => state.flats);
+  // The count says what the panel it opens lists: saved rooms and saved flats, as on the start
+  // page. Counting rooms alone left this reading 01 beside a panel showing two designs.
+  const savedCount = allRooms.length + flats.length;
   const [isSheetsPanelOpen, setIsSheetsPanelOpen] = useState(false);
 
   return (
@@ -437,14 +442,12 @@ export function AboutPage({ onBack, onOpenNewRoomModal }) {
             type="button"
             className={`${styles.headerNavBtn} ${styles.headerSheetsBtn}`}
             onClick={() => setIsSheetsPanelOpen(true)}
-            title="Open saved sheets panel"
-            aria-label="Open saved sheets panel"
+            title="Open my designs"
+            aria-label="Open my designs"
           >
             <Layers3 size={13} strokeWidth={1.7} />
-            <span className={styles.headerSheetsLabel}>SHEETS</span>
-            <span className={styles.headerSheetsCount}>
-              {String(allRooms.length).padStart(2, '0')}
-            </span>
+            <span className={styles.headerSheetsLabel}>MY DESIGNS</span>
+            <span className={styles.headerSheetsCount}>{String(savedCount).padStart(2, '0')}</span>
           </button>
         </nav>
       </header>
@@ -530,6 +533,12 @@ export function AboutPage({ onBack, onOpenNewRoomModal }) {
         onOpenNewRoomModal={() => {
           setIsSheetsPanelOpen(false);
           if (onOpenNewRoomModal) onOpenNewRoomModal();
+        }}
+        /* Without this the panel's "Design a flat" did nothing at all on this page: the shell
+           hands the page a way to open that dialog, and the page was dropping it. */
+        onOpenNewFlatModal={() => {
+          setIsSheetsPanelOpen(false);
+          if (onOpenNewFlatModal) onOpenNewFlatModal();
         }}
       />
     </div>
