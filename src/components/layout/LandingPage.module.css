@@ -519,6 +519,27 @@
   .brandSubTitle {
     font-size: 7px;
   }
+
+  /*
+   * The name of the app had its top sliced off on a phone, and the line under it ran across the
+   * rule below. The lockup is what gives way when the bar runs out of room, and at 375 px it was
+   * left 78 px: both lines wrapped, and the 61 px they then needed did not fit a 56 px bar.
+   *
+   * The word on the designs button is what pays for it here -- the icon and the count still say
+   * what it is, and it keeps its spoken name -- which gives the lockup 128 px, enough for the
+   * title to sit on two lines inside the bar. The bar can also grow if it ever has to, rather
+   * than cutting off what it holds. Neither typeface, size nor spacing is touched.
+   */
+  .landingHeader {
+    height: auto;
+    min-height: var(--topbar-height);
+    padding-top: var(--space-1);
+    padding-bottom: var(--space-1);
+  }
+
+  .headerSheetsLabel {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

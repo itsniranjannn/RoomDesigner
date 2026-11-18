@@ -26,7 +26,7 @@ test.describe('persistence', () => {
 
     await page.getByRole('button', { name: 'Back to all rooms' }).click();
     await page.reload();
-    await page.getByRole('button', { name: 'Open saved sheets panel' }).first().click();
+    await page.getByRole('button', { name: 'Open my designs' }).first().click();
     const panel = page.getByRole('dialog', { name: 'My designs' });
     await expect(panel.getByText('Guest Room').first()).toBeVisible();
     await panel.getByText('Guest Room').first().click();
@@ -45,7 +45,7 @@ test.describe('persistence', () => {
     await createRoomFromPreset(page, 'Home office');
     await waitForSaved(page);
     await page.getByRole('button', { name: 'Back to all rooms' }).click();
-    await page.getByRole('button', { name: 'Open saved sheets panel' }).first().click();
+    await page.getByRole('button', { name: 'Open my designs' }).first().click();
 
     const panel = page.getByRole('dialog', { name: 'My designs' });
     await expect(panel.getByText('Living room')).toBeVisible();
@@ -67,7 +67,7 @@ test.describe('persistence', () => {
 
   test('the count on the landing page includes saved flats, not only rooms', async ({ page }) => {
     await openApp(page);
-    const badge = page.getByRole('button', { name: 'Open saved sheets panel' }).first();
+    const badge = page.getByRole('button', { name: 'Open my designs' }).first();
     await expect(badge).toContainText('00');
 
     await page.getByRole('button', { name: 'Design a flat' }).click();
@@ -77,9 +77,7 @@ test.describe('persistence', () => {
 
     // A reload comes back to the flat being drawn, so go to the studio the way a person would
     await page.getByRole('button', { name: 'Back to your studio' }).click();
-    await expect(
-      page.getByRole('button', { name: 'Open saved sheets panel' }).first()
-    ).toContainText('01');
+    await expect(page.getByRole('button', { name: 'Open my designs' }).first()).toContainText('01');
   });
 
   // Two tabs on the same room: the second tab's work must not vanish when the first saves.
@@ -162,7 +160,7 @@ test.describe('persistence', () => {
 
     // and it is listed with that size rather than as NaN
     await page.getByRole('button', { name: 'Back to all rooms' }).click();
-    await page.getByRole('button', { name: 'Open saved sheets panel' }).first().click();
+    await page.getByRole('button', { name: 'Open my designs' }).first().click();
     const panel = page.getByRole('dialog', { name: 'My designs' });
     await expect(panel.getByText('4.00 x 4.00 m, 0 pieces')).toBeVisible();
   });
@@ -199,7 +197,7 @@ test.describe('persistence', () => {
     });
 
     await page.reload();
-    await page.getByRole('button', { name: 'Open saved sheets panel' }).first().click();
+    await page.getByRole('button', { name: 'Open my designs' }).first().click();
     const panel = page.getByRole('dialog', { name: 'My designs' });
     await expect(panel.getByText('Old flat')).toBeVisible();
     await expect(panel.getByText(/^Flat, 1 floor/)).toBeVisible();

@@ -431,11 +431,11 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
             type="button"
             className={`${styles.headerNavBtn} ${styles.headerSheetsBtn}`}
             onClick={() => setIsSheetsPanelOpen(true)}
-            title="Open saved sheets panel"
-            aria-label="Open saved sheets panel"
+            title="Open my designs"
+            aria-label="Open my designs"
           >
             <Layers3 size={13} strokeWidth={1.7} />
-            <span className={styles.headerSheetsLabel}>SHEETS</span>
+            <span className={styles.headerSheetsLabel}>MY DESIGNS</span>
             <span className={styles.headerSheetsCount}>{String(savedCount).padStart(2, '0')}</span>
           </button>
         </nav>
@@ -495,14 +495,23 @@ export function LandingPage({ onOpenNewRoomModal, onOpenNewFlatModal, onNavigate
           </div>
 
           {/* Clickable trigger to open the slide-out sheets panel directly */}
+          {/*
+            Coming back, the page led with two ways to start again and said nothing about the
+            work already here; the only way to it was this line, and it did not mention it. It
+            now names what it opens, and how much is in there, once there is anything to open.
+          */}
           <button
             type="button"
             className={styles.exploreSheetsBtn}
             onClick={() => setIsSheetsPanelOpen(true)}
-            title="Open saved sheets panel"
-            aria-label="Open saved sheets panel"
+            title="Open my designs"
+            aria-label="Open my designs"
           >
-            <span className={styles.scrollIndicatorText}>EXPLORE SPACES</span>
+            <span className={styles.scrollIndicatorText}>
+              {savedCount > 0
+                ? `MY DESIGNS // ${String(savedCount).padStart(2, '0')}`
+                : 'EXPLORE SPACES'}
+            </span>
           </button>
         </div>
 
