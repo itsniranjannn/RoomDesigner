@@ -85,6 +85,38 @@ test.describe('flat designer', () => {
     await expect(page.getByRole('application')).toBeVisible();
   });
 
+  /*
+   * The About page is looked at before the editor, and nothing used to take it down again. A
+   * flat started from there hid that, because the flat designer is looked at first -- and then
+   * double-clicking a room, or pressing "Design this room", showed the About page instead of
+   * the room designer, with the room open behind it and no way to tell what had happened.
+   */
+  test('a room opened from a flat that was started on the About page shows the room', async ({
+    page,
+  }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'ABOUT', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Open my designs' }).first()).toBeVisible();
+
+    // The way into a flat from the About page: its designs panel
+    await page.getByRole('button', { name: 'Open my designs' }).first().click();
+    const panel = page.getByRole('dialog', { name: 'My designs' });
+    await panel.getByRole('button', { name: 'Design a flat' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Design a flat' });
+    await dialog.getByRole('combobox', { name: 'Start from' }).selectOption({
+      label: 'Two-bedroom flat',
+    });
+    await dialog.getByRole('button', { name: 'Create flat' }).click();
+    await expect(page.getByRole('application')).toBeVisible();
+
+    // Double-click a room on the plan, the way a person does
+    const box = await page.getByRole('application').boundingBox();
+    await page.mouse.dblclick(box.x + box.width / 2, box.y + box.height / 2);
+
+    await expect(page.getByLabel('Room plan')).toBeVisible();
+    await expect(page.getByRole('button', { name: /Back to/ }).first()).toBeVisible();
+  });
+
   // Two tabs on the same flat: the second tab's work must not vanish when the first saves
   test('a second tab on the same flat is not overwritten', async ({ page, problems }) => {
     await openApp(page);

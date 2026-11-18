@@ -95,6 +95,20 @@ export function AppShell() {
     };
   }, [inFlatRoom]);
 
+  /*
+   * About is a page you leave by doing something, so anything that opens closes it.
+   *
+   * It is looked at before the editor below, and nothing used to clear it. Open a design from
+   * the About page and the room really did open -- behind About, which went on filling the
+   * window. The same for starting a room or a flat from there. Worst of all, stepping into a
+   * flat hid the fault, because the flat designer is looked at first: everything seemed well
+   * until a room was opened from the plan, and then the About page appeared instead of the
+   * room designer, with no clue as to why.
+   */
+  useEffect(() => {
+    if (room || flatMode !== 'none') setCurrentPage('main');
+  }, [room, flatMode]);
+
   // Leaving the editor unmounts the top bar along with the button that was pressed, which
   // would leave focus on <body> and send the next Tab back to the top of the page. Hand it
   // to the first control of whatever replaced it.

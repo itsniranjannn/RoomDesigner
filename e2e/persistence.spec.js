@@ -65,6 +65,28 @@ test.describe('persistence', () => {
     await expect(page.getByRole('button', { name: 'Start a new room' })).toBeVisible();
   });
 
+  // The About page used to go on filling the window after a design was opened from it: the room
+  // really did open, behind it, and the only way to see it was to press Return to workspace.
+  test('a design opened from the About page opens in the editor', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, 'Home office');
+    await waitForSaved(page);
+    await page.getByRole('button', { name: 'Back to all rooms' }).click();
+
+    await page.getByRole('button', { name: 'ABOUT', exact: true }).click();
+    const chip = page.getByRole('button', { name: 'Open my designs' }).first();
+    await expect(chip).toBeVisible();
+    // and it counts the same things the start page counts
+    await expect(chip).toContainText('01');
+
+    await chip.click();
+    const panel = page.getByRole('dialog', { name: 'My designs' });
+    await panel.getByText('Home office').first().click();
+
+    await expect(page.getByLabel('Room plan')).toBeVisible();
+    await expect(page.getByRole('textbox', { name: 'Room name' })).toHaveValue('Home office');
+  });
+
   test('the count on the landing page includes saved flats, not only rooms', async ({ page }) => {
     await openApp(page);
     const badge = page.getByRole('button', { name: 'Open my designs' }).first();
