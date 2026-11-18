@@ -80,6 +80,11 @@ export async function capture3D({
   if (bg !== 'transparent') {
     ctx.fillStyle = bg === 'white' ? '#FFFFFF' : '#FAF8F3';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+  } else if (strip) {
+    // The room itself stays cut out, but the name and date are written in dark ink: over nothing
+    // they vanish wherever the picture is placed on anything dark. The strip keeps its own paper.
+    ctx.fillStyle = '#FAF8F3';
+    ctx.fillRect(0, 0, canvas.width, strip);
   }
   ctx.drawImage(img, 0, strip);
 

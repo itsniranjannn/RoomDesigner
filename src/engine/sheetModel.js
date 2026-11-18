@@ -308,8 +308,12 @@ export function buildRoomSheet(
     });
   }
 
-  // The drawing's own bounds: walls, doors that swing outwards and anything poking out
-  let box = { x0: -wall / 2, y0: -wall / 2, x1: W + wall / 2, y1: D + wall / 2 };
+  // The drawing's own bounds: walls, doors that swing outwards and anything poking out.
+  // A rectangular room's wall band is drawn wholly outside the floor, so that the floor the plan
+  // shows is the floor the figures name; a room drawn in the flat designer has its walls centred
+  // on the lines that were drawn, so there the band straddles them.
+  const out = outlined ? wall / 2 : wall;
+  let box = { x0: -out, y0: -out, x1: W + out, y1: D + out };
   for (const d of doors) {
     if (!d.outward) continue;
     if (outlined) {
@@ -384,6 +388,11 @@ export function buildRoomSheet(
       fontSize: dimText,
       x0: box.x0,
       y0: box.y0,
+      // The arrow measures the room the figure names, not the drawing's outer bounds
+      spanX0: 0,
+      spanX1: W,
+      spanY0: 0,
+      spanY1: D,
       top: `${fmtMetres(W)} (${W} cm)`,
       left: `${fmtMetres(D)} (${D} cm)`,
     },
@@ -546,6 +555,8 @@ export function buildFlatSheet(
 
   const spanW = box.x1 - box.x0;
   const spanH = box.y1 - box.y0;
+  // What the overall dimensions measure: the walls, before labels widen the drawing's bounds
+  const dimSpan = { x0: box.x0, y0: box.y0, x1: box.x1, y1: box.y1 };
   const k = clamp(Math.max(spanW, spanH) / 600, 1, 5);
   const roomLabels = spaces.map((s) => roomLabel(s, measure, k));
 
@@ -577,11 +588,24 @@ export function buildFlatSheet(
     const h = Math.abs(Math.sin(r)) * pc.widthCm + Math.abs(Math.cos(r)) * pc.depthCm;
     return { x: pc.x - w / 2, y: pc.y - h / 2, w, h };
   });
+  // A staircase is drawn in the room like a piece of furniture, treads, arrow and all, so a room
+  // name must keep off it too
+  for (const st of stairs) {
+    const r = stairRect(st);
+    pieceBoxes.push({ x: r.x, y: r.y, w: r.widthCm, h: r.depthCm });
+  }
+  // The whole block, name and the area/size line under it. The second line is the wider of the
+  // two in most rooms, so a label measured by its name alone would still be moved onto a piece.
+  const labelWidth = (l) =>
+    Math.max(
+      l.lines.reduce((m, t) => Math.max(m, measure(t, l.font, 700, SANS)), 0),
+      l.meta ? measure(l.meta, l.metaFont, 400, SANS) : 0
+    );
   roomLabels.forEach((l, i) => {
     const space = spaces[i];
     const room = space && rooms[space.roomId];
     if (!room || !space.furnishable || !pieceBoxes.length) return;
-    const textW = l.lines.reduce((m, t) => Math.max(m, measure(t, l.font, 700, SANS)), 0);
+    const textW = labelWidth(l);
     const boxH = l.lines.length * l.lineH + l.metaFont * 1.4;
     const overlap = (cx, cy) => {
       const b = { x: cx - textW / 2, y: cy - l.lineH, w: textW, h: boxH };
@@ -610,12 +634,18 @@ export function buildFlatSheet(
       l.y = best.cy;
     }
   });
+  // The block each label really takes, carried on the model so the drawing and the tests both
+  // measure it the same way as the pass above did
+  for (const l of roomLabels) {
+    l.boxW = labelWidth(l);
+    l.boxH = l.lines.length * l.lineH + (l.meta ? l.metaFont * 1.4 : 0);
+  }
 
   // Stair captions kept clear of the room labels
   const taken = roomLabels.map((l) => ({
-    x: l.x - l.lines.reduce((m, t) => Math.max(m, measure(t, l.font, 700, SANS)), 0) / 2,
+    x: l.x - labelWidth(l) / 2,
     y: l.y - l.lineH,
-    w: l.lines.reduce((m, t) => Math.max(m, measure(t, l.font, 700, SANS)), 0),
+    w: labelWidth(l),
     h: l.lines.length * l.lineH + l.metaFont * 1.4,
   }));
   const stairFont = 9.5 * k;
@@ -724,6 +754,10 @@ export function buildFlatSheet(
       y0: wallBox.y0,
       x1: wallBox.x1,
       y1: wallBox.y1,
+      spanX0: dimSpan.x0,
+      spanX1: dimSpan.x1,
+      spanY0: dimSpan.y0,
+      spanY1: dimSpan.y1,
       top: `${fmtMetres(Math.round(spanW))}`,
       left: `${fmtMetres(Math.round(spanH))}`,
     },

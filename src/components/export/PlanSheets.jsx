@@ -346,19 +346,27 @@ function PieceLabels({ labels, font, k }) {
   );
 }
 
-function DimensionLines({ dims, x1, y1, topText, leftText, k }) {
+function DimensionLines({ dims, topText, leftText, k }) {
   const sw = 0.9 * Math.sqrt(k);
+  // The line is held clear of the drawing by `offset`, but its two ends mark exactly what the
+  // figure printed on it measures. Reaching to the outer bounds instead -- the far face of a
+  // wall, or however far a room name happens to stick out -- would make the sheet contradict
+  // its own scale bar: anyone checking a measurement off the paper reads the room too big.
   const ty = dims.y0 - dims.offset;
   const lx = dims.x0 - dims.offset;
+  const x0 = dims.spanX0;
+  const x1 = dims.spanX1;
+  const y0 = dims.spanY0;
+  const y1 = dims.spanY1;
   const tick = 4 * k;
   const f = dims.fontSize;
   return (
     <g stroke={INK_MUTED} strokeWidth={sw} fill={INK_MUTED} fontFamily={SANS}>
-      <line x1={dims.x0} y1={ty} x2={x1} y2={ty} />
-      <line x1={dims.x0} y1={ty - tick} x2={dims.x0} y2={ty + tick} />
+      <line x1={x0} y1={ty} x2={x1} y2={ty} />
+      <line x1={x0} y1={ty - tick} x2={x0} y2={ty + tick} />
       <line x1={x1} y1={ty - tick} x2={x1} y2={ty + tick} />
       <text
-        x={(dims.x0 + x1) / 2}
+        x={(x0 + x1) / 2}
         y={ty - 4 * k}
         textAnchor="middle"
         fontSize={f}
@@ -367,11 +375,11 @@ function DimensionLines({ dims, x1, y1, topText, leftText, k }) {
       >
         {topText}
       </text>
-      <line x1={lx} y1={dims.y0} x2={lx} y2={y1} />
-      <line x1={lx - tick} y1={dims.y0} x2={lx + tick} y2={dims.y0} />
+      <line x1={lx} y1={y0} x2={lx} y2={y1} />
+      <line x1={lx - tick} y1={y0} x2={lx + tick} y2={y0} />
       <line x1={lx - tick} y1={y1} x2={lx + tick} y2={y1} />
       <text
-        transform={`translate(${lx - 4 * k} ${(dims.y0 + y1) / 2}) rotate(-90)`}
+        transform={`translate(${lx - 4 * k} ${(y0 + y1) / 2}) rotate(-90)`}
         textAnchor="middle"
         fontSize={f}
         fontWeight="500"
@@ -386,10 +394,10 @@ function DimensionLines({ dims, x1, y1, topText, leftText, k }) {
 // ---------- room ----------
 
 function RoomWindow({ win, W, D, wall }) {
-  const wall2 = wall / 2;
   const { wall: side, horizontal, offsetCm, widthCm } = win;
-  const wx = horizontal ? offsetCm : side === 'left' ? -wall2 : W - wall2;
-  const wy = horizontal ? (side === 'top' ? -wall2 : D - wall2) : offsetCm;
+  // In the band, which lies outside the room: -wall..0 on the near side, W..W+wall on the far one
+  const wx = horizontal ? offsetCm : side === 'left' ? -wall : W;
+  const wy = horizontal ? (side === 'top' ? -wall : D) : offsetCm;
   const ww = horizontal ? widthCm : wall;
   const wh = horizontal ? wall : widthCm;
   const jamb = { stroke: WALL_LINE, strokeWidth: 2.5 };
@@ -546,10 +554,9 @@ export function doorPoints(door, W, D) {
 }
 
 function RoomDoor({ door, W, D, wall }) {
-  const wall2 = wall / 2;
   const { wall: side, horizontal, offsetCm, widthCm: w } = door;
-  const dx = horizontal ? offsetCm : side === 'left' ? -wall2 : W - wall2;
-  const dy = horizontal ? (side === 'top' ? -wall2 : D - wall2) : offsetCm;
+  const dx = horizontal ? offsetCm : side === 'left' ? -wall : W;
+  const dy = horizontal ? (side === 'top' ? -wall : D) : offsetCm;
   const dw = horizontal ? w : wall;
   const dh = horizontal ? wall : w;
   const p = geomPoints(door) || doorPoints(door, W, D);
@@ -798,8 +805,6 @@ function OutlineDrawing({ model }) {
       <PieceLabels labels={model.labels} font={model.labelFont} k={model.k} />
       <DimensionLines
         dims={model.dims}
-        x1={W + wall / 2}
-        y1={D + wall / 2}
         topText={model.dims.top}
         leftText={model.dims.left}
         k={model.k}
@@ -815,8 +820,11 @@ function RoomDrawing({ model }) {
     <g transform={`translate(${model.ox} ${model.oy})`}>
       <rect x={0} y={0} width={W} height={D} fill={LINEN} />
       <RoomGrid W={W} D={D} />
+      {/* The band runs outside the room, so its inner face falls exactly on 0..W by 0..D. Centred
+          on those lines instead, it would cover half its own thickness of the floor on every side,
+          and a piece standing against a wall would be drawn reaching into it. */}
       <path
-        d={`M 0 0 L ${W} 0 L ${W} ${D} L 0 ${D} Z`}
+        d={`M ${-wall / 2} ${-wall / 2} L ${W + wall / 2} ${-wall / 2} L ${W + wall / 2} ${D + wall / 2} L ${-wall / 2} ${D + wall / 2} Z`}
         fill="none"
         stroke={WALL_CORE}
         strokeWidth={wall}
@@ -838,8 +846,6 @@ function RoomDrawing({ model }) {
       <PieceLabels labels={model.labels} font={model.labelFont} k={model.k} />
       <DimensionLines
         dims={model.dims}
-        x1={W + wall / 2}
-        y1={D + wall / 2}
         topText={model.dims.top}
         leftText={model.dims.left}
         k={model.k}
@@ -1093,7 +1099,10 @@ function FlatDrawing({ model }) {
                 y={l.y + ((l.lines.length - 1) * l.lineH) / 2 + l.font * 0.1 + l.metaFont * 1.45}
                 fontSize={l.metaFont}
                 fill={INK_MUTED}
-                {...HALO(l.metaFont * 0.3)}
+                /* A wider paper outline than the name's: this line is small and grey, and in a
+                   fitted kitchen there is nowhere in the room to put it that is not over a dark
+                   unit. */
+                {...HALO(l.metaFont * 0.55)}
               >
                 {l.meta}
               </text>
@@ -1126,14 +1135,16 @@ function FlatDrawing({ model }) {
           </text>
         ))}
       </g>
-      <DimensionLines
-        dims={model.dims}
-        x1={model.dims.x1}
-        y1={model.dims.y1}
-        topText={model.dims.top}
-        leftText={model.dims.left}
-        k={model.k}
-      />
+      {/* An empty floor has nothing to measure. Its drawing area is a fallback, not a size, so
+          printing it as one would have the sheet state a width and depth this floor has not got. */}
+      {!model.empty && (
+        <DimensionLines
+          dims={model.dims}
+          topText={model.dims.top}
+          leftText={model.dims.left}
+          k={model.k}
+        />
+      )}
       {model.empty && (
         <text
           x={(model.box.x0 + model.box.x1) / 2}

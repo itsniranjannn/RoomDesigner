@@ -161,6 +161,19 @@ describe('rooms with an outline and open walls', () => {
     expect(JSON.stringify(model.titleBlock)).toContain('5.0');
   });
 
+  it('states no width and depth for a floor with nothing drawn on it', () => {
+    // The drawing area of an empty floor is a fallback, not a size. Printing it as one had the
+    // sheet state that the floor is 6.00 m by 4.00 m, which is not a measurement of anything.
+    const { flat, rooms } = buildPresetFlat('blank', {});
+    const model = buildFlatSheet(flat, rooms, flat.levels[0].id);
+    expect(model.empty).toBe(true);
+    const svg = draw(model);
+    standalone(svg);
+    expect(svg).toContain('Nothing drawn');
+    expect(svg).not.toContain(model.dims.top);
+    expect(svg).not.toContain('6.00 m');
+  });
+
   it('draws open dividers on a flat sheet', () => {
     const { flat, rooms } = buildPresetFlat('2bhk');
     const model = buildFlatSheet(

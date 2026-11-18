@@ -35,8 +35,11 @@ function RectBoundary({ room, svgRef }) {
   const [activeOpeningId, setActiveOpeningId] = useState(null);
   const [hoveredOpeningId, setHoveredOpeningId] = useState(null);
 
-  // SVG path for outer wall perimeter
-  const wallPath = `M 0 0 L ${widthCm} 0 L ${widthCm} ${depthCm} L 0 ${depthCm} Z`;
+  // The wall band is drawn wholly outside the room, so its inner face falls exactly on the floor's
+  // own edges. A path along 0..W with a 16 cm stroke would be centred on those edges and cover
+  // 8 cm of floor on every side, leaving a piece pushed against a wall drawn reaching into it.
+  const wallHalf = wallThickness / 2;
+  const wallPath = `M ${-wallHalf} ${-wallHalf} L ${widthCm + wallHalf} ${-wallHalf} L ${widthCm + wallHalf} ${depthCm + wallHalf} L ${-wallHalf} ${depthCm + wallHalf} Z`;
 
   useEffect(() => {
     if (!isInitialAnimationDone) {
@@ -218,16 +221,8 @@ function RectBoundary({ room, svgRef }) {
           ? win.offsetCm
           : Math.round(wallLen / 2 - 60);
         const winWidth = Number.isFinite(win.widthCm) ? win.widthCm : 120;
-        const wx = isHorizontal
-          ? winOffset
-          : wall === 'left'
-            ? -wallThickness / 2
-            : widthCm - wallThickness / 2;
-        const wy = isHorizontal
-          ? wall === 'top'
-            ? -wallThickness / 2
-            : depthCm - wallThickness / 2
-          : winOffset;
+        const wx = isHorizontal ? winOffset : wall === 'left' ? -wallThickness : widthCm;
+        const wy = isHorizontal ? (wall === 'top' ? -wallThickness : depthCm) : winOffset;
         const ww = isHorizontal ? winWidth : wallThickness;
         const wh = isHorizontal ? wallThickness : winWidth;
 
@@ -485,16 +480,8 @@ function RectBoundary({ room, svgRef }) {
           ? door.offsetCm
           : Math.round(wallLen / 2 - 45);
         const doorWidth = Number.isFinite(door.widthCm) ? door.widthCm : 90;
-        const dx = isHorizontal
-          ? doorOffset
-          : wall === 'left'
-            ? -wallThickness / 2
-            : widthCm - wallThickness / 2;
-        const dy = isHorizontal
-          ? wall === 'top'
-            ? -wallThickness / 2
-            : depthCm - wallThickness / 2
-          : doorOffset;
+        const dx = isHorizontal ? doorOffset : wall === 'left' ? -wallThickness : widthCm;
+        const dy = isHorizontal ? (wall === 'top' ? -wallThickness : depthCm) : doorOffset;
         const dw = isHorizontal ? doorWidth : wallThickness;
         const dh = isHorizontal ? wallThickness : doorWidth;
 

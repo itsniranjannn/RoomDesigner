@@ -246,6 +246,15 @@ describe('room sheet model', () => {
     expect(JSON.stringify(model)).not.toMatch(/NaN|Infinity/);
     expect(model.pieces).toHaveLength(2);
     expect(model.dims.top).toBe('5.60 m (560 cm)');
+    // The arrow spans exactly what the figure on it names. It used to reach to the far face of
+    // the wall on each side, so measuring the printed sheet against its own scale bar gave a
+    // room 4 to 5 per cent bigger than the one the figure states.
+    expect(model.dims.spanX1 - model.dims.spanX0).toBe(560);
+    expect(model.dims.spanY1 - model.dims.spanY0).toBe(440);
+    // and the drawing is placed with a whole wall's thickness of room outside the floor on each
+    // side, because the wall band is drawn there rather than straddling the floor's own edges
+    expect(model.ox).toBeGreaterThanOrEqual(model.room.wall);
+    expect(model.ox + 560 + model.room.wall).toBeLessThanOrEqual(model.width);
     const tb = model.titleBlock;
     expect(tb.title).toBe('Studio');
     expect(tb.y + tb.h).toBeLessThanOrEqual(model.height);
@@ -322,6 +331,57 @@ describe('flat sheet model', () => {
       const widest = Math.max(...l.lines.map((t) => measure(t, l.font, 700)));
       expect(widest).toBeLessThanOrEqual(space.widthCm);
     }
+  });
+
+  it('measures the flat across its walls, not across whatever a room name reaches', () => {
+    const { flat, rooms } = buildPresetFlat('2bhk', {});
+    const model = buildFlatSheet(flat, rooms, flat.levels[0].id);
+    const across = Math.round(model.dims.spanX1 - model.dims.spanX0);
+    const down = Math.round(model.dims.spanY1 - model.dims.spanY0);
+    expect(model.dims.top).toBe(`${(across / 100).toFixed(2)} m`);
+    expect(model.dims.left).toBe(`${(down / 100).toFixed(2)} m`);
+  });
+
+  it('moves a room name clear of the furniture, counting its size line in the block', () => {
+    const { flat, rooms } = buildPresetFlat('2bhk', {});
+    const model = buildFlatSheet(flat, rooms, flat.levels[0].id);
+    const boxes = model.pieces.map((pc) => {
+      const r = ((pc.rotationDeg || 0) * Math.PI) / 180;
+      const w = Math.abs(Math.cos(r)) * pc.widthCm + Math.abs(Math.sin(r)) * pc.depthCm;
+      const h = Math.abs(Math.sin(r)) * pc.widthCm + Math.abs(Math.cos(r)) * pc.depthCm;
+      return { x: pc.x - w / 2, y: pc.y - h / 2, w, h };
+    });
+    const overlapAt = (l, w, cx, cy) => {
+      const b = { x: cx - w / 2, y: cy - l.lineH, w, h: l.boxH };
+      return boxes.reduce((sum, p) => {
+        const ox = Math.min(b.x + b.w, p.x + p.w) - Math.max(b.x, p.x);
+        const oy = Math.min(b.y + b.h, p.y + p.h) - Math.max(b.y, p.y);
+        return ox > 0 && oy > 0 ? sum + ox * oy : sum;
+      }, 0);
+    };
+
+    for (const l of model.roomLabels) {
+      // The block the model reserved is the name lines AND the area/size line under them. The
+      // size line is the wider of the two in most rooms, so a label placed by its name alone was
+      // still being left lying over a piece -- "2.40 x 3.40 m" over the black of a cooker.
+      const nameW = Math.max(...l.lines.map((t) => measure(t, l.font, 700)));
+      const metaW = l.meta ? measure(l.meta, l.metaFont, 400) : 0;
+      expect(l.boxW).toBeCloseTo(Math.max(nameW, metaW), 5);
+      // and no room name is printed over a piece
+      expect(overlapAt(l, nameW, l.x, l.y)).toBe(0);
+    }
+
+    // In the stock two-bedroom flat the kitchen is the crowded one: its block has to end up on
+    // less furniture than it would sitting in the middle of the room.
+    const kitchen = model.roomLabels.find((l) => l.lines.join(' ') === 'Kitchen');
+    const space = flat.spaces.find((sp) => sp.id === kitchen.id);
+    const middle = overlapAt(
+      kitchen,
+      kitchen.boxW,
+      space.x + space.widthCm / 2,
+      space.y + space.depthCm / 2
+    );
+    expect(overlapAt(kitchen, kitchen.boxW, kitchen.x, kitchen.y)).toBeLessThan(middle);
   });
 
   it('exports an empty floor as a sheet with a note', () => {
