@@ -157,9 +157,22 @@ function noteStoredRoom(room) {
 
 const baseStampFor = (id) => (savedBase.id === id ? savedBase.updatedAt : null);
 
-async function writePending(set) {
+/**
+ * Saves run one after another, like the flat designer's. Two overlapping writes of the same room
+ * would both start from the stamp the first one is about to replace, so the second would be
+ * refused as another tab's work: the edit would be dropped and the header would say "Not saved".
+ */
+let writeQueue = Promise.resolve();
+
+function writePending(set) {
   if (saveDebounceTimer) clearTimeout(saveDebounceTimer);
   saveDebounceTimer = null;
+  // Nothing in the chain may reject: one bad write must not stop every save after it
+  writeQueue = writeQueue.then(() => writeOnce(set)).catch(() => {});
+  return writeQueue;
+}
+
+async function writeOnce(set) {
   const room = pendingSave;
   pendingSave = null;
   if (!room) return;

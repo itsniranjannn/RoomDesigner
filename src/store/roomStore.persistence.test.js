@@ -6,6 +6,12 @@ const log = [];
 let activeId = null;
 
 const stamped = (room) => ({ ...room, updatedAt: new Date().toISOString() });
+// How long a write takes. A real one is not instant, and two of them overlapping is the whole
+// point of "every edit is written, even when a save is slow" below.
+let writeDelayMs = 0;
+const slowly = async () => {
+  if (writeDelayMs) await new Promise((r) => setTimeout(r, writeDelayMs));
+};
 
 vi.mock('../data/persistence.js', () => ({
   getInitialRoom: async () => null,
@@ -19,6 +25,7 @@ vi.mock('../data/persistence.js', () => ({
   // Mirrors the real conditional write: a stored record written after the one the editor holds
   // belongs to another tab and is left alone.
   saveRoomIfUnchanged: async (room, baseUpdatedAt) => {
+    await slowly();
     const stored = db.get(room.id);
     const theirs = Date.parse(stored?.updatedAt);
     const ours = Date.parse(baseUpdatedAt);
@@ -62,6 +69,7 @@ describe('roomStore persistence ordering', () => {
     db.clear();
     log.length = 0;
     activeId = null;
+    writeDelayMs = 0;
   });
 
   it('writes a pending edit before switching rooms and remembers the new room', async () => {
@@ -85,6 +93,28 @@ describe('roomStore persistence ordering', () => {
     await new Promise((r) => setTimeout(r, 450));
     expect(db.get(id).name).toBe('After');
     expect(log.indexOf(`save:${id}:Before`)).toBeLessThan(log.indexOf(`rename:${id}:After`));
+  });
+
+  it('writes every edit, even when a save is slow', async () => {
+    // Saves used to be started as they came. A second one beginning while the first was still in
+    // flight read the stamp the first was about to replace, so the store refused it as another
+    // tab's work: the edit was dropped and the header said "Not saved -- this design was changed
+    // in another tab", which was not true. Adding two pieces quickly on a slow device was enough.
+    await state().createRoom('Busy', 400, 400);
+    const id = state().room.id;
+    writeDelayMs = 500;
+
+    state().addFurniture('sofa-3seat', 100, 100);
+    await new Promise((r) => setTimeout(r, 420)); // the first write is now under way
+    state().addFurniture('coffee-table', 200, 200);
+    await new Promise((r) => setTimeout(r, 1600));
+
+    expect(log).not.toContain(`refused:${id}`);
+    expect(state().saveStatus).toBe('saved');
+    expect(db.get(id).placedFurniture.map((f) => f.furnitureTypeId)).toEqual([
+      'sofa-3seat',
+      'coffee-table',
+    ]);
   });
 
   it('does not write over a room another tab has saved, and offers the stored version', async () => {
