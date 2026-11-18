@@ -818,3 +818,24 @@
   font-size: var(--text-xs);
   color: var(--color-ink-muted);
 }
+
+/*
+ * What "Resize to match the photo" changed, and the way back. The real size is the number that
+ * decides whether the piece fits the room, so it is never replaced without saying so.
+ */
+.sizeNote {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-body);
+  color: var(--color-ink-muted);
+}
+
+.inlineUndo {
+  padding: 0;
+  font: inherit;
+  color: var(--color-indigo);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}

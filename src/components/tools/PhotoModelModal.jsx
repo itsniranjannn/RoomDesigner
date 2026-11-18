@@ -205,6 +205,7 @@ const DETECTED_PREFIX = {
 };
 const typeLabel = (id) => DESIGN_TYPES.find((t) => t.id === id)?.label || 'furniture';
 const VIEW_LABEL = { front: 'Front', right: 'Right', back: 'Back', left: 'Left', top: 'Top' };
+const LABEL_OF = { widthCm: 'Width', depthCm: 'Depth', heightCm: 'Height' };
 /** Where the camera stands for each photo angle (the piece faces +z; the right photo is taken from +x). */
 const VIEW_DIRECTION = {
   front: [0, 0, 1],
@@ -470,6 +471,8 @@ export function PhotoModelModal({ onClose }) {
   const [keepRatio, setKeepRatio] = useState(true);
   const [anchor, setAnchor] = useState('widthCm');
   const [sizeEdited, setSizeEdited] = useState(false); // false: the size follows the type's usual size
+  // What "Resize to match the photo" last changed, so the numbers it replaced stay on screen
+  const [matched, setMatched] = useState(null);
   const [guideOpen, setGuideOpen] = useState(false); // the tiles come first; the guide opens on request
   const [candidates, setCandidates] = useState(null); // { list, agreement } of likely types
   const [probe, setProbe] = useState(null); // the model's silhouette from the active photo angle
@@ -735,43 +738,70 @@ export function PhotoModelModal({ onClose }) {
   );
   const flagged = new Set(qualityItems.map((q) => q.slot));
   const handleSilhouette = useCallback((result) => setProbe(result), []);
-  // The pieces of the photo being looked at, with a thumbnail and a name each (what each would be built as)
-  const pieceCards = useMemo(() => {
+  /*
+   * The pieces of the photo being looked at, with a thumbnail and a name each (what each would be
+   * built as).
+   *
+   * Worked out one piece at a time, handing the browser a moment between them, and never while the
+   * dialog is drawing itself. Naming a piece means building a whole model from it and reading what
+   * it turned out to be; six of those in a row cost between one and three seconds on a phone-class
+   * processor, and doing it during render stopped the entire page for that long -- with the photo
+   * and an enabled button already on screen, so the natural thing to do was tap again. The reading
+   * line below says what is going on while the cards fill in.
+   */
+  const [pieceCards, setPieceCards] = useState([]);
+  const [readingCards, setReadingCards] = useState(false);
+  useEffect(() => {
     const seg = segmented[activeView];
     const photo = allPhotos[activeView];
-    if (!seg || !photo || seg.pieces.length < 2) return [];
-    const groups = groupPieces(
-      photo,
-      seg.cut,
-      seg.pieces.slice(0, 6).map((_, i) => i)
-    );
-    const copies = new Map();
-    for (const g of groups) copies.set(g.indexes[0], g.count);
-    return seg.pieces.slice(0, 6).map((piece, i) => {
-      const mask = pieceMask(seg.cut, i);
-      const cutImg = cutoutImage(photo.rgba, mask, photo.width, photo.height, 96);
-      let name = 'furniture';
-      try {
-        const views = buildViews({ front: photo }, { front: { mask, scene: true } }, tolerance);
-        name = pieceLabel(
-          designFromViews(views, {
-            dims: { widthCm: 80, depthCm: 50, heightCm: 80 },
-            partial: estimatePartialProportions({
-              front: { mask, width: photo.width, height: photo.height },
-            }),
-          }).design
-        );
-      } catch {
-        // a sliver too small to read: it keeps the generic name and cannot be ticked usefully
+    if (!seg || !photo || seg.pieces.length < 2) {
+      setPieceCards([]);
+      setReadingCards(false);
+      return undefined;
+    }
+    let live = true;
+    setReadingCards(true);
+    (async () => {
+      const indexes = seg.pieces.slice(0, 6).map((_, i) => i);
+      const groups = groupPieces(photo, seg.cut, indexes);
+      const copies = new Map();
+      for (const g of groups) copies.set(g.indexes[0], g.count);
+      const firsts = new Set(copies.keys());
+      const cards = [];
+      for (const i of indexes) {
+        await paint();
+        if (!live) return;
+        const mask = pieceMask(seg.cut, i);
+        const cutImg = cutoutImage(photo.rgba, mask, photo.width, photo.height, 96);
+        let name = 'furniture';
+        try {
+          const views = buildViews({ front: photo }, { front: { mask, scene: true } }, tolerance);
+          name = pieceLabel(
+            designFromViews(views, {
+              dims: { widthCm: 80, depthCm: 50, heightCm: 80 },
+              partial: estimatePartialProportions({
+                front: { mask, width: photo.width, height: photo.height },
+              }),
+            }).design
+          );
+        } catch {
+          // a sliver too small to read: it keeps the generic name and cannot be ticked usefully
+        }
+        cards.push({
+          index: i,
+          name,
+          thumb: cutImg ? rgbaToDataUrl(cutImg.rgba, cutImg.width, cutImg.height) : null,
+          copies: copies.get(i) || 1,
+          isCopy: !firsts.has(i),
+        });
+        if (!live) return;
+        setPieceCards([...cards]);
       }
-      return {
-        index: i,
-        name,
-        thumb: cutImg ? rgbaToDataUrl(cutImg.rgba, cutImg.width, cutImg.height) : null,
-        copies: copies.get(i) || 1,
-        isCopy: ![...copies.keys()].includes(i),
-      };
-    });
+      if (live) setReadingCards(false);
+    })();
+    return () => {
+      live = false;
+    };
   }, [segmented, activeView, allPhotos, tolerance]);
   // How closely the model's outline matches the cut-out of the photo being compared
   const fit = useMemo(() => {
@@ -1069,16 +1099,38 @@ export function PhotoModelModal({ onClose }) {
     onClose();
   };
 
-  // Scales the model so its silhouette bounds take the proportions of the photo's cut-out
+  /**
+   * Scales the model so its silhouette bounds take the proportions of the photo's cut-out.
+   *
+   * This replaces the real size, which is the one number that decides whether the piece fits the
+   * room, with one worked out from a photograph -- and a photograph not taken square-on gives the
+   * wrong answer. So the numbers it replaced are kept and said plainly, with a way back: a 200 cm
+   * sofa quietly becoming a 145 cm sofa was leaving 55 cm of floor that does not exist.
+   */
   const matchPhoto = () => {
     if (!fit) return;
     setSizeEdited(true);
     setKeepRatio(false);
-    setDims((d) => matchPhotoDims(d, activeView, fit.photoAspect, fit.frac, anchor));
+    setDims((d) => {
+      const next = matchPhotoDims(d, activeView, fit.photoAspect, fit.frac, anchor);
+      const changed = ['widthCm', 'depthCm', 'heightCm'].filter(
+        (k) => Math.round(next[k]) !== Math.round(d[k])
+      );
+      setMatched(changed.length ? { from: d, changed } : null);
+      return next;
+    });
+  };
+
+  /** Puts back the size that was typed before "Resize to match the photo" changed it. */
+  const undoMatch = () => {
+    if (!matched) return;
+    setDims(matched.from);
+    setMatched(null);
   };
 
   const setDim = (key, value) => {
     setSizeEdited(true);
+    setMatched(null);
     setAnchor(key);
     if (keepRatio && ratios) setDims(dimensionsFromProportions(ratios, key, value));
     else setDims((d) => ({ ...d, [key]: value }));
@@ -1146,6 +1198,20 @@ export function PhotoModelModal({ onClose }) {
                 />
               ))}
             </div>
+            {matched && (
+              <p className={local.sizeNote} role="status">
+                {matched.changed
+                  .map(
+                    (key) =>
+                      `${LABEL_OF[key]} ${Math.round(matched.from[key])} → ${Math.round(dims[key])} cm`
+                  )
+                  .join(', ')}{' '}
+                to match the photo.{' '}
+                <button type="button" className={local.inlineUndo} onClick={undoMatch}>
+                  Put my measurements back
+                </button>
+              </p>
+            )}
             {ratios && (
               <label className={local.check}>
                 <input
@@ -1442,12 +1508,20 @@ export function PhotoModelModal({ onClose }) {
                 label={VIEW_LABEL[fixSlot].toLowerCase()}
               />
             )}
+            {readingCards && pieceCards.length === 0 && (
+              <p className={local.note} role="status">
+                Reading the pieces in this photo...
+              </p>
+            )}
             {pieceCards.length > 0 && (
               <div className={local.pieces} role="group" aria-label="Pieces found in this photo">
-                <p className={local.note}>
-                  <strong>This photo has {pieceCards.length} pieces.</strong> Pick the one to build
-                  and check, and tick the others to save them as separate furniture too. Copies of
-                  the same piece are saved once.
+                <p className={local.note} role="status">
+                  <strong>
+                    This photo has {pieceCards.length}
+                    {readingCards ? ' pieces so far' : ' pieces'}.
+                  </strong>{' '}
+                  Pick the one to build and check, and tick the others to save them as separate
+                  furniture too. Copies of the same piece are saved once.
                 </p>
                 <ul className={local.pieceList}>
                   {pieceCards.map((card) => {
@@ -1656,7 +1730,7 @@ export function PhotoModelModal({ onClose }) {
                   onClick={matchPhoto}
                   disabled={!fit}
                 >
-                  Match photo
+                  Resize to match the photo
                 </Button>
               </div>
               {fit ? (
