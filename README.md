@@ -12,12 +12,12 @@ Plan a room or a whole flat on a 2D plan, check that the furniture fits, and wal
 
 ## Highlights
 
-- **Room designer** with a 2D plan and a live 3D view of the same room, 101 furniture pieces (modern and Nepali), doors and windows.
-- **Flat designer**: draw walls, get rooms automatically, or start from Studio, 1BHK, 2BHK or 3BHK presets.
+- **Room designer** with a 2D plan and a live 3D view of the same room, 147 furniture pieces (modern and Nepali), doors and windows.
+- **Flat designer**: draw walls, get rooms automatically, or start from the studio flat, one, two and three-bedroom layouts.
 - **Checks as you place**: collisions, door swings, blocked windows and cramped walking gaps.
 - **Services and Plan checks** (room editor): mark sockets, switches, lights, TV points, water, drains, gas, radiators and air conditioners on the plan (wall points snap to the nearest wall). Plan checks then looks at door swings, walking routes, space in front of units, wheelchair turning space and whether the TV, bed, desk and appliances have a socket, and whether sinks, toilets and machines have water and a drain.
 - **Service links**: dashed lines join each sink, stove, TV, fridge and so on to the nearest water, drain, gas or socket point it relies on. Green is within reach, red is too far (with a "no water nearby" tag), amber means no point of that kind is marked. Links are faint until you select a piece (or a point), then bold. The switch **Show service links** is in the Plan checks panel; the exported PNG and PDF draw the links with a key when it is on. The panels have a button to sit on either side of the plan. The flat designer has no service points yet.
-- **Export** the floor plan as PNG or PDF, the 3D view as a PNG (twice the screen size, with a title strip), or a room as JSON, or share a room as a link. A flat exports as pictures and a printable plan; it has no JSON or link yet. File names carry the design name and the date.
+- **Export** the floor plan as PNG or PDF, the 3D view as a PNG (twice the screen size, with a title strip), or a room as a design file, or share a room as a link. A flat exports as pictures and a printable plan; it has no design file or link yet. File names carry the design name and the date.
 - **Local and offline**: stored in IndexedDB, installable as a PWA.
 
 ![Start page](docs/assets/images/landing.jpg)
@@ -55,7 +55,7 @@ The whole flat is also available in 3D.
 
 ## Export and share
 
-PNG and PDF exports are drawn from the same symbols as the editor (tints, photo cut-outs and stacked items included), with a scale bar, a numbered key to the pieces and the room area. The 3D view exports as its own PNG, for a room and for a flat (the flat export can save the plan and the 3D picture together). Rooms also export to JSON and import back; a file that is not a Room Designer design is refused rather than opened as an empty room. Share links carry a whole room in the URL, so nothing is uploaded. A flat has no JSON file and no share link yet: it exports as pictures and as a printable plan, and the flat's Export menu says so.
+PNG and PDF exports are drawn from the same symbols as the editor (tints, photo cut-outs and stacked items included), with a scale bar, a numbered key to the pieces and the room area. The 3D view exports as its own PNG, for a room and for a flat (the flat export can save the plan and the 3D picture together). Rooms also export to a design file and open back from one; a file that is not a Room Designer design is refused rather than opened as an empty room. Share links carry a whole room in the URL, so nothing is uploaded. A flat has no design file and no share link yet: it exports as pictures and as a printable plan, and the flat's Export menu says so.
 
 ![Exported floor plan](docs/assets/images/export-png.jpg)
 
@@ -132,7 +132,7 @@ src/
   data/          Furniture catalog and IndexedDB persistence
   design/        Design tokens and global CSS
   engine/        Pure logic: collision, clearance, stacking, layout, snapping,
-                 measure, share, export (PNG, PDF, JSON), flat walls and presets
+                 measure, share, export (PNG, PDF, design file), flat walls and presets
   store/         Zustand stores for rooms and flats
 public/          Web manifest, service worker, icon
 docs/assets/     README screenshots
