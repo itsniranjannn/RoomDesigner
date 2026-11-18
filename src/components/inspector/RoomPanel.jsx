@@ -329,13 +329,22 @@ function PieceList({ pieces }) {
 }
 
 /** What a resize did, in plain words, for the line that is read out after it. */
-function resizeWords({ widthCm, depthCm, movedPieces, movedOpenings, movedServices }) {
+function resizeWords({
+  widthCm,
+  depthCm,
+  movedPieces,
+  movedOpenings,
+  movedServices,
+  stillOutside = 0,
+}) {
   const parts = [`The room is now ${widthCm} by ${depthCm} cm.`];
+  // "moved to fit", not "brought inside the new walls": a piece can be moved by the resize without
+  // ever having been outside -- one carried along by the desk it stands on, for instance.
   if (movedPieces > 0)
     parts.push(
       movedPieces === 1
-        ? '1 piece was brought inside the new walls.'
-        : `${movedPieces} pieces were brought inside the new walls.`
+        ? '1 piece was moved to fit the new size.'
+        : `${movedPieces} pieces were moved to fit the new size.`
     );
   if (movedOpenings > 0)
     parts.push(
@@ -348,6 +357,14 @@ function resizeWords({ widthCm, depthCm, movedPieces, movedOpenings, movedServic
       movedServices === 1
         ? '1 service point was moved onto the new walls.'
         : `${movedServices} service points were moved onto the new walls.`
+    );
+  // A piece too big for the room cannot be moved out of the wall: saying it was dealt with when it
+  // is still sticking through one would send the person off to look for a problem that is on screen
+  if (stillOutside > 0)
+    parts.push(
+      stillOutside === 1
+        ? '1 piece is too big for the room and still reaches through a wall.'
+        : `${stillOutside} pieces are too big for the room and still reach through a wall.`
     );
   parts.push('Undo puts the old size back.');
   return parts.join(' ');

@@ -342,7 +342,11 @@ test.describe('focus is handed on, never dropped', () => {
     await page.getByRole('button', { name: 'Back to all rooms' }).first().focus();
     await page.keyboard.press('Enter');
     await expect(page.getByRole('button', { name: 'Start a new room' })).toBeVisible();
-    expect(await focusName(page)).not.toBe('BODY');
+    // The hand-over happens on the next animation frame, which can be after the button is on
+    // screen: reading once right here was a race, and on a quick machine it lost.
+    await expect(async () => {
+      expect(await focusName(page)).not.toBe('BODY');
+    }).toPass({ timeout: 3000 });
   });
 });
 
@@ -513,7 +517,7 @@ test.describe('a room can be resized after it was created', () => {
     await expect(panel.getByText('2.00 x 4.00 m')).toBeVisible();
     const said = panel.getByRole('status');
     await expect(said).toContainText('The room is now 200 by 400 cm.');
-    await expect(said).toContainText('1 piece was brought inside the new walls.');
+    await expect(said).toContainText('1 piece was moved to fit the new size.');
     await expect(said).toContainText('1 door or window was moved to fit its wall.');
 
     // The window was 190 cm along a 500 cm wall; on a 200 cm wall it goes as far as it can

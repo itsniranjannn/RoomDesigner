@@ -146,6 +146,36 @@ describe('roomStore', () => {
       expect(state().room.windows[0].offsetCm).toBe(165);
     });
 
+    it('leaves a picture and a socket on the wall they were put on', () => {
+      // The room is 600 x 500. A clock on the right-hand wall and a socket on the bottom one.
+      state().addFurniture('wall-clock-round', 598, 250);
+      state().addService('socket', 300, 498);
+      const clock = () => state().room.placedFurniture[0];
+      const socket = () => state().room.services[0];
+      expect(clock().x).toBeGreaterThan(590);
+      expect(socket().y).toBeGreaterThan(490);
+
+      // Made 40 cm wider and 40 cm deeper: nothing was outside, so nothing had to be rescued --
+      // but both walls they are on have moved, and they have to go with them. Re-snapping to
+      // whatever wall is nearest afterwards used to re-hang the clock on the top wall.
+      const result = state().resizeRoom(640, 540);
+      expect(result).toMatchObject({ widthCm: 640, depthCm: 540 });
+      expect(clock().x).toBeGreaterThan(630); // still on the right-hand wall
+      expect(clock().y).toBeCloseTo(250, 0); // and at the same height along it
+      expect(socket().y).toBeGreaterThan(530); // still on the bottom wall
+      expect(socket().x).toBeCloseTo(300, 0);
+      // Riding its own wall is not a move worth telling anyone about
+      expect(result.movedPieces).toBe(0);
+      expect(result.movedServices).toBe(0);
+    });
+
+    it('says a piece is still through a wall rather than calling it dealt with', () => {
+      // A 270 x 170 corner sofa in a room shrunk to 200 x 200 cannot be brought inside
+      state().addFurniture('sofa-l-shaped', 300, 250);
+      const result = state().resizeRoom(200, 200);
+      expect(result.stillOutside).toBeGreaterThan(0);
+    });
+
     it('takes a piece standing on another along with it', () => {
       state().addFurniture('media-console', 400, 250); // 180 x 45, offers a top
       state().addFurniture('laptop', 400, 250); // 34 x 24, rests on it
@@ -156,6 +186,21 @@ describe('roomStore', () => {
       state().resizeRoom(480, 500);
       expect(find('media-console').x).toBeLessThan(400);
       expect(find('laptop').x).toBeCloseTo(find('media-console').x, 1);
+      expect(find('laptop').elevationCm).toBeGreaterThan(0);
+    });
+
+    it('takes it along even when the room is shrunk far enough to move them both', () => {
+      state().addFurniture('media-console', 500, 250); // 180 x 45, offers a top
+      state().addFurniture('laptop', 500, 250); // 34 x 24, rests on it
+      const find = (id) => state().room.placedFurniture.find((i) => i.furnitureTypeId === id);
+      expect(find('laptop').elevationCm).toBeGreaterThan(0);
+
+      // 300 cm is narrow enough that the laptop is outside the new wall too. Pulling it in first
+      // looked to the stacking pass like someone having moved it by itself, which is the one case
+      // where it is deliberately left behind -- so the console slid out from under it.
+      state().resizeRoom(300, 500);
+      expect(find('laptop').x).toBeCloseTo(find('media-console').x, 1);
+      expect(find('laptop').y).toBeCloseTo(find('media-console').y, 1);
       expect(find('laptop').elevationCm).toBeGreaterThan(0);
     });
   });

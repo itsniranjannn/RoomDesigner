@@ -28,7 +28,12 @@ import {
 import { sanitizeImportedRoom } from '../engine/share.js';
 import { cleanOverrides } from '../engine/overrides.js';
 import { evaluateAllCollisions } from '../engine/collision.js';
-import { reconcileStacking, pickDefaultSupport } from '../engine/stacking.js';
+import {
+  reconcileStacking,
+  pickDefaultSupport,
+  settleStacking,
+  supportOf,
+} from '../engine/stacking.js';
 import { findFreePosition } from '../engine/placement.js';
 import { applyFinish } from '../components/preview3d/materials.js';
 import { applyStyleToRoom, resetStyleOnRoom } from '../data/stylePresets.js';
@@ -42,7 +47,13 @@ import { clamp, normalizeAngle } from '../engine/geometry.js';
 import { clampInsideRoom } from '../engine/snapping.js';
 import { clampOpening, DOOR_WIDTH_CM, defaultOpeningWidth } from '../engine/openings.js';
 import { hasOutline, openingWallLength, longestSolidEdge } from '../engine/roomShape.js';
-import { MAX_SERVICES, SERVICE_KINDS, newServiceId, positionService } from '../engine/planning.js';
+import {
+  MAX_SERVICES,
+  SERVICE_KINDS,
+  newServiceId,
+  positionService,
+  snapToWall,
+} from '../engine/planning.js';
 
 const SAVE_DEBOUNCE_MS = 350;
 let saveDebounceTimer = null;
@@ -870,9 +881,27 @@ export const useRoomStore = create((set, get) => ({
       windows: refitOpenings(room.windows, 'window'),
     };
 
+    // Only the right and bottom walls actually travel when the size changes; a thing hung on one of
+    // them travels with it, so that the wall nearest to it afterwards is still its own wall and not
+    // the one it now happens to sit closer to. Without this a clock on the right wall of a room made
+    // 40 cm wider is re-hung on the top wall, far from where its owner put it.
+    const carryDx = nextW - room.widthCm;
+    const carryDy = nextD - room.depthCm;
+    const carry = (wall, x, y) => ({
+      x: wall === 'right' ? x + carryDx : x,
+      y: wall === 'bottom' ? y + carryDy : y,
+    });
+
     // Pieces are measured at their real size, so one half outside the new wall comes back in whole
     const was = room.placedFurniture || [];
-    const broughtIn = was.map((item) => {
+    const carried = was.map((item) => {
+      const def = resolveItemDef(item);
+      if (!def?.wallMounted) return item;
+      const { wall } = snapToNearestWall(room, def, item);
+      const at = carry(wall, item.x, item.y);
+      return at.x === item.x && at.y === item.y ? item : { ...item, ...at };
+    });
+    const bringIn = (item) => {
       const def = resolveItemDef(item);
       const sized = {
         ...item,
@@ -882,12 +911,27 @@ export const useRoomStore = create((set, get) => ({
       const spot = clampInsideRoom(sized, nextW, nextD, room.outline || null);
       if (Math.abs(spot.x - item.x) < 0.05 && Math.abs(spot.y - item.y) < 0.05) return item;
       return { ...item, x: Math.round(spot.x), y: Math.round(spot.y) };
-    });
+    };
+    // A piece standing on another is left exactly where it is here, so that it can travel with its
+    // support below. Pulling it in first looks to reconcileStacking like someone having moved it by
+    // itself, which is the one case where it is deliberately left behind -- the laptop would stay
+    // put while the console it sits on slides out from under it.
+    const riders = new Set(was.filter((item) => supportOf(item, was)).map((item) => item.id));
+    const broughtIn = carried.map((item) => (riders.has(item.id) ? item : bringIn(item)));
     // Pictures, mirrors and curtains belong against a wall, and the walls have just moved; a piece
     // standing on another (a laptop on a desk) travels with it and is then settled onto whatever it
     // now stands over, exactly as it is when that desk is dragged
-    const placedFurniture = reconcileStacking(was, snapWallPieces(resized, broughtIn));
-    const before = new Map(was.map((item) => [item.id, item]));
+    const settled = reconcileStacking(was, snapWallPieces(resized, broughtIn));
+    // Only now, with everything carried, is a piece still sticking out brought in -- a rider whose
+    // support could not be saved either, most often. Anything moved at this point is settled again,
+    // since it may have left the surface it was resting on.
+    const clamped = settled.map((item) => (riders.has(item.id) ? bringIn(item) : item));
+    const placedFurniture = clamped.some((item, i) => item !== settled[i])
+      ? settleStacking(clamped)
+      : settled;
+    // Counted against where a piece would be having simply followed its own wall: riding the wall it
+    // was hung on is not something the person has to be told about
+    const before = new Map(carried.map((item) => [item.id, item]));
     const movedPieces = placedFurniture.filter((item) => {
       const old = before.get(item.id);
       return old && (Math.abs(item.x - old.x) > 0.05 || Math.abs(item.y - old.y) > 0.05);
@@ -897,8 +941,13 @@ export const useRoomStore = create((set, get) => ({
     // are put back onto them rather than left floating outside the room
     let movedServices = 0;
     const services = (room.services || []).map((point) => {
-      const at = positionService(resized, point.kind, point.x, point.y, point.rotationDeg || 0);
-      if (!at || (Math.abs(at.x - point.x) < 0.05 && Math.abs(at.y - point.y) < 0.05)) return point;
+      const onWall = SERVICE_KINDS[point.kind]?.mount === 'wall';
+      const held = onWall ? snapToWall(room, point.x, point.y) : null;
+      const from = held ? carry(held.wall, point.x, point.y) : { x: point.x, y: point.y };
+      const at = positionService(resized, point.kind, from.x, from.y, point.rotationDeg || 0);
+      if (!at || (Math.abs(at.x - from.x) < 0.05 && Math.abs(at.y - from.y) < 0.05)) {
+        return at && (at.x !== point.x || at.y !== point.y) ? { ...point, ...at } : point;
+      }
       movedServices += 1;
       return { ...point, ...at };
     });
@@ -926,7 +975,16 @@ export const useRoomStore = create((set, get) => ({
       saveStatus: 'saving',
     });
     persistDebounced(updatedRoom, set);
-    return { widthCm: nextW, depthCm: nextD, movedPieces, movedOpenings, movedServices };
+    return {
+      widthCm: nextW,
+      depthCm: nextD,
+      movedPieces,
+      movedOpenings,
+      movedServices,
+      // A piece wider than the room it is in cannot be brought inside: it is reported instead of
+      // being described as dealt with
+      stillOutside: boundaryCollidingIds.size,
+    };
   },
 
   // Floor and wall finish of the 3D view (ids from preview3d/materials.js); classic = none chosen
