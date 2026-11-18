@@ -23,12 +23,15 @@ function NewRoomForm({ onClose }) {
   const [name, setName] = useState('');
   const [widthCm, setWidthCm] = useState(500);
   const [depthCm, setDepthCm] = useState(400);
-  const [presetName, setPresetName] = useState(null);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(null);
 
+  // The lit chip is whichever starting size the boxes now hold, so the dialog never opens
+  // showing a preset's numbers with nothing selected, and typing one lights it too.
+  const presetName =
+    ROOM_PRESETS.find((p) => p.width === widthCm && p.depth === depthCm)?.name ?? null;
+
   const applyPreset = (preset) => {
-    setPresetName(preset.name);
     setName(preset.name);
     setWidthCm(preset.width);
     setDepthCm(preset.depth);
@@ -119,10 +122,7 @@ function NewRoomForm({ onClose }) {
             step="any"
             value={widthCm}
             hint={`${meters(widthCm)}. Allowed ${ROOM_MIN_CM} to ${ROOM_MAX_CM}.`}
-            onCommit={(v) => {
-              setWidthCm(v);
-              setPresetName(null);
-            }}
+            onCommit={(v) => setWidthCm(v)}
           />
           <NumberField
             label="Depth"
@@ -133,10 +133,7 @@ function NewRoomForm({ onClose }) {
             step="any"
             value={depthCm}
             hint={`${meters(depthCm)}. Allowed ${ROOM_MIN_CM} to ${ROOM_MAX_CM}.`}
-            onCommit={(v) => {
-              setDepthCm(v);
-              setPresetName(null);
-            }}
+            onCommit={(v) => setDepthCm(v)}
           />
         </div>
       </form>

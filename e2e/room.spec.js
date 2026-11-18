@@ -124,6 +124,25 @@ test.describe('room editor', () => {
     ).toBeVisible();
   });
 
+  // The dialog opened showing the Living room preset's 5.0 x 4.0 m with no chip lit, so the two
+  // halves of it disagreed about what was chosen. The lit chip is now whatever the boxes hold.
+  test('lights the starting size the boxes are showing', async ({ page }) => {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Start a new room' }).click();
+    const dialog = page.getByRole('dialog', { name: 'New room' });
+    const living = dialog.getByRole('button', { name: /Living room/ });
+    await expect(dialog.getByRole('spinbutton', { name: 'Width' })).toHaveValue('500');
+    await expect(living).toHaveAttribute('aria-pressed', 'true');
+
+    // Typing a size of your own puts the light out; typing a preset's size back lights it again
+    await dialog.getByRole('spinbutton', { name: 'Width' }).fill('365');
+    await dialog.getByRole('spinbutton', { name: 'Depth' }).press('Tab');
+    await expect(living).toHaveAttribute('aria-pressed', 'false');
+    await dialog.getByRole('spinbutton', { name: 'Width' }).fill('500');
+    await dialog.getByRole('spinbutton', { name: 'Depth' }).press('Tab');
+    await expect(living).toHaveAttribute('aria-pressed', 'true');
+  });
+
   // Creating a room the device cannot store used to close the dialog and do nothing at all
   test('says so and stays open when a new room cannot be stored', async ({ page }) => {
     await openApp(page);

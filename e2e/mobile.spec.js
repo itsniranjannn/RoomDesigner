@@ -56,6 +56,25 @@ test.describe('mobile viewport (375 x 812)', () => {
     );
     expect(overflow).toBeLessThanOrEqual(1);
   });
+
+  test('renaming the room shows a way to finish, and gives the bar back', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page);
+
+    // While the name is being typed the field takes the bar, so the view switch and Share go
+    // under it. There has to be something on screen that ends it: without this the only ways out
+    // were to guess at the plan behind the bar or to find Go on the on-screen keyboard.
+    const name = page.getByRole('textbox', { name: 'Room name' });
+    await name.tap();
+    const done = page.getByRole('button', { name: 'Finish renaming' });
+    await expect(done).toBeVisible();
+    await name.fill('Back bedroom');
+    await done.tap();
+
+    await expect(done).toBeHidden();
+    await expect(name).toHaveValue('Back bedroom');
+    await expect(page.getByRole('group', { name: 'View' })).toBeVisible();
+  });
 });
 
 test.describe('landscape phone (640 x 360)', () => {

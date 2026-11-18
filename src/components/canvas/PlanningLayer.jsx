@@ -222,15 +222,33 @@ function TurningSpace({ room }) {
   );
 }
 
+/**
+ * The "!" and "i" marks on the plan. Each one carries its own words: pointing at a mark raises
+ * them as a tooltip, a screen reader reads them out and a click opens Plan checks, where the
+ * whole explanation is. Without that the app raised an alarm on the piece someone had just
+ * placed and gave no way at all to ask what it was about.
+ */
 function IssueMarkers({ issues, showAll }) {
+  const openPanel = usePlanningStore((state) => state.openPanel);
   return (
-    <g pointerEvents="none" aria-hidden="true">
+    <g pointerEvents="none">
       {issues
         .filter((i) => i.focus.type !== 'spot')
         .filter((i) => showAll || !SHOWN_BY_CLEARANCE.has(i.code))
         .filter((i) => showAll || i.severity !== 'info')
         .map((i) => (
-          <g key={i.id} transform={`translate(${i.point.x} ${i.point.y})`}>
+          <g
+            key={i.id}
+            data-issue={i.code}
+            transform={`translate(${i.point.x} ${i.point.y})`}
+            pointerEvents="auto"
+            role="button"
+            tabIndex={-1}
+            className={cursors.help}
+            aria-label={i.message ? `${i.title}. ${i.message}` : i.title}
+            onClick={() => openPanel('checks')}
+          >
+            <title>{i.message ? `${i.title} — ${i.message}` : i.title}</title>
             <circle r="10" fill={SEVERITY_COLOR[i.severity]} stroke="#fff" strokeWidth="1.6" />
             <text
               y="4"

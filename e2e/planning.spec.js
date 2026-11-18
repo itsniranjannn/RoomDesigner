@@ -33,6 +33,29 @@ test.describe('planning tools', () => {
     await expect(checks).toBeHidden();
   });
 
+  // The marks on the plan raised an alarm on the piece just placed and gave no way to ask what
+  // it was about: they could not be pointed at, tapped or read out, and the words sat in a panel
+  // with nothing to connect them to the mark.
+  test('a mark on the plan carries the words for what is wrong', async ({ page }) => {
+    await openApp(page);
+    await createRoomFromPreset(page, "Kids' bedroom");
+    // A king bed in a small room blocks the door, which is the clearest check there is
+    await addByClick(page, 'King Bed');
+    await page.getByRole('button', { name: /^Plan checks/ }).click();
+    const checks = page.getByRole('dialog', { name: 'Plan checks' });
+    await expect(checks).toBeVisible();
+
+    const mark = page.locator('[data-issue="door-blocked"]').first();
+    await expect(mark).toBeAttached();
+    // Pointing at it raises these words; a screen reader reads out the same
+    await expect(mark.locator('title')).toContainText('blocks');
+    expect(await mark.getAttribute('aria-label')).toContain('blocks');
+
+    // And the pointer reaches it: the layer these marks live on refuses pointer events, and the
+    // mark used to inherit that, so there was no way at all to point at one and be told.
+    expect(await mark.evaluate((el) => getComputedStyle(el).pointerEvents)).not.toBe('none');
+  });
+
   test('draws service links between a sink and the water point, and can hide them', async ({
     page,
   }) => {

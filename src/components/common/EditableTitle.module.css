@@ -1,3 +1,7 @@
+.wrap {
+  display: contents;
+}
+
 .title {
   flex: 0 1 auto;
   field-sizing: content;
@@ -46,16 +50,45 @@
     padding: 0 var(--space-1);
   }
 
-  /* Renaming needs to show what you are typing, so the field takes the whole bar */
+  /* Renaming needs to show what you are typing, so the field takes the bar -- all but the end,
+     which is kept for the Done button that is the way out of it. */
   .title:focus {
     position: absolute;
     top: 50%;
     left: var(--space-2);
-    right: var(--space-2);
+    right: calc(var(--space-2) + var(--control-h) + var(--space-1));
     z-index: 3;
     width: auto;
     max-width: none;
     height: var(--control-h);
     transform: translateY(-50%);
+  }
+
+  .done {
+    position: absolute;
+    top: 50%;
+    right: var(--space-2);
+    z-index: 3;
+    transform: translateY(-50%);
+  }
+}
+
+/* Off a phone the field stays where it is in the bar and needs no button of its own */
+.done {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--control-h);
+  height: var(--control-h);
+  color: var(--color-paper);
+  background: var(--color-indigo);
+  border: 1px solid var(--color-indigo);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .done {
+    display: inline-flex;
   }
 }
