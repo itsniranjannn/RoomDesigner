@@ -16,6 +16,16 @@ body,
   overflow: hidden;
 }
 
+/*
+ * ...but a page taller than the window has to stay reachable. The app's own screens size
+ * themselves to the window and never overflow, so they never show a scrollbar; the landing and
+ * About pages do overflow at a large browser zoom or in a short window, and without this their
+ * lower half cannot be scrolled to at all. Sideways overflow stays hidden.
+ */
+#root {
+  overflow-y: auto;
+}
+
 body {
   background-color: var(--color-linen);
   color: var(--color-ink);
